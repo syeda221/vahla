@@ -649,15 +649,14 @@
         $.post('{{ route('sales.post_final') }}', $.param(formData))
             .done(function(res) {
                 if (res?.ok) {
-                    window.open(res.invoice_url, '_blank');
                     Swal.fire({
                         title: 'Success!',
-                        text: 'Posted & invoice opened',
+                        text: res.msg || 'Sale saved successfully',
                         icon: 'success',
-                        timer: 2000,
+                        timer: 1500,
                         showConfirmButton: false
                     });
-                    setTimeout(() => window.location.href = "{{ route('sale.index') }}", 2000);
+                    setTimeout(() => window.location.href = "{{ route('sale.index') }}", 1500);
                 } else {
                     Swal.fire('Post Failed', res.msg || 'Post failed', 'error');
                 }
@@ -1357,15 +1356,9 @@
             }
 
             ensureSaved().then(function(res) {
-                const id = (res && res.booking_id) ? res.booking_id : res;
-                const thermalUrl = (res && res.receipt_url) ? res.receipt_url : ('{{ url('sales') }}/' + id + '/recepit');
-
-                // Open thermal sale receipt directly
-                window.open(thermalUrl, '_blank');
-
                 Swal.fire({
                     title: 'Success!',
-                    text: 'Sale Posted & Receipt Opened Successfully',
+                    text: (res && res.msg) ? res.msg : 'Sale saved successfully',
                     icon: 'success',
                     timer: 1500,
                     showConfirmButton: false

@@ -953,6 +953,11 @@ class SaleController extends Controller
         // 2. Data for Dropdowns (Same as addsale)
         $customer = Customer::all();
         $warehouse = Warehouse::all();
+        $allSeries = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
+        $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
+        $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+        $recentProducts = Product::latest()->take(12)->get();
+
         // Filter accounts (Cash/Bank) for Receipt Voucher
         $accounts = \App\Models\Account::whereHas('head', function($q) {
             $q->whereIn('name', ['Cash', 'Bank']);
@@ -964,7 +969,7 @@ class SaleController extends Controller
         $nextInvoiceNumber = $sale->invoice_no;
 
         // 4. Return the Edit Sale View
-        return view('admin_panel.sale.edit_sale', compact('warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale'));
+        return view('admin_panel.sale.edit_sale', compact('warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allSeries', 'activePrefix'));
     }
 
     public function updatesale(Request $request, $id)
