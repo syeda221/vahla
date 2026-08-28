@@ -700,9 +700,6 @@
                                     </button>
                                 </div>
                                 <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-outline-success btn-sm py-1 px-3 rounded-2 fw-bold d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#quickAddProductModal" style="font-size:0.75rem;">
-                                        <i class="fas fa-bolt text-warning"></i> Create Product
-                                    </button>
                                     <button type="button" class="btn btn-primary btn-sm py-1 px-3 rounded-2 fw-bold d-flex align-items-center gap-1 shadow-sm" id="btnAdd" style="font-size:0.75rem;">
                                         <i class="fas fa-plus"></i> Add Row
                                     </button>
