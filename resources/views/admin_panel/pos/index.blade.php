@@ -2209,9 +2209,17 @@
                 }
 
                 if ($('#pos_edit_id').length === 0) {
-                    $('#posCheckoutForm').append('<input type="hidden" name="edit_id" id="pos_edit_id" value="' + editSaleData.id + '">');
+                    $('#posCheckoutForm').append('<input type="hidden" name="edit_id" id="pos_edit_id" value="' + editSaleData.id + '"><input type="hidden" name="booking_id" id="pos_booking_id" value="' + editSaleData.id + '">');
                 } else {
                     $('#pos_edit_id').val(editSaleData.id);
+                    $('#pos_booking_id').val(editSaleData.id);
+                }
+
+                if (editSaleData.discount) {
+                    $('#summaryDiscount').val(editSaleData.discount);
+                }
+                if (editSaleData.note) {
+                    $('#posNote').val(editSaleData.note);
                 }
 
                 editSaleData.items.forEach(function(item) {
@@ -2235,6 +2243,10 @@
                 }
                 if (editSaleData.payment_account_id) {
                     $('.payment-row:first .payment-account').val(String(editSaleData.payment_account_id)).trigger('change');
+                }
+
+                if (typeof updateTotals === 'function') {
+                    updateTotals();
                 }
 
                 Swal.fire({

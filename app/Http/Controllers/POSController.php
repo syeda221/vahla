@@ -297,17 +297,22 @@ class POSController extends Controller
                         $itemId .= '|variant|' . $variantData;
                     }
 
+                    $priceVal = (float) ($item->price ?? ($item->price_per_piece ?? 0));
+                    $totalVal = (float) ($item->total ?? ($item->total_price ?? 0));
+                    $discVal = (float) ($item->discount_amount ?? 0);
+                    $qtyVal = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
+
                     $items[] = [
                         'id' => $itemId,
                         'product_id' => $item->product_id,
                         'name' => $itemName,
-                        'price' => (float) $item->price_per_piece,
-                        'qty' => (int) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty),
+                        'price' => $priceVal,
+                        'qty' => $qtyVal,
                         'size_mode' => $sizeMode,
                         'pieces_per_box' => $ppb,
                         'variant_data' => $variantData,
-                        'item_discount' => (float) $item->discount_amount,
-                        'line_total' => (float) $item->total_price
+                        'item_discount' => $discVal,
+                        'line_total' => $totalVal
                     ];
                 }
 

@@ -179,6 +179,13 @@ class SaleController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->filled('booking_id') || $request->filled('edit_id')) {
+            $saleId = $request->input('booking_id') ?: $request->input('edit_id');
+            $sale = Sale::find($saleId);
+            if ($sale) {
+                return $this->processSale($request, $sale);
+            }
+        }
         return $this->processSale($request, new Sale);
     }
 
