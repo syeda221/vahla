@@ -1143,7 +1143,30 @@ class PurchaseController extends Controller
             $q->whereIn('name', ['Cash', 'Bank']);
         })->where('status', 1)->orderBy('title')->get();
 
-        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'accounts'));
+        // Fetch existing payment voucher for this purchase
+        $paymentVoucher = \App\Models\VoucherMaster::with('details.account')
+            ->where('voucher_type', \App\Models\VoucherMaster::TYPE_PAYMENT)
+            ->where('remarks', "Auto-Payment for Purchase #{$purchase->invoice_no}")
+            ->first();
+
+        $existingPayments = collect();
+        if ($paymentVoucher) {
+            $existingPayments = $paymentVoucher->details->where('credit', '>', 0);
+        }
+
+        // Fallback: If no voucher details found, but purchase has paid_amount > 0
+        if ($existingPayments->isEmpty() && (float) $purchase->paid_amount > 0) {
+            $balanceService = app(\App\Services\BalanceService::class);
+            $cashAccId = $balanceService->getCashAccountId();
+            $existingPayments = collect([
+                (object)[
+                    'account_id' => $cashAccId,
+                    'credit' => (float) $purchase->paid_amount
+                ]
+            ]);
+        }
+
+        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'accounts', 'existingPayments'));
     }
 
     public function update(Request $request, $id)
@@ -1159,20 +1182,25 @@ class PurchaseController extends Controller
             'extra_cost' => 'nullable|numeric|min:0',
 
             'product_id' => 'array',
-            'product_id.*' => 'nullable|exists:products,id',
+            'product_id.*' => 'nullable|string',
             'qty' => 'array',
             'qty.*' => 'nullable|required_with:product_id.*|numeric|min:0',
             'price' => 'array',
             'price.*' => 'nullable|required_with:product_id.*|numeric|min:0',
-            'unit' => 'array',
-            'unit.*' => 'nullable|required_with:product_id.*|string',
+            'unit' => 'nullable|array',
             'item_discount' => 'nullable|array',
             'item_discount.*' => 'nullable|numeric|min:0',
+            'payment_account_id' => 'nullable|array',
+            'payment_amount' => 'nullable|array',
         ]);
 
         DB::transaction(function () use ($validated, $request, $id) {
-            $purchase = Purchase::with('items')->findOrFail($id);
-            $oldNetAmount = $purchase->net_amount;
+            $purchase = Purchase::with(['items', 'vendor'])->findOrFail($id);
+            $oldNetAmount = (float) $purchase->net_amount;
+            $oldPaidAmount = (float) $purchase->paid_amount;
+            $oldVendorId = $purchase->vendor_id;
+            $oldWarehouseId = (int) $purchase->warehouse_id;
+            $oldBranchId = (int) ($purchase->branch_id ?? 1);
 
             $branchId = (int) ($validated['branch_id'] ?? $purchase->branch_id ?? 1);
             $warehouseId = (int) ($validated['warehouse_id'] ?? $purchase->warehouse_id);
@@ -1201,9 +1229,21 @@ class PurchaseController extends Controller
             $looseQtys = $request->loose_qty ?? [];
             $lengths = $request->length ?? [];
             $widths = $request->width ?? [];
+            $colors = $request->color ?? [];
 
-            foreach ($pids as $i => $pid) {
-                $pid = (int) ($pid ?? 0);
+            foreach ($pids as $i => $rawPid) {
+                // If variant ID was passed as "id|variant|data"
+                $pid = $rawPid;
+                if (is_string($rawPid) && str_contains($rawPid, '|variant|')) {
+                    $parts = explode('|variant|', $rawPid);
+                    $pid = (int) $parts[0];
+                    if (empty($colors[$i]) && isset($parts[1])) {
+                        $colors[$i] = $parts[1];
+                    }
+                } else {
+                    $pid = (int) ($pid ?? 0);
+                }
+
                 $qty = (float) ($qtys[$i] ?? 0);
                 $price = (float) ($prices[$i] ?? 0);
 
@@ -1219,27 +1259,26 @@ class PurchaseController extends Controller
                 $curPPM2 = (float) ($ppm2[$i] ?? 0);
 
                 if ($curSizeMode === 'by_size') {
-                    // price is per m2. Gross = TotalPieces * m2_per_piece * price_per_m2
                     $grossTotal = $curPPM2 * $qty * $price;
+                } elseif (in_array(strtolower($unit ?? ''), ['gm', 'g'])) {
+                    $grossTotal = ($qty / 1000.0) * $price;
                 } else {
-                    // price is always treated as per-piece for purchase entry
                     $grossTotal = $qty * $price;
                 }
 
                 // Calculate absolute discount from percentage
                 $discAmount = $grossTotal * ($discPercent / 100);
                 $lineTotal = $grossTotal - $discAmount;
-                // ------------------------------------------
 
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
                     'product_id' => $pid,
                     'unit' => $unit,
                     'price' => $price,
-                    'item_discount' => $discAmount, // Store calculated amount
+                    'item_discount' => $discAmount,
                     'qty' => $qty,
                     'line_total' => $lineTotal,
-                    'color' => $request->color[$i] ?? null,
+                    'color' => $colors[$i] ?? null,
 
                     // Snapshots
                     'size_mode' => $sizeModes[$i] ?? null,
@@ -1255,7 +1294,32 @@ class PurchaseController extends Controller
                 $newMap[$pid] = ($newMap[$pid] ?? 0) + $qty;
             }
 
-            // header update
+            // Totals calculation
+            $discount = (float) ($request->discount ?? 0);
+            $extraCost = (float) ($request->extra_cost ?? 0);
+            $netAmount = ($subtotal - $discount) + $extraCost;
+
+            // Payments calculation from request
+            $paymentAccountIds = $request->input('payment_account_id', []);
+            $paymentAmounts = $request->input('payment_amount', []);
+            $newPaidAmount = 0;
+            $validPaymentAccounts = [];
+            $validPaymentAmounts = [];
+
+            if (is_array($paymentAccountIds)) {
+                foreach ($paymentAccountIds as $idx => $accId) {
+                    $amt = (float) ($paymentAmounts[$idx] ?? 0);
+                    if (!empty($accId) && $amt > 0) {
+                        $newPaidAmount += $amt;
+                        $validPaymentAccounts[] = $accId;
+                        $validPaymentAmounts[] = $amt;
+                    }
+                }
+            }
+
+            $dueAmount = max(0, $netAmount - $newPaidAmount);
+
+            // Header update
             $purchase->update([
                 'vendor_id' => $validated['vendor_id'] ?? $purchase->vendor_id,
                 'branch_id' => $branchId,
@@ -1263,103 +1327,188 @@ class PurchaseController extends Controller
                 'purchase_date' => $validated['purchase_date'] ?? $purchase->purchase_date,
                 'invoice_no' => $validated['invoice_no'] ?? $purchase->invoice_no,
                 'note' => $validated['note'] ?? $purchase->note,
-            ]);
-
-            // totals
-            $discount = (float) ($request->discount ?? 0);
-            $extraCost = (float) ($request->extra_cost ?? 0);
-            $netAmount = ($subtotal - $discount) + $extraCost;
-
-            $purchase->update([
                 'subtotal' => $subtotal,
                 'discount' => $discount,
                 'additional_discount' => $discount,
                 'extra_cost' => $extraCost,
                 'net_amount' => $netAmount,
-                'due_amount' => $netAmount, // Assuming fully due? Or should we subtract paid?
-                // Paid amount is separate (transactions).
-                // The 'due_amount' usually tracks how much is left.
-                // If we paid partial, tracking logic might need paid_amount check.
-                // But standard approach here: due = net - paid
+                'paid_amount' => $newPaidAmount,
+                'due_amount' => $dueAmount,
             ]);
 
-            // Recalculate Due based on net - paid
-            $paid = $purchase->paid_amount;
-            $purchase->update(['due_amount' => $netAmount - $paid]);
-
-            // If this purchase is linked to a gatepass => NO stock changes here
+            // Stock movements & Warehouse stock updates
             $isLinkedToGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
 
             if (! $isLinkedToGatepass) {
-                // deltas for movements + stocks
                 $movs = [];
                 $now = now();
-                $all = $oldMap->keys()->merge($newMap->keys())->unique();
-                foreach ($all as $pid) {
-                    $oldQ = (float) ($oldMap[$pid] ?? 0);
-                    $newQ = (float) ($newMap[$pid] ?? 0);
-                    $delta = $newQ - $oldQ;
-                    if ($delta == 0) {
-                        continue;
+
+                if ($oldWarehouseId !== $warehouseId) {
+                    // Rollback from old warehouse
+                    foreach ($oldMap as $pid => $oldQ) {
+                        if ($oldQ > 0) {
+                            $this->upsertStocks((int) $pid, -$oldQ, $oldBranchId, $oldWarehouseId);
+                        }
                     }
+                    // Add to new warehouse
+                    foreach ($newMap as $pid => $newQ) {
+                        if ($newQ > 0) {
+                            $this->upsertStocks((int) $pid, +$newQ, $branchId, $warehouseId);
+                            $movs[] = [
+                                'product_id' => (int) $pid,
+                                'type' => 'in',
+                                'qty' => $newQ,
+                                'ref_type' => 'PURCHASE_EDIT',
+                                'ref_id' => $purchase->id,
+                                'note' => 'Purchase warehouse change delta',
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
+                        }
+                    }
+                } else {
+                    $all = $oldMap->keys()->merge($newMap->keys())->unique();
+                    foreach ($all as $pid) {
+                        $oldQ = (float) ($oldMap[$pid] ?? 0);
+                        $newQ = (float) ($newMap[$pid] ?? 0);
+                        $delta = $newQ - $oldQ;
+                        if ($delta == 0) {
+                            continue;
+                        }
 
-                    $type = $delta > 0 ? 'in' : 'out';
-                    $qty = abs($delta);
+                        $type = $delta > 0 ? 'in' : 'out';
+                        $qty = abs($delta);
 
-                    $movs[] = [
-                        'product_id' => (int) $pid,
-                        'type' => $type,
-                        'qty' => $qty,
-                        'ref_type' => 'PURCHASE_EDIT',
-                        'ref_id' => $purchase->id,
-                        'note' => 'Purchase edit delta',
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ];
+                        $movs[] = [
+                            'product_id' => (int) $pid,
+                            'type' => $type,
+                            'qty' => $qty,
+                            'ref_type' => 'PURCHASE_EDIT',
+                            'ref_id' => $purchase->id,
+                            'note' => 'Purchase edit delta',
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
 
-                    $this->upsertStocks((int) $pid, ($type === 'in' ? +$qty : -$qty), $branchId, $warehouseId);
+                        $this->upsertStocks((int) $pid, ($type === 'in' ? +$qty : -$qty), $branchId, $warehouseId);
+                    }
                 }
+
                 if (! empty($movs)) {
                     DB::table('stock_movements')->insert($movs);
                 }
             }
 
-            $diff = $netAmount - $oldNetAmount;
+            // Accounting & General Ledger Updates
+            $balanceService = app(\App\Services\BalanceService::class);
+            $voucherService = app(\App\Services\VoucherService::class);
+            $transactionService = app(\App\Services\TransactionService::class);
+            $expenseAccountId = $balanceService->getPurchaseExpenseId();
+            $apAccountId = $balanceService->getAccountsPayableId();
 
-            // Update Vendor Ledger accurately with diff
-            $vendorLedger = \App\Models\VendorLedger::where('vendor_id', $purchase->vendor_id)->first();
-            if ($vendorLedger) {
-                $vendorLedger->closing_balance += $diff;
-                $vendorLedger->save();
-            } else {
-                \App\Models\VendorLedger::create([
-                    'vendor_id' => $purchase->vendor_id,
-                    'admin_or_user_id' => auth()->id(),
-                    'previous_balance' => 0,
-                    'opening_balance' => 0,
-                    'closing_balance' => $netAmount,
+            // 1. Purchase Voucher (Journal Voucher)
+            $purchaseVoucher = \App\Models\VoucherMaster::where('remarks', "Purchase Voucher #{$purchase->invoice_no}")->first();
+            if ($purchaseVoucher) {
+                $purchaseVoucher->total_amount = $netAmount;
+                $purchaseVoucher->date = $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : now()->format('Y-m-d');
+                $purchaseVoucher->party_id = $purchase->vendor_id;
+                $purchaseVoucher->status = \App\Models\VoucherMaster::STATUS_DRAFT;
+                $purchaseVoucher->save();
+
+                // Clear old details and journal entries
+                $purchaseVoucher->journalEntries()->delete();
+                $purchaseVoucher->details()->delete();
+
+                // Recreate details
+                \App\Models\VoucherDetail::create([
+                    'voucher_master_id' => $purchaseVoucher->id,
+                    'account_id' => $expenseAccountId,
+                    'debit' => $netAmount,
+                    'credit' => 0,
+                    'narration' => "Purchase Invoice #{$purchase->invoice_no}",
                 ]);
+                \App\Models\VoucherDetail::create([
+                    'voucher_master_id' => $purchaseVoucher->id,
+                    'account_id' => $apAccountId,
+                    'debit' => 0,
+                    'credit' => $netAmount,
+                    'narration' => "Payable to Vendor " . ($purchase->vendor->name ?? ''),
+                ]);
+
+                $voucherService->postVoucher($purchaseVoucher);
+            } else {
+                $transactionService->createPurchaseVoucher($purchase);
             }
 
-            // Adjust Journal Vouchers correctly
-            $voucher = \App\Models\VoucherMaster::where('remarks', "Purchase Voucher #{$purchase->invoice_no}")->first();
-            if ($voucher) {
-                $voucher->total_amount = max(0, $voucher->total_amount + $diff);
-                $voucher->save();
+            // 2. Payment Voucher (Payment Voucher)
+            $paymentVoucher = \App\Models\VoucherMaster::where('remarks', "Auto-Payment for Purchase #{$purchase->invoice_no}")->first();
+            if (! empty($validPaymentAccounts)) {
+                if ($paymentVoucher) {
+                    $paymentVoucher->journalEntries()->delete();
+                    $paymentVoucher->details()->delete();
+                    $paymentVoucher->total_amount = $newPaidAmount;
+                    $paymentVoucher->date = $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : now()->format('Y-m-d');
+                    $paymentVoucher->party_id = $purchase->vendor_id;
+                    $paymentVoucher->status = \App\Models\VoucherMaster::STATUS_DRAFT;
+                    $paymentVoucher->save();
 
-                $balanceService = app(\App\Services\BalanceService::class);
-                $expenseAccountId = $balanceService->getPurchaseExpenseId();
-                $apAccountId = $balanceService->getAccountsPayableId();
+                    foreach ($validPaymentAccounts as $pIdx => $pAccId) {
+                        $pAmt = (float) $validPaymentAmounts[$pIdx];
+                        \App\Models\VoucherDetail::create([
+                            'voucher_master_id' => $paymentVoucher->id,
+                            'account_id' => $pAccId,
+                            'debit' => 0,
+                            'credit' => $pAmt,
+                            'narration' => "Payment for Purchase #{$purchase->invoice_no}",
+                        ]);
+                    }
 
-                \App\Models\JournalEntry::where('source_type', \App\Models\VoucherMaster::class)
-                    ->where('source_id', $voucher->id)
-                    ->where('account_id', $expenseAccountId)
-                    ->update(['debit' => $purchase->net_amount]);
+                    \App\Models\VoucherDetail::create([
+                        'voucher_master_id' => $paymentVoucher->id,
+                        'account_id' => $apAccountId,
+                        'debit' => $newPaidAmount,
+                        'credit' => 0,
+                        'narration' => "Payment to Vendor " . ($purchase->vendor->name ?? ''),
+                    ]);
 
-                \App\Models\JournalEntry::where('source_type', \App\Models\VoucherMaster::class)
-                    ->where('source_id', $voucher->id)
-                    ->where('account_id', $apAccountId)
-                    ->update(['credit' => $purchase->net_amount]);
+                    $voucherService->postVoucher($paymentVoucher);
+                } else {
+                    $transactionService->createPaymentForPurchase($purchase, $validPaymentAccounts, $validPaymentAmounts);
+                }
+            } else {
+                if ($paymentVoucher) {
+                    $paymentVoucher->journalEntries()->delete();
+                    $paymentVoucher->details()->delete();
+                    $paymentVoucher->delete();
+                }
+            }
+
+            // 3. Synchronize Vendor Ledger closing balance
+            if ($purchase->vendor_id) {
+                $currentVendorBalance = $balanceService->getVendorBalance($purchase->vendor_id);
+                $vendorLedger = \App\Models\VendorLedger::where('vendor_id', $purchase->vendor_id)->orderBy('id', 'desc')->first();
+                if ($vendorLedger) {
+                    $vendorLedger->closing_balance = $currentVendorBalance;
+                    $vendorLedger->save();
+                } else {
+                    \App\Models\VendorLedger::create([
+                        'vendor_id' => $purchase->vendor_id,
+                        'admin_or_user_id' => auth()->id() ?? 1,
+                        'previous_balance' => 0,
+                        'opening_balance' => 0,
+                        'closing_balance' => $currentVendorBalance,
+                    ]);
+                }
+            }
+
+            // If vendor was changed, sync old vendor balance as well
+            if ($oldVendorId && $oldVendorId != $purchase->vendor_id) {
+                $oldVendorBal = $balanceService->getVendorBalance($oldVendorId);
+                $oldLedger = \App\Models\VendorLedger::where('vendor_id', $oldVendorId)->orderBy('id', 'desc')->first();
+                if ($oldLedger) {
+                    $oldLedger->closing_balance = $oldVendorBal;
+                    $oldLedger->save();
+                }
             }
         });
 

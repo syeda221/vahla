@@ -436,16 +436,14 @@
                                 <table class="table table-bordered sales-table mb-0" id="purchaseTable">
                                     <thead>
                                         <tr>
-                                            <th class="col-product">Product</th>
-                                            <th class="col-qty">Cartons</th>
-                                            <th class="col-qty">Loose Pcs</th>
-                                            <th class="col-stock">Pack Size</th>
-                                            <th class="col-pieces">Pieces</th>
-                                            <th class="col-price">Price</th>
-                                            <th class="col-disc">Disc %</th>
-                                            <th class="col-disc-amt">Disc Amt</th>
-                                            <th class="col-amount">Amount</th>
-                                            <th class="col-action">Action</th>
+                                            <th class="col-product">Product & Variant</th>
+                                            <th class="col-unit" style="width: 100px;">Unit</th>
+                                            <th class="col-qty" style="width: 110px;">Qty</th>
+                                            <th class="col-price" style="width: 130px;">Purchase Price</th>
+                                            <th class="col-disc" style="width: 90px;">Disc %</th>
+                                            <th class="col-disc-amt" style="width: 110px;">Disc Amt</th>
+                                            <th class="col-amount" style="width: 130px;">Amount</th>
+                                            <th class="col-action" style="width: 50px;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="purchaseTableBody">
@@ -453,27 +451,13 @@
                                             @php
                                                 $sizeMode = $item->size_mode ?? 'by_pieces';
                                                 $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : 1);
-                                                $boxes = (float) ($item->boxes_qty ?? 0);
-                                                $loose = (float) ($item->loose_qty ?? 0);
+                                                $qty = (float) $item->qty;
 
-                                                // Create 5.3 format for display
-                                                $displayBoxes = $boxes > 0 ? $boxes : '0';
-                                                if ($loose > 0) {
-                                                    $displayBoxes .= '.' . $loose;
-                                                } elseif ($boxes == 0) {
-                                                    $displayBoxes = ''; // Empty if 0
-                                                }
-
-                                                // Unit Label
-                                                $unitLabel = '';
-                                                if ($sizeMode == 'by_size') {
-                                                    $unitLabel = '(m²)';
-                                                } elseif ($sizeMode == 'by_cartons') {
-                                                    $unitLabel = '(carton)';
-                                                } else {
-                                                }
-
+                                                $variantNameDisplay = $item->product->item_name ?? 'Product';
                                                 $variantInfo = '';
+                                                $rawVariantData = $item->color ?? '';
+                                                $unitName = $item->unit ?? ($item->product->unit->name ?? 'Pcs');
+
                                                 if (!empty($item->color)) {
                                                     $decodedColor = base64_decode($item->color, true);
                                                     $vData = ($decodedColor !== false) ? json_decode($decodedColor, true) : null;
@@ -481,32 +465,48 @@
                                                         $vData = json_decode($item->color, true);
                                                     }
                                                     if (is_array($vData)) {
+                                                        $vName = $vData['name'] ?? '';
                                                         $vColorName = $vData['color'] ?? '';
                                                         $vSize = $vData['size'] ?? '';
+                                                        $unitName = $vData['unit'] ?? $unitName;
                                                         $vParts = [];
+                                                        if ($vName && $vName !== ($item->product->item_name ?? '')) {
+                                                            $variantNameDisplay = $vName;
+                                                        }
                                                         if ($vColorName && $vColorName !== '-') {
-                                                            $vParts[] = $vColorName;
+                                                            $vParts[] = 'Color: ' . $vColorName;
                                                         }
                                                         if ($vSize && $vSize !== '-') {
-                                                            $vParts[] = $vSize;
+                                                            $vParts[] = 'Size: ' . $vSize;
                                                         }
                                                         if (!empty($vParts)) {
-                                                            $variantInfo = ' (' . implode(' | ', $vParts) . ')';
+                                                            $variantInfo = implode(' | ', $vParts);
                                                         }
                                                     } else {
-                                                        $variantInfo = ' (' . $item->color . ')';
+                                                        $variantInfo = $item->color;
                                                     }
                                                 }
+
+                                                $optionVal = $item->product_id;
+                                                if (!empty($rawVariantData)) {
+                                                    $encodedVar = (base64_decode($rawVariantData, true) !== false) ? $rawVariantData : base64_encode($rawVariantData);
+                                                    $optionVal = $item->product_id . '|variant|' . $encodedVar;
+                                                }
+
+                                                $gross = $item->line_total + $item->item_discount;
+                                                $dPct = $gross > 0 ? ($item->item_discount / $gross) * 100 : 0;
                                             @endphp
                                             <tr data-sizemode="{{ $sizeMode }}"
                                                 data-pieces_per_m2="{{ $item->pieces_per_m2 }}">
                                                 <td>
                                                     <select class="form-select product-select2" name="product_id[]">
-                                                        <option value="{{ $item->product_id }}" selected>
-                                                            {{ $item->product->item_name }}
-                                                            ({{ $item->product->item_code }}){{ $variantInfo }}
+                                                        <option value="{{ $optionVal }}" selected>
+                                                            {{ $variantNameDisplay }} ({{ $item->product->item_code ?? 'SKU' }})
                                                         </option>
                                                     </select>
+                                                    <div class="variant-badge-wrapper px-2 py-1 small text-muted d-flex gap-2 align-items-center {{ empty($variantInfo) ? 'd-none' : '' }}">
+                                                        <span class="badge bg-light text-dark border variant-badge">{{ $variantInfo }}</span>
+                                                    </div>
                                                     {{-- Snapshots --}}
                                                     <input type="hidden" name="size_mode[]" class="hidden-size-mode"
                                                         value="{{ $sizeMode }}">
@@ -519,63 +519,48 @@
                                                     <input type="hidden" name="width[]" class="hidden-width"
                                                         value="{{ $item->width }}">
                                                     <input type="hidden" name="color[]" class="hidden-variant-data"
-                                                        value="{{ $item->color ?? '' }}">
-                                                    </td>
-                                                <td>
-                                                    <input type="number" class="form-control carton-qty" name="boxes_qty[]"
-                                                        value="{{ $boxes }}" placeholder="Cartons" min="0">
+                                                        value="{{ $rawVariantData }}">
+                                                </td>
+                                                <td class="text-center align-middle">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary fw-bold unit-toggle-btn py-0 px-2" data-unit="{{ $unitName }}" style="font-size:0.75rem;">{{ $unitName }}</button>
+                                                    <input type="hidden" name="unit[]" class="unit-input-val" value="{{ $unitName }}">
                                                 </td>
                                                 <td>
-                                                    <input type="number" class="form-control loose-qty" name="loose_qty[]"
-                                                        value="{{ $loose }}" placeholder="Loose Pcs" min="0">
-                                                </td>
-                                                <td>
-                                                    <input type="number" class="form-control input-readonly pack-size" name="pieces_per_box_display[]"
-                                                        value="{{ $ppb }}" readonly>
-                                                </td>
-                                                <td>
-                                                    <input type="number" name="qty[]"
-                                                        class="form-control input-readonly qty-pcs"
-                                                        value="{{ (float) $item->qty }}" readonly>
+                                                    <input type="number" step="any" min="0.01" name="qty[]"
+                                                        class="form-control text-center main-qty-input"
+                                                        value="{{ (float) $qty }}" placeholder="Qty">
                                                 </td>
                                                 <td>
                                                     <div class="input-group input-group-sm">
-                                                        <input type="number" name="price[]" class="form-control price"
+                                                        <input type="number" name="price[]" class="form-control text-end price"
                                                             step="0.01" value="{{ (float) $item->price }}">
                                                     </div>
-                                                    <small class="text-muted price-unit-label"
-                                                        style="font-size:0.7rem;">{{ $unitLabel }}</small>
                                                 </td>
                                                 <td>
-                                                    {{-- Calc Disc % from Amt --}}
-                                                    @php
-                                                        $gross = $item->line_total + $item->item_discount;
-                                                        $dPct = $gross > 0 ? ($item->item_discount / $gross) * 100 : 0;
-                                                    @endphp
-                                                    <input type="number" name="item_discount[]" class="form-control item-disc-percent"
-                                                        value="{{ round($dPct, 2) }}">
+                                                    <input type="number" name="item_discount[]" class="form-control text-end item-disc-percent"
+                                                        step="0.01" value="{{ round($dPct, 2) }}">
                                                 </td>
                                                 <td>
                                                     <input type="number"
-                                                        class="form-control item-disc-amt"
-                                                        value="{{ (float) $item->item_discount }}">
+                                                        class="form-control text-end input-readonly item-disc-amt"
+                                                        value="{{ (float) $item->item_discount }}" readonly>
                                                 </td>
                                                 <td>
-                                                    <input type="number" class="form-control input-readonly row-total"
+                                                    <input type="number" class="form-control text-end input-readonly row-total"
                                                         value="{{ (float) $item->line_total }}" readonly>
                                                 </td>
-                                                <td class="text-center">
+                                                <td class="text-center align-middle">
                                                     <button type="button"
                                                         class="btn btn-sm btn-outline-danger remove-row border-0"><i
-                                                            class="bi bi-x-lg"></i></button>
+                                                             class="bi bi-x-lg"></i></button>
                                                 </td>
                                             </tr>
                                         @endforeach
                                     </tbody>
                                     <tfoot>
                                         <tr>
-                                            <td colspan="7" class="text-end fw-bold text-muted">Total Amount:</td>
-                                            <td class="text-end fw-bold fs-6 text-dark"><span id="totalAmount">0.00</span>
+                                            <td colspan="5" class="text-end fw-bold text-muted">Total Amount:</td>
+                                            <td class="text-end fw-bold fs-6 text-dark" colspan="2"><span id="totalAmount">0.00</span>
                                             </td>
                                             <td></td>
                                         </tr>
@@ -593,20 +578,47 @@
                         <div class="card-panel shadow-sm">
                             <div class="section-title mb-3">Payment / Receipt Voucher</div>
                             <div id="paymentWrapper" class="border rounded p-3 bg-light mb-3">
-                                <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
-                                    <select class="form-select rv-account" name="payment_account_id[]"
-                                        style="max-width: 300px; flex-grow: 1;">
-                                        <option value="" selected disabled>Select Account</option>
-                                        @foreach ($accounts as $acc)
-                                            <option value="{{ $acc->id }}">{{ $acc->title }}</option>
-                                        @endforeach
-                                    </select>
-                                    <input type="number" class="form-control text-end payment-amount"
-                                        name="payment_amount[]" placeholder="Amount" style="width:140px">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPayment">
-                                        <i class="bi bi-plus"></i> Add
-                                    </button>
-                                </div>
+                                @if (isset($existingPayments) && $existingPayments->isNotEmpty())
+                                    @foreach ($existingPayments as $pIndex => $pDetail)
+                                        <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
+                                            <select class="form-select rv-account" name="payment_account_id[]"
+                                                style="max-width: 300px; flex-grow: 1;">
+                                                <option value="" disabled>Select Account</option>
+                                                @foreach ($accounts as $acc)
+                                                    <option value="{{ $acc->id }}" {{ $acc->id == $pDetail->account_id ? 'selected' : '' }}>
+                                                        {{ $acc->title }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                            <input type="number" class="form-control text-end payment-amount"
+                                                name="payment_amount[]" value="{{ (float) $pDetail->credit }}" placeholder="Amount" style="width:140px" step="0.01">
+                                            @if ($loop->first)
+                                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPayment">
+                                                    <i class="bi bi-plus"></i> Add
+                                                </button>
+                                            @else
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-payment">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
+                                        <select class="form-select rv-account" name="payment_account_id[]"
+                                            style="max-width: 300px; flex-grow: 1;">
+                                            <option value="" selected disabled>Select Account</option>
+                                            @foreach ($accounts as $acc)
+                                                <option value="{{ $acc->id }}">{{ $acc->title }}</option>
+                                            @endforeach
+                                        </select>
+                                        <input type="number" class="form-control text-end payment-amount"
+                                            name="payment_amount[]" placeholder="Amount" style="width:140px" step="0.01">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPayment">
+                                            <i class="bi bi-plus"></i> Add
+                                        </button>
+                                    </div>
+                                @endif
                             </div>
                             <div class="text-end">
                                 <span class="me-2 fw-bold text-muted">Total Paid:</span>
@@ -686,8 +698,31 @@
                 initProductSelect2($(this));
             });
 
-            // Recalc existing rows
+            // Recalc payments & rows on initial load
+            recalcPayments();
             recalcAll();
+
+            // Unit Toggle
+            $(document).on('click', '.unit-toggle-btn', function() {
+                const $btn = $(this);
+                const $row = $btn.closest('tr');
+                const sizeMode = $row.data('sizemode') || $row.find('.hidden-size-mode').val();
+
+                if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
+                    let currentUnit = $btn.attr('data-unit') || 'Kg';
+                    if (currentUnit.toLowerCase() === 'kg') {
+                        currentUnit = 'Gm';
+                        $btn.text('Gm').removeClass('btn-outline-primary').addClass('btn-outline-info');
+                    } else {
+                        currentUnit = 'Kg';
+                        $btn.text('Kg').removeClass('btn-outline-info').addClass('btn-outline-primary');
+                    }
+                    $btn.attr('data-unit', currentUnit);
+                    $row.find('.unit-input-val').val(currentUnit);
+                    recalcRow($row);
+                    recalcAll();
+                }
+            });
 
             // Add Row
             window.addBlankRow = function() {
@@ -695,25 +730,46 @@
                 <tr>
                     <td>
                         <select class="form-select product-select2" name="product_id[]"></select>
+                        <div class="variant-badge-wrapper px-2 py-1 small text-muted d-flex gap-2 align-items-center d-none">
+                            <span class="badge bg-light text-dark border variant-badge"></span>
+                        </div>
                         <input type="hidden" name="size_mode[]" class="hidden-size-mode">
                         <input type="hidden" name="pieces_per_box[]" class="hidden-pieces-per-box" value="1">
                         <input type="hidden" name="pieces_per_m2[]" class="hidden-pieces-per-m2" value="0">
                         <input type="hidden" name="length[]" class="hidden-length">
                         <input type="hidden" name="width[]" class="hidden-width">
-                        </td>
-                    <td><input type="number" class="form-control carton-qty" name="boxes_qty[]" value="0" placeholder="Cartons" min="0"></td>
-                    <td><input type="number" class="form-control loose-qty" name="loose_qty[]" value="0" placeholder="Loose Pcs" min="0"></td>
-                    <td><input type="number" class="form-control input-readonly pack-size" name="pieces_per_box_display[]" value="1" readonly></td>
-                    <td><input type="number" name="qty[]" class="form-control input-readonly qty-pcs" value="0" readonly></td>
-                    <td><div class="input-group input-group-sm"><input type="number" name="price[]" class="form-control price" step="0.01" value="0"></div></td>
-                    <td><input type="number" name="item_discount[]" class="form-control item-disc-percent" value="0"></td>
-                    <td><input type="number" class="form-control item-disc-amt" value="0"></td>
-                    <td><input type="number" class="form-control input-readonly row-total" value="0" readonly></td>
-                    <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-row border-0"><i class="bi bi-x-lg"></i></button></td>
+                        <input type="hidden" name="color[]" class="hidden-variant-data">
+                    </td>
+                    <td class="text-center align-middle">
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-bold unit-toggle-btn py-0 px-2" data-unit="Pcs" style="font-size:0.75rem;">Pcs</button>
+                        <input type="hidden" name="unit[]" class="unit-input-val" value="Pcs">
+                    </td>
+                    <td>
+                        <input type="number" step="any" min="0.01" name="qty[]" class="form-control text-center main-qty-input" value="1" placeholder="Qty">
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.01" name="price[]" class="form-control text-end price" value="0">
+                        </div>
+                    </td>
+                    <td>
+                        <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-percent" value="0">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control text-end input-readonly item-disc-amt" value="0.00" readonly>
+                    </td>
+                    <td>
+                        <input type="number" class="form-control text-end input-readonly row-total" value="0.00" readonly>
+                    </td>
+                    <td class="text-center align-middle">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-row border-0"><i class="bi bi-x-lg"></i></button>
+                    </td>
                 </tr>`;
                 const $row = $(html);
                 $('#purchaseTableBody').append($row);
                 initProductSelect2($row.find('.product-select2'));
+                recalcRow($row);
+                recalcAll();
             };
 
             // Remove Row
@@ -723,7 +779,7 @@
             });
 
             // Inputs -> Calc
-            $('#purchaseTableBody').on('input', '.carton-qty, .loose-qty, .price, .item-disc-percent, .item-disc-amt', function() {
+            $('#purchaseTableBody').on('input', '.main-qty-input, .price, .item-disc-percent', function() {
                 recalcRow($(this).closest('tr'));
                 recalcAll();
             });
@@ -764,7 +820,7 @@
                             <option value="{{ $acc->id }}">{{ $acc->title }}</option>
                         @endforeach
                     </select>
-                    <input type="number" class="form-control text-end payment-amount" name="payment_amount[]" placeholder="Amount" style="width:140px">
+                    <input type="number" class="form-control text-end payment-amount" name="payment_amount[]" placeholder="Amount" style="width:140px" step="0.01">
                     <button type="button" class="btn btn-sm btn-outline-danger remove-payment">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -789,85 +845,28 @@
                 $('#totalPaid').text(total.toFixed(2));
             }
 
-            function normalizeQtyInput($input, $row) {
-                // Same logic as add_purchase_v2
-                const val = $input.val();
-                const ppb = parseFloat($row.find('.pack-size').val()) || 1;
-                const sizeMode = $row.data('sizemode') || $row.find('.hidden-size-mode').val();
-
-                if (sizeMode === 'by_pieces') {
-                    if (val.includes('.')) {
-                        $input.val(val.split('.')[0]);
-                    }
-                    return;
-                }
-
-                if (ppb > 1 && val.includes('.')) {
-                    const parts = val.split('.');
-                    const boxes = parseInt(parts[0]) || 0;
-                    const loose = parts[1] ? parseInt(parts[1]) : 0;
-
-                    if (loose >= ppb) {
-                        const extraBoxes = Math.floor(loose / ppb);
-                        const newLoose = loose % ppb;
-                        const newBoxes = boxes + extraBoxes;
-                        let newVal = newBoxes.toString();
-                        if (newLoose > 0) newVal += '.' + newLoose;
-                        $input.val(newVal);
-                    }
-                }
-            }
-
             function recalcRow($row) {
-                const ppb = parseFloat($row.find('.pack-size').val()) || 1;
+                const qty = parseFloat($row.find('.main-qty-input').val()) || 0;
+                const price = parseFloat($row.find('.price').val()) || 0;
+                const discPct = parseFloat($row.find('.item-disc-percent').val()) || 0;
                 const sizeMode = $row.data('sizemode') || $row.find('.hidden-size-mode').val();
+                const unitVal = ($row.find('.unit-input-val').val() || '').toLowerCase();
                 const pieces_per_m2 = parseFloat($row.data('pieces_per_m2')) || parseFloat($row.find('.hidden-pieces-per-m2').val()) || 0;
 
-                // Read separate Carton + Loose inputs
-                const cartons = parseInt($row.find('.carton-qty').val()) || 0;
-                let loose = parseInt($row.find('.loose-qty').val()) || 0;
-
-                // Auto-convert excess loose into cartons
-                if (loose >= ppb && ppb > 1) {
-                    const extraCartons = Math.floor(loose / ppb);
-                    loose = loose % ppb;
-                    $row.find('.carton-qty').val(cartons + extraCartons);
-                    $row.find('.loose-qty').val(loose);
-                }
-
-                const totalPieces = (cartons * ppb) + loose;
-
-                // Update the readonly Pieces field (sent as qty[])
-                $row.find('.qty-pcs').val(totalPieces);
-
-                const price = parseFloat($row.find('.price').val()) || 0;
-
-                // --- TOTAL CALCULATION ---
-                let grossTotal = 0;
-
-                if (sizeMode == 'by_size') {
-                    // Price is per M2. Total M2 = totalPieces * pieces_per_m2 (m2/piece)
-                    grossTotal = (totalPieces * pieces_per_m2) * price;
+                let gross = 0;
+                if (sizeMode === 'by_size') {
+                    gross = (pieces_per_m2 || 1) * qty * price;
+                } else if (unitVal === 'gm' || unitVal === 'g') {
+                    gross = (qty / 1000.0) * price;
                 } else {
-                    // price is always treated as per-piece for purchase entry
-                    grossTotal = totalPieces * price;
+                    gross = qty * price;
                 }
 
-                // Discount
-                let discAmt = parseFloat($row.find('.item-disc-amt').val()) || 0;
-                // If focus on %, calc amt
-                if ($(document.activeElement).hasClass('item-disc-percent')) {
-                    const pct = parseFloat($row.find('.item-disc-percent').val()) || 0;
-                    discAmt = grossTotal > 0 ? grossTotal * (pct / 100) : 0;
-                    $row.find('.item-disc-amt').val(discAmt.toFixed(2));
-                } else {
-                    // Else calc % from amt (default or if amt edited)
-                    const pct = grossTotal > 0 ? (discAmt / grossTotal) * 100 : 0;
-                    $row.find('.item-disc-percent').val(pct.toFixed(2));
-                }
+                const discAmt = gross * (discPct / 100);
+                const lineTotal = Math.max(0, gross - discAmt);
 
-                const net = grossTotal - discAmt;
-                $row.find('.row-total').val(net.toFixed(2));
+                $row.find('.item-disc-amt').val(discAmt.toFixed(2));
+                $row.find('.row-total').val(lineTotal.toFixed(2));
             }
 
             function recalcAll() {
@@ -876,7 +875,7 @@
                 let totalInlineDiscount = 0;
 
                 $('#purchaseTableBody tr').each(function() {
-                    const qty = parseFloat($(this).find('.qty-pcs').val()) || 0;
+                    const qty = parseFloat($(this).find('.main-qty-input').val()) || 0;
                     const total = parseFloat($(this).find('.row-total').val()) || 0;
                     const rowDiscAmt = parseFloat($(this).find('.item-disc-amt').val()) || 0;
 
@@ -896,7 +895,6 @@
                 let billDiscVal = parseFloat($('#billDiscount').val());
 
                 if ($(document.activeElement).is('#billDiscount') || $(document.activeElement).is('#billDiscountPct')) {
-                    // User is editing bill discount manually
                     if ($(document.activeElement).is('#billDiscountPct')) {
                         const pct = parseFloat($('#billDiscountPct').val()) || 0;
                         billDiscVal = grossSubtotal * (pct / 100);
@@ -908,12 +906,10 @@
                         additionalDiscount = 0;
                     }
                 } else {
-                    // Inline discount or items changed: keep additional discount and update total discount
                     billDiscVal = totalInlineDiscount + additionalDiscount;
                     $('#billDiscount').val(billDiscVal.toFixed(2));
                 }
                 
-                // Calc % from amount
                 const pct = grossSubtotal > 0 ? (billDiscVal / grossSubtotal) * 100 : 0;
                 $('#billDiscountPct').val(pct.toFixed(2));
 
@@ -929,7 +925,7 @@
 
             function initProductSelect2($el) {
                 $el.select2({
-                    placeholder: 'Search Product...',
+                    placeholder: 'Search Product (Name / SKU / Barcode / Variant)...',
                     allowClear: true,
                     width: '100%',
                     ajax: {
@@ -938,17 +934,22 @@
                         delay: 250,
                         data: function(params) {
                             return {
-                                q: params.term
+                                term: params.term,
+                                page: params.page || 1
                             };
                         },
-                        processResults: function(data) {
-                            // Map if needed or just return results
+                        processResults: function(data, params) {
+                            params.page = params.page || 1;
                             return {
-                                results: data.results || data
+                                results: data.results || [],
+                                pagination: {
+                                    more: (data.pagination && data.pagination.more) ? true : false
+                                }
                             };
                         },
                         cache: true
                     },
+                    minimumInputLength: 0,
                     templateResult: formatProduct,
                     templateSelection: formatSelection
                 });
@@ -957,48 +958,66 @@
                     const data = e.params.data;
                     const $row = $(this).closest('tr');
 
+                    // Dynamic Unit
+                    let unitName = data.unit_name || 'Pcs';
+                    if (data.size_mode === 'by_kg' || data.size_mode === 'by_gm') {
+                        unitName = 'Kg';
+                        $row.find('.unit-toggle-btn').removeClass('btn-outline-info').addClass('btn-outline-primary');
+                    }
+                    $row.find('.unit-toggle-btn').text(unitName).attr('data-unit', unitName);
+                    $row.find('.unit-input-val').val(unitName);
+
+                    // Variant Info Display (Size, Color)
+                    let variantBadgeText = '';
+                    if (data.variant_data) {
+                        try {
+                            const vObj = JSON.parse(atob(data.variant_data));
+                            const parts = [];
+                            if (vObj.size && vObj.size !== '-') parts.push('Size: ' + vObj.size);
+                            if (vObj.color && vObj.color !== '-') parts.push('Color: ' + vObj.color);
+                            if (parts.length > 0) {
+                                variantBadgeText = parts.join(' | ');
+                            }
+                        } catch (err) {}
+                    }
+                    
+                    if (variantBadgeText) {
+                        $row.find('.variant-badge').text(variantBadgeText);
+                        $row.find('.variant-badge-wrapper').removeClass('d-none');
+                    } else {
+                        $row.find('.variant-badge-wrapper').addClass('d-none');
+                    }
+
                     // Populate Snapshots
                     $row.find('.hidden-size-mode').val(data.size_mode || '');
-                    $row.find('.hidden-pieces-per-box').val(data.pieces_per_box || 1);
+                    $row.find('.hidden-pieces-per-box').val(data.pieces_per_box || data.ppb || 1);
                     $row.find('.hidden-pieces-per-m2').val(data.pieces_per_m2 || 0);
                     $row.find('.hidden-length').val(data.length || '');
                     $row.find('.hidden-width').val(data.width || '');
-
-                    $row.find('.pack-size').val(data.pieces_per_box || 1);
+                    $row.find('.hidden-variant-data').val(data.variant_data || '');
 
                     // Set default discount
                     $row.find('.item-disc-percent').val(data.purchase_discount_percent || 0);
 
-                    // Set Price & Label
+                    // Set Price
                     const sizeMode = data.size_mode || 'std';
                     const pM2 = parseFloat(data.purchase_price_per_m2) || 0;
-                    const pPiece = parseFloat(data.purchase_price_per_piece) || 0;
-                    const ppb = parseFloat(data.pieces_per_box) || 1;
+                    const pPiece = parseFloat(data.purchase_price_per_piece) || parseFloat(data.trade_price) || 0;
+                    const finalPrice = (sizeMode === 'by_size') ? pM2 : pPiece;
 
-                    let price = 0;
-                    let unitLabel = '';
-
-                    if (sizeMode === 'by_size') {
-                        price = pM2;
-                        unitLabel = '(m²)';
-                    } else {
-                        price = pPiece;
-                        unitLabel = '(pieces)';
-                    }
-
-                    $row.find('.price').val(price);
-                    // Add/Update label (remove old if any)
-                    $row.find('.price-unit-label').remove();
-                    $row.find('.price').after(
-                        '<small class="text-muted price-unit-label" style="font-size:0.7rem;">' +
-                        unitLabel + '</small>');
+                    $row.find('.price').val(finalPrice);
 
                     // Data Attributes
                     $row.data('sizemode', sizeMode);
                     $row.data('pieces_per_m2', Number(data.pieces_per_m2) || 0);
 
-                    // Recalc
-                    $row.find('.box-qty').focus();
+                    // Qty default
+                    let curQty = parseFloat($row.find('.main-qty-input').val()) || 0;
+                    if (curQty <= 0) {
+                        $row.find('.main-qty-input').val(1);
+                    }
+
+                    $row.find('.main-qty-input').focus().select();
                     recalcRow($row);
                     recalcAll();
                 });
@@ -1008,14 +1027,19 @@
                 if (repo.loading) return repo.text;
                 let stock = repo.stock !== undefined ? repo.stock : 0;
                 let sku = repo.sku || 'N/A';
+                let unit = repo.unit_name || 'Pcs';
+                let stockVal = parseFloat(repo.stock_pieces !== undefined ? repo.stock_pieces : repo.stock) || 0;
+                let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-secondary';
+                let buyPrice = parseFloat(repo.purchase_price_per_piece || repo.trade_price || 0);
+
                 return $(`
-                <div class="clearfix">
+                <div class="clearfix py-1">
                     <div class="float-start">
-                        <div class="fw-bold">${repo.name || repo.text}</div>
-                        <small class="text-muted">SKU: ${sku}</small>
+                        <div class="fw-bold text-dark">${repo.name || repo.text}</div>
+                        <small class="text-muted">SKU: ${sku} | Unit: ${unit} | Buy Price: Rs. ${buyPrice.toFixed(2)}</small>
                     </div>
                     <div class="float-end">
-                        <span class="badge bg-secondary rounded-pill">Stock: ${stock}</span>
+                        <span class="badge ${badgeClass} rounded-pill">Stock: ${stock}</span>
                     </div>
                 </div>`);
             }
