@@ -198,7 +198,7 @@
 
     <div class="print-controls no-print">
         <a href="javascript:window.print()" class="btn btn-primary">🖨️ Print DC</a>
-        <a href="{{ route('sale.index') }}" class="btn btn-secondary">← Back</a>
+        <a href="javascript:void(0)" onclick="handleGoBack()" class="btn btn-secondary">← Back</a>
     </div>
 
     <div class="receipt-container">
@@ -332,6 +332,30 @@
         </div>
     </div>
 
+    <script>
+        function handleGoBack() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('from') === 'pos' || (document.referrer && document.referrer.indexOf('/pos') !== -1)) {
+                window.location.href = "{{ route('pos.index') }}";
+                return;
+            }
+
+            if (window.opener && !window.opener.closed) {
+                window.close();
+                setTimeout(function() {
+                    window.location.href = "{{ route('sale.index') }}";
+                }, 150);
+                return;
+            }
+
+            if (window.history.length > 1 && document.referrer && document.referrer.indexOf(window.location.host) !== -1 && !document.referrer.includes('/sales/store')) {
+                window.history.back();
+                return;
+            }
+
+            window.location.href = "{{ route('sale.index') }}";
+        }
+    </script>
 </body>
 
 </html>
