@@ -1227,7 +1227,8 @@ class ReportingController extends Controller
 
     public function sale_report()
     {
-        return view('admin_panel.reporting.sale_report');
+        $customers = \App\Models\Customer::orderBy('customer_name')->get();
+        return view('admin_panel.reporting.sale_report', compact('customers'));
     }
 
     public function fetchsaleReport(Request $request)
@@ -1235,18 +1236,27 @@ class ReportingController extends Controller
         if ($request->ajax()) {
             $start = $request->start_date;
             $end = $request->end_date;
+            $customerId = $request->customer_id;
 
             // Use Eloquent to handle relations and new table structure
             $query = \App\Models\Sale::with(['customer_relation', 'items.product', 'returns']);
 
             if ($start && $end) {
                 $query->whereBetween('created_at', [
-                    \Carbon\Carbon::parse($start)->format('Y-m-d H:i:s'),
-                    \Carbon\Carbon::parse($end)->format('Y-m-d H:i:s')
+                    \Carbon\Carbon::parse($start)->startOfDay()->format('Y-m-d H:i:s'),
+                    \Carbon\Carbon::parse($end)->endOfDay()->format('Y-m-d H:i:s')
                 ]);
+            } elseif ($start) {
+                $query->where('created_at', '>=', \Carbon\Carbon::parse($start)->startOfDay()->format('Y-m-d H:i:s'));
+            } elseif ($end) {
+                $query->where('created_at', '<=', \Carbon\Carbon::parse($end)->endOfDay()->format('Y-m-d H:i:s'));
             }
 
-            $sales = $query->orderBy('created_at', 'asc')->get();
+            if ($customerId && $customerId !== 'all') {
+                $query->where('customer_id', $customerId);
+            }
+
+            $sales = $query->orderBy('created_at', 'desc')->get();
 
             // Transform to match the structure expected by the frontend (CSV strings)
             $transformed = $sales->map(function ($sale) {
@@ -1337,6 +1347,7 @@ class ReportingController extends Controller
 
                 return [
                     'id' => $sale->id,
+                    'invoice_no' => $sale->invoice_no ?? ('INVSLE-' . $sale->id),
                     'reference' => $sale->reference ?? '-',
                     'product' => $productNames,      // Names
                     'product_code' => $productCodes, // Codes
@@ -1349,8 +1360,8 @@ class ReportingController extends Controller
                     'total_pieces' => $total_pieces_arr,
                     'per_total' => $totals,
                     'total_net' => $netAmount,
-                    'created_at' => $sale->created_at->format('Y-m-d h:i:s A'),
-                    'customer_name' => $sale->customer_relation ? $sale->customer_relation->customer_name : 'Walk-in',
+                    'created_at' => $sale->created_at ? $sale->created_at->format('Y-m-d h:i A') : '-',
+                    'customer_name' => $sale->customer_relation ? $sale->customer_relation->customer_name : ($sale->walkin_name ?: 'Walk-in'),
                     'returns' => $sale->returns->map(function($ret) {
                          // Robust return display handling both legacy strings and new relation items
                          $retItems = $ret->items;
@@ -1412,8 +1423,8 @@ class ReportingController extends Controller
             $expenseQueryV2 = DB::table('voucher_masters')->where('voucher_type', 'expense');
 
             if ($start && $end) {
-                $startDt = \Carbon\Carbon::parse($start)->format('Y-m-d H:i:s');
-                $endDt   = \Carbon\Carbon::parse($end)->format('Y-m-d H:i:s');
+                $startDt = \Carbon\Carbon::parse($start)->startOfDay()->format('Y-m-d H:i:s');
+                $endDt   = \Carbon\Carbon::parse($end)->endOfDay()->format('Y-m-d H:i:s');
                 $expenseQueryV1->whereBetween('entry_date', [$startDt, $endDt]);
                 $expenseQueryV2->whereBetween('date', [$startDt, $endDt]);
             }

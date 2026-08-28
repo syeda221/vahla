@@ -9,20 +9,19 @@
         min-height: calc(100vh - 75px);
     }
 
-    /* Filter Form Spacing for Bootstrap 4 */
+    /* Filter Form Spacing */
     .sale-filter-form {
         display: flex;
         align-items: center;
         flex-wrap: wrap;
-        gap: 14px !important;
+        gap: 12px !important;
     }
     .sale-filter-group {
         display: flex;
         align-items: center;
-        margin-right: 14px;
     }
     .sale-filter-label {
-        margin-right: 8px !important;
+        margin-right: 6px !important;
         margin-bottom: 0 !important;
         white-space: nowrap;
         font-weight: 700;
@@ -120,7 +119,6 @@
         white-space: nowrap;
     }
 
-    /* Compact Returns Column */
     #saleReport th:nth-child(11),
     #saleReport td:nth-child(11) {
         max-width: 135px !important;
@@ -129,59 +127,81 @@
         word-break: break-word;
         white-space: normal;
     }
+
+    @media print {
+        body { background: #ffffff !important; font-size: 11px; }
+        .no-print, header, .sidebar, .navbar, footer { display: none !important; }
+        .sale-report-container { padding: 0 !important; background: #fff !important; }
+        .card { border: 1px solid #dee2e6 !important; box-shadow: none !important; margin-bottom: 10px !important; }
+        .sale-table-wrap { height: auto !important; max-height: none !important; overflow: visible !important; border: none !important; }
+        #saleReport th, #saleReport td { border: 1px solid #cbd5e1 !important; }
+    }
 </style>
 
 <div class="sale-report-container">
     
     {{-- DESKTOP FILTER HEADER BAR (d-none d-md-block) --}}
-    <div class="card border-0 shadow-sm mb-2 d-none d-md-block" style="border-radius: 10px;">
+    <div class="card border-0 shadow-sm mb-2 d-none d-md-block no-print" style="border-radius: 10px;">
         <div class="card-body py-2 px-3">
-            <form id="SaleFilterFormDesk" class="sale-filter-form">
+            <form id="SaleFilterFormDesk" class="sale-filter-form" onsubmit="return false;">
                 
                 {{-- Title Badge --}}
-                <div class="sale-filter-group" style="margin-right: 18px;">
+                <div class="sale-filter-group me-1">
                     <span class="fw-bold text-dark fs-6" style="letter-spacing: -0.2px; font-weight:700; white-space:nowrap;">
-                        <i class="fas fa-chart-line text-primary" style="margin-right: 8px;"></i>Sale Report
+                        <i class="fas fa-chart-line text-primary me-1"></i>Sale Report
                     </span>
                 </div>
 
                 {{-- Start Date --}}
-                <div class="sale-filter-group" style="margin-right: 18px;">
+                <div class="sale-filter-group">
                     <label for="start_date_desk" class="sale-filter-label">Start:</label>
-                    <input type="datetime-local" name="start_date" id="start_date_desk" class="form-control form-control-sm fw-bold startDateInput" style="height: 36px; width: 185px; font-size: .78rem; border-radius: 6px;">
+                    <input type="date" name="start_date" id="start_date_desk" value="{{ date('Y-m-01') }}" class="form-control form-control-sm fw-bold startDateInput" style="height: 34px; width: 135px; font-size: .78rem; border-radius: 6px;">
                 </div>
 
                 {{-- End Date --}}
-                <div class="sale-filter-group" style="margin-right: 18px;">
+                <div class="sale-filter-group">
                     <label for="end_date_desk" class="sale-filter-label">End:</label>
-                    <input type="datetime-local" name="end_date" id="end_date_desk" class="form-control form-control-sm fw-bold endDateInput" style="height: 36px; width: 185px; font-size: .78rem; border-radius: 6px;">
+                    <input type="date" name="end_date" id="end_date_desk" value="{{ date('Y-m-d') }}" class="form-control form-control-sm fw-bold endDateInput" style="height: 34px; width: 135px; font-size: .78rem; border-radius: 6px;">
+                </div>
+
+                {{-- Customer Filter --}}
+                <div class="sale-filter-group">
+                    <label for="customer_id_desk" class="sale-filter-label">Customer:</label>
+                    <select id="customer_id_desk" class="form-select form-select-sm fw-bold customerInput" style="height: 34px; width: 150px; font-size: .78rem; border-radius: 6px;">
+                        <option value="all">All Customers</option>
+                        @if(isset($customers) && count($customers) > 0)
+                            @foreach($customers as $c)
+                                <option value="{{ $c->id }}">{{ $c->customer_name }}</option>
+                            @endforeach
+                        @endif
+                    </select>
                 </div>
 
                 {{-- Search Input --}}
-                <div class="flex-grow-1" style="min-width: 210px; margin-right: 18px;">
+                <div class="flex-grow-1" style="min-width: 180px;">
                     <div class="position-relative">
-                        <i class="fas fa-search position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; pointer-events: none;"></i>
-                        <input type="text" class="form-control form-control-sm searchProductInput" placeholder="Search Product / Size / Invoice / Customer…" style="height: 36px; font-size: .80rem; border-radius: 6px; padding-left: 34px;">
+                        <i class="fas fa-search position-absolute text-muted" style="left: 10px; top: 50%; transform: translateY(-50%); font-size: 12px; pointer-events: none;"></i>
+                        <input type="text" class="form-control form-control-sm searchProductInput" placeholder="Search Product / Invoice / Customer…" style="height: 34px; font-size: .80rem; border-radius: 6px; padding-left: 30px;">
                     </div>
                 </div>
 
                 {{-- Action Buttons --}}
-                <div class="d-flex align-items-center">
-                    <button type="button" class="btn btn-primary btn-sm px-3 fw-bold d-inline-flex align-items-center btnSearchTrigger" style="height: 36px; border-radius: 6px; font-size: .80rem; margin-right: 10px;">
-                        <i class="fas fa-filter" style="margin-right: 6px;"></i> Search
+                <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-primary btn-sm px-3 fw-bold d-inline-flex align-items-center btnSearchTrigger" style="height: 34px; border-radius: 6px; font-size: .80rem;">
+                        <i class="fas fa-filter me-1"></i> Filter
                     </button>
-                    <button type="button" class="btn btn-outline-danger btn-sm px-3 fw-bold d-inline-flex align-items-center btnExportCsvTrigger" style="height: 36px; border-radius: 6px; font-size: .80rem;">
-                        <i class="fas fa-file-csv" style="margin-right: 6px;"></i> CSV
+                    <button type="button" class="btn btn-outline-danger btn-sm px-3 fw-bold d-inline-flex align-items-center btnExportCsvTrigger" style="height: 34px; border-radius: 6px; font-size: .80rem;">
+                        <i class="fas fa-file-csv me-1"></i> CSV
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    {{-- MOBILE FILTER HEADER BAR (d-md-none With Top Margin) --}}
+    {{-- MOBILE FILTER HEADER BAR (d-md-none) --}}
     <div class="card border-0 shadow-sm mb-3 no-print d-md-none mt-2" style="border-radius: 12px;">
         <div class="card-body p-3">
-            <form id="SaleFilterFormMob">
+            <form id="SaleFilterFormMob" onsubmit="return false;">
                 <div class="row g-2">
                     <div class="col-12 mb-1">
                         <span class="fw-bold text-dark fs-6">
@@ -190,24 +210,35 @@
                     </div>
                     <div class="col-6 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Start Date</label>
-                        <input type="datetime-local" name="start_date" id="start_date_mob" class="form-control form-control-sm startDateInput" style="font-size: 11px;">
+                        <input type="date" name="start_date" id="start_date_mob" value="{{ date('Y-m-01') }}" class="form-control form-control-sm startDateInput" style="font-size: 11px;">
                     </div>
                     <div class="col-6 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">End Date</label>
-                        <input type="datetime-local" name="end_date" id="end_date_mob" class="form-control form-control-sm endDateInput" style="font-size: 11px;">
+                        <input type="date" name="end_date" id="end_date_mob" value="{{ date('Y-m-d') }}" class="form-control form-control-sm endDateInput" style="font-size: 11px;">
+                    </div>
+                    <div class="col-12 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Customer</label>
+                        <select id="customer_id_mob" class="form-select form-select-sm customerInput" style="font-size: 11px;">
+                            <option value="all">All Customers</option>
+                            @if(isset($customers) && count($customers) > 0)
+                                @foreach($customers as $c)
+                                    <option value="{{ $c->id }}">{{ $c->customer_name }}</option>
+                                @endforeach
+                            @endif
+                        </select>
                     </div>
                     <div class="col-12 mb-2">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Search</label>
                         <input type="text" class="form-control form-control-sm searchProductInput" placeholder="Search Product / Invoice / Customer…" style="font-size: 11px;">
                     </div>
-                    <div class="col-12 mb-1">
-                        <button type="button" class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm btnSearchTrigger" style="font-size: 13px;">
-                            <i class="fas fa-filter me-1"></i> Search
+                    <div class="col-6">
+                        <button type="button" class="btn btn-primary w-100 py-1.5 fw-bold rounded-2 shadow-sm btnSearchTrigger" style="font-size: 12px;">
+                            <i class="fas fa-filter me-1"></i> Filter
                         </button>
                     </div>
-                    <div class="col-12">
-                        <button type="button" class="btn btn-outline-danger w-100 btn-sm fw-bold btnExportCsvTrigger" style="font-size: 11px;">
-                            <i class="fas fa-file-csv me-1"></i> Export CSV
+                    <div class="col-6">
+                        <button type="button" class="btn btn-outline-danger w-100 py-1.5 btn-sm fw-bold btnExportCsvTrigger" style="font-size: 12px;">
+                            <i class="fas fa-file-csv me-1"></i> CSV
                         </button>
                     </div>
                 </div>
@@ -246,7 +277,7 @@
                 </div>
 
                 <div class="stat-pill" style="background: #eff6ff; border-color: #93c5fd;">
-                    <div class="stat-label text-primary">Total Profit</div>
+                    <div class="stat-label text-primary">Gross Profit</div>
                     <div class="stat-val text-primary" id="pillGrossProfit">Rs 0</div>
                 </div>
 
@@ -319,25 +350,25 @@
     {{-- DESKTOP TABLE CONTAINER (d-none d-md-block) --}}
     <div class="card border-0 shadow-sm d-none d-md-block" style="border-radius: 8px;">
         <div class="card-body p-0">
-            <div class="loader" style="display:none; text-align:center; padding: 20px;">
+            <div class="loader text-center py-5" style="display:none;">
                 <div class="spinner-border text-primary" role="status"></div>
-                <div class="small text-muted mt-2">Loading sales data…</div>
+                <div class="small text-muted mt-2 fw-bold">Loading sales data…</div>
             </div>
 
             <div class="sale-table-wrap">
                 <table class="table table-bordered table-hover align-middle" id="saleReport">
                     <thead>
                         <tr>
-                            <th style="width:40px;">#</th>
+                            <th style="width:40px;" class="text-center">#</th>
                             <th style="width:130px;">Date &amp; Time</th>
                             <th style="width:110px;">Invoice</th>
-                            <th style="width:110px;">Customer</th>
-                            <th style="width:90px;">Ref</th>
+                            <th style="width:120px;">Customer</th>
+                            <th style="width:90px;">Ref / M.Bill</th>
                             <th>Products</th>
-                            <th style="width:75px;">Qty</th>
-                            <th style="width:90px;">Price</th>
-                            <th style="width:95px;">Total</th>
-                            <th style="width:95px;">Net</th>
+                            <th style="width:75px;" class="text-center">Qty</th>
+                            <th style="width:85px;" class="text-end">Price</th>
+                            <th style="width:90px;" class="text-end">Total</th>
+                            <th style="width:95px;" class="text-end">Net</th>
                             <th style="width:135px;">Returns</th>
                         </tr>
                     </thead>
@@ -367,27 +398,33 @@
         let currentExpenses = 0;
         let currentCogs = 0;
 
-        // Sync Date Inputs between Desktop & Mobile
+        // Sync Filter Inputs between Desktop & Mobile
         $('.startDateInput').on('change', function() { $('.startDateInput').val($(this).val()); });
         $('.endDateInput').on('change', function() { $('.endDateInput').val($(this).val()); });
+        $('.customerInput').on('change', function() { $('.customerInput').val($(this).val()); });
         $('.searchProductInput').on('input', function() { $('.searchProductInput').val($(this).val()); });
 
-        // Auto Search Trigger
-        $(document).on('click', '.btnSearchTrigger', function() {
+        // Core Load Report Function
+        function loadSaleReport() {
             let start = $('#start_date_desk').val() || $('#start_date_mob').val();
             let end   = $('#end_date_desk').val() || $('#end_date_mob').val();
-            $('.searchProductInput').val('');
+            let customer = $('#customer_id_desk').val() || $('#customer_id_mob').val() || 'all';
 
             $(".loader").show();
+            $(".sale-table-wrap").hide();
+            $('#saleMobileContainer').html('<div class="text-center py-4 text-muted card border-0 shadow-sm rounded-3 bg-white"><div class="card-body py-4"><i class="fas fa-spinner fa-spin fa-2x mb-2 text-primary"></i><p class="mb-0 small fw-bold">Loading sales data…</p></div></div>');
+
             $.ajax({
                 url: "{{ route('report.sale.fetch') }}",
                 type: "GET",
                 data: {
                     start_date: start,
-                    end_date: end
+                    end_date: end,
+                    customer_id: customer
                 },
                 success: function(res) {
                     $(".loader").hide();
+                    $(".sale-table-wrap").show();
 
                     let salesData = Array.isArray(res) ? res : (res.sales || []);
                     let summary   = res.summary || {};
@@ -401,52 +438,63 @@
                         grandNet = 0,
                         grandReturn = 0;
 
-                    salesData.forEach((s, i) => {
-                        let products = s.product.split(',').join('<br>');
-                        let qtyArr = s.qty.split(',');
-                        let qtyPiecesArr = s.total_pieces ? s.total_pieces.split(',') : (s.qty_decimal ? s.qty_decimal.split(',') : qtyArr);
-                        let price = s.per_price.split(',').join('<br>');
-                        let total = s.per_total.split(',').join('<br>');
+                    if (salesData.length === 0) {
+                        html = `<tr><td colspan="11" class="text-center text-muted py-5 fw-bold"><i class="fas fa-folder-open fa-2x d-block mb-2 text-secondary"></i>No sales records found for the selected date range.</td></tr>`;
+                        mobHtml = `<div class="card border-0 shadow-sm rounded-3 text-center py-4 bg-white"><div class="card-body py-4 text-muted"><i class="fas fa-folder-open fa-2x mb-2 text-secondary"></i><p class="small fw-bold mb-0">No Sales Data Found</p></div></div>`;
+                        $('#saleBody').html(html);
+                        $('#saleMobileContainer').html(mobHtml);
+                        updateSingleLineSummary(0, 0, 0, 0, 0);
+                        return;
+                    }
 
-                        let rowQty = qtyPiecesArr.reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
+                    salesData.forEach((s, i) => {
+                        let products = s.product ? s.product.split(',').join('<br>') : '-';
+                        let qtyArr = s.qty ? s.qty.split(',') : ['0'];
+                        let qtyPiecesArr = s.total_pieces ? s.total_pieces.split(',') : (s.qty_decimal ? s.qty_decimal.split(',') : qtyArr);
+                        let price = s.per_price ? s.per_price.split(',').join('<br>') : '-';
+                        let total = s.per_total ? s.per_total.split(',').join('<br>') : '-';
+
+                        let rowQty = qtyPiecesArr.reduce((a, b) => parseFloat(a) + parseFloat(b || 0), 0);
                         grandQty += rowQty;
 
-                        let rowTotal = s.per_total.split(',').reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
+                        let rowTotal = s.per_total ? s.per_total.split(',').reduce((a, b) => parseFloat(a) + parseFloat(b || 0), 0) : 0;
                         grandTotal += parseFloat(rowTotal);
-                        grandNet += parseFloat(s.total_net);
+                        grandNet += parseFloat(s.total_net || 0);
 
                         let returnHtml = "";
                         let returnTotal = 0;
                         if (s.returns && s.returns.length > 0) {
                             s.returns.forEach(r => {
                                 returnHtml += `<span class="text-danger fw-semibold">${r.product} (${r.qty}) - ${r.per_total}</span><br>`;
-                                returnTotal += parseFloat(r.per_total);
+                                returnTotal += parseFloat(r.per_total || 0);
                             });
                         }
                         grandReturn += returnTotal;
 
+                        let invDisplay = s.invoice_no || ('INVSLE-' + s.id);
+
                         // Desktop Row
                         html += `<tr data-qty="${rowQty}" data-total="${rowTotal}" data-net="${s.total_net}" data-return="${returnTotal}">
-                            <td>${i+1}</td>
+                            <td class="text-center text-muted fw-bold">${i+1}</td>
                             <td class="small text-nowrap">${s.created_at}</td>
-                            <td class="font-monospace fw-bold text-primary">INVSLE-${s.id}</td>
-                            <td>${s.customer_name ?? '-'}</td>
-                            <td>${s.reference ?? '-'}</td>
+                            <td class="font-monospace fw-bold text-primary">${invDisplay}</td>
+                            <td class="fw-semibold text-dark">${s.customer_name ?? '-'}</td>
+                            <td class="small text-muted">${s.reference ?? '-'}</td>
                             <td>${products}</td>
-                            <td class="fw-semibold">${qtyArr.join('<br>')}</td>
-                            <td>${price}</td>
-                            <td>${total}</td>
-                            <td class="fw-bold text-dark">${parseFloat(s.total_net).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                            <td class="fw-semibold text-center">${qtyArr.join('<br>')}</td>
+                            <td class="text-end">${price}</td>
+                            <td class="text-end">${total}</td>
+                            <td class="fw-bold text-dark text-end">${parseFloat(s.total_net || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
                             <td>${returnHtml || '-'}</td>
                         </tr>`;
 
                         // Mobile Card
                         mobHtml += `
-                        <div class="mob-card p-2.5 p-2 mb-2 mob-sale-card" data-search="${(s.product + ' INVSLE-' + s.id + ' ' + (s.customer_name||'') + ' ' + (s.reference||'')).toLowerCase()}">
+                        <div class="mob-card p-2.5 p-2 mb-2 mob-sale-card" data-search="${(s.product + ' ' + invDisplay + ' ' + (s.customer_name||'') + ' ' + (s.reference||'')).toLowerCase()}">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <div class="d-flex align-items-center gap-1">
                                     <span class="badge bg-light text-muted border" style="font-size: 10px;">#${i+1}</span>
-                                    <span class="badge bg-light text-primary border font-monospace fw-bold" style="font-size: 11px;">INVSLE-${s.id}</span>
+                                    <span class="badge bg-light text-primary border font-monospace fw-bold" style="font-size: 11px;">${invDisplay}</span>
                                 </div>
                                 <small class="text-muted" style="font-size: 10.5px;">${s.created_at}</small>
                             </div>
@@ -480,20 +528,39 @@
                     // Grand total row inside desktop table
                     html += `<tr class="fw-bold bg-light" id="grandTotalRow">
                         <td colspan="6" class="text-end">Grand Total:</td>
-                        <td id="grandQty">${grandQty.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                        <td id="grandQty" class="text-center">${grandQty.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
                         <td>-</td>
-                        <td id="grandTotal">${grandTotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                        <td id="grandNet">${grandNet.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                        <td id="grandTotal" class="text-end">${grandTotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                        <td id="grandNet" class="text-end">${grandNet.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
                         <td id="grandReturn">${grandReturn.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
                     </tr>`;
 
                     $('#saleBody').html(html);
-                    $('#saleMobileContainer').html(mobHtml || '<div class="card border-0 shadow-sm rounded-3 text-center py-4 bg-white"><div class="card-body py-4 text-muted"><i class="fas fa-folder-open fa-2x mb-2 text-secondary"></i><p class="small fw-bold mb-0">No Sales Data Found</p></div></div>');
+                    $('#saleMobileContainer').html(mobHtml);
 
                     updateSingleLineSummary(salesData.length, grandQty, grandTotal, grandReturn, grandNet);
+                },
+                error: function(xhr) {
+                    $(".loader").hide();
+                    $(".sale-table-wrap").show();
+                    $('#saleBody').html(`<tr><td colspan="11" class="text-center text-danger py-4 fw-bold"><i class="fas fa-exclamation-triangle me-1"></i> Failed to load sales data. Please check connection and try again.</td></tr>`);
                 }
             });
+        }
+
+        // Trigger on Filter Click
+        $(document).on('click', '.btnSearchTrigger', function() {
+            $('.searchProductInput').val('');
+            loadSaleReport();
         });
+
+        // Trigger on Date or Customer Change
+        $('.startDateInput, .endDateInput, .customerInput').on('change', function() {
+            loadSaleReport();
+        });
+
+        // INITIAL LOAD ON PAGE READY
+        loadSaleReport();
 
         // Function to update Summary Metrics (Desktop & Mobile)
         function updateSingleLineSummary(count, qty, gross, returns, net) {
