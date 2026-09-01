@@ -373,12 +373,18 @@ class ProductImportExportController extends Controller
 
             $vUnit = $get($row, ['variant unit', 'variant_unit', 'unit'], ($productsByRef[$prodRef]['size_mode'] === 'by_kg' ? 'Kg' : 'Pcs'));
             $vPieceWt = (float) $get($row, ['variant piece wt (g)', 'variant piece weight (g)', 'variant_weight_per_piece', 'weight_per_piece', 'piece_weight'], 0);
-            $vConvFactor = (float) $get($row, ['variant conv factor', 'variant_conv_factor', 'conv_factor', 'factor'], 1);
+            $rawConvFactor = $get($row, ['variant conv factor', 'variant_conv_factor', 'conv_factor', 'factor'], '');
+            $vConvFactor = $rawConvFactor !== '' ? (float)$rawConvFactor : 0;
             $vIsBase = (int) $get($row, ['variant is base', 'variant_is_base', 'is_base'], 0);
             $vAlert  = (float) $get($row, ['variant alert', 'variant_alert_qty', 'alert'], 0);
 
-            if ($vPieceWt > 0 && ($vConvFactor == 1 || $vConvFactor == 0)) {
-                $vConvFactor = $vPieceWt > 10 ? ($vPieceWt / 1000.0) : $vPieceWt;
+            // Auto-calculate conversion factor from piece weight (g) if empty or not provided
+            if ($vPieceWt > 0 && ($rawConvFactor === '' || $vConvFactor <= 0 || $vConvFactor == 1)) {
+                $vConvFactor = $vPieceWt / 1000.0;
+            } elseif ($vPieceWt <= 0 && $vConvFactor > 0 && $vConvFactor < 1) {
+                $vPieceWt = $vConvFactor * 1000.0;
+            } elseif ($vConvFactor <= 0) {
+                $vConvFactor = 1;
             }
 
             // Variant Data
