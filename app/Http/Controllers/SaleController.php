@@ -1270,8 +1270,6 @@ class SaleController extends Controller
                 $frontendGross = (float) ($request->gross_amount[$index] ?? 0);
                 if ($frontendGross > 0) {
                     $lineTotal = $frontendGross;
-                } elseif (isset($product) && $product->size_mode === 'by_cartons' && $ppb > 1) {
-                    $lineTotal = ($totalPieces / $ppb) * $dbPrice;
                 } else {
                     $lineTotal = $totalPieces * $dbPrice;
                 }

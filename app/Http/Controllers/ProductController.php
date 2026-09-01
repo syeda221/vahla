@@ -199,7 +199,15 @@ class ProductController extends Controller
                     $color = (isset($v['color']) && $v['color'] !== '-') ? " ({$v['color']})" : '';
                     $vName = ($v['name'] ?? $p->item_name) . $size . $color;
                     
-                    $initial = (float) ($v['stock'] ?? 0);
+                    $vUnitName = $v['unit'] ?? $unitName;
+                    $isCartonMode = ($p->size_mode === 'by_cartons' || strtolower($vUnitName) === 'carton');
+                    $vPpb = (float) ($p->pieces_per_box ?? 1);
+                    if ($isCartonMode) {
+                        $vConv = (float) ($v['conv_factor'] ?? 0);
+                        if ($vConv > 0) $vPpb = $vConv;
+                    }
+                    if ($vPpb <= 0) $vPpb = 1;
+
                     $vBalance = 0;
 
                     if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
@@ -212,6 +220,21 @@ class ProductController extends Controller
                             $vBalance = (int) floor(max(0, $stockPieces) / $factor);
                         }
                     } else {
+                        // Initial Stock in Pieces
+                        $vRawStock = (string) ($v['stock'] ?? '0');
+                        if ($isCartonMode && $vPpb >= 1) {
+                            if (strpos($vRawStock, '.') !== false) {
+                                $parts = explode('.', $vRawStock);
+                                $boxes = (int) ($parts[0] ?? 0);
+                                $looseP = (int) ($parts[1] ?? 0);
+                                $initial = ($boxes * $vPpb) + $looseP;
+                            } else {
+                                $initial = (float) $vRawStock * $vPpb;
+                            }
+                        } else {
+                            $initial = (float) $vRawStock;
+                        }
+
                         // Calculate Purchased variant qty
                         $purchased = 0;
                         foreach ($purchasesList as $pItem) {
@@ -257,7 +280,6 @@ class ProductController extends Controller
                     }
 
                     $vStockDisplay = $vBalance;
-                    $vUnitName = $v['unit'] ?? $unitName;
 
                     if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
                         $factor = (float) $v['conv_factor'];
@@ -278,9 +300,9 @@ class ProductController extends Controller
                             $pcsCount = (int) floor($vBalance);
                             $vStockDisplay = "{$pcsCount}";
                         }
-                    } elseif (($p->size_mode === 'by_cartons' || $p->size_mode === 'by_size') && $ppb > 1) {
-                        $vBoxes = floor($vBalance / $ppb);
-                        $vLoose = $vBalance % $ppb;
+                    } elseif (($p->size_mode === 'by_cartons' || $p->size_mode === 'by_size') && $vPpb > 1) {
+                        $vBoxes = (int) floor($vBalance / $vPpb);
+                        $vLoose = (int) round($vBalance - ($vBoxes * $vPpb));
                         $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes;
                     }
 
@@ -296,8 +318,8 @@ class ProductController extends Controller
                         'name' => $vName,
                         'size_mode' => $p->size_mode,
                         'unit_name' => $vUnitName,
-                        'pieces_per_box' => $ppb,
-                        'ppb' => $ppb,
+                        'pieces_per_box' => $vPpb,
+                        'ppb' => $vPpb,
                         'trade_price' => $v['purch_price'] ?? $p->purchase_price_per_piece ?? 0,
                         'retail_price' => $v['sale_price'] ?? $p->sale_price_per_piece ?? 0,
                         'wholesale_price' => $v['wholesale_price'] ?? $p->wholesale_price ?? 0,
@@ -967,9 +989,40 @@ class ProductController extends Controller
             $totalPrice = $totalStockQty * $salePricePerBox;
             $totalPurchasePrice = $totalStockQty * $purchasePricePerPiece;
 
+        } elseif ($mode === 'by_cartons') {
+            // By Cartons Mode
+            $piecesPerBox = (int) $request->pieces_per_box;
+            if ($piecesPerBox <= 0) $piecesPerBox = 1;
+
+            $boxesQuantityRaw = (string) $request->boxes_quantity;
+            $loosePieces = (int) $request->loose_pieces;
+
+            if (strpos($boxesQuantityRaw, '.') !== false) {
+                $parts = explode('.', $boxesQuantityRaw);
+                $boxesQuantity = (int)($parts[0] ?? 0);
+                $looseFromDec = (int)($parts[1] ?? 0);
+                $totalStockQty = ($piecesPerBox * $boxesQuantity) + $looseFromDec + $loosePieces;
+            } else {
+                $boxesQuantity = (int) $request->boxes_quantity;
+                $totalStockQty = ($piecesPerBox * $boxesQuantity) + $loosePieces;
+            }
+
+            $inputSalePc = (float) $request->sale_price_per_box;
+            $inputPurchPc = (float) $request->purchase_price_per_piece;
+
+            $salePricePerPiece = $inputSalePc;
+            $salePricePerBox = $inputSalePc * $piecesPerBox;
+
+            $purchasePricePerPiece = $inputPurchPc;
+            $purchasePricePerBox = $inputPurchPc * $piecesPerBox;
+
+            $totalPrice = $totalStockQty * $salePricePerPiece;
+            $totalPurchasePrice = $totalStockQty * $purchasePricePerPiece;
+
         } else {
-            // Treat by_pieces, by_kg, by_meter, by_gm as piece-based mode
+            // Treat by_pieces, by_kg, by_meter, by_gm, by_feet, by_ton as piece-based mode
             $pieceQuantity = (int) $request->piece_quantity;
+            $piecesPerBox = 1;
 
             // Pricing
             $salePricePerBox = (float) $request->sale_price_per_box;
@@ -1379,6 +1432,25 @@ class ProductController extends Controller
             }
         }
 
+        if (empty($variants)) {
+            $variants = [
+                [
+                    'name' => $product->item_name,
+                    'size' => '-',
+                    'color' => '-',
+                    'unit' => optional($product->unit)->name ?? ($product->size_mode === 'by_cartons' ? 'Carton' : 'Pcs'),
+                    'stock' => ($product->size_mode === 'by_cartons') ? (($product->boxes_quantity ?: 0) . ($product->loose_pieces ? '.' . $product->loose_pieces : '')) : ($totalPieces ?: 0),
+                    'sale_price' => $product->sale_price_per_piece ?: $product->sale_price_per_box ?: 0,
+                    'wholesale_price' => $product->wholesale_price ?: 0,
+                    'purch_price' => $product->purchase_price_per_piece ?: 0,
+                    'alert' => $product->alert_quantity ?: 0,
+                    'barcode' => $product->barcode_path ?: '',
+                    'conv_factor' => ($product->size_mode === 'by_cartons') ? ($product->pieces_per_box ?: 1) : 1,
+                    'is_base_variant' => 1,
+                ]
+            ];
+        }
+
         return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'variants'));
     }
 
@@ -1400,7 +1472,7 @@ class ProductController extends Controller
             'brand_id' => 'required',
             'unit' => 'nullable',
             'model' => 'nullable', // Made nullable
-            'size_mode' => 'required|in:by_size,by_cartons,by_pieces,by_kg,by_meter,by_gm',
+            'size_mode' => 'required|in:by_size,by_cartons,by_pieces,by_kg,by_meter,by_gm,by_feet,by_ton',
             'purchase_discount_percent' => 'nullable|numeric|min:0|max:100',
             'sale_discount_percent' => 'nullable|numeric|min:0|max:100',
             'alert_quantity' => 'nullable|integer|min:0',
@@ -1421,17 +1493,17 @@ class ProductController extends Controller
             ]);
         } elseif ($mode === 'by_cartons') {
             $rules = array_merge($rules, [
-                'pieces_per_box' => 'required|integer|min:1',
-                'boxes_quantity' => 'required|integer|min:0',
+                'pieces_per_box' => 'nullable|integer|min:1',
+                'boxes_quantity' => 'nullable|numeric|min:0',
                 'loose_pieces' => 'nullable|integer|min:0',
-                'sale_price_per_box' => 'required|numeric|min:0',
-                'purchase_price_per_piece' => 'required|numeric|min:0',
+                'sale_price_per_box' => 'nullable|numeric|min:0',
+                'purchase_price_per_piece' => 'nullable|numeric|min:0',
             ]);
         } else {
             $rules = array_merge($rules, [
-                'piece_quantity' => 'required|integer|min:0', // Allowed 0 stock
-                'sale_price_per_box' => 'required|numeric|min:0',
-                'purchase_price_per_piece' => 'required|numeric|min:0',
+                'piece_quantity' => 'nullable|numeric|min:0', // Allowed 0 stock
+                'sale_price_per_box' => 'nullable|numeric|min:0',
+                'purchase_price_per_piece' => 'nullable|numeric|min:0',
             ]);
         }
 

@@ -156,7 +156,10 @@ class ReportingController extends Controller
                     // Parent Adjustments
                     $adjQuery = DB::table('stock_movements')
                         ->where('product_id', $product->id)
-                        ->where('type', 'adjustment');
+                        ->where('type', 'adjustment')
+                        ->where(function($q) {
+                            $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT');
+                        });
                     if ($warehouseId && $warehouseId !== 'all') {
                         $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
                     }
@@ -234,13 +237,16 @@ class ReportingController extends Controller
                     // Fetch Stock Adjustments
                     $adjQuery = DB::table('stock_movements')
                         ->where('product_id', $product->id)
-                        ->where('type', 'adjustment');
+                        ->where('type', 'adjustment')
+                        ->where(function($q) {
+                            $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT');
+                        });
                     if ($warehouseId && $warehouseId !== 'all') {
                         $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
                     }
                     if ($dateFrom) $adjQuery->whereDate('created_at', '>=', $dateFrom);
                     if ($dateTo)   $adjQuery->whereDate('created_at', '<=', $dateTo);
-                    $adjList = $adjQuery->select('qty', 'note')->get();
+                    $adjList = $adjQuery->select('qty', 'note', 'ref_type')->get();
 
                     $saleIds = $returnsList->pluck('sale_id')->unique()->toArray();
                     $saleItemsMap = [];
@@ -366,20 +372,20 @@ class ReportingController extends Controller
                     $totalAdjustments  += $adjustments;
                     $totalSoldAmount   += $saleAmount;
 
-                    if ($isCartonMode && $ppb > 1) {
-                        $cartons = floor($balance / $ppb);
-                        $loose   = $balance % $ppb;
-                        $formattedStock = ($loose > 0) ? "{$cartons} Ctn . {$loose} Pcs" : "{$cartons} Cartons";
+                    if ($isCartonMode) {
+                        $cartons = (int) floor($balance / $ppb);
+                        $loose   = (int) round($balance - ($cartons * $ppb));
+                        $formattedStock = number_format($balance, 0) . " Pcs";
                         $cartonDisplay = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/ctn)</span>" : "{$cartons} Ctn <span class='text-muted small'>({$ppb} pcs/ctn)</span>";
                     } elseif ($ppb > 1 && $product->size_mode === 'by_size') {
-                        $cartons = floor($balance / $ppb);
-                        $loose   = $balance % $ppb;
+                        $cartons = (int) floor($balance / $ppb);
+                        $loose   = (int) round($balance - ($cartons * $ppb));
                         $formattedStock = ($loose > 0) ? "{$cartons} Box . {$loose} Pcs" : "{$cartons} Boxes";
                         $cartonDisplay = ($loose > 0) ? "{$cartons} Box + {$loose} Pcs" : "{$cartons} Box";
                     } else {
                         $cartons = '-';
                         $loose   = $balance;
-                        $formattedStock = number_format($balance, (in_array($product->size_mode, ['by_kg','by_meter','by_feet']) ? 2 : 0)) . " {$vUnitName}";
+                        $formattedStock = number_format($balance, (in_array($product->size_mode, ['by_kg','by_gm','by_ton','by_meter','by_feet']) ? 2 : 0)) . " {$vUnitName}";
                         $cartonDisplay = '—';
                     }
 
@@ -458,7 +464,10 @@ class ReportingController extends Controller
                 // Stock Adjustments
                 $adjQuery = DB::table('stock_movements')
                     ->where('product_id', $product->id)
-                    ->where('type', 'adjustment');
+                    ->where('type', 'adjustment')
+                    ->where(function($q) {
+                        $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT');
+                    });
                 if ($warehouseId && $warehouseId !== 'all') {
                     $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
                 }
@@ -484,20 +493,21 @@ class ReportingController extends Controller
                 // Cartons / Loose
                 $isCartonMode = ($product->size_mode === 'by_cartons' || strtolower($unitName) === 'carton');
                 $ppb = (float) ($product->pieces_per_box ?? 1);
-                if ($isCartonMode && $ppb > 1) {
-                    $cartons = floor($balance / $ppb);
-                    $loose   = $balance % $ppb;
-                    $formattedStock = ($loose > 0) ? "{$cartons} Ctn . {$loose} Pcs" : "{$cartons} Cartons";
+                if ($ppb <= 0) $ppb = 1;
+                if ($isCartonMode) {
+                    $cartons = (int) floor($balance / $ppb);
+                    $loose   = (int) round($balance - ($cartons * $ppb));
+                    $formattedStock = number_format($balance, 0) . " Pcs";
                     $cartonDisplay = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/ctn)</span>" : "{$cartons} Ctn <span class='text-muted small'>({$ppb} pcs/ctn)</span>";
                 } elseif ($ppb > 1 && $product->size_mode === 'by_size') {
-                    $cartons = floor($balance / $ppb);
-                    $loose   = $balance % $ppb;
+                    $cartons = (int) floor($balance / $ppb);
+                    $loose   = (int) round($balance - ($cartons * $ppb));
                     $formattedStock = ($loose > 0) ? "{$cartons} Box . {$loose} Pcs" : "{$cartons} Boxes";
                     $cartonDisplay = ($loose > 0) ? "{$cartons} Box + {$loose} Pcs" : "{$cartons} Box";
                 } else {
                     $cartons = '-';
                     $loose   = $balance;
-                    $formattedStock = number_format($balance, (in_array($product->size_mode, ['by_kg','by_meter','by_feet']) ? 2 : 0)) . " {$unitName}";
+                    $formattedStock = number_format($balance, (in_array($product->size_mode, ['by_kg','by_gm','by_ton','by_meter','by_feet']) ? 2 : 0)) . " {$unitName}";
                     $cartonDisplay = '—';
                 }
 
@@ -2594,8 +2604,12 @@ class ReportingController extends Controller
      */
     private function matchAdjustmentToVariant($adjItem, $variant)
     {
+        if (isset($adjItem->ref_type) && $adjItem->ref_type === 'INIT') {
+            return false;
+        }
+
         $note = strtolower($adjItem->note ?? '');
-        if (empty($note)) {
+        if (empty($note) || $note === 'initial stock') {
             return false;
         }
 

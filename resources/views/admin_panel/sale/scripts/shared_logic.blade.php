@@ -257,21 +257,23 @@
              let wsPrice = parseFloat(pRes.wholesale_price) || 0;
              let rate = (rowMode === 'wholesale' && wsPrice > 0) ? wsPrice : (pRes.retail_price || 0);
 
-             // Visible price logic: usually per piece, but ensure consistent display
+             const ppb = parseFloat(pRes.pieces_per_box) || 1;
              if (pRes.size_mode == "by_cartons") {
-                 $row.find('.visible-price').val(pRes.sale_price_per_piece || rate || 0);
+                 let piecePrice = parseFloat(pRes.sale_price_per_piece || rate || 0);
+                 $row.find('.visible-price').val(ppb > 1 ? (piecePrice * ppb) : piecePrice);
+                 $row.find('.price-per-piece').val(piecePrice);
              } else if (pRes.size_mode == "by_pieces" || pRes.size_mode == "by_kg" || pRes.size_mode == "by_gm" || pRes.size_mode == "by_meter") {
                  $row.find('.visible-price').val(pRes.sale_price_per_piece || rate || 0);
+                 $row.find('.price-per-piece').val($row.find('.visible-price').val() || 0);
              } else {
                  $row.find('.visible-price').val(pRes.price_per_m2 || rate || 0);
+                 $row.find('.price-per-piece').val($row.find('.visible-price').val() || 0);
              }
 
              $row.find('.pack-qty').val(pRes.pieces_per_box || 1);
-             $row.find('.price-per-piece').val($row.find('.visible-price').val() || 0);
-
-            $row.find('.size-h').val(pRes.height || '-');
-            $row.find('.size-w').val(pRes.width || '-');
-            $row.find('.size-mode-text').val(pRes.size_mode || '-');
+             $row.find('.size-h').val(pRes.height || '-');
+             $row.find('.size-w').val(pRes.width || '-');
+             $row.find('.size-mode-text').val(pRes.size_mode || '-');
 
             // Set default discount
             $row.find('.discount-value').val(pRes.sale_discount_percent || 0);
@@ -968,10 +970,16 @@
             let wsPrice = parseFloat(data.wholesale_price) || 0;
             let rate = (rowMode === 'wholesale' && wsPrice > 0) ? wsPrice : (data.retail_price || data.trade_price || 0);
 
-            $row.find('.visible-price').val(rate);
-            $row.find('.pack-qty').val(data.pieces_per_box || 1);
-            $row.find('.price-per-piece').val(rate);
+            const ppb = parseFloat(data.pieces_per_box) || 1;
+            if (data.size_mode === 'by_cartons') {
+                $row.find('.visible-price').val(ppb > 1 ? (rate * ppb) : rate);
+                $row.find('.price-per-piece').val(rate);
+            } else {
+                $row.find('.visible-price').val(rate);
+                $row.find('.price-per-piece').val(rate);
+            }
             
+            $row.find('.pack-qty').val(data.pieces_per_box || 1);
             $row.find('.size-h').val(data.height || '-');
             $row.find('.size-w').val(data.width || '-');
             $row.find('.size-mode-text').val(data.size_mode || '-');

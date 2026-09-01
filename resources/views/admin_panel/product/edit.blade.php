@@ -716,6 +716,7 @@
                  const vWeight = document.querySelectorAll('input[name="variant_weight_per_piece[]"]');
                  const vPurch = document.querySelectorAll('input[name="variant_purchase_price[]"]');
                  const vAlert = document.querySelectorAll('input[name="variant_alert_qty[]"]');
+                 const vConvFactors = document.querySelectorAll('input[name="variant_conv_factor[]"]');
  
                  let totalStock = 0;
                  vStocks.forEach(el => totalStock += (parseFloat(el.value) || 0));
@@ -725,18 +726,21 @@
                  let firstWeight = vWeight.length > 0 ? (parseFloat(vWeight[0].value) || 0) : 0;
                  let firstPurch = vPurch.length > 0 ? (parseFloat(vPurch[0].value) || 0) : 0;
                  let firstAlert = vAlert.length > 0 ? (parseFloat(vAlert[0].value) || 0) : 0;
+                 let firstConv = vConvFactors.length > 0 ? (parseFloat(vConvFactors[0].value) || 0) : 0;
  
                  const mode = unitDropdown ? unitDropdown.value : 'by_pieces';
                  
                  if (vStocks.length > 0) {
                      if(mode === 'by_cartons') {
+                         let ppb = firstConv > 0 ? firstConv : 1;
                          document.getElementById('boxes_quantity').value = totalStock;
-                         document.getElementById('pieces_per_box').value = 1;
+                         document.getElementById('pieces_per_box').value = ppb;
                          document.getElementById('loose_pieces').value = 0;
                          document.getElementById('piece_quantity').value = 0;
                      } else {
                          document.getElementById('piece_quantity').value = totalStock;
                          document.getElementById('boxes_quantity').value = 0;
+                         document.getElementById('pieces_per_box').value = 1;
                      }
                      document.getElementById('sale_price_per_box').value = firstSale;
                      document.getElementById('wholesale_price').value = firstWholesale;
@@ -943,7 +947,7 @@
                 const colorVal = v ? (v.color || '') : '';
                 const unitVal = v ? (v.unit || (isCartonMode ? 'Carton' : baseUnitName)) : (isCartonMode ? 'Carton' : baseUnitName);
                 const stockVal = (v && v.stock !== undefined && v.stock !== null && v.stock !== '') ? v.stock : '0';
-                const convVal = (v && v.conv_factor !== undefined && v.conv_factor !== null && v.conv_factor !== '') ? v.conv_factor : (isCartonMode ? '0' : '1');
+                const convVal = (v && v.conv_factor !== undefined && v.conv_factor !== null && v.conv_factor !== '' && v.conv_factor != 0) ? v.conv_factor : (isCartonMode ? '{{ $product->pieces_per_box > 0 ? $product->pieces_per_box : "" }}' : '1');
                 const weightVal = (v && v.weight_per_piece !== undefined && v.weight_per_piece !== null && v.weight_per_piece !== '') ? v.weight_per_piece : 1000;
                 const saleVal = (v && v.sale_price !== undefined && v.sale_price !== null) ? v.sale_price : '';
                 const wholesaleVal = (v && v.wholesale_price !== undefined && v.wholesale_price !== null) ? v.wholesale_price : '0';
@@ -976,7 +980,7 @@
                         <input type="number" class="form-control-pro form-control-sm text-center fw-bold text-primary" name="variant_stock[]" step="any" value="${escapeHtml(stockVal)}" placeholder="0" title="${isCartonMode ? 'Initial Stock (Cartons)' : 'Initial Stock'}">
                     </td>
                     <td class="p-0 conv-col">
-                        <input type="number" class="form-control-pro form-control-sm conv-factor-input text-center fw-bold ${isCartonMode ? 'text-primary' : ''}" name="variant_conv_factor[]" step="any" value="${escapeHtml(convVal)}" ${isCartonMode ? '' : 'readonly'} placeholder="0" title="${isCartonMode ? 'Pieces per Carton' : 'Base Conv Factor = 1'}" style="border-radius:0; border:1px solid #dee2e6; height:30px; ${isCartonMode ? 'background:#fff;' : 'background:#f8f8f8;'}">
+                        <input type="number" class="form-control-pro form-control-sm conv-factor-input text-center fw-bold ${isCartonMode ? 'text-primary' : ''}" name="variant_conv_factor[]" step="any" value="${escapeHtml(convVal)}" ${isCartonMode ? '' : 'readonly'} placeholder="${isCartonMode ? 'e.g. 6' : '1'}" title="${isCartonMode ? 'Pieces per Carton' : 'Base Conv Factor = 1'}" style="border-radius:0; border:1px solid #dee2e6; height:30px; ${isCartonMode ? 'background:#fff;' : 'background:#f8f8f8;'}">
                     </td>
                     <td class="p-0 piece-wt-only-col">
                         <div style="position:relative;">
@@ -1232,10 +1236,10 @@
                         if (baseConv) {
                             baseConv.readOnly = false;
                             baseConv.style.background = '#ffffff';
-                            if (!baseConv.value || baseConv.value === '1') {
-                                baseConv.value = '0';
+                            if (baseConv.value === '1' && !'{{ $product->pieces_per_box }}') {
+                                baseConv.value = '';
                             }
-                            baseConv.placeholder = '0';
+                            baseConv.placeholder = 'e.g. 6';
                             baseConv.title = 'Pieces per Carton';
                         }
                         const baseUnit = baseRow.querySelector('select[name="variant_unit[]"]');
