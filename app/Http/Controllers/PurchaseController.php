@@ -441,7 +441,7 @@ class PurchaseController extends Controller
             ['vendor_id' => $purchase->vendor_id],
             [
                 'vendor_id' => $purchase->vendor_id,
-                'admin_or_user_id' => auth()->id(),
+                'admin_or_user_id' => auth()->id() ?? 1,
                 'previous_balance' => $prevClosing,
                 'opening_balance' => $prevClosing,
                 'closing_balance' => $prevClosing + $netAmount,
@@ -766,26 +766,65 @@ class PurchaseController extends Controller
                 'due_amount' => $netAmount,
             ]);
 
-            // If NOT draft, run full approval
-            if ($status === 'approved') {
-                $purchase->load('items'); // Load items for approval logic logic
+            // Check if payment was submitted (array or scalar)
+            $paymentAccountIds = (array) ($request->input('payment_account_id') ?? []);
+            $paymentAmounts = (array) ($request->input('payment_amount') ?? []);
 
+            $singlePaid = (float) ($request->input('paid_amount') ?? $request->input('payment_amount_single') ?? 0);
+            if ($singlePaid > 0 && empty(array_filter($paymentAmounts, fn($v) => (float)$v > 0))) {
+                $paymentAmounts = [$singlePaid];
+            }
+
+            $totalPaymentEntered = 0;
+            foreach ($paymentAmounts as $pAmt) {
+                $totalPaymentEntered += (float) $pAmt;
+            }
+
+            // If NOT draft OR if payment is provided, run full approval & record payment
+            if ($status === 'approved' || $totalPaymentEntered > 0) {
+                if ($purchase->status_purchase !== 'approved') {
+                    $purchase->update(['status_purchase' => 'approved']);
+                }
+
+                $purchase->load('items');
                 $this->approvePurchase($purchase); // Basic Stock + Ledger + Voucher
 
-                // B. Record Payment (Only available in immediate Request)
-                try {
-                    $transactionService = app(\App\Services\TransactionService::class);
-                    $paymentAccountIds = $request->input('payment_account_id', []);
-                    $paymentAmounts = $request->input('payment_amount', []);
+                // Record Payment to Vendor
+                if ($totalPaymentEntered > 0) {
+                    try {
+                        $transactionService = app(\App\Services\TransactionService::class);
 
-                    if (! empty(array_filter($paymentAccountIds))) {
-                        $transactionService->createPaymentForPurchase(
-                            $purchase,
-                            $paymentAccountIds,
-                            $paymentAmounts
-                        );
+                        // Find default Cash/Bank account fallback if account is missing
+                        $defaultAccount = \App\Models\Account::whereHas('head', function($q) {
+                            $q->whereIn('name', ['Cash', 'Bank']);
+                        })->where('status', 1)->first() ?? \App\Models\Account::where('status', 1)->first();
+
+                        $cleanedAccounts = [];
+                        $cleanedAmounts = [];
+                        foreach ($paymentAmounts as $idx => $amt) {
+                            $amt = (float) $amt;
+                            if ($amt > 0) {
+                                $accId = $paymentAccountIds[$idx] ?? null;
+                                if (empty($accId) && $defaultAccount) {
+                                    $accId = $defaultAccount->id;
+                                }
+                                if (!empty($accId)) {
+                                    $cleanedAccounts[] = $accId;
+                                    $cleanedAmounts[] = $amt;
+                                }
+                            }
+                        }
+
+                        if (!empty($cleanedAccounts) && !empty($cleanedAmounts)) {
+                            $transactionService->createPaymentForPurchase(
+                                $purchase,
+                                $cleanedAccounts,
+                                $cleanedAmounts
+                            );
+                        }
+                    } catch (\Throwable $e) {
+                        \Log::error('Purchase Payment Processing Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
                     }
-                } catch (\Exception $e) { /* Logged already */
                 }
             }
 

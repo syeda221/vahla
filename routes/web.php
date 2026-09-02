@@ -416,6 +416,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/view_all', [AccountsHeadController::class, 'index'])->name('view_all');
     Route::get('/accounts/{id}/ledger', [AccountsHeadController::class, 'showLedger'])->name('accounts.ledger');
 
+    // Unified All Vouchers History
+    Route::get('/all-vouchers', [VoucherController::class, 'voucherHistory'])->middleware('permission:all.vouchers.view|receipts.voucher.view|payment.voucher.view|expense.voucher.view')->name('voucher.history');
+    Route::get('/all-vouchers/data', [VoucherController::class, 'voucherHistoryData'])->middleware('permission:all.vouchers.view|receipts.voucher.view|payment.voucher.view|expense.voucher.view')->name('voucher.history.data');
+
     // Vouchers (Receipts, Payments, Expenses)
     Route::get('/all_recepit_vochers', [VoucherController::class, 'all_recepit_vochers'])->name('all_recepit_vochers');
     Route::get('/recepit_vochers', [VoucherController::class, 'recepit_vochers'])->name('recepit_vochers');
