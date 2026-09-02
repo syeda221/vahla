@@ -901,10 +901,10 @@
                                 </a>
                                 <div class="submenu">
                                     <ul class="submenu-item">
-                                        @canany(['all.vouchers.view', 'expense.voucher.view', 'receipts.voucher.view', 'payment.voucher.view'])
+                                        @can('all.vouchers.view')
                                             <li><a href="{{ route('voucher.history') }}"><i class="fa-solid fa-list-check"></i>
                                                     All Vouchers</a></li>
-                                        @endcanany
+                                        @endcan
                                         @can('chart.of.accounts.view')
                                             <li><a href="{{ route('view_all') }}"><i class="fa-solid fa-money-bill-wave"></i>
                                                     Char Of Accounts</a></li>
