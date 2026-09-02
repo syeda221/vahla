@@ -656,8 +656,8 @@
                         <div class="col-sm-6 col-md-2 col-lg-2">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="meta-label mb-0"><i class="fas fa-user text-primary"></i> Customer</label>
-                                <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill fw-bold" data-bs-toggle="modal" data-bs-target="#addCustomerModal" style="font-size: 0.65rem; height: 18px; line-height: 1;">
-                                    <i class="fas fa-plus"></i> New
+                                <button type="button" id="btnOpenAddCustomerModal" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill fw-bold btn-open-customer-modal" data-toggle="modal" data-target="#addCustomerModal" data-bs-toggle="modal" data-bs-target="#addCustomerModal" title="Quick Add Customer (Alt+C or F2)" style="font-size: 0.7rem; height: 20px; line-height: 1;">
+                                    <i class="fas fa-user-plus"></i> Quick Customer
                                 </button>
                             </div>
                             <div id="customerInputWrapper">
@@ -991,49 +991,53 @@
     </div>
 
     <!-- Add Customer Modal -->
-    <div class="modal fade" id="addCustomerModal" tabindex="-1" aria-labelledby="addCustomerModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addCustomerModalLabel">
-                        <i class="fas fa-user-plus text-primary me-2"></i>New Customer
+    <div class="modal fade" id="addCustomerModal" tabindex="-1" role="dialog" aria-labelledby="addCustomerModalLabel" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-primary text-white py-2">
+                    <h5 class="modal-title font-weight-bold fw-bold text-white mb-0" id="addCustomerModalLabel" style="font-size: 1rem;">
+                        <i class="fas fa-user-plus me-2 mr-2"></i>Quick Customer
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; line-height: 1; opacity: 0.9; cursor: pointer;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <div class="modal-body">
-                    <form id="ajaxAddCustomerForm">
+                    <form id="ajaxAddCustomerForm" autocomplete="off">
                         @csrf
                         <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Customer Type <span class="text-danger">*</span></label>
-                                <select class="form-select" name="customer_type" required>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label font-weight-bold fw-bold">Customer Type <span class="text-danger">*</span></label>
+                                <select class="form-control form-select" name="customer_type" id="modalCustomerType" required>
                                     @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
-                                        <option value="{{ $type->name }}">{{ $type->name }}</option>
+                                        <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Full Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="customer_name" required placeholder="Customer Name">
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label font-weight-bold fw-bold">Full Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="customer_name" id="modalCustomerName" required placeholder="Customer Name">
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Mobile</label>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label font-weight-bold fw-bold">Mobile</label>
                                 <input type="text" class="form-control" name="mobile" placeholder="0300-1234567">
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Opening Balance</label>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label font-weight-bold fw-bold">Opening Balance</label>
                                 <input type="number" step="0.01" class="form-control" name="opening_balance" value="0">
                             </div>
-                            <div class="col-12">
-                                <label class="form-label fw-bold">Address</label>
+                            <div class="col-12 mb-2">
+                                <label class="form-label font-weight-bold fw-bold">Address</label>
                                 <input type="text" class="form-control" name="address" placeholder="Address">
                             </div>
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="btnSaveAjaxCustomer">Save Customer</button>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary btn-sm fw-bold" id="btnSaveAjaxCustomer">
+                        <i class="fas fa-save me-1 mr-1"></i> Save Customer
+                    </button>
                 </div>
             </div>
         </div>
@@ -1183,6 +1187,14 @@
                     },
                     cache: false
                 },
+                language: {
+                    noResults: function() {
+                        return $('<div>No customer found. <a href="javascript:void(0)" class="btn btn-sm btn-outline-primary py-0 px-2 mt-1 btn-open-customer-modal" style="font-size:0.75rem;"><i class="fas fa-user-plus"></i> Quick Add Customer</a></div>');
+                    }
+                },
+                escapeMarkup: function(markup) {
+                    return markup;
+                },
                 templateResult: function(item) {
                     if (item.loading) return item.text;
                     if (!item.customer) return item.text;
@@ -1276,6 +1288,61 @@
                 ensureSaved().then(id => window.open('{{ url('sales') }}/' + id + '/dc-thermal', '_blank'));
             });
 
+            // ══════════════════════════════════════════════════════════════
+            // QUICK CUSTOMER MODAL LOGIC & EVENT HANDLERS
+            // ══════════════════════════════════════════════════════════════
+            window.openCustomerModal = function(initialName = '') {
+                $('#ajaxAddCustomerForm')[0].reset();
+                let currentParty = $('#partyTypeSelect').val() || 'Main Customer';
+                $('#modalCustomerType').val(currentParty);
+                if (initialName && typeof initialName === 'string') {
+                    $('#modalCustomerName').val(initialName.trim());
+                }
+                
+                if (typeof $('#addCustomerModal').modal === 'function') {
+                    $('#addCustomerModal').modal('show');
+                } else if (window.bootstrap && window.bootstrap.Modal) {
+                    let m = bootstrap.Modal.getOrCreateInstance(document.getElementById('addCustomerModal'));
+                    m.show();
+                }
+
+                setTimeout(function() {
+                    $('#modalCustomerName').focus();
+                }, 400);
+            };
+
+            window.closeCustomerModal = function() {
+                try {
+                    $('#addCustomerModal').modal('hide');
+                } catch(e) {}
+                if (window.bootstrap && window.bootstrap.Modal) {
+                    let m = bootstrap.Modal.getInstance(document.getElementById('addCustomerModal'));
+                    if (m) m.hide();
+                }
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open').css('padding-right', '');
+            };
+
+            // Explicit click listener on any button with btn-open-customer-modal or #btnOpenAddCustomerModal
+            $(document).on('click', '#btnOpenAddCustomerModal, .btn-open-customer-modal', function(e) {
+                e.preventDefault();
+                let term = '';
+                // If clicked from select2 noResults or search box, grab search term
+                if ($('.select2-search__field:visible').length) {
+                    term = $('.select2-search__field:visible').val();
+                    $('#customerSelect').select2('close');
+                }
+                openCustomerModal(term);
+            });
+
+            // Keyboard shortcut (F2 or Alt+C) to open Quick Customer modal
+            $(document).on('keydown', function(e) {
+                if ((e.key === 'F2' || (e.altKey && (e.key === 'c' || e.key === 'C'))) && !$('#addCustomerModal').is(':visible')) {
+                    e.preventDefault();
+                    openCustomerModal();
+                }
+            });
+
             // AJAX Customer Submit
             $('#btnSaveAjaxCustomer').on('click', function() {
                 let form = $('#ajaxAddCustomerForm');
@@ -1292,39 +1359,44 @@
                     type: 'POST',
                     data: form.serialize(),
                     success: function(res) {
-                        btn.prop('disabled', false).text('Save Customer');
+                        btn.prop('disabled', false).html('<i class="fas fa-save me-1 mr-1"></i> Save Customer');
                         if (res.success) {
-                            $('#addCustomerModal').modal('hide');
+                            closeCustomerModal();
                             form[0].reset();
                             
-                            // Make sure UI toggles map to the new customer's type
-                            if (res.customer.customer_type === 'Walking Customer') {
-                                $('#typeWalkin').prop('checked', true).trigger('change');
-                            } else {
-                                $('#typeCustomers').prop('checked', true).trigger('change');
+                            // Make sure partyTypeSelect matches the customer type
+                            if (res.customer.customer_type) {
+                                $('#partyTypeSelect').val(res.customer.customer_type);
                             }
                             
-                            // Auto select new customer
-                            let newOption = new Option(res.customer.customer_id + ' — ' + res.customer.customer_name, res.customer.id, true, true);
+                            // Auto select new customer in Select2
+                            let displayText = (res.customer.customer_id ? res.customer.customer_id + ' — ' : '') + res.customer.customer_name;
+                            let newOption = new Option(displayText, res.customer.id, true, true);
                             $('#customerSelect').append(newOption).trigger('change');
                             
-                            // trigger select2 API selection to load customer details like Prev Bal
+                            // Trigger select2 API selection to load customer details like Prev Bal
                             $('#customerSelect').trigger({
                                 type: 'select2:select',
                                 params: {
                                     data: {
                                         id: res.customer.id,
-                                        text: res.customer.customer_id + ' — ' + res.customer.customer_name
+                                        text: displayText
                                     }
                                 }
                             });
                             
                             showAlert('success', 'Customer added successfully!');
+                        } else {
+                            showAlert('error', res.message || 'Failed to save customer.');
                         }
                     },
-                    error: function(err) {
-                        btn.prop('disabled', false).text('Save Customer');
-                        showAlert('error', 'Error adding customer. Check inputs.');
+                    error: function(xhr) {
+                        btn.prop('disabled', false).html('<i class="fas fa-save me-1 mr-1"></i> Save Customer');
+                        let msg = 'Error adding customer. Check inputs.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+                        showAlert('error', msg);
                     }
                 });
             });
