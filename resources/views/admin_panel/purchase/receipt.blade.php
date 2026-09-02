@@ -160,27 +160,15 @@
         <tbody>
             @foreach ($purchase->items as $item)
                 @php
-                    // Size mode logic for display
-                    $sizeMode = $item->size_mode ?? 'by_pieces';
-                    $totalPieces = (int) $item->qty;
+                    $rawUnit = strtolower(trim($item->unit ?? ''));
+                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']);
 
-                    // Display quantity string
-                    $qtyDisplay = $totalPieces;
-                    if ($sizeMode == 'by_cartons' || $sizeMode == 'by_size') {
-                        $piecesPerBox = (int) ($item->pieces_per_box ?? 1);
-                        // Prevent div by zero
-                        $piecesPerBox = $piecesPerBox > 0 ? $piecesPerBox : 1;
-
-                        $boxes = floor($totalPieces / $piecesPerBox);
-                        $loose = $totalPieces % $piecesPerBox;
-
-                        if ($boxes > 0 && $loose > 0) {
-                            $qtyDisplay = "$boxes.$loose";
-                        } elseif ($boxes > 0) {
-                            $qtyDisplay = $boxes;
-                        } else {
-                            $qtyDisplay = $loose;
-                        }
+                    if ($isCarton) {
+                        $qtyDisplay = ((float) $item->qty) . ' Ctn';
+                    } elseif (in_array($rawUnit, ['pcs', 'pc', 'piece'])) {
+                        $qtyDisplay = ((float) $item->qty) . ' Pcs';
+                    } else {
+                        $qtyDisplay = ((float) $item->qty) . ' ' . ($item->unit ?? 'Pcs');
                     }
                 @endphp
                 <tr>

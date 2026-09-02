@@ -1271,7 +1271,14 @@ class SaleController extends Controller
                 if ($frontendGross > 0) {
                     $lineTotal = $frontendGross;
                 } else {
-                    $lineTotal = $totalPieces * $dbPrice;
+                    $frontendNet = (float) ($request->total[$index] ?? 0);
+                    if ($frontendNet > 0) {
+                        $lineTotal = $frontendNet;
+                    } elseif ($sizeMode === 'by_cartons' && $ppb > 1) {
+                        $lineTotal = $storedQtyBox * $dbPrice;
+                    } else {
+                        $lineTotal = $totalPieces * $dbPrice;
+                    }
                 }
 
                 // Apply Discount correctly

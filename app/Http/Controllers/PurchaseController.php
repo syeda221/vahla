@@ -377,9 +377,9 @@ class PurchaseController extends Controller
         if (! $hasGatepass) {
             $movRows = [];
             foreach ($purchase->items as $item) {
-                // Determine conversion factor and unit for weight products
+                // Determine conversion factor and unit
                 $convFactor = 1;
-                $unit = strtolower($item->unit ?? '');
+                $unit = strtolower(trim($item->unit ?? ''));
                 if (!empty($item->color)) {
                     $itemColor = $item->color;
                     $b64Decoded = base64_decode($itemColor, true);
@@ -391,8 +391,8 @@ class PurchaseController extends Controller
                         if (isset($json['conv_factor']) && (float)$json['conv_factor'] > 0) {
                             $convFactor = (float) $json['conv_factor'];
                         }
-                        if (isset($json['unit'])) {
-                            $unit = strtolower($json['unit']);
+                        if (empty($unit) && isset($json['unit'])) {
+                            $unit = strtolower(trim($json['unit']));
                         }
                     }
                 }
@@ -405,6 +405,9 @@ class PurchaseController extends Controller
                 } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box') {
                     // Full carton purchased: convert cartons to pieces for warehouse_stocks and stock_movements
                     $baseQty = ((float) $item->qty) * $ppb;
+                } elseif ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece') {
+                    // Pieces purchased: qty is directly pieces
+                    $baseQty = (float) $item->qty;
                 } else {
                     $baseQty = ((float) $item->qty) * $convFactor;
                 }

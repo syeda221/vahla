@@ -226,7 +226,7 @@ class ReportingController extends Controller
                     }
                     if ($dateFrom) $purchasesQuery->whereDate('pur.created_at', '>=', $dateFrom);
                     if ($dateTo)   $purchasesQuery->whereDate('pur.created_at', '<=', $dateTo);
-                    $purchasesList = $purchasesQuery->select('pi.qty as total_pieces', 'pi.line_total', 'pi.color')->get();
+                    $purchasesList = $purchasesQuery->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.line_total', 'pi.color')->get();
 
                     // Fetch all purchase returns
                     $pReturnsQuery = DB::table('purchase_return_items as pri')->where('pri.product_id', $product->id);
@@ -310,7 +310,19 @@ class ReportingController extends Controller
                         $purchased = 0; $purchaseAmount = 0;
                         foreach ($purchasesList as $pItem) {
                             if ($this->matchSaleItemToVariant($pItem, $v)) {
-                                $purchased += (float) $pItem->total_pieces;
+                                $pUnit = strtolower(trim($pItem->unit ?? ''));
+                                $pPPB = (float) ($pItem->pieces_per_box > 0 ? $pItem->pieces_per_box : $ppb);
+                                if ($pPPB <= 0) $pPPB = 1;
+
+                                if (in_array($pUnit, ['carton', 'ctn', 'box'])) {
+                                    $pPieces = ((float) $pItem->qty) * $pPPB;
+                                } elseif (in_array($pUnit, ['gm', 'g'])) {
+                                    $pPieces = ((float) $pItem->qty) / 1000.0;
+                                } else {
+                                    $pPieces = (float) $pItem->qty;
+                                }
+
+                                $purchased += $pPieces;
                                 $purchaseAmount += (float) $pItem->line_total;
                             }
                         }
@@ -375,7 +387,7 @@ class ReportingController extends Controller
                     if ($isCartonMode) {
                         $cartons = (int) floor($balance / $ppb);
                         $loose   = (int) round($balance - ($cartons * $ppb));
-                        $formattedStock = number_format($balance, 0) . " Pcs";
+                        $formattedStock = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs" : "{$cartons} Ctn";
                         $cartonDisplay = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/ctn)</span>" : "{$cartons} Ctn <span class='text-muted small'>({$ppb} pcs/ctn)</span>";
                     } elseif ($ppb > 1 && $product->size_mode === 'by_size') {
                         $cartons = (int) floor($balance / $ppb);
@@ -497,7 +509,7 @@ class ReportingController extends Controller
                 if ($isCartonMode) {
                     $cartons = (int) floor($balance / $ppb);
                     $loose   = (int) round($balance - ($cartons * $ppb));
-                    $formattedStock = number_format($balance, 0) . " Pcs";
+                    $formattedStock = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs" : "{$cartons} Ctn";
                     $cartonDisplay = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/ctn)</span>" : "{$cartons} Ctn <span class='text-muted small'>({$ppb} pcs/ctn)</span>";
                 } elseif ($ppb > 1 && $product->size_mode === 'by_size') {
                     $cartons = (int) floor($balance / $ppb);
@@ -2680,7 +2692,15 @@ class ReportingController extends Controller
         }
 
         $result = $query->select(DB::raw("
-            COALESCE(SUM(purchase_items.qty), 0) as total_qty,
+            COALESCE(SUM(
+                CASE
+                    WHEN LOWER(purchase_items.unit) IN ('carton', 'ctn', 'box')
+                    THEN purchase_items.qty * COALESCE(NULLIF(purchase_items.pieces_per_box, 0), 1)
+                    WHEN LOWER(purchase_items.unit) IN ('gm', 'g')
+                    THEN purchase_items.qty / 1000.0
+                    ELSE purchase_items.qty
+                END
+            ), 0) as total_qty,
             COALESCE(SUM(
                 CASE
                     WHEN COALESCE(purchases.subtotal, 0) > 0

@@ -82,7 +82,7 @@ class POSController extends Controller
                     ->join('purchases as pur', 'pur.id', '=', 'pi.purchase_id')
                     ->where('pi.product_id', $p->id)
                     ->whereIn('pur.status_purchase', ['approved', 'Returned', 'Partial'])
-                    ->select('pi.qty as total_pieces', 'pi.color')
+                    ->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.color')
                     ->get();
 
                 $purchaseReturnsList = DB::table('purchase_return_items as pri')
@@ -104,7 +104,19 @@ class POSController extends Controller
                     $purchased = 0;
                     foreach ($purchasesList as $pItem) {
                         if ($this->matchSaleItemToVariant($pItem, $v)) {
-                            $purchased += (float) $pItem->total_pieces;
+                            $pUnit = strtolower(trim($pItem->unit ?? ''));
+                            $itemPPB = (float) ($pItem->pieces_per_box > 0 ? $pItem->pieces_per_box : ($p->pieces_per_box ?? 1));
+                            if ($itemPPB <= 0) $itemPPB = 1;
+
+                            if (in_array($pUnit, ['carton', 'ctn', 'box'])) {
+                                $pPieces = ((float) $pItem->qty) * $itemPPB;
+                            } elseif (in_array($pUnit, ['gm', 'g'])) {
+                                $pPieces = ((float) $pItem->qty) / 1000.0;
+                            } else {
+                                $pPieces = (float) $pItem->qty;
+                            }
+
+                            $purchased += $pPieces;
                         }
                     }
 

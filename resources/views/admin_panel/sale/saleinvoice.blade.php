@@ -924,7 +924,7 @@
                         <td class="text-center"
                             style="vertical-align: middle;">
 
-                            @if ($sizeMode == 'by_pieces')
+                            @if ($sizeMode == 'by_pieces' || ($sizeMode == 'by_cartons' && $boxes == 0 && $loosePieces > 0))
 
                                 <span class="fw-bold">
                                     Pieces
@@ -933,7 +933,7 @@
                             @elseif ($sizeMode == 'by_cartons')
 
                                 <span class="fw-bold">
-                                    Cartons
+                                    {{ $boxes > 0 && $loosePieces > 0 ? 'Ctn + Pcs' : 'Cartons' }}
                                 </span>
 
                             @elseif ($sizeMode == 'by_size')

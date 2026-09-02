@@ -358,16 +358,43 @@
                             $height = $item->length ?? 0;
                             $width = $item->width ?? 0;
 
-                            $piecesPerBox = (int) ($item->pieces_per_box ?? 1);
-                            $m2PerPiece = $item->pieces_per_m2 ?? 0;
+                            $piecesPerBox = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : ($item->product->pieces_per_box ?? 1));
+                            $m2PerPiece = (float) ($item->pieces_per_m2 ?? 0);
                             $m2PerBox = $m2PerPiece * $piecesPerBox;
 
-                            $totalPieces = (int) $item->qty;
-                            $boxes = $piecesPerBox > 0 ? floor($totalPieces / $piecesPerBox) : $totalPieces;
-                            $loosePieces = $piecesPerBox > 0 ? $totalPieces % $piecesPerBox : 0;
+                            $rawUnit = strtolower(trim($item->unit ?? ''));
+                            $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']);
+                            $isPiece = in_array($rawUnit, ['pcs', 'pc', 'piece']);
+                            $isWeight = in_array($rawUnit, ['kg', 'gm', 'g']);
+
+                            if ($isCarton) {
+                                $boxes = (float) $item->qty;
+                                $loosePieces = 0;
+                                $totalPieces = $piecesPerBox > 0 ? round($boxes * $piecesPerBox) : $boxes;
+                                $uomDisplay = 'Carton';
+                                $qtyDisplay = ($boxes == 1 ? '1 Carton' : ($boxes . ' Cartons'));
+                                $subQtyText = '(' . $totalPieces . ' pcs)';
+                            } elseif ($isPiece) {
+                                $totalPieces = (float) $item->qty;
+                                $boxes = $piecesPerBox > 1 ? floor($totalPieces / $piecesPerBox) : 0;
+                                $loosePieces = $piecesPerBox > 1 ? ($totalPieces % $piecesPerBox) : $totalPieces;
+                                $uomDisplay = 'Pcs';
+                                $qtyDisplay = $totalPieces . ' Pcs';
+                                $subQtyText = '(' . $totalPieces . ' pcs)';
+                            } elseif ($isWeight) {
+                                $totalPieces = (float) $item->qty;
+                                $uomDisplay = $item->unit ?? 'Kg';
+                                $qtyDisplay = $item->qty . ' ' . $uomDisplay;
+                                $subQtyText = '';
+                            } else {
+                                $totalPieces = (float) $item->qty;
+                                $uomDisplay = $item->unit ?? 'Pcs';
+                                $qtyDisplay = $item->qty . ' ' . $uomDisplay;
+                                $subQtyText = '(' . $totalPieces . ' pcs)';
+                            }
 
                             $totalM2Line = $m2PerPiece * $totalPieces;
-                            $sizeMode = $item->size_mode ?? 'by_pieces';
+                            $sizeMode = $item->size_mode ?? ($item->product->size_mode ?? 'by_pieces');
                         @endphp
                         @php
                             $variantInfo = '';
@@ -415,31 +442,15 @@
 
                             <td class="text-center" style="vertical-align: middle;">
                                 <div style="font-weight: bold; color: #0f172a;">
-                                    @if ($sizeMode == 'by_pieces')
-                                        {{ $totalPieces }} Pcs
-                                    @else
-                                        @if ($boxes > 0 && $loosePieces > 0)
-                                            {{ $boxes }} Box + {{ $loosePieces }} Pc
-                                        @elseif ($boxes > 0)
-                                            {{ $boxes }} Box
-                                        @else
-                                            {{ $loosePieces }} Pcs
-                                        @endif
-                                    @endif
+                                    {{ $qtyDisplay }}
                                 </div>
-                                <small class="text-muted" style="font-size: 10px;">({{ $totalPieces }} pcs)</small>
+                                @if (!empty($subQtyText))
+                                    <small class="text-muted" style="font-size: 10px;">{{ $subQtyText }}</small>
+                                @endif
                             </td>
 
                             <td class="text-center" style="vertical-align: middle;">
-                                @if ($sizeMode == 'by_pieces')
-                                    <span class="fw-bold">Pcs</span>
-                                @elseif ($sizeMode == 'by_cartons')
-                                    <span class="fw-bold">Box</span>
-                                @elseif ($sizeMode == 'by_size')
-                                    <span class="fw-bold">{{ number_format($totalM2Line, 4) }}</span> m²
-                                @else
-                                    {{ $item->unit }}
-                                @endif
+                                <span class="fw-bold">{{ $uomDisplay }}</span>
                             </td>
 
                             <td class="text-end" style="vertical-align: middle;">
@@ -472,8 +483,21 @@
         <div class="mobile-invoice-items">
             @foreach ($purchase->items as $item)
                 @php
+                    $piecesPerBox = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : ($item->product->pieces_per_box ?? 1));
+                    $rawUnit = strtolower(trim($item->unit ?? ''));
+                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']);
+                    $isPiece = in_array($rawUnit, ['pcs', 'pc', 'piece']);
+
+                    if ($isCarton) {
+                        $boxes = (float) $item->qty;
+                        $qtyDisplay = ($boxes == 1 ? '1 Carton' : ($boxes . ' Cartons'));
+                    } elseif ($isPiece) {
+                        $qtyDisplay = (float) $item->qty . ' Pcs';
+                    } else {
+                        $qtyDisplay = (float) $item->qty . ' ' . ($item->unit ?? 'Pcs');
+                    }
+
                     $sizeMode = $item->size_mode ?? 'by_pieces';
-                    $totalPieces = (int) $item->qty;
                     $variantInfo = '';
                     if (!empty($item->color)) {
                         $decodedColor = base64_decode($item->color, true);
@@ -501,7 +525,7 @@
 
                     <div class="mob-item-details">
                         <div>
-                            <span class="fw-bold text-dark">{{ $totalPieces }} {{ $item->unit ?? 'Pcs' }}</span>
+                            <span class="fw-bold text-dark">{{ $qtyDisplay }}</span>
                             <span class="text-muted ms-1">@ Rs. {{ number_format($item->price, 2) }}</span>
                         </div>
                         <div class="text-end">
