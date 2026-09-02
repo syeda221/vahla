@@ -397,8 +397,14 @@ class PurchaseController extends Controller
                     }
                 }
 
+                $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : ($item->product->pieces_per_box ?? 1));
+                if ($ppb <= 0) $ppb = 1;
+
                 if ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams') {
                     $baseQty = ((float) $item->qty) / 1000.0;
+                } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box') {
+                    // Full carton purchased: convert cartons to pieces for warehouse_stocks and stock_movements
+                    $baseQty = ((float) $item->qty) * $ppb;
                 } else {
                     $baseQty = ((float) $item->qty) * $convFactor;
                 }
@@ -696,6 +702,24 @@ class PurchaseController extends Controller
                 $discAmount = $grossTotal * ($discPercent / 100);
                 $lineTotal = $grossTotal - $discAmount;
 
+                // Snapshots
+                $u = strtolower($unit ?? '');
+                $curPPB = (float) ($ppbs[$i] ?? 1);
+                if ($curPPB <= 0) {
+                    $prod = Product::find($pid);
+                    $curPPB = (float) ($prod->pieces_per_box ?? 1);
+                }
+                if ($curPPB <= 0) $curPPB = 1;
+
+                $bQty = (float) ($boxesQtys[$i] ?? 0);
+                $lQty = (float) ($looseQtys[$i] ?? 0);
+                if ($bQty == 0 && ($u === 'carton' || $u === 'ctn' || $u === 'box')) {
+                    $bQty = $qty;
+                } elseif ($bQty == 0 && ($u === 'pcs' || $u === 'pc' || $u === 'piece')) {
+                    $bQty = $qty / $curPPB;
+                    $lQty = $qty;
+                }
+
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
                     'product_id' => $pid,
@@ -708,10 +732,10 @@ class PurchaseController extends Controller
 
                     // Snapshots
                     'size_mode' => $sizeModes[$i] ?? null,
-                    'pieces_per_box' => $ppbs[$i] ?? 1,
+                    'pieces_per_box' => $curPPB,
                     'pieces_per_m2' => $ppm2[$i] ?? 0,
-                    'boxes_qty' => $boxesQtys[$i] ?? 0,
-                    'loose_qty' => $looseQtys[$i] ?? 0,
+                    'boxes_qty' => $bQty,
+                    'loose_qty' => $lQty,
                     'length' => $lengths[$i] ?? null,
                     'width' => $widths[$i] ?? null,
                 ]);
@@ -1205,8 +1229,20 @@ class PurchaseController extends Controller
             $branchId = (int) ($validated['branch_id'] ?? $purchase->branch_id ?? 1);
             $warehouseId = (int) ($validated['warehouse_id'] ?? $purchase->warehouse_id);
 
-            // Map old totals per product for Stock Delta Logic
-            $oldMap = $purchase->items->groupBy('product_id')->map(fn ($g) => (float) $g->sum('qty'));
+            // Map old totals per product for Stock Delta Logic (in base pieces)
+            $oldMap = $purchase->items->groupBy('product_id')->map(function ($items) {
+                return (float) $items->sum(function ($item) {
+                    $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : ($item->product->pieces_per_box ?? 1));
+                    if ($ppb <= 0) $ppb = 1;
+                    $u = strtolower($item->unit ?? '');
+                    if ($u === 'carton' || $u === 'ctn' || $u === 'box') {
+                        return (float)$item->qty * $ppb;
+                    } elseif (in_array($u, ['gm', 'g', 'gram', 'grams'])) {
+                        return (float)$item->qty / 1000.0;
+                    }
+                    return (float)$item->qty;
+                });
+            });
 
             // Delete old items
             $purchase->items()->delete();
@@ -1270,6 +1306,31 @@ class PurchaseController extends Controller
                 $discAmount = $grossTotal * ($discPercent / 100);
                 $lineTotal = $grossTotal - $discAmount;
 
+                $u = strtolower($unit ?? '');
+                $curPPB = (float) ($ppbs[$i] ?? 1);
+                if ($curPPB <= 0) {
+                    $prod = Product::find($pid);
+                    $curPPB = (float) ($prod->pieces_per_box ?? 1);
+                }
+                if ($curPPB <= 0) $curPPB = 1;
+
+                if ($u === 'carton' || $u === 'ctn' || $u === 'box') {
+                    $baseQty = $qty * $curPPB;
+                } elseif (in_array($u, ['gm', 'g', 'gram', 'grams'])) {
+                    $baseQty = $qty / 1000.0;
+                } else {
+                    $baseQty = $qty;
+                }
+
+                $bQty = (float) ($boxesQtys[$i] ?? 0);
+                $lQty = (float) ($looseQtys[$i] ?? 0);
+                if ($bQty == 0 && ($u === 'carton' || $u === 'ctn' || $u === 'box')) {
+                    $bQty = $qty;
+                } elseif ($bQty == 0 && ($u === 'pcs' || $u === 'pc' || $u === 'piece')) {
+                    $bQty = $qty / $curPPB;
+                    $lQty = $qty;
+                }
+
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
                     'product_id' => $pid,
@@ -1282,16 +1343,16 @@ class PurchaseController extends Controller
 
                     // Snapshots
                     'size_mode' => $sizeModes[$i] ?? null,
-                    'pieces_per_box' => $ppbs[$i] ?? 1,
+                    'pieces_per_box' => $curPPB,
                     'pieces_per_m2' => $ppm2[$i] ?? 0,
-                    'boxes_qty' => $boxesQtys[$i] ?? 0,
-                    'loose_qty' => $looseQtys[$i] ?? 0,
+                    'boxes_qty' => $bQty,
+                    'loose_qty' => $lQty,
                     'length' => $lengths[$i] ?? null,
                     'width' => $widths[$i] ?? null,
                 ]);
 
                 $subtotal += $lineTotal;
-                $newMap[$pid] = ($newMap[$pid] ?? 0) + $qty;
+                $newMap[$pid] = ($newMap[$pid] ?? 0) + $baseQty;
             }
 
             // Totals calculation

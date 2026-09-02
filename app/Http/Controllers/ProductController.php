@@ -62,7 +62,8 @@ class ProductController extends Controller
     {
         // Fallback to first warehouse if the requested one doesn't exist
         if ($warehouseId === 1 && !\App\Models\Warehouse::find(1)) {
-            $warehouseId = \App\Models\Warehouse::first()->id ?? 1;
+            $firstWh = \App\Models\Warehouse::first();
+            $warehouseId = $firstWh ? $firstWh->id : (\App\Models\Warehouse::create(['warehouse_name' => 'Main Warehouse', 'location' => 'Main'])->id);
         }
 
         $stock = \App\Models\WarehouseStock::where('warehouse_id', $warehouseId)
@@ -325,6 +326,7 @@ class ProductController extends Controller
                         'wholesale_price' => $v['wholesale_price'] ?? $p->wholesale_price ?? 0,
                         'weight_per_piece' => $v['weight_per_piece'] ?? $p->weight_per_piece ?? 0,
                         'purchase_price_per_piece' => $v['purch_price'] ?? $p->purchase_price_per_piece ?? 0,
+                        'purchase_price_per_box' => ($v['purch_price'] ?? $p->purchase_price_per_piece ?? 0) * $vPpb,
                         'purchase_price_per_m2' => $p->purchase_price_per_m2 ?? 0,
                         'sale_discount_percent' => $p->sale_discount_percent ?? 0,
                         'variant_data' => base64_encode($variantJson)
@@ -349,6 +351,7 @@ class ProductController extends Controller
                 'wholesale_price' => $p->wholesale_price ?? 0,
                 'weight_per_piece' => $p->weight_per_piece ?? 0,
                 'purchase_price_per_piece' => $p->purchase_price_per_piece ?? 0,
+                'purchase_price_per_box' => $p->purchase_price_per_box ?? (($p->purchase_price_per_piece ?? 0) * $ppb),
                 'purchase_price_per_m2' => $p->purchase_price_per_m2 ?? 0,
                 'sale_discount_percent' => $p->sale_discount_percent ?? 0,
                 'variant_data' => ''
@@ -836,9 +839,20 @@ class ProductController extends Controller
                 'updated_at' => now(),
             ]);
 
+            $targetWh = null;
+            if ($request->filled('warehouse_id')) {
+                $targetWh = \App\Models\Warehouse::find($request->warehouse_id);
+            }
+            if (!$targetWh) {
+                $targetWh = \App\Models\Warehouse::first() ?? \App\Models\Warehouse::create([
+                    'warehouse_name' => 'Main Warehouse',
+                    'location' => 'Main',
+                ]);
+            }
+
             // Create Warehouse Stock
             WarehouseStock::create([
-                'warehouse_id' => $request->warehouse_id ?? (\App\Models\Warehouse::first()->id ?? 1), // Default to first warehouse if not selected
+                'warehouse_id' => $targetWh->id,
                 'product_id' => $product->id,
                 'quantity' => $boxesQuantity ?? 0,
                 'total_pieces' => $totalStockQty,
