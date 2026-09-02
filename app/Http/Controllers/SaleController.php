@@ -1266,34 +1266,45 @@ class SaleController extends Controller
                 // 'pkr' means fixed PKR amount;  anything else ('percent' or missing) = percentage
                 $discType = $request->discount_type[$index] ?? 'percent';
 
-                // Calculate Line Total (gross before discount)
+                // Calculate Line Gross (before discount)
                 $frontendGross = (float) ($request->gross_amount[$index] ?? 0);
+                $frontendNet   = (float) ($request->total[$index] ?? 0);
+
                 if ($frontendGross > 0) {
-                    $lineTotal = $frontendGross;
-                } else {
-                    $frontendNet = (float) ($request->total[$index] ?? 0);
-                    if ($frontendNet > 0) {
-                        $lineTotal = $frontendNet;
-                    } elseif ($sizeMode === 'by_cartons' && $ppb > 1) {
-                        $lineTotal = $storedQtyBox * $dbPrice;
+                    $lineGross = $frontendGross;
+                } elseif ($frontendNet > 0) {
+                    // frontendNet was already after discount in frontend
+                    if ($discType === 'pkr') {
+                        $lineGross = $frontendNet + $discount;
                     } else {
-                        $lineTotal = $totalPieces * $dbPrice;
+                        $lineGross = $discount < 100 ? round($frontendNet / (1 - ($discount / 100)), 2) : $frontendNet;
+                    }
+                } else {
+                    if ($sizeMode === 'by_cartons') {
+                        $subUnit = $request->sub_unit_mode[$index] ?? 'main';
+                        if ($subUnit === 'pcs') {
+                            $lineGross = $totalPieces * $dbPrice;
+                        } else {
+                            $lineGross = $storedQtyBox * $dbPrice;
+                        }
+                    } else {
+                        $lineGross = $totalPieces * $dbPrice;
                     }
                 }
 
                 // Apply Discount correctly
                 if ($discType === 'pkr') {
                     // User entered a fixed PKR amount
-                    $calcDiscountAmount  = $discount;
+                    $calcDiscountAmount  = min($lineGross, $discount);
                     // Back-calculate the equivalent percent for storage/reporting (avoid division by zero)
-                    $calcDiscountPercent = $lineTotal > 0 ? round(($discount / $lineTotal) * 100, 4) : 0;
+                    $calcDiscountPercent = $lineGross > 0 ? round(($calcDiscountAmount / $lineGross) * 100, 4) : 0;
                 } else {
                     // User entered a percentage
                     $calcDiscountPercent = $discount;
-                    $calcDiscountAmount  = round($lineTotal * $discount / 100, 2);
+                    $calcDiscountAmount  = round(($lineGross * $discount) / 100, 2);
                 }
 
-                $lineTotal = max(0, $lineTotal - $calcDiscountAmount);
+                $lineTotal = max(0, round($lineGross - $calcDiscountAmount, 2));
 
                 $colorVal = $request->color[$index] ?? null;
                 $sizeVal = $request->size_display[$index] ?? ($request->size[$index] ?? null);

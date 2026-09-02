@@ -809,7 +809,7 @@
                                                             class="form-control sales-amount text-end input-readonly fw-bold text-dark"
                                                             name="total[]" value="{{ $item->total }}" readonly
                                                             tabindex="-1">
-                                                        <input type="hidden" class="gross-amount" value="{{ $item->total + ($item->discount_amount ?? 0) }}">
+                                                        <input type="hidden" class="gross-amount" name="gross_amount[]" value="{{ $item->total + ($item->discount_amount ?? 0) }}">
                                                     </td>
 
                                                     <!-- Action -->
@@ -861,7 +861,7 @@
                                                     </div>
                                                     <input type="hidden" class="discount-amount" value="0">
                                                 </td>
-                                                <td class="col-amount"><input type="text" class="form-control sales-amount text-end input-readonly fw-bold text-dark" name="total[]" value="0" readonly tabindex="-1"><input type="hidden" class="gross-amount"></td>
+                                                <td class="col-amount"><input type="text" class="form-control sales-amount text-end input-readonly fw-bold text-dark" name="total[]" value="0" readonly tabindex="-1"><input type="hidden" class="gross-amount" name="gross_amount[]"></td>
                                                 <td class="col-action text-center"><button type="button" class="btn-del-row del-row" tabindex="-1" title="Delete Row">&times;</button></td>
                                             </tr>
                                         @endif

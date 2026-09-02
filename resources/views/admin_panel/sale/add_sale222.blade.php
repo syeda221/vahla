@@ -815,7 +815,7 @@
                                             <!-- NET AMOUNT -->
                                             <td class="col-amount">
                                                 <input type="text" class="form-control sales-amount text-end input-readonly fw-bold text-dark" name="total[]" value="0" readonly tabindex="-1">
-                                                <input type="hidden" class="gross-amount">
+                                                <input type="hidden" class="gross-amount" name="gross_amount[]">
                                             </td>
 
                                             <!-- ACTION -->
