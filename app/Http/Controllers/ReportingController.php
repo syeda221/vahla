@@ -763,6 +763,35 @@ class ReportingController extends Controller
                     $vName = $v['name'] ?? $product->item_name;
                     $vSize = $v['size'] ?? '-';
                     $vColor = $v['color'] ?? '-';
+                    $vUnit = $v['unit'] ?? ($product->unit->name ?? 'Pcs');
+                    $vConv = (float)($v['conv_factor'] ?? 1);
+                    $isBase = (int)($v['is_base_variant'] ?? 0);
+                    $ppb = (float)($product->pieces_per_box ?? 1);
+                    if ($ppb <= 0) $ppb = 1;
+
+                    // Determine Unit Badge
+                    $unitBadge = '';
+                    if ($product->size_mode === 'by_cartons') {
+                        $cartonPpb = $vConv > 1 ? $vConv : $ppb;
+                        $unitBadge = "Carton ({$cartonPpb} pcs/ctn)";
+                    } elseif ($product->size_mode === 'by_kg') {
+                        if ($isBase == 1 || $vConv == 1) {
+                            $unitBadge = "Kg (Base)";
+                        } else {
+                            $gm = (int) round($vConv * 1000);
+                            $unitBadge = "Kg / Pcs ({$gm}g)";
+                        }
+                    } elseif ($product->size_mode === 'by_gm') {
+                        $unitBadge = "Gm";
+                    } elseif ($product->size_mode === 'by_meter') {
+                        $unitBadge = "Meter";
+                    } elseif ($product->size_mode === 'by_feet') {
+                        $unitBadge = "Ft";
+                    } elseif ($product->size_mode === 'by_size') {
+                        $unitBadge = "M²";
+                    } else {
+                        $unitBadge = "Pcs";
+                    }
 
                     $soldQty = 0;
                     $soldQtyPieces = 0;
@@ -805,12 +834,70 @@ class ReportingController extends Controller
                     $costOfGoodsSold = $netQtyPieces * $vAveragePrice;
                     $grossProfit = $netSoldAmount - $costOfGoodsSold;
 
-                    if ($soldQty > 0 || $returnedQtyPieces > 0) {
+                    if ($soldQtyPieces > 0 || $returnedQtyPieces > 0) {
+                        // Format Sold Qty Display
+                        if ($product->size_mode === 'by_cartons') {
+                            $cartonPpb = $vConv > 1 ? $vConv : $ppb;
+                            $soldBoxes = (int) floor($soldQtyPieces / $cartonPpb);
+                            $soldLoose = (int) round($soldQtyPieces - ($soldBoxes * $cartonPpb));
+                            if ($soldBoxes > 0 && $soldLoose > 0) {
+                                $soldQtyDisplay = "{$soldBoxes} Ctn . {$soldLoose} Pcs";
+                            } elseif ($soldBoxes > 0) {
+                                $soldQtyDisplay = ($soldBoxes == 1) ? "1 Carton" : "{$soldBoxes} Cartons";
+                            } else {
+                                $soldQtyDisplay = "{$soldQtyPieces} Pcs";
+                            }
+
+                            $retBoxes = (int) floor($returnedQtyPieces / $cartonPpb);
+                            $retLoose = (int) round($returnedQtyPieces - ($retBoxes * $cartonPpb));
+                            if ($retBoxes > 0 && $retLoose > 0) {
+                                $retQtyDisplay = "{$retBoxes} Ctn . {$retLoose} Pcs";
+                            } elseif ($retBoxes > 0) {
+                                $retQtyDisplay = ($retBoxes == 1) ? "1 Carton" : "{$retBoxes} Cartons";
+                            } else {
+                                $retQtyDisplay = ($returnedQtyPieces > 0) ? "{$returnedQtyPieces} Pcs" : "0";
+                            }
+                        } elseif ($product->size_mode === 'by_kg') {
+                            if ($isBase == 1 || $vConv == 1) {
+                                $soldQtyDisplay = number_format($soldQty, 2) . " Kg";
+                                $retQtyDisplay = ($returnedQtyPieces > 0) ? (number_format($returnedQtyPieces, 2) . " Kg") : "0";
+                            } else {
+                                $soldQtyDisplay = ((int)$soldQtyPieces) . " Pcs";
+                                $retQtyDisplay = ($returnedQtyPieces > 0) ? (((int)$returnedQtyPieces) . " Pcs") : "0";
+                            }
+                        } elseif (in_array($product->size_mode, ['by_meter', 'by_feet', 'by_gm'])) {
+                            $uom = match($product->size_mode) {
+                                'by_meter' => 'Mtr',
+                                'by_feet' => 'Ft',
+                                'by_gm' => 'Gm',
+                                default => 'Pcs'
+                            };
+                            $soldQtyDisplay = number_format($soldQty, 2) . " {$uom}";
+                            $retQtyDisplay = ($returnedQtyPieces > 0) ? (number_format($returnedQtyPieces, 2) . " {$uom}") : "0";
+                        } else {
+                            $soldQtyDisplay = ((int)$soldQtyPieces) . " Pcs";
+                            $retQtyDisplay = ($returnedQtyPieces > 0) ? (((int)$returnedQtyPieces) . " Pcs") : "0";
+                        }
+
+                        // Format Item Display Name
+                        $displayName = $vName;
+                        $extras = [];
+                        if ($vSize !== '-' && !empty($vSize)) $extras[] = $vSize;
+                        if ($vColor !== '-' && !empty($vColor)) $extras[] = $vColor;
+                        if ($product->size_mode === 'by_kg' && $isBase != 1 && $vConv > 0 && $vConv != 1) {
+                            $gm = (int) round($vConv * 1000);
+                            $extras[] = "{$gm}g";
+                        }
+                        if (!empty($extras)) {
+                            $displayName .= ' (' . implode(' | ', $extras) . ')';
+                        }
+
                         $productStats[] = [
                             'item_code' => $product->item_code,
-                            'item_name' => $vName . ' (' . $vSize . ' | ' . $vColor . ')',
-                            'sold_qty' => $soldQty,
-                            'returned_qty' => $returnedQtyPieces,
+                            'item_name' => $displayName,
+                            'unit_badge' => $unitBadge,
+                            'sold_qty' => $soldQtyDisplay,
+                            'returned_qty' => $retQtyDisplay,
                             'revenue' => $netSoldAmount,
                             'avg_cost' => $vAveragePrice,
                             'cogs' => $costOfGoodsSold,
@@ -877,12 +964,72 @@ class ReportingController extends Controller
                 $costOfGoodsSold = $netQtyPieces * $averagePrice;
                 $grossProfit = $netSoldAmount - $costOfGoodsSold;
 
-                if ($soldQty > 0 || $returnedQtyPieces > 0) {
-                     $productStats[] = [
+                if ($soldQtyPieces > 0 || $returnedQtyPieces > 0) {
+                    $ppb = (float)($product->pieces_per_box ?? 1);
+                    if ($ppb <= 0) $ppb = 1;
+
+                    // Determine Unit Badge
+                    $unitBadge = '';
+                    if ($product->size_mode === 'by_cartons') {
+                        $unitBadge = "Carton ({$ppb} pcs/ctn)";
+                    } elseif ($product->size_mode === 'by_kg') {
+                        $unitBadge = "Kg";
+                    } elseif ($product->size_mode === 'by_gm') {
+                        $unitBadge = "Gm";
+                    } elseif ($product->size_mode === 'by_meter') {
+                        $unitBadge = "Meter";
+                    } elseif ($product->size_mode === 'by_feet') {
+                        $unitBadge = "Ft";
+                    } elseif ($product->size_mode === 'by_size') {
+                        $unitBadge = "M²";
+                    } else {
+                        $unitBadge = "Pcs";
+                    }
+
+                    // Format Sold / Returned Qty
+                    if ($product->size_mode === 'by_cartons') {
+                        $soldBoxes = (int) floor($soldQtyPieces / $ppb);
+                        $soldLoose = (int) round($soldQtyPieces - ($soldBoxes * $ppb));
+                        if ($soldBoxes > 0 && $soldLoose > 0) {
+                            $soldQtyDisplay = "{$soldBoxes} Ctn . {$soldLoose} Pcs";
+                        } elseif ($soldBoxes > 0) {
+                            $soldQtyDisplay = ($soldBoxes == 1) ? "1 Carton" : "{$soldBoxes} Cartons";
+                        } else {
+                            $soldQtyDisplay = "{$soldQtyPieces} Pcs";
+                        }
+
+                        $retBoxes = (int) floor($returnedQtyPieces / $ppb);
+                        $retLoose = (int) round($returnedQtyPieces - ($retBoxes * $ppb));
+                        if ($retBoxes > 0 && $retLoose > 0) {
+                            $retQtyDisplay = "{$retBoxes} Ctn . {$retLoose} Pcs";
+                        } elseif ($retBoxes > 0) {
+                            $retQtyDisplay = ($retBoxes == 1) ? "1 Carton" : "{$retBoxes} Cartons";
+                        } else {
+                            $retQtyDisplay = ($returnedQtyPieces > 0) ? "{$returnedQtyPieces} Pcs" : "0";
+                        }
+                    } elseif ($product->size_mode === 'by_kg') {
+                        $soldQtyDisplay = number_format($soldQty, 2) . " Kg";
+                        $retQtyDisplay = ($returnedQtyPieces > 0) ? (number_format($returnedQtyPieces, 2) . " Kg") : "0";
+                    } elseif (in_array($product->size_mode, ['by_meter', 'by_feet', 'by_gm'])) {
+                        $uom = match($product->size_mode) {
+                            'by_meter' => 'Mtr',
+                            'by_feet' => 'Ft',
+                            'by_gm' => 'Gm',
+                            default => 'Pcs'
+                        };
+                        $soldQtyDisplay = number_format($soldQty, 2) . " {$uom}";
+                        $retQtyDisplay = ($returnedQtyPieces > 0) ? (number_format($returnedQtyPieces, 2) . " {$uom}") : "0";
+                    } else {
+                        $soldQtyDisplay = ((int)$soldQtyPieces) . " Pcs";
+                        $retQtyDisplay = ($returnedQtyPieces > 0) ? (((int)$returnedQtyPieces) . " Pcs") : "0";
+                    }
+
+                    $productStats[] = [
                         'item_code' => $product->item_code,
                         'item_name' => $product->item_name,
-                        'sold_qty' => $soldQty,
-                        'returned_qty' => $returnedQtyPieces,
+                        'unit_badge' => $unitBadge,
+                        'sold_qty' => $soldQtyDisplay,
+                        'returned_qty' => $retQtyDisplay,
                         'revenue' => $netSoldAmount,
                         'avg_cost' => $averagePrice,
                         'cogs' => $costOfGoodsSold,
@@ -2576,7 +2723,39 @@ class ReportingController extends Controller
             return strtolower(trim($itemColor)) === strtolower(trim($variant['color'] ?? ''));
         }
 
-        // Compare name, color and size
+        // 1. Compare barcodes if present on both sides
+        $vBarcode = trim($variant['barcode'] ?? '');
+        $itemBarcode = trim($itemVariant['barcode'] ?? '');
+        if (!empty($vBarcode) && !empty($itemBarcode)) {
+            return $vBarcode === $itemBarcode;
+        }
+
+        // 2. Compare base variant status if present
+        if (isset($variant['is_base_variant']) && isset($itemVariant['is_base_variant'])) {
+            $vIsBase = (int) $variant['is_base_variant'];
+            $itemIsBase = (int) $itemVariant['is_base_variant'];
+            if ($vIsBase !== $itemIsBase) {
+                return false;
+            }
+        }
+
+        // 3. Compare conversion factors if present
+        if (isset($variant['conv_factor']) && isset($itemVariant['conv_factor'])) {
+            $vConv = (float) $variant['conv_factor'];
+            $itemConv = (float) $itemVariant['conv_factor'];
+            if ($vConv > 0 && $itemConv > 0 && abs($vConv - $itemConv) > 0.0001) {
+                return false;
+            }
+        }
+
+        // 4. Compare unit names if present
+        $vUnit = strtolower(trim($variant['unit'] ?? ''));
+        $itemUnit = strtolower(trim($itemVariant['unit'] ?? ''));
+        if (!empty($vUnit) && !empty($itemUnit) && $vUnit !== $itemUnit) {
+            return false;
+        }
+
+        // 5. Compare name, color and size
         $vColor = strtolower(trim($variant['color'] ?? '-'));
         $vSize = strtolower(trim($variant['size'] ?? '-'));
         $vName = strtolower(trim($variant['name'] ?? ''));

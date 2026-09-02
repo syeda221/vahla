@@ -493,10 +493,18 @@ $(document).ready(function() {
 
         data.products.forEach(function(r, idx) {
             let profitColor = parseFloat(r.profit) >= 0 ? '#059669' : '#dc2626';
+            
+            let itemNameHtml = `
+                <div>
+                    <div class="fw-bold text-dark" style="font-size:12.5px;">${r.item_name}</div>
+                    ${r.unit_badge ? `<span class="badge bg-light text-secondary border px-1.5 py-0.5 mt-1" style="font-size:10px; font-weight:600;"><i class="fas fa-tag me-1 text-primary"></i>${r.unit_badge}</span>` : ''}
+                </div>
+            `;
+
             profitTable.row.add({
                 item_code: '<span class="fw-semibold text-primary font-monospace small">' + r.item_code + '</span>',
-                item_name: r.item_name,
-                sold_qty: r.sold_qty,
+                item_name: itemNameHtml,
+                sold_qty: '<span class="fw-bold text-dark">' + r.sold_qty + '</span>',
                 returned_qty: '<span class="text-danger fw-bold">' + (r.returned_qty || 0) + '</span>',
                 revenue: 'Rs ' + fmt(r.revenue),
                 cogs: 'Rs ' + fmt(r.cogs),
@@ -515,6 +523,7 @@ $(document).ready(function() {
                         <div class="d-flex align-items-center gap-1">
                             <span class="badge bg-light text-muted border" style="font-size: 10px;">#${idx+1}</span>
                             <span class="badge bg-light text-primary border font-monospace fw-bold" style="font-size: 11px;">${r.item_code}</span>
+                            ${r.unit_badge ? `<span class="badge bg-light text-secondary border px-1" style="font-size: 9.5px;">${r.unit_badge}</span>` : ''}
                         </div>
                         <strong style="color:${profitColor}; font-size:12px;">Profit: Rs ${fmt(r.profit)}</strong>
                     </div>
