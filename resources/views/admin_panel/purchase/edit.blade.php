@@ -456,7 +456,7 @@
                                                 $variantNameDisplay = $item->product->item_name ?? 'Product';
                                                 $variantInfo = '';
                                                 $rawVariantData = $item->color ?? '';
-                                                $unitName = $item->unit ?? ($item->product->unit->name ?? 'Pcs');
+                                                $unitName = !empty($item->unit) ? $item->unit : ($item->product->unit->name ?? 'Pcs');
 
                                                 if (!empty($item->color)) {
                                                     $decodedColor = base64_decode($item->color, true);
@@ -468,7 +468,9 @@
                                                         $vName = $vData['name'] ?? '';
                                                         $vColorName = $vData['color'] ?? '';
                                                         $vSize = $vData['size'] ?? '';
-                                                        $unitName = $vData['unit'] ?? $unitName;
+                                                        if (empty($item->unit) && !empty($vData['unit'])) {
+                                                            $unitName = $vData['unit'];
+                                                        }
                                                         $vParts = [];
                                                         if ($vName && $vName !== ($item->product->item_name ?? '')) {
                                                             $variantNameDisplay = $vName;
