@@ -148,7 +148,38 @@
         .premium-table {
             border: 2px solid #475569 !important;
             border-radius: 8px !important;
-            overflow: hidden;
+            overflow: visible !important;
+        }
+
+        /* Prevent Dropdowns from Being Clipped */
+        .table-responsive {
+            border-radius: 8px !important;
+            overflow: visible !important;
+            min-height: 380px;
+        }
+
+        /* Premium Dropdown Menu Customizations */
+        .dropdown-menu {
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+            padding: 6px 0 !important;
+            z-index: 1060 !important;
+        }
+        .dropdown-item {
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            color: #475569 !important;
+            padding: 8px 16px !important;
+            transition: all 0.15s ease-in-out !important;
+        }
+        .dropdown-item:hover {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+        .dropdown-divider {
+            border-top: 1.5px solid #e2e8f0 !important;
+            margin: 6px 0 !important;
         }
         
         .premium-table thead th {

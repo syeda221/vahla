@@ -525,7 +525,14 @@
         let customerName = "Select Customer";
         const customerVal = $('#customerSelect').val();
         if (customerVal) {
-            const customerData = $('#customerSelect').select2 ? $('#customerSelect').select2('data') : null;
+            let customerData = null;
+            if ($('#customerSelect').hasClass('select2-hidden-accessible') || $('#customerSelect').data('select2')) {
+                try {
+                    customerData = $('#customerSelect').select2('data');
+                } catch(e) {
+                    customerData = null;
+                }
+            }
             if (customerData && customerData.length > 0 && customerData[0].customer) {
                 customerName = customerData[0].customer.customer_name;
             } else {

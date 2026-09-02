@@ -652,6 +652,67 @@
                                                         $loose = $item->total_pieces;
                                                     }
 
+                                                    // Determine Sub-Unit Mode and Toggle Button configuration for Edit
+                                                    $unitMode = 'main';
+                                                    $toggleText = 'Kg';
+                                                    $toggleBtnClass = 'd-none';
+                                                    $displayQty = $cartons;
+                                                    $isPcs = false;
+
+                                                    if ($sizeMode === 'by_cartons') {
+                                                        $piecePrice = (float)($prod->sale_price_per_piece ?? 0);
+                                                        if ($piecePrice <= 0 && $item->color) {
+                                                            try {
+                                                                $vd = json_decode(base64_decode($item->color), true);
+                                                                $piecePrice = (float)($vd['sale_price'] ?? 0);
+                                                            } catch (\Exception $e) {}
+                                                        }
+                                                        $cartonPrice = $piecePrice > 0 ? ($piecePrice * $ppb) : 0;
+
+                                                        if ($cartons == 0 && $item->total_pieces > 0) {
+                                                            $isPcs = true;
+                                                        } elseif ($cartonPrice > 0 && (float)$item->price < ($cartonPrice * 0.75)) {
+                                                            $isPcs = true;
+                                                        }
+
+                                                        if ($isPcs) {
+                                                            $unitMode = 'pcs';
+                                                            $toggleText = 'Pcs';
+                                                            $toggleBtnClass = 'btn-outline-info';
+                                                            $displayQty = (float) $item->total_pieces;
+                                                        } else {
+                                                            $unitMode = 'ctn';
+                                                            $toggleText = 'Ctn';
+                                                            $toggleBtnClass = 'btn-outline-success';
+                                                            $displayQty = $loose > 0 ? "{$cartons}.{$loose}" : $cartons;
+                                                            if ($cartons == 0 && $loose == 0 && (float)$item->qty > 0) {
+                                                                $displayQty = (float)$item->qty;
+                                                            }
+                                                        }
+                                                    } elseif ($sizeMode === 'by_kg') {
+                                                        $unitMode = 'kg';
+                                                        $toggleText = 'Kg';
+                                                        $toggleBtnClass = 'btn-outline-primary';
+                                                        $displayQty = (float) ($item->qty ?: $item->total_pieces);
+                                                    } elseif ($sizeMode === 'by_gm') {
+                                                        $unitMode = 'gm';
+                                                        $toggleText = 'Gm';
+                                                        $toggleBtnClass = 'btn-outline-info';
+                                                        $displayQty = (float) ($item->qty ?: $item->total_pieces);
+                                                    } elseif ($sizeMode === 'by_feet') {
+                                                        $unitMode = 'ft';
+                                                        $toggleText = 'Ft';
+                                                        $toggleBtnClass = 'btn-outline-primary';
+                                                        $displayQty = (float) ($item->qty ?: $item->total_pieces);
+                                                    } elseif ($sizeMode === 'by_meter') {
+                                                        $unitMode = 'm';
+                                                        $toggleText = 'Mtr';
+                                                        $toggleBtnClass = 'btn-outline-primary';
+                                                        $displayQty = (float) ($item->qty ?: $item->total_pieces);
+                                                    } else {
+                                                        $displayQty = (float) ($item->qty ?: $item->total_pieces);
+                                                    }
+
                                                     $selStockDisp = '';
                                                     if ($item->warehouse_id) {
                                                         $selWs = $prod?->warehouseStocks
@@ -724,13 +785,13 @@
                                                     <td style="width:85px;" class="col-qty-wrapper">
                                                         <div class="d-flex align-items-center gap-1">
                                                             <input type="number" step="any" class="form-control carton-qty text-start fw-bold"
-                                                                name="carton_qty[]" value="{{ $cartons }}" placeholder="0" min="0" style="flex: 1; min-width: 0; padding-left: 6px;">
-                                                            <button type="button" class="btn btn-sm btn-outline-primary qty-unit-toggle px-1 py-0 d-none" 
-                                                                    data-unit-mode="main" title="Toggle Unit" style="font-size: 0.65rem; height: 26px; min-width: 28px; font-weight: 700; border-radius: 4px; flex-shrink: 0;">
-                                                                Kg
+                                                                name="carton_qty[]" value="{{ $displayQty }}" placeholder="0" min="0" style="flex: 1; min-width: 0; padding-left: 6px;">
+                                                            <button type="button" class="btn btn-sm {{ $toggleBtnClass }} qty-unit-toggle px-1 py-0 {{ $toggleBtnClass === 'd-none' ? 'd-none' : '' }}" 
+                                                                    data-unit-mode="{{ $unitMode }}" title="Toggle Unit" style="font-size: 0.65rem; height: 26px; min-width: 28px; font-weight: 700; border-radius: 4px; flex-shrink: 0;">
+                                                                {{ $toggleText }}
                                                             </button>
                                                         </div>
-                                                        <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
+                                                        <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="{{ $unitMode }}">
                                                     </td>
 
                                                     <!-- Loose Pieces (hidden) -->
@@ -763,7 +824,7 @@
                                                             class="form-control total-pieces text-end input-readonly fw-semibold"
                                                             name="total_pieces[]" readonly value="{{ $item->total_pieces }}"
                                                             placeholder="0" tabindex="-1">
-                                                        <input type="hidden" class="sales-qty" name="qty[]" value="{{ $cartons . ($loose > 0 ? '.' . $loose : '') }}">
+                                                        <input type="hidden" class="sales-qty" name="qty[]" value="{{ $isPcs ? $item->total_pieces : ($cartons . ($loose > 0 ? '.' . $loose : '')) }}">
                                                     </td>
 
                                                     <!-- Price/Piece -->
@@ -1094,6 +1155,8 @@
 
     <script>
         $(document).ready(function() {
+            window.isEditModeLoading = true;
+
             // --- Initial Setup ---
             $('#salesTableBody tr').each(function() {
                 initProductSelect2($(this).find('.product'));
@@ -1105,6 +1168,8 @@
                     computeRow($(this));
                 }
             });
+
+            window.isEditModeLoading = false;
 
             // Recompute Receipts and updateGrandTotals
             if (typeof window.recomputeReceipts === 'function') {
