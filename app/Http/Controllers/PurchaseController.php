@@ -507,22 +507,28 @@ class PurchaseController extends Controller
         $request->validate([
             'purchase_ids' => 'required|array',
             'purchase_ids.*' => 'exists:purchases,id',
-            'discount_percentage' => 'required|numeric|min:0|max:100',
+            'discount_value' => 'nullable|numeric|min:0',
+            'discount_percentage' => 'nullable|numeric|min:0',
+            'discount_type' => 'nullable|in:percentage,fixed',
         ]);
 
         $purchaseIds = $request->purchase_ids;
-        $percentage = (float)$request->discount_percentage;
+        $discountType = $request->input('discount_type', 'percentage');
+        $val = (float) ($request->filled('discount_value') ? $request->discount_value : $request->discount_percentage);
 
         try {
-            DB::transaction(function () use ($purchaseIds, $percentage) {
+            DB::transaction(function () use ($purchaseIds, $discountType, $val) {
                 foreach ($purchaseIds as $id) {
                     $purchase = Purchase::findOrFail($id);
                     
                     // Original net amount is the current net_amount + current additional_discount
                     $originalNet = (float)$purchase->net_amount + (float)$purchase->additional_discount;
                     
-                    // Calculate absolute discount based on user-supplied percentage
-                    $newAdditionalDiscount = round($originalNet * ($percentage / 100), 2);
+                    if ($discountType === 'fixed') {
+                        $newAdditionalDiscount = min($originalNet, round($val, 2));
+                    } else {
+                        $newAdditionalDiscount = round($originalNet * ($val / 100), 2);
+                    }
                     
                     $oldAdditionalDiscount = (float)$purchase->additional_discount;
                     $diff = $newAdditionalDiscount - $oldAdditionalDiscount;

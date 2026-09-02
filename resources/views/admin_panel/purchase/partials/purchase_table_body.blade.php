@@ -1,6 +1,6 @@
 @foreach ($Purchase as $purchase)
-    {{-- Desktop Table Row (≥ 768px) --}}
-    <tr class="border-bottom-0 d-none d-md-table-row">
+    {{-- Table Row --}}
+    <tr class="border-bottom-0">
         <td class="ps-3 text-center" style="width: 40px; vertical-align: middle;">
             <input type="checkbox" class="select-purchase-row" value="{{ $purchase->id }}" style="cursor: pointer; width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin: 0 auto !important;">
         </td>
@@ -160,96 +160,6 @@
                         @endcan
                     @endif
                 </ul>
-            </div>
-        </td>
-    </tr>
-
-    {{-- Mobile Table Card Row (< 768px) --}}
-    <tr class="d-table-row d-md-none border-0">
-        <td colspan="14" class="p-0 border-0 bg-transparent">
-            <div class="purch-mcard p-3 bg-white rounded-3 border mb-3 shadow-sm">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <input type="checkbox" class="select-purchase-row" value="{{ $purchase->id }}" style="width: 16px; height: 16px;">
-                        <span class="fw-bold text-dark fs-6">#{{ $purchase->invoice_no }}</span>
-                    </div>
-                    @if ($purchase->status_purchase == 'draft')
-                        <span class="badge bg-warning text-dark">Draft</span>
-                    @elseif ($purchase->status_purchase == 'Returned')
-                        <span class="badge bg-danger">Returned</span>
-                    @else
-                        <span class="badge bg-success">Approved</span>
-                    @endif
-                </div>
-
-                <div class="d-flex align-items-center gap-2 my-2">
-                    <div class="avatar-circle bg-info-subtle text-info fw-bold d-flex align-items-center justify-content-center rounded-circle" style="width: 32px; height: 32px; font-size: 13px;">
-                        {{ strtoupper(substr($purchase->vendor->name ?? 'V', 0, 1)) }}
-                    </div>
-                    <div>
-                        <div class="fw-bold text-dark small">{{ $purchase->vendor->name ?? 'N/A' }}</div>
-                        <div class="text-muted small" style="font-size: 11px;">
-                            <i class="far fa-calendar-alt me-1"></i> {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}
-                            <span class="ms-2"><i class="fas fa-building me-1"></i> {{ $purchase->warehouse->warehouse_name ?? 'Main' }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row g-2 bg-light rounded-2 p-2 my-2 text-center" style="font-size: 0.8rem;">
-                    <div class="col-4">
-                        <div class="text-muted small">Net Total</div>
-                        <div class="fw-bold text-dark">Rs. {{ number_format($purchase->total_returned > 0 ? $purchase->updated_net_amount : $purchase->net_amount, 2) }}</div>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-muted small">Paid</div>
-                        <div class="fw-bold text-success">Rs. {{ number_format($purchase->paid_amount, 2) }}</div>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-muted small">Due</div>
-                        @php $displayDueMob = $purchase->total_returned > 0 ? $purchase->updated_due_amount : $purchase->due_amount; @endphp
-                        <div class="fw-bold {{ $displayDueMob > 0 ? 'text-danger' : 'text-success' }}">
-                            {{ $displayDueMob > 0 ? 'Rs. '.number_format($displayDueMob, 2) : 'Paid' }}
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Mobile Action Buttons Grid --}}
-                <div class="d-grid gap-2 mt-2" style="display: grid; grid-template-columns: 1fr 1fr;">
-                    @can('purchases.edit')
-                        <a href="{{ route('purchase.edit', $purchase->id) }}" class="btn btn-sm btn-outline-primary fw-bold" style="border-radius: 8px;">
-                            <i class="fas fa-edit me-1"></i> Edit (Simple)
-                        </a>
-                        <a href="{{ route('purchase-pos.index') }}?edit_id={{ $purchase->id }}" class="btn btn-sm btn-outline-success fw-bold" style="border-radius: 8px;">
-                            <i class="fas fa-cash-register me-1"></i> Edit (POS)
-                        </a>
-                    @endcan
-
-                    @if ($purchase->status_purchase != 'draft')
-                        @can('purchases.view')
-                            <a href="{{ route('purchase.invoice', $purchase->id) }}" class="btn btn-sm btn-outline-info fw-bold" style="border-radius: 8px;">
-                                <i class="fas fa-file-invoice me-1"></i> Invoice
-                            </a>
-                            <a href="{{ route('purchase.receipt', $purchase->id) }}" class="btn btn-sm btn-outline-secondary fw-bold" style="border-radius: 8px;">
-                                <i class="fas fa-receipt me-1"></i> Receipt
-                            </a>
-                        @endcan
-                    @else
-                        @can('purchases.create')
-                            <a href="{{ route('purchase.confirm', $purchase->id) }}" class="btn btn-sm btn-success fw-bold confirm-purchase-btn" style="border-radius: 8px;">
-                                <i class="fas fa-check-circle me-1"></i> Confirm
-                            </a>
-                        @endcan
-                        @can('purchases.delete')
-                            <form action="{{ route('purchase.destroy', $purchase->id) }}" method="POST" class="d-inline delete-form">
-                                @csrf
-                                @method('DELETE')
-                                <button type="button" class="btn btn-sm btn-outline-danger fw-bold delete-btn w-100" style="border-radius: 8px;">
-                                    <i class="fas fa-trash-alt me-1"></i> Delete
-                                </button>
-                            </form>
-                        @endcan
-                    @endif
-                </div>
             </div>
         </td>
     </tr>
