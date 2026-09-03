@@ -647,14 +647,14 @@ class ProductController extends Controller
                 $totalStockQty = ($piecesPerBox * $boxesQuantity) + $loosePieces;
             }
 
-            $inputSalePc = (float) $request->sale_price_per_box; // Actually per piece input in this mode
-            $inputPurchPc = (float) $request->purchase_price_per_piece;
+            $inputSaleCtn = (float) $request->sale_price_per_box;
+            $inputPurchCtn = (float) $request->purchase_price_per_piece;
 
-            $salePricePerPiece = $inputSalePc;
-            $salePricePerBox = $inputSalePc * $piecesPerBox;
+            $salePricePerBox = $inputSaleCtn;
+            $salePricePerPiece = $piecesPerBox > 1 ? ($inputSaleCtn / $piecesPerBox) : $inputSaleCtn;
 
-            $purchasePricePerPiece = $inputPurchPc;
-            $purchasePricePerBox = $inputPurchPc * $piecesPerBox;
+            $purchasePricePerBox = $inputPurchCtn;
+            $purchasePricePerPiece = $piecesPerBox > 1 ? ($inputPurchCtn / $piecesPerBox) : $inputPurchCtn;
 
         } else {
             // Treat by_pieces, by_kg, by_meter, by_gm as piece-based mode
@@ -769,15 +769,25 @@ class ProductController extends Controller
                             $variantStockSum += $vStock;
                         }
 
+                        $vSalePrice = (float)($sale_prices[$i] ?? 0);
+                        $vPurchPrice = (float)($purch_prices[$i] ?? 0);
+                        $vWholesalePrice = (float)($wholesale_prices[$i] ?? 0);
+
+                        if (($mode === 'by_cartons' || strtolower($units[$i] ?? '') === 'carton') && $vConvFactor > 1) {
+                            $vSalePrice = round($vSalePrice / $vConvFactor, 4);
+                            $vPurchPrice = round($vPurchPrice / $vConvFactor, 4);
+                            $vWholesalePrice = round($vWholesalePrice / $vConvFactor, 4);
+                        }
+
                         $variants[] = [
                             'name' => $names[$i],
                             'size' => $sizes[$i] ?? '-',
                             'color' => $colors[$i] ?? '-',
                             'stock' => $vStock,
-                            'sale_price' => $sale_prices[$i] ?? 0,
-                            'wholesale_price' => $wholesale_prices[$i] ?? 0,
+                            'sale_price' => $vSalePrice,
+                            'wholesale_price' => $vWholesalePrice,
                             'weight_per_piece' => $weight_factors[$i] ?? 0,
-                            'purch_price' => $purch_prices[$i] ?? 0,
+                            'purch_price' => $vPurchPrice,
                             'alert' => $alerts[$i] ?? 0,
                             'barcode' => $barcodes[$i] ?? '',
                             'conv_factor' => $vConvFactor,
@@ -793,6 +803,14 @@ class ProductController extends Controller
                         $piecesPerBox = (int)$baseConvForCarton;
                     }
                     $boxesQuantity = $piecesPerBox > 0 ? $totalStockQty / $piecesPerBox : $totalStockQty;
+
+                    $baseVariant = collect($variants)->firstWhere('is_base_variant', 1) ?? $variants[0];
+                    if ($baseVariant && ($mode === 'by_cartons' || strtolower($baseVariant['unit'] ?? '') === 'carton')) {
+                        $salePricePerPiece = (float)($baseVariant['sale_price'] ?? 0);
+                        $purchasePricePerPiece = (float)($baseVariant['purch_price'] ?? 0);
+                        $purchasePricePerBox = round($purchasePricePerPiece * $piecesPerBox, 2);
+                        $salePricePerBox = round($salePricePerPiece * $piecesPerBox, 2);
+                    }
                 }
             }
 
@@ -1033,14 +1051,14 @@ class ProductController extends Controller
                 $totalStockQty = ($piecesPerBox * $boxesQuantity) + $loosePieces;
             }
 
-            $inputSalePc = (float) $request->sale_price_per_box;
-            $inputPurchPc = (float) $request->purchase_price_per_piece;
+            $inputSaleCtn = (float) $request->sale_price_per_box;
+            $inputPurchCtn = (float) $request->purchase_price_per_piece;
 
-            $salePricePerPiece = $inputSalePc;
-            $salePricePerBox = $inputSalePc * $piecesPerBox;
+            $salePricePerBox = $inputSaleCtn;
+            $salePricePerPiece = $piecesPerBox > 1 ? ($inputSaleCtn / $piecesPerBox) : $inputSaleCtn;
 
-            $purchasePricePerPiece = $inputPurchPc;
-            $purchasePricePerBox = $inputPurchPc * $piecesPerBox;
+            $purchasePricePerBox = $inputPurchCtn;
+            $purchasePricePerPiece = $piecesPerBox > 1 ? ($inputPurchCtn / $piecesPerBox) : $inputPurchCtn;
 
             $totalPrice = $totalStockQty * $salePricePerPiece;
             $totalPurchasePrice = $totalStockQty * $purchasePricePerPiece;
@@ -1135,15 +1153,25 @@ class ProductController extends Controller
                             $baseConvForCarton = $vConvFactor;
                         }
 
+                        $vSalePrice = (float)($sale_prices[$i] ?? 0);
+                        $vPurchPrice = (float)($purch_prices[$i] ?? 0);
+                        $vWholesalePrice = (float)($wholesale_prices[$i] ?? 0);
+
+                        if (($mode === 'by_cartons' || strtolower($units[$i] ?? '') === 'carton') && $vConvFactor > 1) {
+                            $vSalePrice = round($vSalePrice / $vConvFactor, 4);
+                            $vPurchPrice = round($vPurchPrice / $vConvFactor, 4);
+                            $vWholesalePrice = round($vWholesalePrice / $vConvFactor, 4);
+                        }
+
                         $variants[] = [
                             'name' => $names[$i],
                             'size' => $sizes[$i] ?? '-',
                             'color' => $colors[$i] ?? '-',
                             'stock' => $stocks[$i] ?? 0,
-                            'sale_price' => $sale_prices[$i] ?? 0,
-                            'wholesale_price' => $wholesale_prices[$i] ?? 0,
+                            'sale_price' => $vSalePrice,
+                            'wholesale_price' => $vWholesalePrice,
                             'weight_per_piece' => $weight_factors[$i] ?? 0,
-                            'purch_price' => $purch_prices[$i] ?? 0,
+                            'purch_price' => $vPurchPrice,
                             'alert' => $alerts[$i] ?? 0,
                             'barcode' => $barcodes[$i] ?? '',
                             'conv_factor' => $vConvFactor,
@@ -1154,6 +1182,13 @@ class ProductController extends Controller
                 }
                 if ($mode === 'by_cartons' && $baseConvForCarton) {
                     $piecesPerBox = (int)$baseConvForCarton;
+                    $baseVariant = collect($variants)->firstWhere('is_base_variant', 1) ?? $variants[0];
+                    if ($baseVariant) {
+                        $salePricePerPiece = (float)($baseVariant['sale_price'] ?? 0);
+                        $purchasePricePerPiece = (float)($baseVariant['purch_price'] ?? 0);
+                        $purchasePricePerBox = round($purchasePricePerPiece * $piecesPerBox, 2);
+                        $salePricePerBox = round($salePricePerPiece * $piecesPerBox, 2);
+                    }
                 }
             }
 
@@ -1475,6 +1510,17 @@ class ProductController extends Controller
                     'is_base_variant' => 1,
                 ]
             ];
+        }
+
+        if ($product->size_mode === 'by_cartons' && !empty($variants)) {
+            foreach ($variants as &$v) {
+                $cf = (float)($v['conv_factor'] ?? $ppb);
+                if ($cf > 1) {
+                    if (isset($v['sale_price']) && (float)$v['sale_price'] > 0) $v['sale_price'] = (string) round((float)$v['sale_price'] * $cf, 2);
+                    if (isset($v['purch_price']) && (float)$v['purch_price'] > 0) $v['purch_price'] = (string) round((float)$v['purch_price'] * $cf, 2);
+                    if (isset($v['wholesale_price']) && (float)$v['wholesale_price'] > 0) $v['wholesale_price'] = (string) round((float)$v['wholesale_price'] * $cf, 2);
+                }
+            }
         }
 
         return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'variants'));
