@@ -1233,14 +1233,16 @@ class SaleController extends Controller
                             }
                             if (!$liveVariant && !empty($vData['name'])) {
                                 $liveVariant = collect($prodVariants)->first(function($v) use ($vData) {
-                                    return ($v['name'] ?? '') === ($vData['name'] ?? '') &&
-                                           ($v['size'] ?? '-') === ($vData['size'] ?? '-') &&
-                                           ($v['color'] ?? '-') === ($vData['color'] ?? '-');
+                                    $n1 = strtolower(trim($v['name'] ?? ''));
+                                    $n2 = strtolower(trim($vData['name'] ?? ''));
+                                    return $n1 === $n2 || ($n1 && $n2 && (str_contains($n1, $n2) || str_contains($n2, $n1)));
                                 });
                             }
                             if (!$liveVariant && !empty($vData['size']) && $vData['size'] !== '-') {
                                 $liveVariant = collect($prodVariants)->first(function($v) use ($vData) {
-                                    return ($v['size'] ?? '-') === ($vData['size'] ?? '-');
+                                    $s1 = strtolower(trim($v['size'] ?? ''));
+                                    $s2 = strtolower(trim($vData['size'] ?? ''));
+                                    return $s1 === $s2 || ($s1 && $s2 && (str_starts_with($s1, $s2) || str_starts_with($s2, $s1)));
                                 });
                             }
                             if (!$liveVariant && count($prodVariants) === 1) {
@@ -2073,14 +2075,16 @@ class SaleController extends Controller
                     }
                     if (!$liveVariant && !empty($variant['name'])) {
                         $liveVariant = collect($prodVariants)->first(function($v) use ($variant) {
-                            return ($v['name'] ?? '') === ($variant['name'] ?? '') &&
-                                   ($v['size'] ?? '-') === ($variant['size'] ?? '-') &&
-                                   ($v['color'] ?? '-') === ($variant['color'] ?? '-');
+                            $n1 = strtolower(trim($v['name'] ?? ''));
+                            $n2 = strtolower(trim($variant['name'] ?? ''));
+                            return $n1 === $n2 || ($n1 && $n2 && (str_contains($n1, $n2) || str_contains($n2, $n1)));
                         });
                     }
                     if (!$liveVariant && !empty($variant['size']) && $variant['size'] !== '-') {
                         $liveVariant = collect($prodVariants)->first(function($v) use ($variant) {
-                            return ($v['size'] ?? '-') === ($variant['size'] ?? '-');
+                            $s1 = strtolower(trim($v['size'] ?? ''));
+                            $s2 = strtolower(trim($variant['size'] ?? ''));
+                            return $s1 === $s2 || ($s1 && $s2 && (str_starts_with($s1, $s2) || str_starts_with($s2, $s1)));
                         });
                     }
                     if (!$liveVariant && count($prodVariants) === 1) {

@@ -657,14 +657,16 @@
                                                             }
                                                             if (!$liveVariant && !empty($variantData['name'])) {
                                                                 $liveVariant = collect($prodVariants)->first(function($v) use ($variantData) {
-                                                                    return ($v['name'] ?? '') === ($variantData['name'] ?? '') &&
-                                                                           ($v['size'] ?? '-') === ($variantData['size'] ?? '-') &&
-                                                                           ($v['color'] ?? '-') === ($variantData['color'] ?? '-');
+                                                                    $n1 = strtolower(trim($v['name'] ?? ''));
+                                                                    $n2 = strtolower(trim($variantData['name'] ?? ''));
+                                                                    return $n1 === $n2 || ($n1 && $n2 && (str_contains($n1, $n2) || str_contains($n2, $n1)));
                                                                 });
                                                             }
                                                             if (!$liveVariant && !empty($variantData['size']) && $variantData['size'] !== '-') {
                                                                 $liveVariant = collect($prodVariants)->first(function($v) use ($variantData) {
-                                                                    return ($v['size'] ?? '-') === ($variantData['size'] ?? '-');
+                                                                    $s1 = strtolower(trim($v['size'] ?? ''));
+                                                                    $s2 = strtolower(trim($variantData['size'] ?? ''));
+                                                                    return $s1 === $s2 || ($s1 && $s2 && (str_starts_with($s1, $s2) || str_starts_with($s2, $s1)));
                                                                 });
                                                             }
                                                             if (!$liveVariant && count($prodVariants) === 1) {
@@ -678,7 +680,7 @@
                                                         $ppb = (float)$liveVariant['conv_factor'];
                                                     } elseif ($liveVariant && !empty($liveVariant['pieces_per_box']) && (float)$liveVariant['pieces_per_box'] > 0) {
                                                         $ppb = (float)$liveVariant['pieces_per_box'];
-                                                    } elseif ($prod && $prod->pieces_per_box > 0) {
+                                                    } elseif ($prod && (float)$prod->pieces_per_box > 0) {
                                                         $ppb = (float)$prod->pieces_per_box;
                                                     } elseif (!empty($variantData['conv_factor']) && (float)$variantData['conv_factor'] > 0) {
                                                         $ppb = (float)$variantData['conv_factor'];
