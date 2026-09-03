@@ -854,7 +854,7 @@
                                                     <!-- Loose Pieces (hidden) -->
                                                     <td style="width:70px;" class="d-none">
                                                         <input type="number" class="form-control loose-pcs-input text-end"
-                                                            name="loose_qty[]" value="{{ $loose }}" placeholder="" min="0">
+                                                            name="loose_qty[]" value="0" placeholder="" min="0">
                                                     </td>
 
                                                     <!-- Size -->

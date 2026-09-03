@@ -360,7 +360,6 @@
 
         const rawQtyStr = ($row.find('.carton-qty').val() || '').toString().trim();
         const rawQty = parseFloat(rawQtyStr) || 0;
-        const loosePcs = parseFloat($row.find('.loose-pcs-input').val()) || 0;
         const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'main';
 
         // Unit Price from visible-price
@@ -376,21 +375,23 @@
                 pcsDisplay = rawQty;
                 baseQty = packQty > 0 ? (rawQty / packQty) : rawQty;
                 gross = rawQty * unitPrice;
+                $row.find('.loose-pcs-input').val(0);
             } else {
                 // Selling in Cartons: unitPrice is price per carton
                 if (rawQtyStr.includes('.')) {
                     const parts = rawQtyStr.split('.');
                     const boxes = parseInt(parts[0]) || 0;
                     const loose = parseInt(parts[1]) || 0;
-                    pcsDisplay = (boxes * packQty) + loose + loosePcs;
+                    pcsDisplay = (boxes * packQty) + loose;
                     baseQty = packQty > 0 ? (pcsDisplay / packQty) : rawQty;
                     const piecePrice = packQty > 0 ? (unitPrice / packQty) : unitPrice;
-                    gross = (boxes * unitPrice) + (loose * piecePrice) + (loosePcs * piecePrice);
+                    gross = (boxes * unitPrice) + (loose * piecePrice);
+                    $row.find('.loose-pcs-input').val(loose);
                 } else {
-                    pcsDisplay = (rawQty * packQty) + loosePcs;
+                    pcsDisplay = rawQty * packQty;
                     baseQty = rawQty;
-                    const piecePrice = packQty > 0 ? (unitPrice / packQty) : unitPrice;
-                    gross = (rawQty * unitPrice) + (loosePcs * piecePrice);
+                    gross = rawQty * unitPrice;
+                    $row.find('.loose-pcs-input').val(0);
                 }
             }
         } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
