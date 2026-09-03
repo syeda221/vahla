@@ -924,7 +924,13 @@
                         <td class="text-center"
                             style="vertical-align: middle;">
 
-                            @if ($sizeMode == 'by_pieces')
+                            @if (!empty($item['variant_unit']))
+
+                                <span class="fw-bold">
+                                    {{ ucfirst($item['variant_unit']) }}
+                                </span>
+
+                            @elseif ($sizeMode == 'by_pieces')
 
                                 <span class="fw-bold">
                                     Pieces
