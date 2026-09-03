@@ -434,25 +434,27 @@ class VoucherController extends Controller
             $rvid = $request->rvid ?: \App\Models\ReceiptsVoucher::generateRVID(auth()->id());
             $narrationIds = [];
 
-            foreach ($request->narration_id as $index => $narrId) {
-                $manualText = $request->narration_text[$index] ?? null;
-                $manualType = $request->narration_type_text[$index] ?? 'Manual';
+            if ($request->narration_id && is_array($request->narration_id)) {
+                foreach ($request->narration_id as $index => $narrId) {
+                    $manualText = $request->narration_text[$index] ?? null;
+                    $manualType = $request->narration_type_text[$index] ?? 'Manual';
 
-                if (empty($narrId) && ! empty($manualText)) {
-                    // Auto expense_head set based on voucher type
-                    $expenseHead = 'Receipts Voucher';
-                    if (stripos($manualType, 'Receipt') !== false || $request->voucher_type == 'receipt') {
+                    if (empty($narrId) && ! empty($manualText)) {
+                        // Auto expense_head set based on voucher type
                         $expenseHead = 'Receipts Voucher';
+                        if (stripos($manualType, 'Receipt') !== false || $request->voucher_type == 'receipt') {
+                            $expenseHead = 'Receipts Voucher';
+                        }
+
+                        $new = \App\Models\Narration::create([
+                            'expense_head' => $expenseHead,
+                            'narration' => $manualText,
+                        ]);
+
+                        $narrationIds[] = (string) $new->id; // store as string → ["7"]
+                    } else {
+                        $narrationIds[] = (string) $narrId; // force string format
                     }
-
-                    $new = \App\Models\Narration::create([
-                        'expense_head' => $expenseHead,
-                        'narration' => $manualText,
-                    ]);
-
-                    $narrationIds[] = (string) $new->id; // store as string → ["7"]
-                } else {
-                    $narrationIds[] = (string) $narrId; // force string format
                 }
             }
 
@@ -794,9 +796,26 @@ class VoucherController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Payment Voucher saved successfully!');
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payment Voucher saved successfully!',
+                    'voucher_id' => $payment->id,
+                    'print_url' => route('Paymentprint', $payment->id),
+                    'all_vouchers_url' => route('all_Payment_vochers'),
+                ]);
+            }
+
+            return redirect()->route('all_Payment_vochers')->with('success', 'Payment Voucher saved successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
 
             return back()->with('error', $e->getMessage());
         }
@@ -1117,25 +1136,27 @@ class VoucherController extends Controller
             $evid = ExpenseVoucher::generateInvoiceNo();
             $narrationIds = [];
 
-            foreach ($request->narration_id as $index => $narrId) {
-                $manualText = $request->narration_text[$index] ?? null;
-                $manualType = $request->narration_type_text[$index] ?? 'Manual';
+            if ($request->narration_id && is_array($request->narration_id)) {
+                foreach ($request->narration_id as $index => $narrId) {
+                    $manualText = $request->narration_text[$index] ?? null;
+                    $manualType = $request->narration_type_text[$index] ?? 'Manual';
 
-                if (empty($narrId) && ! empty($manualText)) {
-                    // Auto expense_head set based on voucher type
-                    $expenseHead = 'Expense voucher';
-                    if (stripos($manualType, 'Receipt') !== false || $request->voucher_type == 'receipt') {
+                    if (empty($narrId) && ! empty($manualText)) {
+                        // Auto expense_head set based on voucher type
                         $expenseHead = 'Expense voucher';
+                        if (stripos($manualType, 'Receipt') !== false || $request->voucher_type == 'receipt') {
+                            $expenseHead = 'Expense voucher';
+                        }
+
+                        $new = \App\Models\Narration::create([
+                            'expense_head' => $expenseHead,
+                            'narration' => $manualText,
+                        ]);
+
+                        $narrationIds[] = (string) $new->id; // store as string → ["7"]
+                    } else {
+                        $narrationIds[] = (string) $narrId; // force string format
                     }
-
-                    $new = \App\Models\Narration::create([
-                        'expense_head' => $expenseHead,
-                        'narration' => $manualText,
-                    ]);
-
-                    $narrationIds[] = (string) $new->id; // store as string → ["7"]
-                } else {
-                    $narrationIds[] = (string) $narrId; // force string format
                 }
             }
             $voucherData = [
@@ -1274,9 +1295,26 @@ class VoucherController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Expense Voucher saved successfully!');
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Expense Voucher saved successfully!',
+                    'voucher_id' => $expense->id,
+                    'print_url' => route('expenseprint', $expense->id),
+                    'all_vouchers_url' => route('all_expense_vochers'),
+                ]);
+            }
+
+            return redirect()->route('all_expense_vochers')->with('success', 'Expense Voucher saved successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
 
             return back()->with('error', $e->getMessage());
         }
@@ -1312,6 +1350,10 @@ class VoucherController extends Controller
                     ->first();
                 $typeLabel = 'Walk-in';
                 $partyName = $walkin->customer_name ?? '-';
+            } else {
+                $account = DB::table('accounts')->where('id', $voucher->party_id)->first();
+                $typeLabel = 'Account';
+                $partyName = $account->title ?? '-';
             }
 
             // 🔗 Attach extra fields for Blade
@@ -1614,11 +1656,406 @@ class VoucherController extends Controller
 
             DB::commit();
 
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Expense Voucher deleted successfully.']);
+            }
             return back()->with('success', 'Expense Voucher deleted successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Expense Voucher Delete Error: ' . $e->getMessage());
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['message' => 'Failed to delete Expense Voucher: ' . $e->getMessage()], 500);
+            }
             return back()->with('error', 'Failed to delete Expense Voucher: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Unified All Vouchers Creation View
+     */
+    public function createUnified()
+    {
+        $cashBankHeadIds = DB::table('account_heads')
+            ->where(function($q) {
+                $q->whereRaw('LOWER(name) LIKE ?', ['%cash%'])
+                  ->orWhereRaw('LOWER(name) LIKE ?', ['%bank%']);
+            })
+            ->pluck('id');
+
+        $accounts = DB::table('accounts')
+            ->where('status', 1)
+            ->where(function($q) use ($cashBankHeadIds) {
+                $q->whereIn('head_id', $cashBankHeadIds)
+                  ->orWhereRaw('LOWER(title) LIKE ?', ['%cash%'])
+                  ->orWhereRaw('LOWER(title) LIKE ?', ['%bank%']);
+            })
+            ->whereNotIn('account_code', ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP'])
+            ->orderBy('title')
+            ->get();
+
+        $customers = DB::table('customers')
+            ->select('id', 'customer_name', 'mobile', 'opening_balance')
+            ->orderBy('customer_name')
+            ->get();
+
+        $vendors = DB::table('vendors')
+            ->select('id', 'name', 'phone', 'opening_balance')
+            ->orderBy('name')
+            ->get();
+
+        $expenseCategories = DB::table('expense_categories')
+            ->orderBy('name')
+            ->get();
+
+        $lastExp = DB::table('expense_vouchers')->latest('id')->first();
+        $nextEvid = 'EVID-' . str_pad($lastExp ? $lastExp->id + 1 : 1, 3, '0', STR_PAD_LEFT);
+
+        return view('admin_panel.vochers.unified_create', compact(
+            'accounts',
+            'customers',
+            'vendors',
+            'expenseCategories',
+            'nextEvid'
+        ));
+    }
+
+    /**
+     * Unified All Vouchers History View
+     */
+    public function voucherHistory()
+    {
+        $accounts = DB::table('accounts')
+            ->where('status', 1)
+            ->orderBy('title')
+            ->get();
+
+        return view('admin_panel.vochers.history', compact('accounts'));
+    }
+
+    /**
+     * DataTables JSON for Unified All Vouchers History
+     */
+    public function voucherHistoryData(Request $request)
+    {
+        $type = $request->get('type', 'all');
+        $fromDate = $request->get('from_date');
+        $toDate = $request->get('to_date');
+        $partyType = $request->get('party_type');
+        $accountId = $request->get('account_id');
+        $minAmount = $request->get('min_amount');
+        $maxAmount = $request->get('max_amount');
+        $searchValue = strtolower(trim($request->input('search.value') ?? ''));
+
+        $user = auth()->user();
+        $canDeleteExpense = $user ? ($user->can('expense.voucher.delete') || $user->can('all.vouchers.delete')) : false;
+        $canDeleteReceipt = $user ? ($user->can('receipts.voucher.delete') || $user->can('all.vouchers.delete')) : false;
+        $canDeletePayment = $user ? ($user->can('payment.voucher.delete') || $user->can('all.vouchers.delete')) : false;
+
+        $records = collect();
+
+        // 1. Expense Vouchers
+        if ($type === 'all' || $type === 'expense') {
+            $evQuery = DB::table('expense_vouchers');
+
+            if ($fromDate) {
+                $evQuery->whereDate('entry_date', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $evQuery->whereDate('entry_date', '<=', $toDate);
+            }
+            if ($partyType) {
+                if ($partyType === 'customer') {
+                    $evQuery->whereIn('type', ['customer', 'walkin']);
+                } elseif ($partyType === 'vendor') {
+                    $evQuery->where('type', 'vendor');
+                }
+            }
+            if ($accountId) {
+                $evQuery->where(function($q) use ($accountId) {
+                    $q->where('row_account_id', 'like', '%"' . $accountId . '"%')
+                      ->orWhere('row_account_id', 'like', '%[' . $accountId . ']%')
+                      ->orWhere('row_account_id', 'like', '%,' . $accountId . ',%');
+                });
+            }
+            if ($minAmount !== null && $minAmount !== '') {
+                $evQuery->where('total_amount', '>=', (float)$minAmount);
+            }
+            if ($maxAmount !== null && $maxAmount !== '') {
+                $evQuery->where('total_amount', '<=', (float)$maxAmount);
+            }
+
+            $expenseList = $evQuery->orderBy('id', 'desc')->get();
+
+            $customerIds = $expenseList->whereIn('type', ['customer', 'walkin'])->pluck('party_id')->unique()->filter();
+            $vendorIds = $expenseList->where('type', 'vendor')->pluck('party_id')->unique()->filter();
+            $accountIds = $expenseList->whereNotIn('type', ['customer', 'walkin', 'vendor'])->pluck('party_id')->unique()->filter();
+
+            $customers = DB::table('customers')->whereIn('id', $customerIds)->pluck('customer_name', 'id');
+            $vendors = DB::table('vendors')->whereIn('id', $vendorIds)->pluck('name', 'id');
+            $accountsMap = DB::table('accounts')->whereIn('id', $accountIds)->pluck('title', 'id');
+
+            foreach ($expenseList as $ev) {
+                $pName = '-';
+                $pType = '-';
+                if ($ev->type === 'vendor') {
+                    $pName = $vendors[$ev->party_id] ?? 'Vendor #' . $ev->party_id;
+                    $pType = 'Vendor';
+                } elseif ($ev->type === 'customer' || $ev->type === 'walkin') {
+                    $pName = $customers[$ev->party_id] ?? 'Customer #' . $ev->party_id;
+                    $pType = 'Customer';
+                } elseif (is_numeric($ev->type)) {
+                    $pName = $accountsMap[$ev->party_id] ?? 'Account #' . $ev->party_id;
+                    $pType = 'Account';
+                }
+
+                // Determine expense category or account name
+                $accIds = json_decode($ev->row_account_id, true);
+                $detailText = 'Expense Account';
+                if (is_array($accIds) && !empty($accIds)) {
+                    $firstId = $accIds[0];
+                    $catName = DB::table('expense_categories')->where('id', $firstId)->value('name');
+                    if (!$catName) {
+                        $catName = DB::table('accounts')->where('id', $firstId)->value('title');
+                    }
+                    if ($catName) $detailText = $catName;
+                }
+                if ($detailText === 'Expense Account' && $ev->reference_no) {
+                    $detailText = 'Ref: ' . $ev->reference_no;
+                }
+
+                $canDelete = $canDeleteExpense;
+
+                $records->push([
+                    'id' => $ev->id,
+                    'voucher_no' => $ev->evid ?: 'EV-' . $ev->id,
+                    'type_label' => 'Expense',
+                    'source' => 'expense',
+                    'date' => $ev->entry_date ? date('Y-m-d', strtotime($ev->entry_date)) : '-',
+                    'party_name' => $pName,
+                    'party_type_label' => $pType,
+                    'detail' => $detailText,
+                    'amount' => (float)$ev->total_amount,
+                    'remarks' => $ev->remarks ?: '-',
+                    'print_url' => route('expenseprint', $ev->id),
+                    'delete_url' => $canDelete ? route('expense_vouchers.destroy', $ev->id) : null,
+                    'delete_method' => 'DELETE',
+                    'created_at' => $ev->created_at ?? $ev->entry_date,
+                ]);
+            }
+        }
+
+        // 2. Receipt Vouchers (Payment In)
+        if ($type === 'all' || $type === 'payment_in') {
+            $rvQuery = DB::table('voucher_masters')->where('voucher_type', 'receipt');
+
+            if ($fromDate) {
+                $rvQuery->whereDate('date', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $rvQuery->whereDate('date', '<=', $toDate);
+            }
+            if ($partyType) {
+                if ($partyType === 'customer') {
+                    $rvQuery->where('party_type', 'like', '%Customer%');
+                } elseif ($partyType === 'vendor') {
+                    $rvQuery->where('party_type', 'like', '%Vendor%');
+                }
+            }
+            if ($accountId) {
+                $matchingMasterIds = DB::table('voucher_details')->where('account_id', $accountId)->pluck('voucher_master_id');
+                $rvQuery->whereIn('id', $matchingMasterIds);
+            }
+            if ($minAmount !== null && $minAmount !== '') {
+                $rvQuery->where('total_amount', '>=', (float)$minAmount);
+            }
+            if ($maxAmount !== null && $maxAmount !== '') {
+                $rvQuery->where('total_amount', '<=', (float)$maxAmount);
+            }
+
+            $receiptList = $rvQuery->orderBy('id', 'desc')->get();
+
+            $custIds = $receiptList->filter(fn($v) => str_contains($v->party_type ?? '', 'Customer'))->pluck('party_id')->unique();
+            $vendIds = $receiptList->filter(fn($v) => str_contains($v->party_type ?? '', 'Vendor'))->pluck('party_id')->unique();
+            $accIds = $receiptList->filter(fn($v) => str_contains($v->party_type ?? '', 'Account'))->pluck('party_id')->unique();
+
+            $customers = DB::table('customers')->whereIn('id', $custIds)->pluck('customer_name', 'id');
+            $vendors = DB::table('vendors')->whereIn('id', $vendIds)->pluck('name', 'id');
+            $accountsMap = DB::table('accounts')->whereIn('id', $accIds)->pluck('title', 'id');
+
+            // Find Cash/Bank Accounts used in Receipt Voucher details (where debit > 0)
+            $receiptAccounts = DB::table('voucher_details')
+                ->join('accounts', 'accounts.id', '=', 'voucher_details.account_id')
+                ->whereIn('voucher_details.voucher_master_id', $receiptList->pluck('id'))
+                ->where('voucher_details.debit', '>', 0)
+                ->select('voucher_details.voucher_master_id', 'accounts.title')
+                ->get()
+                ->keyBy('voucher_master_id');
+
+            foreach ($receiptList as $rv) {
+                $pName = '-';
+                $pType = '-';
+                if (str_contains($rv->party_type ?? '', 'Customer')) {
+                    $pName = $customers[$rv->party_id] ?? 'Customer #' . $rv->party_id;
+                    $pType = 'Customer';
+                } elseif (str_contains($rv->party_type ?? '', 'Vendor')) {
+                    $pName = $vendors[$rv->party_id] ?? 'Vendor #' . $rv->party_id;
+                    $pType = 'Vendor';
+                } elseif (str_contains($rv->party_type ?? '', 'Account')) {
+                    $pName = $accountsMap[$rv->party_id] ?? 'Account #' . $rv->party_id;
+                    $pType = 'Account';
+                }
+
+                $canDelete = $canDeleteReceipt;
+                $detailName = isset($receiptAccounts[$rv->id]) ? $receiptAccounts[$rv->id]->title : 'Receipt';
+
+                $records->push([
+                    'id' => $rv->id,
+                    'voucher_no' => $rv->voucher_no ?: 'RV-' . $rv->id,
+                    'type_label' => 'Payment In',
+                    'source' => 'payment_in',
+                    'date' => $rv->date ? date('Y-m-d', strtotime($rv->date)) : '-',
+                    'party_name' => $pName,
+                    'party_type_label' => $pType,
+                    'detail' => $detailName,
+                    'amount' => (float)$rv->total_amount,
+                    'remarks' => $rv->remarks ?: '-',
+                    'print_url' => route('print', $rv->id),
+                    'delete_url' => $canDelete ? route('receipt_vouchers.destroy', $rv->id) : null,
+                    'delete_method' => 'DELETE',
+                    'created_at' => $rv->created_at ?? $rv->date,
+                ]);
+            }
+        }
+
+        // 3. Payment Vouchers (Payment Out)
+        if ($type === 'all' || $type === 'payment_out') {
+            $pvQuery = DB::table('voucher_masters')->where('voucher_type', 'payment');
+
+            if ($fromDate) {
+                $pvQuery->whereDate('date', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $pvQuery->whereDate('date', '<=', $toDate);
+            }
+            if ($partyType) {
+                if ($partyType === 'customer') {
+                    $pvQuery->where('party_type', 'like', '%Customer%');
+                } elseif ($partyType === 'vendor') {
+                    $pvQuery->where('party_type', 'like', '%Vendor%');
+                }
+            }
+            if ($accountId) {
+                $matchingMasterIds = DB::table('voucher_details')->where('account_id', $accountId)->pluck('voucher_master_id');
+                $pvQuery->whereIn('id', $matchingMasterIds);
+            }
+            if ($minAmount !== null && $minAmount !== '') {
+                $pvQuery->where('total_amount', '>=', (float)$minAmount);
+            }
+            if ($maxAmount !== null && $maxAmount !== '') {
+                $pvQuery->where('total_amount', '<=', (float)$maxAmount);
+            }
+
+            $paymentList = $pvQuery->orderBy('id', 'desc')->get();
+
+            $custIds = $paymentList->filter(fn($v) => str_contains($v->party_type ?? '', 'Customer'))->pluck('party_id')->unique();
+            $vendIds = $paymentList->filter(fn($v) => str_contains($v->party_type ?? '', 'Vendor'))->pluck('party_id')->unique();
+            $accIds = $paymentList->filter(fn($v) => str_contains($v->party_type ?? '', 'Account'))->pluck('party_id')->unique();
+
+            $customers = DB::table('customers')->whereIn('id', $custIds)->pluck('customer_name', 'id');
+            $vendors = DB::table('vendors')->whereIn('id', $vendIds)->pluck('name', 'id');
+            $accountsMap = DB::table('accounts')->whereIn('id', $accIds)->pluck('title', 'id');
+
+            // Find Cash/Bank Accounts used in Payment Voucher details (where credit > 0)
+            $paymentAccounts = DB::table('voucher_details')
+                ->join('accounts', 'accounts.id', '=', 'voucher_details.account_id')
+                ->whereIn('voucher_details.voucher_master_id', $paymentList->pluck('id'))
+                ->where('voucher_details.credit', '>', 0)
+                ->select('voucher_details.voucher_master_id', 'accounts.title')
+                ->get()
+                ->keyBy('voucher_master_id');
+
+            foreach ($paymentList as $pv) {
+                $pName = '-';
+                $pType = '-';
+                if (str_contains($pv->party_type ?? '', 'Vendor')) {
+                    $pName = $vendors[$pv->party_id] ?? 'Vendor #' . $pv->party_id;
+                    $pType = 'Vendor';
+                } elseif (str_contains($pv->party_type ?? '', 'Customer')) {
+                    $pName = $customers[$pv->party_id] ?? 'Customer #' . $pv->party_id;
+                    $pType = 'Customer';
+                } elseif (str_contains($pv->party_type ?? '', 'Account')) {
+                    $pName = $accountsMap[$pv->party_id] ?? 'Account #' . $pv->party_id;
+                    $pType = 'Account';
+                }
+
+                $canDelete = $canDeletePayment;
+                $detailName = isset($paymentAccounts[$pv->id]) ? $paymentAccounts[$pv->id]->title : 'Payment';
+
+                $records->push([
+                    'id' => $pv->id,
+                    'voucher_no' => $pv->voucher_no ?: 'PV-' . $pv->id,
+                    'type_label' => 'Payment Out',
+                    'source' => 'payment_out',
+                    'date' => $pv->date ? date('Y-m-d', strtotime($pv->date)) : '-',
+                    'party_name' => $pName,
+                    'party_type_label' => $pType,
+                    'detail' => $detailName,
+                    'amount' => (float)$pv->total_amount,
+                    'remarks' => $pv->remarks ?: '-',
+                    'print_url' => route('Paymentprint', $pv->id),
+                    'delete_url' => $canDelete ? route('payment_vouchers.destroy', $pv->id) : null,
+                    'delete_method' => 'DELETE',
+                    'created_at' => $pv->created_at ?? $pv->date,
+                ]);
+            }
+        }
+
+        // Global search filtering
+        if (!empty($searchValue)) {
+            $records = $records->filter(function($item) use ($searchValue) {
+                return str_contains(strtolower($item['voucher_no']), $searchValue)
+                    || str_contains(strtolower($item['party_name']), $searchValue)
+                    || str_contains(strtolower($item['party_type_label']), $searchValue)
+                    || str_contains(strtolower($item['remarks']), $searchValue)
+                    || str_contains(strtolower($item['detail']), $searchValue)
+                    || str_contains((string)$item['amount'], $searchValue)
+                    || str_contains(strtolower($item['date']), $searchValue);
+            });
+        }
+
+        // Calculate summaries
+        $totalAmount = $records->sum('amount');
+        $totalExpense = $records->where('source', 'expense')->sum('amount');
+        $totalPaymentIn = $records->where('source', 'payment_in')->sum('amount');
+        $totalPaymentOut = $records->where('source', 'payment_out')->sum('amount');
+
+        // Sort records by date descending
+        $sorted = $records->sortByDesc(function($item) {
+            return $item['date'] . ' ' . ($item['created_at'] ?? '');
+        })->values();
+
+        $totalCount = $sorted->count();
+        $start = (int)$request->input('start', 0);
+        $length = (int)$request->input('length', 25);
+        if ($length > 0) {
+            $pagedData = $sorted->slice($start, $length)->values();
+        } else {
+            $pagedData = $sorted;
+        }
+
+        return response()->json([
+            'draw' => (int)$request->input('draw', 1),
+            'recordsTotal' => $totalCount,
+            'recordsFiltered' => $totalCount,
+            'data' => $pagedData,
+            'summary' => [
+                'total_amount' => $totalAmount,
+                'total_expense' => $totalExpense,
+                'total_income' => 0,
+                'total_payment_in' => $totalPaymentIn,
+                'total_payment_out' => $totalPaymentOut,
+            ]
+        ]);
+    }
 }
+

@@ -2,13 +2,13 @@
 
 @section('content')
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
     /* =============================================
        ROOT & BASE
     ============================================= */
     :root {
-        --f: 'Inter', sans-serif;
+        --f: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
         --bg: #f1f5f9;
         --card: #ffffff;
         --border: #e2e8f0;
@@ -21,6 +21,10 @@
         --red: #f43f5e;
         --purple: #8b5cf6;
         --cyan: #06b6d4;
+    }
+
+    .db-wrap, .db-wrap * {
+        font-family: var(--f) !important;
     }
 
     .db-wrap {
@@ -222,6 +226,297 @@
         color: var(--muted);
         font-weight: 500;
         margin-left: 0.15rem;
+    }
+
+    /* =============================================
+       BUSINESS CONCLUSION HERO BANNER
+    ============================================= */
+    .db-conclusion-card {
+        background: linear-gradient(135deg, #091224 0%, #0f1c3f 55%, #16244f 100%);
+        border-radius: 18px;
+        padding: 1.35rem 1.75rem;
+        margin-bottom: 2rem;
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 10px 28px -4px rgba(11, 20, 48, 0.35);
+        position: relative;
+        overflow: hidden;
+    }
+    .db-conclusion-card::after {
+        content: '';
+        position: absolute;
+        top: -60%;
+        right: -8%;
+        width: 320px;
+        height: 320px;
+        background: radial-gradient(circle, rgba(56, 189, 248, 0.12) 0%, transparent 70%);
+        pointer-events: none;
+    }
+    .db-conclusion-grid {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 2rem;
+        position: relative;
+        z-index: 1;
+    }
+    .conclusion-left {
+        flex: 1.4;
+        min-width: 0;
+    }
+    .conclusion-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.08rem;
+        font-weight: 800;
+        color: #ffffff;
+        margin-bottom: 0.65rem;
+        letter-spacing: -0.01em;
+    }
+    .conclusion-formula {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        font-size: 0.86rem;
+        line-height: 1.45;
+    }
+    .formula-row {
+        color: #94a3b8;
+    }
+    .formula-row strong {
+        color: #f8fafc;
+        font-weight: 700;
+    }
+    .formula-result {
+        margin-top: 0.35rem;
+        font-weight: 800;
+        font-size: 0.95rem;
+        color: #34d399;
+        display: flex;
+        align-items: baseline;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+    }
+    .formula-result .amt {
+        color: #34d399;
+        font-size: 1.22rem;
+        font-weight: 900;
+        letter-spacing: -0.01em;
+    }
+    .conclusion-divider {
+        width: 1px;
+        align-self: stretch;
+        background: rgba(255, 255, 255, 0.12);
+    }
+    .conclusion-right {
+        text-align: right;
+        flex: 1;
+        min-width: 230px;
+    }
+    .conclusion-biz-tag {
+        font-size: 0.74rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #94a3b8;
+        margin-bottom: 0.3rem;
+    }
+    .conclusion-biz-breakdown {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        line-height: 1.4;
+    }
+    .conclusion-biz-breakdown strong {
+        color: #f1f5f9;
+    }
+    .conclusion-total-val {
+        font-size: 2rem;
+        font-weight: 900;
+        color: #38bdf8;
+        letter-spacing: -0.02em;
+        margin-top: 0.35rem;
+        line-height: 1.1;
+        text-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+    }
+
+    /* Gradient Card Variations (Matching Screenshot Style) */
+    .kpi-gradient-card {
+        border-radius: 16px !important;
+        border: none !important;
+        color: #ffffff !important;
+        position: relative !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
+        transition: transform 0.25s ease, box-shadow 0.25s ease !important;
+    }
+    .kpi-gradient-card:hover {
+        transform: translateY(-3px) !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16) !important;
+    }
+    .kpi-gradient-card::before {
+        display: none !important;
+    }
+    .kpi-gradient-card::after {
+        content: '';
+        position: absolute;
+        right: -15px;
+        bottom: -15px;
+        width: 85px;
+        height: 85px;
+        background: rgba(255, 255, 255, 0.14);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .kpi-gradient-purple {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+    }
+    .kpi-gradient-rose {
+        background: linear-gradient(135deg, #f43f5e 0%, #fb7185 100%) !important;
+    }
+    .kpi-gradient-amber {
+        background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%) !important;
+    }
+    .kpi-gradient-coral {
+        background: linear-gradient(135deg, #e11d48 0%, #f43f5e 100%) !important;
+    }
+    .kpi-gradient-emerald {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    }
+    .kpi-gradient-blue {
+        background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%) !important;
+    }
+    .kpi-gradient-card .kpi-label {
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.04em !important;
+    }
+    .kpi-gradient-card .kpi-value {
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.02em !important;
+    }
+    .kpi-gradient-card .kpi-icon {
+        background: rgba(255, 255, 255, 0.24) !important;
+        color: #ffffff !important;
+        border-radius: 10px !important;
+        backdrop-filter: blur(4px);
+    }
+    .kpi-gradient-card .kpi-trend {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        background: rgba(255, 255, 255, 0.18) !important;
+        padding: 2px 7px !important;
+        border-radius: 99px !important;
+        backdrop-filter: blur(4px);
+    }
+    .kpi-gradient-card .kpi-trend.up,
+    .kpi-gradient-card .kpi-trend.down {
+        color: #ffffff !important;
+    }
+    .kpi-gradient-card .kpi-trend i {
+        color: #ffffff !important;
+    }
+    .kpi-gradient-card .kpi-trend-sub {
+        color: rgba(255, 255, 255, 0.85) !important;
+        font-weight: 500 !important;
+    }
+    .kpi-gradient-card .kpi-sub-text {
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-size: 0.72rem !important;
+        font-weight: 600 !important;
+    }
+    .kpi-gradient-card a {
+        color: #ffffff !important;
+        text-decoration: underline !important;
+        opacity: 0.95;
+    }
+
+    /* =============================================
+       CASH & BANK BALANCES LIST (Screenshot Style)
+    ============================================= */
+    .account-card-panel {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        overflow: hidden;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .account-card-header {
+        padding: 1.1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        border-bottom: 1px solid var(--border);
+        background: #ffffff;
+    }
+    .account-list-wrap {
+        display: flex;
+        flex-direction: column;
+    }
+    .account-item-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.85rem 1.5rem;
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.15s ease;
+    }
+    .account-item-row:last-child {
+        border-bottom: none;
+    }
+    .account-item-row:hover {
+        background: #f8fafc;
+    }
+    .account-name-group {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+    .account-title-link {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--text);
+        text-decoration: none;
+        transition: color 0.15s ease;
+    }
+    .account-title-link:hover {
+        color: var(--indigo);
+    }
+    .account-type-pill {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--muted);
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        padding: 2px 8px;
+        border-radius: 99px;
+    }
+    .account-balance-amt {
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: #10b981;
+    }
+    .account-footer-bar {
+        background: #f8fafc;
+        border-top: 1px solid var(--border);
+        padding: 1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .account-footer-tag {
+        font-size: 0.82rem;
+        font-weight: 800;
+        color: var(--text);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .account-footer-total {
+        font-size: 1.15rem;
+        font-weight: 900;
+        color: #10b981;
     }
 
     /* =============================================
@@ -435,6 +730,10 @@
         .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.85rem; }
         .spark-grid { grid-template-columns: repeat(2, 1fr); gap: 0.85rem; }
         .db-nav-pills { margin-bottom: 1.25rem; }
+        .db-conclusion-grid { flex-direction: column; align-items: flex-start; gap: 1.25rem; }
+        .conclusion-divider { width: 100%; height: 1px; }
+        .conclusion-right { text-align: left; }
+        .conclusion-total-val { font-size: 1.65rem; }
     }
     @media (max-width: 768px) {
         .spark-grid { grid-template-columns: 1fr !important; gap: 0.75rem; }
@@ -496,12 +795,55 @@
     </div>
 
     {{-- =============================================
+         2.5 BUSINESS CONCLUSION (EXECUTIVE HERO WIDGET)
+    ============================================= --}}
+    @php
+        $calcLiquidBalance = ($totalReceivables ?? 0) + ($totalCashAndBankBalance ?? 0) - ($totalPayables ?? 0);
+        $calcTotalBusinessValue = $calcLiquidBalance + ($totalStockValue ?? 0);
+    @endphp
+    <div class="db-conclusion-card">
+        <div class="db-conclusion-grid">
+            <div class="conclusion-left">
+                <div class="conclusion-header">
+                    <span style="font-size: 1.25rem;">💡</span>
+                    <span>Business Conclusion</span>
+                </div>
+                <div class="conclusion-formula">
+                    <div class="formula-row">
+                        (Customer Dues <strong style="color: #ffffff;">Rs. {{ number_format($totalReceivables ?? 0, 0) }}</strong> + Cash & Bank <strong style="color: #ffffff;">Rs. {{ number_format($totalCashAndBankBalance ?? 0, 0) }}</strong>)
+                    </div>
+                    <div class="formula-row">
+                        - Vendor Dues <strong style="color: #fb7185;">Rs. {{ number_format($totalPayables ?? 0, 0) }}</strong>
+                    </div>
+                    <div class="formula-result">
+                        <span>= Net Liquid Balance:</span>
+                        <span class="amt">Rs. {{ number_format($calcLiquidBalance, 0) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="conclusion-divider"></div>
+
+            <div class="conclusion-right">
+                <div class="conclusion-biz-tag">TOTAL BUSINESS VALUE</div>
+                <div class="conclusion-biz-breakdown">
+                    Net Liquid Balance <strong>Rs. {{ number_format($calcLiquidBalance, 0) }}</strong><br>
+                    + Stock Value <strong>Rs. {{ number_format($totalStockValue ?? 0, 0) }}</strong>
+                </div>
+                <div class="conclusion-total-val">
+                    Rs. {{ number_format($calcTotalBusinessValue, 0) }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- =============================================
          3. TOP 6 KPI STAT CARDS
     ============================================= --}}
     <div class="db-section-label"><i class="fas fa-chart-bar text-primary"></i> Key Performance Indicators</div>
     <div class="kpi-grid">
 
-        <div class="kpi-card" style="--kpi-color: var(--purple); --kpi-icon-bg: #f5f3ff;">
+        <div class="kpi-card kpi-gradient-card kpi-gradient-purple">
             <div class="kpi-top">
                 <span class="kpi-label">Total Sales (This Month)</span>
                 <div class="kpi-icon"><i class="fa-solid fa-cart-shopping"></i></div>
@@ -510,7 +852,7 @@
             <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> 18.6% <span class="kpi-trend-sub">vs last month</span></span>
         </div>
 
-        <div class="kpi-card" style="--kpi-color: var(--red); --kpi-icon-bg: #fff1f2;">
+        <div class="kpi-card kpi-gradient-card kpi-gradient-rose">
             <div class="kpi-top">
                 <span class="kpi-label">Total Purchases (This Month)</span>
                 <div class="kpi-icon"><i class="fa-solid fa-bag-shopping"></i></div>
@@ -519,7 +861,7 @@
             <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> 12.3% <span class="kpi-trend-sub">vs last month</span></span>
         </div>
 
-        <div class="kpi-card" style="--kpi-color: var(--amber); --kpi-icon-bg: #fffbeb;">
+        <div class="kpi-card kpi-gradient-card kpi-gradient-amber">
             <div class="kpi-top">
                 <span class="kpi-label">Gross Profit (This Month)</span>
                 <div class="kpi-icon"><i class="fa-solid fa-chart-line"></i></div>
@@ -528,7 +870,7 @@
             <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> 22.5% <span class="kpi-trend-sub">vs last month</span></span>
         </div>
 
-        <div class="kpi-card" style="--kpi-color: var(--red); --kpi-icon-bg: #fff1f2;">
+        <div class="kpi-card kpi-gradient-card kpi-gradient-coral">
             <div class="kpi-top">
                 <span class="kpi-label">Total Expenses (This Month)</span>
                 <div class="kpi-icon"><i class="fa-solid fa-file-invoice"></i></div>
@@ -537,7 +879,7 @@
             <span class="kpi-trend down"><i class="fas fa-arrow-down"></i> 5.4% <span class="kpi-trend-sub">vs last month</span></span>
         </div>
 
-        <div class="kpi-card" style="--kpi-color: var(--green); --kpi-icon-bg: #ecfdf5;">
+        <div class="kpi-card kpi-gradient-card kpi-gradient-emerald">
             <div class="kpi-top">
                 <span class="kpi-label">Net Profit (This Month)</span>
                 <div class="kpi-icon"><i class="fa-solid fa-circle-dollar-to-slot"></i></div>
@@ -546,13 +888,13 @@
             <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> 28.7% <span class="kpi-trend-sub">vs last month</span></span>
         </div>
 
-        <div class="kpi-card" style="--kpi-color: var(--blue); --kpi-icon-bg: #eff6ff;">
+        <div class="kpi-card kpi-gradient-card kpi-gradient-blue">
             <div class="kpi-top">
                 <span class="kpi-label">Cash Balance</span>
                 <div class="kpi-icon"><i class="fa-solid fa-wallet"></i></div>
             </div>
             <div class="kpi-value">Rs {{ number_format($totalCashAndBankBalance, 0) }}</div>
-            <span style="font-size: 0.68rem; color: var(--muted); font-weight: 600;">Available Liquid Balance</span>
+            <span class="kpi-sub-text">Available Liquid Balance</span>
         </div>
 
     </div>
@@ -739,52 +1081,80 @@
     {{-- =============================================
          6. RECEIVABLES / PAYABLES / STOCK / ACCOUNTS
     ============================================= --}}
-    <div class="db-section-label"><i class="fas fa-balance-scale text-info"></i> Financial Position</div>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <div class="db-section-label"><i class="fas fa-balance-scale text-info"></i> Financial Overview & Position</div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
 
-        <div class="kpi-card" style="--kpi-color: var(--indigo); --kpi-icon-bg: #eef2ff;">
+        <div class="kpi-card kpi-gradient-card kpi-gradient-purple">
             <div class="kpi-top">
-                <span class="kpi-label">Customer Receivables</span>
-                <div class="kpi-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                <span class="kpi-label">Customer Dues (Receivables)</span>
+                <div class="kpi-icon"><i class="fa-solid fa-users"></i></div>
             </div>
             <div class="kpi-value">Rs {{ number_format($totalReceivables, 0) }}</div>
-            <a href="{{ route('report.recovery') }}" style="font-size:0.7rem; color:var(--indigo); font-weight:700; text-decoration:none;">View Recovery Report →</a>
+            <a href="{{ route('report.recovery') }}" style="font-size:0.75rem; color:#ffffff; font-weight:700;">View Recovery Report →</a>
         </div>
 
-        <div class="kpi-card" style="--kpi-color: var(--amber); --kpi-icon-bg: #fffbeb;">
+        <div class="kpi-card kpi-gradient-card kpi-gradient-rose">
             <div class="kpi-top">
-                <span class="kpi-label">Vendor Payables</span>
-                <div class="kpi-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                <span class="kpi-label">Vendor Dues (Payables)</span>
+                <div class="kpi-icon"><i class="fa-solid fa-industry"></i></div>
             </div>
             <div class="kpi-value">Rs {{ number_format($totalPayables, 0) }}</div>
-            <a href="{{ route('report.payable') }}" style="font-size:0.7rem; color:var(--amber); font-weight:700; text-decoration:none;">View Payable Report →</a>
+            <a href="{{ route('report.payable') }}" style="font-size:0.75rem; color:#ffffff; font-weight:700;">View Payable Report →</a>
         </div>
 
-        <div class="kpi-card" style="--kpi-color: var(--purple); --kpi-icon-bg: #faf5ff;">
+        <div class="kpi-card kpi-gradient-card kpi-gradient-emerald">
             <div class="kpi-top">
-                <span class="kpi-label">Stock Inventory Value</span>
-                <div class="kpi-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+                <span class="kpi-label">Cash & Bank Total</span>
+                <div class="kpi-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+            </div>
+            <div class="kpi-value">Rs {{ number_format($totalCashAndBankBalance, 0) }}</div>
+            <span style="font-size:0.72rem; color:rgba(255,255,255,0.9); font-weight:600;">Total liquid balances</span>
+        </div>
+
+        <div class="kpi-card kpi-gradient-card kpi-gradient-amber">
+            <div class="kpi-top">
+                <span class="kpi-label">Stock Value (Inventory)</span>
+                <div class="kpi-icon"><i class="fa-solid fa-box-open"></i></div>
             </div>
             <div class="kpi-value">Rs {{ number_format($totalStockValue, 0) }}</div>
-            <a href="{{ route('reports.onhand') }}" style="font-size:0.7rem; color:var(--purple); font-weight:700; text-decoration:none;">View On-Hand Stock →</a>
+            <a href="{{ route('reports.onhand') }}" style="font-size:0.75rem; color:#ffffff; font-weight:700;">View On-Hand Stock →</a>
         </div>
 
-        @if(isset($cashAndBankAccounts))
-            @foreach($cashAndBankAccounts as $acc)
-                @php $isCash = strtolower($acc->head->name) == 'cash'; @endphp
-                <div class="kpi-card" style="--kpi-color: {{ $isCash ? 'var(--blue)' : 'var(--cyan)' }}; --kpi-icon-bg: {{ $isCash ? '#eff6ff' : '#ecfeff' }};">
-                    <div class="kpi-top">
-                        <span class="kpi-label">{{ $acc->title }}</span>
-                        <div class="kpi-icon">
-                            <i class="fa-solid {{ $isCash ? 'fa-wallet' : 'fa-building-columns' }}"></i>
+    </div>
+
+    {{-- =============================================
+         6.5 CASH & BANK BALANCES LIST PANEL (Screenshot Style)
+    ============================================= --}}
+    <div class="account-card-panel">
+        <div class="account-card-header">
+            <span style="font-size: 1.15rem;">🏛️</span>
+            <span style="font-weight: 800; font-size: 0.95rem; color: var(--text);">Cash & Bank Balances</span>
+        </div>
+        <div class="account-list-wrap">
+            @if(isset($cashAndBankAccounts) && count($cashAndBankAccounts) > 0)
+                @foreach($cashAndBankAccounts as $acc)
+                    @php 
+                        $headName = strtolower($acc->head->name ?? '');
+                        $isCash = str_contains($headName, 'cash');
+                    @endphp
+                    <div class="account-item-row">
+                        <div class="account-name-group">
+                            <a href="{{ route('accounts.ledger', $acc->id) }}" class="account-title-link">{{ $acc->title }}</a>
+                            <span class="account-type-pill">{{ $isCash ? 'Cash' : 'Bank' }}</span>
+                        </div>
+                        <div class="account-balance-amt">
+                            Rs. {{ number_format($acc->current_balance, 0) }}
                         </div>
                     </div>
-                    <div class="kpi-value">Rs {{ number_format($acc->current_balance, 0) }}</div>
-                    <a href="{{ route('accounts.ledger', $acc->id) }}" style="font-size:0.7rem; color:{{ $isCash ? 'var(--blue)' : 'var(--cyan)' }}; font-weight:700; text-decoration:none;">View Ledger →</a>
-                </div>
-            @endforeach
-        @endif
-
+                @endforeach
+            @else
+                <div class="text-center text-muted py-3" style="font-size:0.85rem;">No active cash or bank accounts found.</div>
+            @endif
+        </div>
+        <div class="account-footer-bar">
+            <span class="account-footer-tag">TOTAL BALANCE</span>
+            <span class="account-footer-total">Rs. {{ number_format($totalCashAndBankBalance ?? 0, 0) }}</span>
+        </div>
     </div>
 
     {{-- =============================================

@@ -506,9 +506,8 @@
                                 <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
                                     <select class="form-select rv-account" name="payment_account_id[]"
                                         style="max-width: 300px; flex-grow: 1;">
-                                        <option value="" selected disabled>Select Account</option>
                                         @foreach ($accounts as $acc)
-                                            <option value="{{ $acc->id }}">{{ $acc->title }}</option>
+                                            <option value="{{ $acc->id }}" {{ (str_contains(strtolower($acc->title), 'cash') || $loop->first) ? 'selected' : '' }}>{{ $acc->title }}</option>
                                         @endforeach
                                     </select>
                                     <input type="number" class="form-control text-end payment-amount"
@@ -723,9 +722,8 @@
                 const html = `
                     <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
                         <select class="form-select rv-account" name="payment_account_id[]" style="max-width: 300px; flex-grow: 1;">
-                            <option value="" selected disabled>Select Account</option>
                             @foreach ($accounts as $acc)
-                                <option value="{{ $acc->id }}">{{ $acc->title }}</option>
+                                <option value="{{ $acc->id }}" {{ (str_contains(strtolower($acc->title), 'cash') || $loop->first) ? 'selected' : '' }}>{{ $acc->title }}</option>
                             @endforeach
                         </select>
                         <input type="number" class="form-control text-end payment-amount" name="payment_amount[]" placeholder="Amount" style="width:140px">

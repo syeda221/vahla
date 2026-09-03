@@ -46,6 +46,8 @@ class AllModulesPermissionsSeeder extends Seeder
             'checkbook',
 
             'chart.of.accounts',
+            'vouchers',
+            'all.vouchers',
             'expense.voucher',
             'receipts.voucher',
             'journal.voucher',
