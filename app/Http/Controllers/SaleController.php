@@ -1224,14 +1224,45 @@ class SaleController extends Controller
                         if (!is_array($vData)) $vData = [];
                     }
 
+                    $liveVariant = null;
+                    if ($product && !empty($product->color)) {
+                        $prodVariants = json_decode($product->color, true);
+                        if (is_array($prodVariants)) {
+                            if (!empty($vData['barcode'])) {
+                                $liveVariant = collect($prodVariants)->firstWhere('barcode', $vData['barcode']);
+                            }
+                            if (!$liveVariant && !empty($vData['name'])) {
+                                $liveVariant = collect($prodVariants)->first(function($v) use ($vData) {
+                                    return ($v['name'] ?? '') === ($vData['name'] ?? '') &&
+                                           ($v['size'] ?? '-') === ($vData['size'] ?? '-') &&
+                                           ($v['color'] ?? '-') === ($vData['color'] ?? '-');
+                                });
+                            }
+                            if (!$liveVariant && !empty($vData['size']) && $vData['size'] !== '-') {
+                                $liveVariant = collect($prodVariants)->first(function($v) use ($vData) {
+                                    return ($v['size'] ?? '-') === ($vData['size'] ?? '-');
+                                });
+                            }
+                            if (!$liveVariant && count($prodVariants) === 1) {
+                                $liveVariant = $prodVariants[0];
+                            }
+                        }
+                    }
+
                     $ppb = 1;
-                    if (!empty($vData['conv_factor']) && (float)$vData['conv_factor'] > 0) {
+                    if ($liveVariant && !empty($liveVariant['conv_factor']) && (float)$liveVariant['conv_factor'] > 0) {
+                        $ppb = (float)$liveVariant['conv_factor'];
+                    } elseif ($liveVariant && !empty($liveVariant['pieces_per_box']) && (float)$liveVariant['pieces_per_box'] > 0) {
+                        $ppb = (float)$liveVariant['pieces_per_box'];
+                    } elseif ($product->pieces_per_box > 0) {
+                        $ppb = (float)$product->pieces_per_box;
+                    } elseif (!empty($vData['conv_factor']) && (float)$vData['conv_factor'] > 0) {
                         $ppb = (float)$vData['conv_factor'];
                     } elseif (!empty($vData['pieces_per_box']) && (float)$vData['pieces_per_box'] > 0) {
                         $ppb = (float)$vData['pieces_per_box'];
-                    } elseif ($product->pieces_per_box > 0) {
-                        $ppb = (float)$product->pieces_per_box;
                     }
+
+                    if ($ppb <= 0) $ppb = 1;
 
                     $totalPieces = 0;
                     $loose = (float) ($request->loose_pieces[$index] ?? 0); // Legacy/Fallback
@@ -2033,18 +2064,49 @@ class SaleController extends Controller
                 }
             }
 
+            $liveVariant = null;
+            if ($item->product && !empty($item->product->color)) {
+                $prodVariants = json_decode($item->product->color, true);
+                if (is_array($prodVariants)) {
+                    if (!empty($variant['barcode'])) {
+                        $liveVariant = collect($prodVariants)->firstWhere('barcode', $variant['barcode']);
+                    }
+                    if (!$liveVariant && !empty($variant['name'])) {
+                        $liveVariant = collect($prodVariants)->first(function($v) use ($variant) {
+                            return ($v['name'] ?? '') === ($variant['name'] ?? '') &&
+                                   ($v['size'] ?? '-') === ($variant['size'] ?? '-') &&
+                                   ($v['color'] ?? '-') === ($variant['color'] ?? '-');
+                        });
+                    }
+                    if (!$liveVariant && !empty($variant['size']) && $variant['size'] !== '-') {
+                        $liveVariant = collect($prodVariants)->first(function($v) use ($variant) {
+                            return ($v['size'] ?? '-') === ($variant['size'] ?? '-');
+                        });
+                    }
+                    if (!$liveVariant && count($prodVariants) === 1) {
+                        $liveVariant = $prodVariants[0];
+                    }
+                }
+            }
+
             $ppb = 1;
-            if (!empty($variant['conv_factor']) && (float)$variant['conv_factor'] > 0) {
+            if ($liveVariant && !empty($liveVariant['conv_factor']) && (float)$liveVariant['conv_factor'] > 0) {
+                $ppb = (float)$liveVariant['conv_factor'];
+            } elseif ($liveVariant && !empty($liveVariant['pieces_per_box']) && (float)$liveVariant['pieces_per_box'] > 0) {
+                $ppb = (float)$liveVariant['pieces_per_box'];
+            } elseif ($item->product && (float)$item->product->pieces_per_box > 0) {
+                $ppb = (float)$item->product->pieces_per_box;
+            } elseif (!empty($variant['conv_factor']) && (float)$variant['conv_factor'] > 0) {
                 $ppb = (float)$variant['conv_factor'];
             } elseif (!empty($variant['pieces_per_box']) && (float)$variant['pieces_per_box'] > 0) {
                 $ppb = (float)$variant['pieces_per_box'];
             } elseif (!empty($item->pieces_per_box) && (float)$item->pieces_per_box > 0) {
                 $ppb = (float)$item->pieces_per_box;
-            } elseif ($item->product && (float)$item->product->pieces_per_box > 0) {
-                $ppb = (float)$item->product->pieces_per_box;
             }
 
-            $variantUnit = $variant['unit'] ?? ($item->product->unit->name ?? '');
+            if ($ppb <= 0) $ppb = 1;
+
+            $variantUnit = $variant['unit'] ?? ($liveVariant['unit'] ?? ($item->product->unit->name ?? ''));
 
             return [
                 'is_manual' => $item->is_manual,

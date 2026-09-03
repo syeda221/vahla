@@ -647,16 +647,48 @@
                                                         }
                                                     }
 
+                                                    // Check live product variant data for updated pack size / conversion factor
+                                                    $liveVariant = null;
+                                                    if ($prod && !empty($prod->color)) {
+                                                        $prodVariants = json_decode($prod->color, true);
+                                                        if (is_array($prodVariants)) {
+                                                            if (!empty($variantData['barcode'])) {
+                                                                $liveVariant = collect($prodVariants)->firstWhere('barcode', $variantData['barcode']);
+                                                            }
+                                                            if (!$liveVariant && !empty($variantData['name'])) {
+                                                                $liveVariant = collect($prodVariants)->first(function($v) use ($variantData) {
+                                                                    return ($v['name'] ?? '') === ($variantData['name'] ?? '') &&
+                                                                           ($v['size'] ?? '-') === ($variantData['size'] ?? '-') &&
+                                                                           ($v['color'] ?? '-') === ($variantData['color'] ?? '-');
+                                                                });
+                                                            }
+                                                            if (!$liveVariant && !empty($variantData['size']) && $variantData['size'] !== '-') {
+                                                                $liveVariant = collect($prodVariants)->first(function($v) use ($variantData) {
+                                                                    return ($v['size'] ?? '-') === ($variantData['size'] ?? '-');
+                                                                });
+                                                            }
+                                                            if (!$liveVariant && count($prodVariants) === 1) {
+                                                                $liveVariant = $prodVariants[0];
+                                                            }
+                                                        }
+                                                    }
+
                                                     $ppb = 1;
-                                                    if (!empty($variantData['conv_factor']) && (float)$variantData['conv_factor'] > 0) {
+                                                    if ($liveVariant && !empty($liveVariant['conv_factor']) && (float)$liveVariant['conv_factor'] > 0) {
+                                                        $ppb = (float)$liveVariant['conv_factor'];
+                                                    } elseif ($liveVariant && !empty($liveVariant['pieces_per_box']) && (float)$liveVariant['pieces_per_box'] > 0) {
+                                                        $ppb = (float)$liveVariant['pieces_per_box'];
+                                                    } elseif ($prod && $prod->pieces_per_box > 0) {
+                                                        $ppb = (float)$prod->pieces_per_box;
+                                                    } elseif (!empty($variantData['conv_factor']) && (float)$variantData['conv_factor'] > 0) {
                                                         $ppb = (float)$variantData['conv_factor'];
                                                     } elseif (!empty($variantData['pieces_per_box']) && (float)$variantData['pieces_per_box'] > 0) {
                                                         $ppb = (float)$variantData['pieces_per_box'];
                                                     } elseif (!empty($item->pieces_per_box) && (float)$item->pieces_per_box > 0) {
                                                         $ppb = (float)$item->pieces_per_box;
-                                                    } elseif ($prod && $prod->pieces_per_box > 0) {
-                                                        $ppb = (float)$prod->pieces_per_box;
                                                     }
+
+                                                    if ($ppb <= 0) $ppb = 1;
 
                                                     $cartons = 0;
                                                     $loose = 0;
@@ -672,13 +704,12 @@
                                                     $toggleText = 'Kg';
                                                     $toggleBtnClass = 'd-none';
                                                     $displayQty = $cartons;
+                                                    $itemTotalPieces = (float)$item->total_pieces;
                                                     $isPcs = false;
 
                                                     if ($sizeMode === 'by_cartons') {
-                                                        $variantUnit = strtolower($variantData['unit'] ?? '');
+                                                        $variantUnit = strtolower($variantData['unit'] ?? ($liveVariant['unit'] ?? ''));
                                                         if ($variantUnit === 'pcs' || $variantUnit === 'piece' || $variantUnit === 'pieces') {
-                                                            $isPcs = true;
-                                                        } elseif ($cartons == 0 && $item->total_pieces > 0 && $ppb > 1) {
                                                             $isPcs = true;
                                                         } elseif ((float)$item->qty == (float)$item->total_pieces && $ppb > 1) {
                                                             $isPcs = true;
@@ -689,13 +720,18 @@
                                                             $toggleText = 'Pcs';
                                                             $toggleBtnClass = 'btn-outline-info';
                                                             $displayQty = (float) $item->total_pieces;
+                                                            $itemTotalPieces = (float) $item->total_pieces;
                                                         } else {
                                                             $unitMode = 'ctn';
                                                             $toggleText = 'Ctn';
                                                             $toggleBtnClass = 'btn-outline-success';
-                                                            $displayQty = $loose > 0 ? "{$cartons}.{$loose}" : $cartons;
-                                                            if ($cartons == 0 && $loose == 0 && (float)$item->qty > 0) {
-                                                                $displayQty = (float)$item->qty;
+                                                            $savedQty = (float)$item->qty;
+                                                            if ($savedQty > 0) {
+                                                                $displayQty = $savedQty;
+                                                                $itemTotalPieces = $savedQty * $ppb;
+                                                            } else {
+                                                                $displayQty = $loose > 0 ? "{$cartons}.{$loose}" : $cartons;
+                                                                $itemTotalPieces = ($cartons * $ppb) + $loose;
                                                             }
                                                         }
                                                     } elseif ($sizeMode === 'by_kg') {
@@ -841,7 +877,7 @@
                                                     <td class="col-pieces">
                                                         <input type="text"
                                                             class="form-control total-pieces text-end input-readonly fw-semibold"
-                                                            name="total_pieces[]" readonly value="{{ $item->total_pieces }}"
+                                                            name="total_pieces[]" readonly value="{{ $itemTotalPieces }}"
                                                             placeholder="0" tabindex="-1">
                                                         <input type="hidden" class="sales-qty" name="qty[]" value="{{ $isPcs ? $item->total_pieces : ($cartons . ($loose > 0 ? '.' . $loose : '')) }}">
                                                     </td>
