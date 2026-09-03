@@ -745,14 +745,77 @@
                                     class="menu_icon fas fa-home"></i><span class="menu-title">Dashboard</span></a>
 
                         </li>
-                        <!--=========================*
-                              UI Features
-                    *===========================-->
+                        <!-- Sale Menu -->
+                        @canany(['sales.view', 'sales.create', 'customers.view', 'customer_types.view', 'sales.officers.view',
+                            'receipts.voucher.view', 'zones.view'])
+                            <li class="nav-item">
+                                <a href="#" class="nav-link">
+                                    <i class="menu_icon fas fa-receipt"></i>
+                                    <span class="menu-title">Sale</span>
+                                    <i class="menu-arrow"></i>
+                                </a>
+                                <div class="submenu">
+                                    <ul class="submenu-item">
+                                        @can('sales.create')
+                                            <li><a href="{{ route('pos.index') }}"><i class="fas fa-cash-register"></i> POS System</a></li>
+                                            <li><a href="{{ route('sale.add') }}"><i class="fas fa-plus-circle"></i> Add Sale</a></li>
+                                        @endcan
+                                        @can('sales.view')
+                                            <li><a href="{{ url('sale') }}"><i class="fas fa-list"></i> All Sales</a></li>
+                                        @endcan
+                                        @can('customers.view')
+                                            <li><a href="{{ url('customers') }}"><i class="fas fa-users"></i> Customers</a></li>
+                                        @endcan
+                                        @can('customer_types.view')
+                                            <li><a href="{{ route('customer-types.index') }}"><i class="fas fa-tags"></i> Customer Types</a></li>
+                                        @endcan
+                                        @can('zones.view')
+                                            <li><a href="{{ url('zone') }}"><i class="fas fa-map-marker-alt"></i> Zones</a></li>
+                                        @endcan
+                                        @can('sales.officers.view')
+                                            <li><a href="{{ url('sales-officers') }}"><i class="fas fa-user-tie"></i> Sales Officers</a></li>
+                                        @endcan
+                                        @can('receipts.voucher.view')
+                                            <li><a href="{{ route('all_recepit_vochers') }}"><i class="fas fa-file-invoice-dollar"></i> Receipt Vouchers</a></li>
+                                        @endcan
+                                    </ul>
+                                </div>
+                            </li>
+                        @endcanany
+
+                        <!-- Purchase Menu -->
+                        @canany(['vendors.view', 'purchases.view', 'purchases.create', 'purchase_pos.create'])
+                            <li class="nav-item">
+                                <a href="#" class="nav-link">
+                                    <i class="menu_icon fas fa-shopping-cart"></i>
+                                    <span class="menu-title">Purchase</span>
+                                    <i class="menu-arrow"></i>
+                                </a>
+                                <div class="submenu">
+                                    <ul class="submenu-item">
+                                        @can('purchases.create')
+                                            <li><a href="{{ route('add_purchase') }}"><i class="fas fa-plus-circle"></i> Add Purchase</a></li>
+                                        @endcan
+                                        @can('purchases.view')
+                                            <li><a href="{{ route('Purchase.home') }}"><i class="fas fa-list"></i> All Purchases</a></li>
+                                        @endcan
+                                        @can('purchase_pos.create')
+                                            <li><a href="{{ route('purchase-pos.index') }}"><i class="fas fa-cash-register"></i> Purchase POS</a></li>
+                                        @endcan
+                                        <li><a href="{{ route('purchase.return.index') }}"><i class="fas fa-undo"></i> Purchase Return</a></li>
+                                        @can('vendors.view')
+                                            <li><a href="{{ url('vendor') }}"><i class="fas fa-truck"></i> Vendors</a></li>
+                                        @endcan
+                                    </ul>
+                                </div>
+                            </li>
+                        @endcanany
+
+                        <!-- Management / Products & Inventory Mega Menu -->
                         <li class="nav-item mega-menu">
                             @canany(['products.view', 'discount.products.view', 'categories.view', 'subcategories.view',
-                                'brands.view', 'units.view', 'vendors.view', 'purchases.view', 'purchase_pos.create',
-                                'warehouse.view', 'warehouse.stock.view', 'stock.transfer.view', 'stock.adjust.view', 'stock.adjust.create',
-                                'sales.view', 'sales.create', 'customers.view', 'zones.view', 'sales.officers.view', 'receipts.voucher.view'])
+                                'brands.view', 'units.view', 'warehouse.view', 'warehouse.stock.view', 'stock.transfer.view',
+                                'stock.adjust.view', 'stock.adjust.create'])
                                 <a href="#" class="nav-link">
                                      <i class="menu_icon fas fa-cogs"></i>
                                      <span class="menu-title">Management</span>
@@ -763,8 +826,8 @@
                                         <!-- Products & Categories -->
                                         @canany(['products.view', 'discount.products.view', 'categories.view',
                                             'subcategories.view', 'brands.view', 'units.view'])
-                                            <div class="col-group col-md-3">
-                                                <p class="category-heading">Products & Categories</p>
+                                            <div class="col-group col-md-6">
+                                                <p class="category-heading">Products & Setup</p>
                                                 <ul class="submenu-item">
 
                                                     @can('products.view')
@@ -800,31 +863,9 @@
                                                 </ul>
                                             </div>
                                         @endcanany
-                                        <!-- Purchase & Inventory -->
-                                        @canany(['vendors.view', 'purchases.view', 'purchase_pos.create'])
-                                            <div class="col-group col-md-3">
-                                                <p class="category-heading">Purchase & Inventory</p>
-                                                <ul class="submenu-item">
-                                                    @can('vendors.view')
-                                                        <li><a href="{{ url('vendor') }}"><i class="fas fa-truck"></i> Vendor</a>
-                                                        </li>
-                                                    @endcan
-                                                    @can('purchases.view')
-                                                        <li><a href="{{ route('Purchase.home') }}"><i
-                                                                    class="fas fa-shopping-cart"></i> Purchase</a>
-                                                        </li>
-                                                    @endcan
-                                                    @can('purchase_pos.create')
-                                                        <li><a href="{{ route('purchase-pos.index') }}"><i
-                                                                    class="fas fa-cash-register"></i> Purchase POS</a>
-                                                        </li>
-                                                    @endcan
-                                                </ul>
-                                            </div>
-                                        @endcanany
                                         <!-- Accounts / Inventory -->
                                         @canany(['warehouse.view', 'warehouse.stock.view', 'stock.transfer.view', 'stock.adjust.view', 'stock.adjust.create'])
-                                            <div class="col-group col-md-3">
+                                            <div class="col-group col-md-6">
                                                 <p class="category-heading">Inventory Management</p>
                                                 <ul class="submenu-item">
                                                     @can('warehouse.view')
@@ -846,44 +887,6 @@
                                                 </ul>
                                             </div>
                                         @endcanany
-                                        <!-- Customers & Sales -->
-                                        @canany(['sales.view', 'sales.create', 'customers.view', 'sales.officers.view',
-                                            'receipts.voucher.view', 'zones.view'])
-                                            <div class="col-group col-md-3">
-                                                <p class="category-heading">Sales & Customers</p>
-                                                <ul class="submenu-item">
-                                                    @can('sales.view')
-                                                        <li><a href="{{ url('sale') }}"><i class="fas fa-receipt"></i>
-                                                                Sales</a></li>
-                                                    @endcan
-                                                    @can('sales.create')
-                                                        <li><a href="{{ route('pos.index') }}"><i class="fas fa-cash-register"></i>
-                                                                POS System</a></li>
-                                                    @endcan
-                                                    @can('customers.view')
-                                                        <li><a href="{{ url('customers') }}"><i class="fas fa-user"></i>
-                                                                Customer</a></li>
-                                                    @endcan
-                                                    @can('customer_types.view')
-                                                        <li><a href="{{ route('customer-types.index') }}"><i class="fas fa-tags"></i>
-                                                                Customer Types</a></li>
-                                                    @endcan
-                                                    @can('zones.view')
-                                                        <li><a href="{{ url('zone') }}"><i class="fas fa-map-marker-alt"></i>
-                                                                Zone</a></li>
-                                                    @endcan
-                                                    @can('sales.officers.view')
-                                                        <li><a href="{{ url('sales-officers') }}"><i class="fas fa-user-tie"></i>
-                                                                Sales Officer</a></li>
-                                                    @endcan
-                                                    @can('receipts.voucher.view')
-                                                        <li><a href="{{ route('all_recepit_vochers') }}"><i
-                                                                    class="fas fa-file-invoice-dollar"></i>
-                                                                Receipt Vouchers</a></li>
-                                                    @endcan
-                                                </ul>
-                                            </div>
-                                        @endcanany
                                     </div>
                                 </div>
                             @endcanany
@@ -901,10 +904,10 @@
                                 </a>
                                 <div class="submenu">
                                     <ul class="submenu-item">
-                                        @can('vouchers.create')
+                                        @canany(['vouchers.create', 'all.vouchers.create', 'all.vouchers.view', 'vouchers.view'])
                                             <li><a href="{{ route('vouchers.create') }}"><i class="fa-solid fa-plus-circle"></i>
-                                                    Create Voucher</a></li>
-                                        @endcan
+                                                     Create Voucher</a></li>
+                                        @endcanany
                                         @can('all.vouchers.view')
                                             <li><a href="{{ route('voucher.history') }}"><i class="fa-solid fa-list-check"></i>
                                                     All Vouchers</a></li>

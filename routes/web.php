@@ -411,9 +411,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/narrations/fetch', [NarrationController::class, 'fetch'])->name('narrations.fetch');
     Route::post('/narrations', [NarrationController::class, 'store'])->name('narrations.store')->middleware('permission:narrations.create');
     Route::delete('/narrations/{narration}', [NarrationController::class, 'destroy'])->name('narrations.destroy')->middleware('permission:narrations.delete');
-    Route::get('/vouchers/create', [VoucherController::class, 'createUnified'])->middleware('permission:vouchers.create')->name('vouchers.create');
+    Route::get('/vouchers/create', [VoucherController::class, 'createUnified'])->middleware('permission:vouchers.create|all.vouchers.create|all.vouchers.view|vouchers.view')->name('vouchers.create');
     Route::get('vouchers/{type}', [VoucherController::class, 'index'])->middleware('permission:vouchers.view|all.vouchers.view')->name('vouchers.index');
-    Route::post('vouchers/store', [VoucherController::class, 'store'])->middleware('permission:vouchers.create')->name('vouchers.store');
+    Route::post('vouchers/store', [VoucherController::class, 'store'])->middleware('permission:vouchers.create|all.vouchers.create|all.vouchers.view|vouchers.view')->name('vouchers.store');
     Route::get('/view_all', [AccountsHeadController::class, 'index'])->name('view_all');
     Route::get('/accounts/{id}/ledger', [AccountsHeadController::class, 'showLedger'])->name('accounts.ledger');
 
