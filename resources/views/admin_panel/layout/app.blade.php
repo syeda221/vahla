@@ -892,7 +892,7 @@
 
                         <!-- Vouchers Menu -->
                         <li class="nav-item">
-                            @canany(['all.vouchers.view', 'chart.of.accounts.view', 'expense.voucher.view', 'receipts.voucher.view',
+                            @canany(['vouchers.create', 'vouchers.view', 'all.vouchers.view', 'chart.of.accounts.view', 'expense.voucher.view', 'receipts.voucher.view',
                                 'journal.voucher.view', 'payment.voucher.view', 'income.voucher.view'])
                                 <a href="#" class="nav-link">
                                     <i class="menu_icon fas fa-clipboard-list"></i>
@@ -901,6 +901,10 @@
                                 </a>
                                 <div class="submenu">
                                     <ul class="submenu-item">
+                                        @can('vouchers.create')
+                                            <li><a href="{{ route('vouchers.create') }}"><i class="fa-solid fa-plus-circle"></i>
+                                                    Create Voucher</a></li>
+                                        @endcan
                                         @can('all.vouchers.view')
                                             <li><a href="{{ route('voucher.history') }}"><i class="fa-solid fa-list-check"></i>
                                                     All Vouchers</a></li>

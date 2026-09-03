@@ -263,6 +263,8 @@
                 <i class="fas fa-plus me-1"></i> New Voucher
             </button>
             <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="newVoucherDropdown" style="border-radius:12px; font-size:13px; font-weight:600; padding:8px;">
+                <li><a class="dropdown-item py-2 rounded-2 fw-bold text-primary" href="{{ route('vouchers.create') }}"><i class="fas fa-plus-circle text-primary me-2"></i> Create Voucher (Unified)</a></li>
+                <li><hr class="dropdown-divider my-1"></li>
                 @can('expense.voucher.create')
                     <li><a class="dropdown-item py-2 rounded-2" href="{{ route('expense_vochers') }}"><i class="fas fa-file-invoice text-danger me-2"></i> Add Expense Voucher</a></li>
                 @endcan

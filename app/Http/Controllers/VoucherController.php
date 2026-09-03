@@ -434,25 +434,27 @@ class VoucherController extends Controller
             $rvid = $request->rvid ?: \App\Models\ReceiptsVoucher::generateRVID(auth()->id());
             $narrationIds = [];
 
-            foreach ($request->narration_id as $index => $narrId) {
-                $manualText = $request->narration_text[$index] ?? null;
-                $manualType = $request->narration_type_text[$index] ?? 'Manual';
+            if ($request->narration_id && is_array($request->narration_id)) {
+                foreach ($request->narration_id as $index => $narrId) {
+                    $manualText = $request->narration_text[$index] ?? null;
+                    $manualType = $request->narration_type_text[$index] ?? 'Manual';
 
-                if (empty($narrId) && ! empty($manualText)) {
-                    // Auto expense_head set based on voucher type
-                    $expenseHead = 'Receipts Voucher';
-                    if (stripos($manualType, 'Receipt') !== false || $request->voucher_type == 'receipt') {
+                    if (empty($narrId) && ! empty($manualText)) {
+                        // Auto expense_head set based on voucher type
                         $expenseHead = 'Receipts Voucher';
+                        if (stripos($manualType, 'Receipt') !== false || $request->voucher_type == 'receipt') {
+                            $expenseHead = 'Receipts Voucher';
+                        }
+
+                        $new = \App\Models\Narration::create([
+                            'expense_head' => $expenseHead,
+                            'narration' => $manualText,
+                        ]);
+
+                        $narrationIds[] = (string) $new->id; // store as string → ["7"]
+                    } else {
+                        $narrationIds[] = (string) $narrId; // force string format
                     }
-
-                    $new = \App\Models\Narration::create([
-                        'expense_head' => $expenseHead,
-                        'narration' => $manualText,
-                    ]);
-
-                    $narrationIds[] = (string) $new->id; // store as string → ["7"]
-                } else {
-                    $narrationIds[] = (string) $narrId; // force string format
                 }
             }
 
@@ -794,9 +796,26 @@ class VoucherController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Payment Voucher saved successfully!');
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payment Voucher saved successfully!',
+                    'voucher_id' => $payment->id,
+                    'print_url' => route('Paymentprint', $payment->id),
+                    'all_vouchers_url' => route('all_Payment_vochers'),
+                ]);
+            }
+
+            return redirect()->route('all_Payment_vochers')->with('success', 'Payment Voucher saved successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
 
             return back()->with('error', $e->getMessage());
         }
@@ -1117,25 +1136,27 @@ class VoucherController extends Controller
             $evid = ExpenseVoucher::generateInvoiceNo();
             $narrationIds = [];
 
-            foreach ($request->narration_id as $index => $narrId) {
-                $manualText = $request->narration_text[$index] ?? null;
-                $manualType = $request->narration_type_text[$index] ?? 'Manual';
+            if ($request->narration_id && is_array($request->narration_id)) {
+                foreach ($request->narration_id as $index => $narrId) {
+                    $manualText = $request->narration_text[$index] ?? null;
+                    $manualType = $request->narration_type_text[$index] ?? 'Manual';
 
-                if (empty($narrId) && ! empty($manualText)) {
-                    // Auto expense_head set based on voucher type
-                    $expenseHead = 'Expense voucher';
-                    if (stripos($manualType, 'Receipt') !== false || $request->voucher_type == 'receipt') {
+                    if (empty($narrId) && ! empty($manualText)) {
+                        // Auto expense_head set based on voucher type
                         $expenseHead = 'Expense voucher';
+                        if (stripos($manualType, 'Receipt') !== false || $request->voucher_type == 'receipt') {
+                            $expenseHead = 'Expense voucher';
+                        }
+
+                        $new = \App\Models\Narration::create([
+                            'expense_head' => $expenseHead,
+                            'narration' => $manualText,
+                        ]);
+
+                        $narrationIds[] = (string) $new->id; // store as string → ["7"]
+                    } else {
+                        $narrationIds[] = (string) $narrId; // force string format
                     }
-
-                    $new = \App\Models\Narration::create([
-                        'expense_head' => $expenseHead,
-                        'narration' => $manualText,
-                    ]);
-
-                    $narrationIds[] = (string) $new->id; // store as string → ["7"]
-                } else {
-                    $narrationIds[] = (string) $narrId; // force string format
                 }
             }
             $voucherData = [
@@ -1274,9 +1295,26 @@ class VoucherController extends Controller
 
             DB::commit();
 
-            return back()->with('success', 'Expense Voucher saved successfully!');
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Expense Voucher saved successfully!',
+                    'voucher_id' => $expense->id,
+                    'print_url' => route('expenseprint', $expense->id),
+                    'all_vouchers_url' => route('all_expense_vochers'),
+                ]);
+            }
+
+            return redirect()->route('all_expense_vochers')->with('success', 'Expense Voucher saved successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
 
             return back()->with('error', $e->getMessage());
         }
@@ -1312,6 +1350,10 @@ class VoucherController extends Controller
                     ->first();
                 $typeLabel = 'Walk-in';
                 $partyName = $walkin->customer_name ?? '-';
+            } else {
+                $account = DB::table('accounts')->where('id', $voucher->party_id)->first();
+                $typeLabel = 'Account';
+                $partyName = $account->title ?? '-';
             }
 
             // 🔗 Attach extra fields for Blade
@@ -1626,6 +1668,55 @@ class VoucherController extends Controller
             }
             return back()->with('error', 'Failed to delete Expense Voucher: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Unified All Vouchers Creation View
+     */
+    public function createUnified()
+    {
+        $cashBankHeadIds = DB::table('account_heads')
+            ->where(function($q) {
+                $q->whereRaw('LOWER(name) LIKE ?', ['%cash%'])
+                  ->orWhereRaw('LOWER(name) LIKE ?', ['%bank%']);
+            })
+            ->pluck('id');
+
+        $accounts = DB::table('accounts')
+            ->where('status', 1)
+            ->where(function($q) use ($cashBankHeadIds) {
+                $q->whereIn('head_id', $cashBankHeadIds)
+                  ->orWhereRaw('LOWER(title) LIKE ?', ['%cash%'])
+                  ->orWhereRaw('LOWER(title) LIKE ?', ['%bank%']);
+            })
+            ->whereNotIn('account_code', ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP'])
+            ->orderBy('title')
+            ->get();
+
+        $customers = DB::table('customers')
+            ->select('id', 'customer_name', 'mobile', 'opening_balance')
+            ->orderBy('customer_name')
+            ->get();
+
+        $vendors = DB::table('vendors')
+            ->select('id', 'name', 'phone', 'opening_balance')
+            ->orderBy('name')
+            ->get();
+
+        $expenseCategories = DB::table('expense_categories')
+            ->orderBy('name')
+            ->get();
+
+        $lastExp = DB::table('expense_vouchers')->latest('id')->first();
+        $nextEvid = 'EVID-' . str_pad($lastExp ? $lastExp->id + 1 : 1, 3, '0', STR_PAD_LEFT);
+
+        return view('admin_panel.vochers.unified_create', compact(
+            'accounts',
+            'customers',
+            'vendors',
+            'expenseCategories',
+            'nextEvid'
+        ));
     }
 
     /**

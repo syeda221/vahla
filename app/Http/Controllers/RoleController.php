@@ -54,7 +54,10 @@ class RoleController extends Controller
             'web_users.edit', 'web_users.delete',
 
             // All Vouchers permissions
-            'all.vouchers.view', 'all.vouchers.delete'
+            'all.vouchers.view', 'all.vouchers.delete',
+
+            // Unified Voucher permissions
+            'vouchers.view', 'vouchers.create', 'vouchers.edit', 'vouchers.delete'
         ] as $permName) {
             Permission::firstOrCreate(['name' => $permName]);
         }
