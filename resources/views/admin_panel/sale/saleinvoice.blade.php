@@ -699,9 +699,26 @@
 
                         <td class="text-start">
 
+                            @php
+                                $vName = $item['variant_name'] ?? '';
+                                $vSize = (!empty($item['size_val']) && $item['size_val'] !== '-') ? $item['size_val'] : '';
+                                $vColor = (!empty($item['color_val']) && $item['color_val'] !== '-') ? $item['color_val'] : '';
+                                
+                                $vExtra = [];
+                                if ($vSize) $vExtra[] = $vSize;
+                                if ($vColor) $vExtra[] = $vColor;
+                                $vExtraStr = count($vExtra) > 0 ? ' (' . implode(', ', $vExtra) . ')' : '';
+
+                                $productTitle = $item['item_name'];
+                                if ($vName && strtolower(trim($vName)) !== strtolower(trim($productTitle))) {
+                                    $productTitle .= ' — ' . $vName;
+                                }
+                                $productTitle .= $vExtraStr;
+                            @endphp
+
                             <div style="font-weight: bold; font-size: 12px; margin-bottom: 2px;">
 
-                                {{ $item['item_name'] }}
+                                {{ $productTitle }}
 
                             </div>
 
@@ -1051,6 +1068,29 @@
 
         </table>
 
+        @php
+            $totalCartonsCount = 0;
+            $totalLooseCount = 0;
+            $totalPiecesCount = 0;
+
+            foreach ($saleItems as $it) {
+                $ppb = (float)($it['pieces_per_box'] ?? 1);
+                if ($ppb <= 0) $ppb = 1;
+                $tp = (float)($it['total_pieces'] ?? 0);
+                $totalPiecesCount += $tp;
+
+                $vU = strtolower($it['variant_unit'] ?? '');
+                $sM = $it['size_mode'] ?? 'std';
+
+                if ($sM === 'by_cartons' || $vU === 'carton' || $vU === 'ctn') {
+                    $b = floor($tp / $ppb);
+                    $l = $tp % $ppb;
+                    $totalCartonsCount += $b;
+                    $totalLooseCount += $l;
+                }
+            }
+        @endphp
+
 
         <!-- ========================================== -->
         <!-- EXCHANGE RETURN -->
@@ -1387,6 +1427,29 @@
                                 $paidAmount;
 
                         @endphp
+
+
+                        @if ($totalCartonsCount > 0)
+
+                            <tr>
+
+                                <td class="text-muted fw-bold">
+                                    Total Cartons
+                                </td>
+
+                                <td class="text-end fw-bold" style="color: var(--primary-color);">
+
+                                    @if ($totalLooseCount > 0)
+                                        {{ $totalCartonsCount }} Cartons + {{ $totalLooseCount }} Pcs
+                                    @else
+                                        {{ $totalCartonsCount }} Cartons
+                                    @endif
+
+                                </td>
+
+                            </tr>
+
+                        @endif
 
 
                         @if ($totalDisc > 0)
@@ -2071,8 +2134,25 @@
 
                         <td style="width: 53%;">
 
+                            @php
+                                $tVName = $item['variant_name'] ?? '';
+                                $tVSize = (!empty($item['size_val']) && $item['size_val'] !== '-') ? $item['size_val'] : '';
+                                $tVColor = (!empty($item['color_val']) && $item['color_val'] !== '-') ? $item['color_val'] : '';
+                                
+                                $tVExtra = [];
+                                if ($tVSize) $tVExtra[] = $tVSize;
+                                if ($tVColor) $tVExtra[] = $tVColor;
+                                $tVExtraStr = count($tVExtra) > 0 ? ' (' . implode(', ', $tVExtra) . ')' : '';
+
+                                $tProductTitle = $item['item_name'];
+                                if ($tVName && strtolower(trim($tVName)) !== strtolower(trim($tProductTitle))) {
+                                    $tProductTitle .= ' — ' . $tVName;
+                                }
+                                $tProductTitle .= $tVExtraStr;
+                            @endphp
+
                             <span class="item-name">
-                                {{ $item['item_name'] }}
+                                {{ $tProductTitle }}
                             </span>
 
                             {{-- 

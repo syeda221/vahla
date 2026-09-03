@@ -2062,6 +2062,7 @@ class SaleController extends Controller
                 'discount_percent' => (float) $item->discount_percent,
                 'discount_amount' => (float) $item->discount_amount,
                 'total' => (float) $item->total,
+                'variant_name' => $variant['name'] ?? '',
                 'color_val' => $variant['color'] ?? '',
                 'size_val' => $variant['size'] ?? '',
                 'variant_unit' => $variantUnit,
