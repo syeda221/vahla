@@ -258,10 +258,12 @@
              let rate = (rowMode === 'wholesale' && wsPrice > 0) ? wsPrice : (pRes.retail_price || 0);
 
              const ppb = parseFloat(pRes.pieces_per_box) || 1;
+             const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
              if (pRes.size_mode == "by_cartons") {
                  let piecePrice = parseFloat(pRes.sale_price_per_piece || rate || 0);
-                 $row.find('.visible-price').val(ppb > 1 ? (piecePrice * ppb) : piecePrice);
-                 $row.find('.price-per-piece').val(piecePrice);
+                 let cartonPrice = ppb > 1 ? (piecePrice * ppb) : piecePrice;
+                 $row.find('.visible-price').val(unitMode === 'pcs' ? piecePrice : cartonPrice);
+                 $row.find('.price-per-piece').val(unitMode === 'pcs' ? piecePrice : cartonPrice);
              } else if (pRes.size_mode == "by_pieces" || pRes.size_mode == "by_kg" || pRes.size_mode == "by_gm" || pRes.size_mode == "by_meter") {
                  $row.find('.visible-price').val(pRes.sale_price_per_piece || rate || 0);
                  $row.find('.price-per-piece').val($row.find('.visible-price').val() || 0);
@@ -978,9 +980,11 @@
             let rate = (rowMode === 'wholesale' && wsPrice > 0) ? wsPrice : (data.retail_price || data.trade_price || 0);
 
             const ppb = parseFloat(data.pieces_per_box) || 1;
+            const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
             if (data.size_mode === 'by_cartons') {
-                $row.find('.visible-price').val(ppb > 1 ? (rate * ppb) : rate);
-                $row.find('.price-per-piece').val(rate);
+                let cartonPrice = ppb > 1 ? (rate * ppb) : rate;
+                $row.find('.visible-price').val(unitMode === 'pcs' ? rate : cartonPrice);
+                $row.find('.price-per-piece').val(unitMode === 'pcs' ? rate : cartonPrice);
             } else {
                 $row.find('.visible-price').val(rate);
                 $row.find('.price-per-piece').val(rate);
@@ -1061,26 +1065,37 @@
             const packQty = parseFloat($row.find('.pack-qty').val()) || 1;
             const $priceInp = $row.find('.visible-price');
             let curPrice = parseFloat($priceInp.val()) || 0;
+            let retailPrice = parseFloat($row.find('.retail-price').val()) || 0;
+            let wholesalePrice = parseFloat($row.find('.wholesale-price').val()) || 0;
+            let rowMode = $row.find('.price-mode-row-toggle').attr('data-mode') || 'retail';
+            let basePiecePrice = (rowMode === 'wholesale' && wholesalePrice > 0) ? wholesalePrice : retailPrice;
 
             if (currentMode === 'ctn') {
                 currentMode = 'pcs';
-                $btn.text('Pcs').removeClass('btn-outline-success').addClass('btn-outline-info');
+                $btn.attr('data-unit-mode', 'pcs').text('Pcs').removeClass('btn-outline-success').addClass('btn-outline-info');
                 $row.find('.carton-qty').attr('placeholder', '0');
                 if (packQty > 1 && curPrice > 0) {
                     let piecePrice = curPrice / packQty;
                     $priceInp.val(piecePrice % 1 === 0 ? piecePrice : piecePrice.toFixed(2));
-                    $row.find('.price-per-piece').val($priceInp.val());
+                } else if (basePiecePrice > 0) {
+                    $priceInp.val(basePiecePrice);
                 }
+                $row.find('.price-per-piece').val($priceInp.val());
             } else {
                 currentMode = 'ctn';
-                $btn.text('Ctn').removeClass('btn-outline-info').addClass('btn-outline-success');
+                $btn.attr('data-unit-mode', 'ctn').text('Ctn').removeClass('btn-outline-info').addClass('btn-outline-success');
                 $row.find('.carton-qty').attr('placeholder', '0');
                 if (packQty > 1 && curPrice > 0) {
                     let cartonPrice = curPrice * packQty;
                     $priceInp.val(cartonPrice % 1 === 0 ? cartonPrice : cartonPrice.toFixed(2));
-                    $row.find('.price-per-piece').val($priceInp.val());
+                } else if (basePiecePrice > 0) {
+                    let cartonPrice = packQty > 1 ? (basePiecePrice * packQty) : basePiecePrice;
+                    $priceInp.val(cartonPrice % 1 === 0 ? cartonPrice : cartonPrice.toFixed(2));
                 }
+                $row.find('.price-per-piece').val($priceInp.val());
             }
+            $row.find('.hidden-sub-unit-mode').val(currentMode);
+            computeRow($row);
         } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
             const $priceInp = $row.find('.visible-price');
             let curPrice = parseFloat($priceInp.val()) || 0;
@@ -1251,9 +1266,27 @@
             let retailPrice = parseFloat($row.find('.retail-price').val()) || 0;
             let wholesalePrice = parseFloat($row.find('.wholesale-price').val()) || 0;
             
-            let rate = (newMode === 'wholesale' && wholesalePrice > 0) ? wholesalePrice : retailPrice;
-            $row.find('.visible-price').val(rate);
-            $row.find('.price-per-piece').val(rate);
+            let pieceRate = (newMode === 'wholesale' && wholesalePrice > 0) ? wholesalePrice : retailPrice;
+            const sizeMode = $row.data('size_mode') || $row.find('.size-mode-text').val();
+            const packQty = parseFloat($row.find('.pack-qty').val()) || 1;
+            const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
+
+            if (sizeMode === 'by_cartons') {
+                let cartonPrice = packQty > 1 ? (pieceRate * packQty) : pieceRate;
+                let finalPrice = (unitMode === 'pcs') ? pieceRate : cartonPrice;
+                $row.find('.visible-price').val(finalPrice % 1 === 0 ? finalPrice : finalPrice.toFixed(2));
+                $row.find('.price-per-piece').val($row.find('.visible-price').val());
+            } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
+                if (unitMode === 'gm') {
+                    $row.find('.visible-price').val((pieceRate / 1000).toFixed(4).replace(/\.?0+$/, ''));
+                } else {
+                    $row.find('.visible-price').val(pieceRate);
+                }
+                $row.find('.price-per-piece').val($row.find('.visible-price').val());
+            } else {
+                $row.find('.visible-price').val(pieceRate);
+                $row.find('.price-per-piece').val(pieceRate);
+            }
             
             computeRow($row);
             updateGrandTotals();
