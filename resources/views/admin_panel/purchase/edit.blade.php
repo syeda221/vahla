@@ -451,9 +451,23 @@
                                             @php
                                                 $sizeMode = $item->size_mode ?? 'by_pieces';
                                                 $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : 1);
-                                                $qty = (float) $item->qty;
+                                                $uVal = strtolower($unitName ?? 'pcs');
+                                                $isCtn = in_array($uVal, ['carton', 'ctn', 'box']) || ($sizeMode === 'by_cartons');
+                                                $isKg = in_array($uVal, ['kg', 'gm', 'g']);
 
-                                                $variantNameDisplay = $item->product->item_name ?? 'Product';
+                                                $displayQty = (float) $item->qty;
+                                                if ($isCtn && ($item->loose_qty > 0 || $item->boxes_qty > 0)) {
+                                                    $b = (int) $item->boxes_qty;
+                                                    $l = (int) $item->loose_qty;
+                                                    if ($l > 0) {
+                                                        $displayQty = $b . '.' . $l;
+                                                    } else {
+                                                        $displayQty = $b;
+                                                    }
+                                                }
+
+                                                $baseProductName = $item->product->item_name ?? 'Product';
+                                                $variantNameDisplay = $baseProductName;
                                                 $variantInfo = '';
                                                 $rawVariantData = $item->color ?? '';
                                                 $unitName = !empty($item->unit) ? $item->unit : ($item->product->unit->name ?? 'Pcs');
@@ -465,16 +479,33 @@
                                                         $vData = json_decode($item->color, true);
                                                     }
                                                     if (is_array($vData)) {
-                                                        $vName = $vData['name'] ?? '';
-                                                        $vColorName = $vData['color'] ?? '';
-                                                        $vSize = $vData['size'] ?? '';
+                                                        $vName = trim($vData['name'] ?? ($vData['variant_name'] ?? ''));
+                                                        $vColorName = trim($vData['color'] ?? '');
+                                                        $vSize = trim($vData['size'] ?? '');
                                                         if (empty($item->unit) && !empty($vData['unit'])) {
                                                             $unitName = $vData['unit'];
                                                         }
                                                         $vParts = [];
-                                                        if ($vName && $vName !== ($item->product->item_name ?? '')) {
-                                                            $variantNameDisplay = $vName;
+                                                        $sStr = ($vSize !== '' && $vSize !== '-') ? " {$vSize}" : '';
+                                                        $cStr = ($vColorName !== '' && $vColorName !== '-') ? " ({$vColorName})" : '';
+
+                                                        if ($vName !== '') {
+                                                            if (stripos($vName, $baseProductName) !== false) {
+                                                                $variantNameDisplay = $vName;
+                                                            } else {
+                                                                $variantNameDisplay = $baseProductName . ' — ' . $vName;
+                                                            }
+                                                        } else {
+                                                            $variantNameDisplay = $baseProductName;
                                                         }
+
+                                                        if ($sStr !== '' && stripos($variantNameDisplay, trim($vSize)) === false) {
+                                                            $variantNameDisplay .= $sStr;
+                                                        }
+                                                        if ($cStr !== '' && stripos($variantNameDisplay, trim($vColorName)) === false) {
+                                                            $variantNameDisplay .= $cStr;
+                                                        }
+
                                                         if ($vColorName && $vColorName !== '-') {
                                                             $vParts[] = 'Color: ' . $vColorName;
                                                         }
@@ -484,8 +515,9 @@
                                                         if (!empty($vParts)) {
                                                             $variantInfo = implode(' | ', $vParts);
                                                         }
-                                                    } else {
-                                                        $variantInfo = $item->color;
+                                                    } elseif (is_string($item->color) && trim($item->color) !== '' && trim($item->color) !== '-') {
+                                                        $variantNameDisplay = $baseProductName . ' (' . trim($item->color) . ')';
+                                                        $variantInfo = trim($item->color);
                                                     }
                                                 }
 
@@ -536,9 +568,9 @@
                                                     <input type="hidden" name="unit[]" class="unit-input-val" value="{{ $unitName }}">
                                                 </td>
                                                 <td>
-                                                    <input type="number" step="any" min="0.01" name="qty[]"
+                                                    <input type="number" step="any" min="0.0001" name="qty[]"
                                                         class="form-control text-center main-qty-input"
-                                                        value="{{ (float) $qty }}" placeholder="Qty">
+                                                        value="{{ $displayQty }}" placeholder="Qty">
                                                 </td>
                                                 <td>
                                                     <div class="input-group input-group-sm">
@@ -708,7 +740,10 @@
                 initProductSelect2($(this));
             });
 
-            // Recalc payments & rows on initial load
+            // Recalc rows & payments on initial load
+            $('#purchaseTableBody tr').each(function() {
+                recalcRow($(this));
+            });
             recalcPayments();
             recalcAll();
 
