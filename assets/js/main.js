@@ -105,20 +105,7 @@ jQuery(document).ready(function() {
             }
         })
 
-        $(".rt_nav_header.horizontal-layout .nav_wrapper_main .navbar-toggler").on("click", function() {
-            $(".rt_nav_header.horizontal-layout .nav-bottom").toggleClass("header-toggled");
-        });
-
-        // Navigation in mobile menu on click
-        var navItemClicked = $('.page-navigation >.nav-item');
-        navItemClicked.on("click", function(event) {
-            if (window.matchMedia('(max-width: 991px)').matches) {
-                if (!($(this).hasClass('show-submenu'))) {
-                    navItemClicked.removeClass('show-submenu');
-                }
-                $(this).toggleClass('show-submenu');
-            }
-        })
+        // Mobile navigation handled dynamically in app.blade.php
 
         $(window).scroll(function() {
             if (window.matchMedia('(min-width: 992px)').matches) {

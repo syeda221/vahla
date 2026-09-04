@@ -83,7 +83,7 @@
         }
 
         /* Desktop Mega Menu Positioning */
-        @media (min-width: 768px) {
+        @media (min-width: 992px) {
             .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.mega-menu {
                 position: static !important;
             }
@@ -131,40 +131,109 @@
             }
         }
 
-        /* Mobile / Tablet Responsive Navigation */
-        @media (max-width: 767.98px) {
-            .rt_nav_header.horizontal-layout .nav-bottom.header-toggled {
-                display: block;
-                max-height: calc(100vh - 70px);
-                overflow-y: auto;
-                padding: 10px 15px;
-                background: #ffffff;
-                border-bottom: 2px solid #e2e8f0;
-                box-shadow: 0 10px 20px rgba(0,0,0,0.08);
-            }
-
-            .mega-menu {
-                position: relative !important;
-            }
-
-            .mega-menu .submenu {
-                position: relative !important;
-                top: 0 !important;
+        /* Mobile / Tablet Responsive Navigation (< 992px) */
+        @media (max-width: 991.98px) {
+            .rt_nav_header.horizontal-layout .nav-bottom {
+                display: none;
+                position: fixed !important;
+                top: 66px !important;
                 left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                width: 100vw !important;
+                height: calc(100vh - 66px) !important;
+                max-height: calc(100vh - 66px) !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch;
+                background: #ffffff !important;
+                z-index: 99999 !important;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
+                padding: 10px 16px 80px 16px !important;
+            }
+
+            .rt_nav_header.horizontal-layout .nav-bottom.header-toggled {
+                display: block !important;
+            }
+
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation {
+                display: flex !important;
+                flex-direction: column !important;
+                width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item {
+                display: block !important;
+                width: 100% !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+                margin: 0 !important;
+                position: relative !important;
+            }
+
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item > .nav-link {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                padding: 13px 8px !important;
+                font-size: 15px !important;
+                font-weight: 700 !important;
+                color: #0f172a !important;
+                text-decoration: none !important;
+                width: 100% !important;
+            }
+
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item > .nav-link .menu-title {
+                display: inline-block !important;
+            }
+
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item > .nav-link i.menu_icon {
+                font-size: 16px !important;
+                margin-right: 12px !important;
+                color: #2563eb !important;
+                min-width: 22px !important;
+                text-align: center !important;
+                flex-shrink: 0 !important;
+            }
+
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item > .nav-link .menu-arrow {
+                font-size: 11px !important;
+                color: #94a3b8 !important;
+                transition: transform 0.25s ease !important;
+                margin-left: auto !important;
+            }
+
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.show-submenu > .nav-link .menu-arrow {
+                transform: rotate(180deg) !important;
+                color: #2563eb !important;
+            }
+
+            /* Submenu hidden by default on mobile, shown when .show-submenu is toggled */
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu {
+                display: none !important;
+                position: static !important;
+                top: auto !important;
+                left: auto !important;
+                right: auto !important;
                 transform: none !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 box-shadow: none !important;
-                border: none !important;
-                padding: 6px 12px !important;
+                border: 1px solid #e2e8f0 !important;
                 background: #f8fafc !important;
-                border-radius: 6px !important;
+                border-radius: 8px !important;
+                padding: 10px 14px !important;
+                margin: 0 0 12px 0 !important;
+            }
+
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.show-submenu .submenu {
+                display: block !important;
             }
 
             .mega-menu .col-group-wrapper {
                 display: flex !important;
                 flex-direction: column !important;
-                gap: 10px !important;
+                gap: 12px !important;
                 margin: 0 !important;
             }
 
@@ -172,35 +241,36 @@
                 width: 100% !important;
                 max-width: 100% !important;
                 border-right: none !important;
-                border-bottom: 1px solid #e2e8f0 !important;
-                padding: 0 0 8px 0 !important;
+                border-bottom: 1px dashed #cbd5e1 !important;
+                padding: 0 0 10px 0 !important;
                 margin: 0 !important;
             }
 
             .mega-menu .col-group:last-child {
                 border-bottom: none !important;
+                padding-bottom: 0 !important;
             }
 
-            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item {
-                display: block;
-                width: 100%;
-                border-bottom: 1px solid #f1f5f9;
+            .nav-item .submenu-item,
+            .mega-menu .submenu-item {
+                padding-left: 0 !important;
+                margin-bottom: 0 !important;
             }
 
-            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item > .nav-link {
-                padding: 12px 6px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
+            .nav-item .submenu-item li a,
+            .mega-menu .submenu-item li a {
+                padding: 8px 10px !important;
+                font-size: 14px !important;
+                color: #334155 !important;
+                display: flex !important;
+                align-items: center !important;
+                border-radius: 6px !important;
             }
 
-            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu {
-                position: relative;
-                top: 0;
-                box-shadow: none;
-                background: #f8fafc;
-                border-radius: 6px;
-                padding: 8px 12px;
+            .nav-item .submenu-item li a:active,
+            .mega-menu .submenu-item li a:active {
+                background: #eff6ff !important;
+                color: #1d4ed8 !important;
             }
         }
     </style>
@@ -593,8 +663,8 @@
                         </div>
 
                         <!-- Mobile Hamburger Button -->
-                        <button class="navbar-toggler align-self-center border-0 p-0 text-white ms-1 d-lg-none" type="button" data-toggle="minimize" style="font-size: 18px; outline: none; background: transparent; cursor: pointer;">
-                            <i class="fas fa-bars"></i>
+                        <button class="navbar-toggler align-self-center border-0 text-white ms-1 d-lg-none" type="button" id="mobileMenuToggler" style="font-size: 20px; outline: none; background: transparent; cursor: pointer; padding: 6px 10px !important;">
+                            <i class="fas fa-bars" id="mobileMenuIcon"></i>
                         </button>
                     </div>
 
@@ -1400,6 +1470,77 @@
                 altInput: true,      // Show a secondary visually formatted input
                 altFormat: "d/m/Y",  // Day/Month/Year
                 allowInput: true     // Allow typing
+            });
+        });
+    </script>
+    {{-- Mobile Navigation Handler Script --}}
+    <script>
+        $(document).ready(function() {
+            // 1. Toggle mobile menu container
+            $(document).on('click', '#mobileMenuToggler, .navbar-toggler', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var $navBottom = $('.rt_nav_header.horizontal-layout .nav-bottom');
+                $navBottom.toggleClass('header-toggled');
+
+                var isToggled = $navBottom.hasClass('header-toggled');
+                var $icon = $('#mobileMenuIcon');
+                if ($icon.length === 0) {
+                    $icon = $(this).find('i');
+                }
+
+                if (isToggled) {
+                    $icon.removeClass('fa-bars').addClass('fa-times');
+                    $('body').css('overflow', 'hidden'); // Prevent background scrolling
+                } else {
+                    $icon.removeClass('fa-times').addClass('fa-bars');
+                    $('body').css('overflow', '');
+                }
+            });
+
+            // 2. Mobile Submenu Accordion
+            $(document).on('click', '.page-navigation > .nav-item > .nav-link', function(e) {
+                if (window.innerWidth <= 991) {
+                    var $parent = $(this).closest('.nav-item');
+                    var $submenu = $parent.find('.submenu');
+
+                    // If has submenu, prevent navigation and toggle accordion
+                    if ($submenu.length > 0) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        // Close all other open submenus
+                        $('.page-navigation > .nav-item').not($parent).removeClass('show-submenu');
+
+                        // Toggle this submenu
+                        $parent.toggleClass('show-submenu');
+                    } else {
+                        // If direct link (e.g. Dashboard), close mobile menu
+                        $('.rt_nav_header.horizontal-layout .nav-bottom').removeClass('header-toggled');
+                        $('#mobileMenuIcon, .navbar-toggler i').removeClass('fa-times').addClass('fa-bars');
+                        $('body').css('overflow', '');
+                    }
+                }
+            });
+
+            // 3. Close mobile menu when any inner link is tapped
+            $(document).on('click', '.page-navigation .submenu a', function() {
+                if (window.innerWidth <= 991) {
+                    $('.rt_nav_header.horizontal-layout .nav-bottom').removeClass('header-toggled');
+                    $('#mobileMenuIcon, .navbar-toggler i').removeClass('fa-times').addClass('fa-bars');
+                    $('body').css('overflow', '');
+                }
+            });
+
+            // 4. Close mobile menu if clicked outside
+            $(document).on('click', function(e) {
+                if (window.innerWidth <= 991) {
+                    if (!$(e.target).closest('.rt_nav_header').length) {
+                        $('.rt_nav_header.horizontal-layout .nav-bottom').removeClass('header-toggled');
+                        $('#mobileMenuIcon, .navbar-toggler i').removeClass('fa-times').addClass('fa-bars');
+                        $('body').css('overflow', '');
+                    }
+                }
             });
         });
     </script>
