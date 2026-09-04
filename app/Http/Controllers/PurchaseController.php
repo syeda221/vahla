@@ -1776,26 +1776,48 @@ class PurchaseController extends Controller
                  $hasReturnableItems = true;
             }
             
-            $itemName = optional($item->product)->item_name ?? 'Unknown Product';
-            $colorStr = '';
+            $baseProductName = optional($item->product)->item_name ?? 'Unknown Product';
+            $variantNameDisplay = '';
+            $variantDetails = [];
+
             if (!empty($item->color)) {
                 $decoded = base64_decode($item->color, true);
-                if ($decoded !== false && is_string($decoded) && str_starts_with(trim($decoded), '{')) {
-                    $parsed = json_decode($decoded, true);
-                    if (json_last_error() === JSON_ERROR_NONE && is_array($parsed)) {
-                        $parts = [];
-                        if (!empty($parsed['size']) && $parsed['size'] !== '-') $parts[] = $parsed['size'];
-                        if (!empty($parsed['color']) && $parsed['color'] !== '-') $parts[] = $parsed['color'];
-                        $colorStr = implode(' | ', $parts);
-                    } else {
-                        $colorStr = $item->color;
+                $vData = ($decoded !== false) ? json_decode($decoded, true) : null;
+                if (empty($vData) || !is_array($vData)) {
+                    $vData = json_decode($item->color, true);
+                }
+                if (!empty($vData) && is_array($vData)) {
+                    $vName = trim($vData['name'] ?? ($vData['variant_name'] ?? ''));
+                    $vColorName = trim($vData['color'] ?? '');
+                    $vSizeName = trim($vData['size'] ?? '');
+
+                    if ($vName !== '' && strcasecmp($vName, $baseProductName) !== 0) {
+                        $variantNameDisplay = $vName;
                     }
-                } else {
-                    $colorStr = $item->color;
+
+                    if ($vSizeName !== '' && $vSizeName !== '-') {
+                        $variantDetails[] = 'Size: ' . $vSizeName;
+                    }
+                    if ($vColorName !== '' && $vColorName !== '-') {
+                        $variantDetails[] = 'Color: ' . $vColorName;
+                    }
+                } elseif (is_string($item->color) && trim($item->color) !== '' && trim($item->color) !== '-') {
+                    $variantDetails[] = trim($item->color);
                 }
             }
-            if ($colorStr) {
-                $itemName .= ' (' . $colorStr . ')';
+
+            if ($variantNameDisplay !== '') {
+                if (stripos($variantNameDisplay, $baseProductName) !== false) {
+                    $itemName = $variantNameDisplay;
+                } else {
+                    $itemName = $baseProductName . ' — ' . $variantNameDisplay;
+                }
+            } else {
+                $itemName = $baseProductName;
+            }
+
+            if (!empty($variantDetails)) {
+                $itemName .= ' (' . implode(' | ', $variantDetails) . ')';
             }
             
             $purchaseItems[] = [

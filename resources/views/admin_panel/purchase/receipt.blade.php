@@ -149,6 +149,61 @@
 
     <div class="divider"></div>
 
+    @php
+        $sumCartons = 0;
+        $sumLoosePieces = 0;
+        $sumTotalPieces = 0;
+        $hasCartonMode = false;
+
+        foreach ($purchase->items as $it) {
+            $rawU = strtolower(trim($it->unit ?? ''));
+            $itPPB = (float) ($it->pieces_per_box > 0 ? $it->pieces_per_box : ($it->product->pieces_per_box ?? 1));
+
+            if (!empty($it->color)) {
+                $dec = base64_decode($it->color, true);
+                $vD = ($dec !== false) ? json_decode($dec, true) : json_decode($it->color, true);
+                if (is_array($vD)) {
+                    if (!empty($vD['conv_factor']) && (float)$vD['conv_factor'] > 0) {
+                        $itPPB = (float)$vD['conv_factor'];
+                    }
+                    if (empty($rawU) && !empty($vD['unit'])) {
+                        $rawU = strtolower(trim($vD['unit']));
+                    }
+                }
+            }
+            if ($itPPB <= 0) $itPPB = 1;
+
+            $itQty = (float) $it->qty;
+            $isCtn = in_array($rawU, ['carton', 'ctn', 'box']) || ($it->size_mode === 'by_cartons');
+
+            if ($isCtn) {
+                $hasCartonMode = true;
+                $sumCartons += $itQty;
+                $sumTotalPieces += ($itQty * $itPPB);
+            } elseif ($itPPB > 1) {
+                $hasCartonMode = true;
+                $b = floor($itQty / $itPPB);
+                $l = $itQty - ($b * $itPPB);
+                $sumCartons += $b;
+                $sumLoosePieces += $l;
+                $sumTotalPieces += $itQty;
+            } else {
+                $sumLoosePieces += $itQty;
+                $sumTotalPieces += $itQty;
+            }
+        }
+
+        if ($hasCartonMode && $sumCartons > 0) {
+            if ($sumLoosePieces > 0) {
+                $cartonPcsDisplay = "{$sumCartons} Ctn + {$sumLoosePieces} Pcs (" . number_format($sumTotalPieces) . " Total Pcs)";
+            } else {
+                $cartonPcsDisplay = "{$sumCartons} Cartons (" . number_format($sumTotalPieces) . " Total Pcs)";
+            }
+        } else {
+            $cartonPcsDisplay = number_format($sumTotalPieces) . " Pcs";
+        }
+    @endphp
+
     <table class="items-table">
         <thead>
             <tr>
@@ -170,10 +225,53 @@
                     } else {
                         $qtyDisplay = ((float) $item->qty) . ' ' . ($item->unit ?? 'Pcs');
                     }
+                    $baseProductName = $item->product->item_name ?? 'Item';
+                    $variantNameDisplay = '';
+                    $variantDetails = [];
+
+                    if (!empty($item->color)) {
+                        $decodedColor = base64_decode($item->color, true);
+                        $vData = ($decodedColor !== false) ? json_decode($decodedColor, true) : null;
+                        if (empty($vData) || !is_array($vData)) {
+                            $vData = json_decode($item->color, true);
+                        }
+                        if (!empty($vData) && is_array($vData)) {
+                            $vName = trim($vData['name'] ?? ($vData['variant_name'] ?? ''));
+                            $vColorName = trim($vData['color'] ?? '');
+                            $vSizeName = trim($vData['size'] ?? '');
+
+                            if ($vName !== '' && strcasecmp($vName, $baseProductName) !== 0) {
+                                $variantNameDisplay = $vName;
+                            }
+
+                            if ($vSizeName !== '' && $vSizeName !== '-') {
+                                $variantDetails[] = $vSizeName;
+                            }
+                            if ($vColorName !== '' && $vColorName !== '-') {
+                                $variantDetails[] = $vColorName;
+                            }
+                        } elseif (is_string($item->color) && trim($item->color) !== '' && trim($item->color) !== '-') {
+                            $variantDetails[] = trim($item->color);
+                        }
+                    }
+
+                    if ($variantNameDisplay !== '') {
+                        if (stripos($variantNameDisplay, $baseProductName) !== false) {
+                            $fullItemTitle = $variantNameDisplay;
+                        } else {
+                            $fullItemTitle = $baseProductName . ' — ' . $variantNameDisplay;
+                        }
+                    } else {
+                        $fullItemTitle = $baseProductName;
+                    }
+
+                    if (!empty($variantDetails)) {
+                        $fullItemTitle .= ' (' . implode(' | ', $variantDetails) . ')';
+                    }
                 @endphp
                 <tr>
                     <td colspan="3" style="font-weight: 600;">
-                        {{ \Illuminate\Support\Str::limit($item->product->item_name ?? 'Item', 25) }}
+                        {{ $fullItemTitle }}
                     </td>
                 </tr>
                 <tr>
@@ -188,6 +286,11 @@
     </table>
 
     <div class="totals-section">
+        <div class="info-row" style="font-weight: bold;">
+            <span>Total Qty:</span>
+            <span>{{ $cartonPcsDisplay }}</span>
+        </div>
+
         <div class="info-row">
             <span>Subtotal:</span>
             <span>{{ number_format($purchase->subtotal, 2) }}</span>
