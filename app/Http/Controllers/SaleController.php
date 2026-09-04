@@ -1095,7 +1095,7 @@ class SaleController extends Controller
 
             // 2. Prepare Header Data
             $isNew = ! $sale->exists;
-            $sale->customer_id = $request->customer;
+            $sale->customer_id = $request->sub_customer_id ?: ($request->actual_customer_id ?: $request->customer);
             $sale->walkin_name = $isWalkin ? $request->walkin_name : null;
             $sale->reference = $request->reference;
             $sale->total_amount_Words = $request->total_amount_Words; // Consider auto-generating this too?

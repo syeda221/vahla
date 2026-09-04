@@ -190,6 +190,19 @@
                             <input type="text" class="modern-control bg-light" name="customer_id"
                                 value="{{ $customer->customer_id }}" readonly>
                         </div>
+                        <div class="input-group-modern" style="grid-column: span 3;">
+                            <label class="modern-label"><i class="fa fa-sitemap text-primary me-1"></i> Parent Account <small class="text-muted fw-normal">(Optional)</small></label>
+                            <select class="modern-control" name="parent_id" id="parent_id">
+                                <option value="">-- Main / Independent Customer --</option>
+                                @if(isset($parentCustomers))
+                                    @foreach($parentCustomers as $parent)
+                                        <option value="{{ $parent->id }}" {{ (old('parent_id', $customer->parent_id) == $parent->id) ? 'selected' : '' }}>
+                                            {{ $parent->customer_name }} ({{ $parent->customer_id }})
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
                         <div class="input-group-modern" style="grid-column: span 2;">
                             <label class="modern-label">Customer Type <span class="text-danger">*</span></label>
                             <select class="modern-control" name="customer_type" required>
@@ -199,23 +212,14 @@
                             </select>
                         </div>
                         <div class="input-group-modern" style="grid-column: span 3;">
-                            <label class="modern-label">Full Name <span class="text-danger">*</span></label>
+                            <label class="modern-label">Full Name / Sub-Customer <span class="text-danger">*</span></label>
                             <input type="text" class="modern-control" name="customer_name" required
-                                value="{{ $customer->customer_name }}" placeholder="Customer Name">
+                                value="{{ $customer->customer_name }}" placeholder="Customer or Sub-Customer Name">
                         </div>
                         <div class="input-group-modern" style="grid-column: span 2;">
                             <label class="modern-label">Mobile</label>
                             <input type="text" class="modern-control" name="mobile" placeholder="0300-1234567"
                                 value="{{ $customer->mobile }}">
-                        </div>
-                        <div class="input-group-modern" style="grid-column: span 3;">
-                            <label class="modern-label">Region (Zone)</label>
-                            <select class="modern-control" name="zone">
-                                <option value="">-- Select Zone --</option>
-                                @foreach($zones as $z)
-                                    <option value="{{ $z->id }}" {{ $customer->zone == $z->id ? 'selected' : '' }}>{{ $z->zone }}</option>
-                                @endforeach
-                            </select>
                         </div>
 
                         <!-- Financials / Address Line 2 -->

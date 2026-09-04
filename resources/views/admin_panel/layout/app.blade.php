@@ -863,6 +863,8 @@
                                                     @can('customers.view')
                                                         <li><a href="{{ url('customers') }}"><i class="fas fa-user"></i>
                                                                 Customer</a></li>
+                                                        <li><a href="{{ route('customers.ledger') }}"><i class="fas fa-book-open"></i>
+                                                                Customer Ledger</a></li>
                                                     @endcan
                                                     @can('customer_types.view')
                                                         <li><a href="{{ route('customer-types.index') }}"><i class="fas fa-tags"></i>

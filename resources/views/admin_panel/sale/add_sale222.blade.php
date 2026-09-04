@@ -668,9 +668,18 @@
                             </div>
                         </div>
 
+                        <!-- Sub-Customer Selection (Shown if parent has sub-customers) -->
+                        <div class="col-sm-6 col-md-2 col-lg-2 d-none" id="subCustomerCol">
+                            <label class="meta-label mb-1 text-primary"><i class="fas fa-code-branch text-primary"></i> Sub-Customer</label>
+                            <select class="form-select" id="subCustomerSelect" name="sub_customer_id" style="width:100%">
+                                <option value="">-- Main Customer --</option>
+                            </select>
+                        </div>
+
                         <!-- Save Sale Button -->
                         <div class="col-sm-12 col-md-12 col-lg-1 d-flex align-items-end">
                             <input type="hidden" name="is_walkin" id="is_walkin" value="0">
+                            <input type="hidden" name="actual_customer_id" id="actualCustomerId" value="">
                             <button type="button" class="btn btn-top-save w-100 fw-bold d-flex align-items-center justify-content-center gap-1" id="btnHeaderSaveSale" style="font-size: 0.75rem;">
                                 <i class="fas fa-check"></i> Save
                             </button>
@@ -1015,8 +1024,17 @@
                                 </select>
                             </div>
                             <div class="col-md-6 mb-2">
-                                <label class="form-label font-weight-bold fw-bold">Full Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="customer_name" id="modalCustomerName" required placeholder="Customer Name">
+                                <label class="form-label font-weight-bold fw-bold">Parent Account <small class="text-muted fw-normal">(Optional)</small></label>
+                                <select class="form-control form-select" name="parent_id" id="modalParentId">
+                                    <option value="">-- Main / Independent --</option>
+                                    @foreach(\App\Models\Customer::whereNull('parent_id')->orderBy('customer_name')->get() as $p)
+                                        <option value="{{ $p->id }}">{{ $p->customer_name }} ({{ $p->customer_id }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label font-weight-bold fw-bold">Full Name / Sub-Customer <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="customer_name" id="modalCustomerName" required placeholder="Customer or Sub-Customer Name">
                             </div>
                             <div class="col-md-6 mb-2">
                                 <label class="form-label font-weight-bold fw-bold">Mobile</label>
@@ -1026,7 +1044,7 @@
                                 <label class="form-label font-weight-bold fw-bold">Opening Balance</label>
                                 <input type="number" step="0.01" class="form-control" name="opening_balance" value="0">
                             </div>
-                            <div class="col-12 mb-2">
+                            <div class="col-md-6 mb-2">
                                 <label class="form-label font-weight-bold fw-bold">Address</label>
                                 <input type="text" class="form-control" name="address" placeholder="Address">
                             </div>
@@ -1220,39 +1238,86 @@
                 clearCustomerInfo();
             });
 
-            // Customer selected → load details
+            // Store main customer cache when loaded
+            let currentMainCustomerData = null;
+
+            // Customer selected → load details & check for sub-customers
             $('#customerSelect').on('select2:select', function(e) {
                 const id = e.params.data.id;
                 if (!id) return;
 
+                $('#actualCustomerId').val(id);
+
                 $.get("{{ url('sale/customers') }}/" + id + "?t=" + new Date().getTime(), function(d) {
-                    // Fill hidden fields
-                    $('#address').val(d.address || '');
-                    $('#tel').val(d.mobile || '');
-                    const prev = parseFloat(d.previous_balance || 0);
-                    const range = parseFloat(d.balance_range || 0);
-                    $('#previousBalance').val(prev.toFixed(2));
-                    $('#rangeBalance').val(range.toFixed(2));
+                    currentMainCustomerData = d;
+                    applyCustomerDetails(d);
 
-                    // Fill info card
-                    $('#ci_code').text(d.customer_id || '—');
-                    $('#ci_name').text(d.customer_name || '—');
-                    $('#ci_mobile').text(d.mobile || '—');
-                    $('#ci_address').text(d.address || '—');
-                    $('#ci_prev_bal').text(prev.toFixed(2));
-                    $('#ci_range_bal').text(range.toFixed(2));
-                    $('#customerInfoCard').removeClass('d-none');
-
-                    // Auto-fill Sales Officer if customer has one
-                    if (d.sales_officer_id) {
-                        $('#salesOfficerSelect').val(d.sales_officer_id);
+                    // Check if parent has sub-customers
+                    if (d.has_sub_customers) {
+                        $.get("{{ url('customers/sub-customers') }}/" + id, function(res) {
+                            if (res.success && res.sub_customers && res.sub_customers.length > 0) {
+                                let opts = '<option value="">-- Main Account (Direct) --</option>';
+                                res.sub_customers.forEach(function(sub) {
+                                    opts += `<option value="${sub.id}">${sub.customer_name} (${sub.customer_id})</option>`;
+                                });
+                                $('#subCustomerSelect').html(opts);
+                                $('#subCustomerCol').removeClass('d-none');
+                            } else {
+                                $('#subCustomerCol').addClass('d-none');
+                            }
+                        });
+                    } else {
+                        $('#subCustomerCol').addClass('d-none');
+                        $('#subCustomerSelect').html('<option value="">-- Main Account --</option>');
                     }
-
-                    if (typeof updateGrandTotals === 'function') updateGrandTotals();
                 }).fail(function() {
                     showAlert('error', 'Failed to load customer details');
                 });
             });
+
+            // Sub-Customer change event
+            $(document).on('change', '#subCustomerSelect', function() {
+                const subId = $(this).val();
+                if (subId) {
+                    $('#actualCustomerId').val(subId);
+                    $.get("{{ url('sale/customers') }}/" + subId + "?t=" + new Date().getTime(), function(subD) {
+                        applyCustomerDetails(subD, true);
+                    });
+                } else if (currentMainCustomerData) {
+                    $('#actualCustomerId').val(currentMainCustomerData.id);
+                    applyCustomerDetails(currentMainCustomerData, false);
+                }
+            });
+
+            function applyCustomerDetails(d, isSub = false) {
+                // Fill hidden fields
+                $('#address').val(d.address || '');
+                $('#tel').val(d.mobile || '');
+                const prev = parseFloat(d.previous_balance || 0);
+                const range = parseFloat(d.balance_range || 0);
+                $('#previousBalance').val(prev.toFixed(2));
+                $('#rangeBalance').val(range.toFixed(2));
+
+                // Fill info card
+                $('#ci_code').text(d.customer_id || '—');
+                let displayName = d.customer_name || '—';
+                if (isSub && currentMainCustomerData) {
+                    displayName += ` (Sub of ${currentMainCustomerData.customer_name})`;
+                }
+                $('#ci_name').text(displayName);
+                $('#ci_mobile').text(d.mobile || '—');
+                $('#ci_address').text(d.address || '—');
+                $('#ci_prev_bal').text(prev.toFixed(2));
+                $('#ci_range_bal').text(range.toFixed(2));
+                $('#customerInfoCard').removeClass('d-none');
+
+                // Auto-fill Sales Officer if customer has one
+                if (d.sales_officer_id) {
+                    $('#salesOfficerSelect').val(d.sales_officer_id);
+                }
+
+                if (typeof updateGrandTotals === 'function') updateGrandTotals();
+            }
 
             // Customer cleared
             $('#customerSelect').on('select2:clear', function() {
@@ -1261,6 +1326,10 @@
             });
 
             function clearCustomerInfo() {
+                currentMainCustomerData = null;
+                $('#actualCustomerId').val('');
+                $('#subCustomerCol').addClass('d-none');
+                $('#subCustomerSelect').html('<option value="">-- Main Account --</option>');
                 $('#address, #tel').val('');
                 $('#previousBalance, #rangeBalance').val('0');
                 $('#ci_code, #ci_name, #ci_mobile, #ci_address').text('—');

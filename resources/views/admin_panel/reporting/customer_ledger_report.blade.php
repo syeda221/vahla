@@ -98,12 +98,80 @@
     }
 
     .balance-positive {
-        color: #16a34a;
-        font-weight: bold;
+        color: #dc2626 !important; /* Receivable / Dr */
     }
     .balance-negative {
-        color: #dc2626;
-        font-weight: bold;
+        color: #16a34a !important; /* Advance / Cr */
+    }
+
+    .badge-main-cust {
+        background-color: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+    }
+
+    .badge-sub-cust {
+        background-color: #f0fdfa;
+        color: #0f766e;
+        border: 1px solid #99f6e4;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+    }
+
+    /* Select2 Modern Dropdown Row-to-Row Styling */
+    .select2-container--default .select2-dropdown {
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05) !important;
+        overflow: hidden !important;
+        background: #ffffff !important;
+    }
+
+    .select2-container--default .select2-results > .select2-results__options {
+        max-height: 280px !important;
+    }
+
+    .select2-container--default .select2-results__option {
+        padding: 9px 14px !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        transition: all 0.15s ease !important;
+        font-size: 0.83rem !important;
+        color: #1e293b !important;
+    }
+
+    .select2-container--default .select2-results__option:last-child {
+        border-bottom: none !important;
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+    }
+
+    .select2-container--default .select2-results__option[aria-selected="true"] {
+        background-color: #eff6ff !important;
+        color: #1d4ed8 !important;
+        font-weight: 700 !important;
+    }
+
+    .select2-container--default .select2-search--dropdown {
+        padding: 8px 10px !important;
+        background: #f8fafc !important;
+        border-bottom: 1px solid #cbd5e1 !important;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 6px !important;
+        padding: 6px 12px !important;
+        font-size: 0.83rem !important;
+        outline: none !important;
     }
 
     @media print {
@@ -116,12 +184,12 @@
 
 <div class="sale-report-container">
 
-    {{-- DESKTOP FILTER HEADER CARD (d-none d-md-block Standard Pattern) --}}
+    {{-- DESKTOP FILTER HEADER CARD --}}
     <div class="card border-0 shadow-sm mb-2 no-print d-none d-md-block" style="border-radius: 10px;">
         <div class="card-body py-2 px-3">
             <form id="ledgerFormDesk">
                 
-                {{-- Top Section: Left Title, Mid Dates with Gap, Last Buttons --}}
+                {{-- Top Section: Left Title, Mid Dates, Last Buttons --}}
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-2 pb-2 border-bottom">
                     
                     {{-- Left Title --}}
@@ -141,6 +209,10 @@
                             <label for="end_date_desk" class="sale-filter-label mb-0 ms-2 me-1">End:</label>
                             <input type="date" name="end_date" id="end_date_desk" class="form-control form-control-sm fw-bold endDateInput" value="{{ date('Y-m-d') }}" style="height: 32px; width: 135px; font-size: .78rem; border-radius: 6px;">
                         </div>
+                        <div class="form-check form-switch d-inline-flex align-items-center gap-1 mb-0">
+                            <input class="form-check-input includeSubCheck" type="checkbox" id="include_sub_desk" checked style="cursor:pointer;">
+                            <label class="form-check-label small fw-bold text-dark mb-0" for="include_sub_desk" style="cursor:pointer; font-size: 11px;">Include Sub-Customers</label>
+                        </div>
                     </div>
 
                     {{-- Last Buttons with X-Axis Gap --}}
@@ -159,7 +231,7 @@
 
                 {{-- Bottom Section: Zone, Customer, Quick Filter --}}
                 <div class="row g-2">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="zone_id_desk" class="sale-filter-label mb-1">Zone:</label>
                         <select name="zone_id" id="zone_id_desk" class="form-select form-select-sm select2 zoneSelect">
                             <option value="">-- All Zones --</option>
@@ -168,12 +240,25 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-5">
-                        <label for="customer_id_desk" class="sale-filter-label mb-1">Customer:</label>
+                    <div class="col-md-6">
+                        <label for="customer_id_desk" class="sale-filter-label mb-1">Customer / Sub-Customer:</label>
                         <select name="customer_id" id="customer_id_desk" class="form-select form-select-sm select2 customerSelect">
                             <option value="all" data-zone="">-- All Customers --</option>
-                            @foreach ($customers as $c)
-                                <option value="{{ $c->id }}" data-zone="{{ $c->zone }}">{{ $c->customer_name }}</option>
+                            @php
+                                $parents = $customers->where('parent_id', null);
+                            @endphp
+                            @foreach ($parents as $parent)
+                                @php
+                                    $children = $customers->where('parent_id', $parent->id);
+                                @endphp
+                                <option value="{{ $parent->id }}" data-zone="{{ $parent->zone }}">
+                                    {{ $parent->customer_name }} ({{ $parent->customer_id }}) {{ $children->count() > 0 ? '— [Main Customer]' : '' }}
+                                </option>
+                                @foreach ($children as $child)
+                                    <option value="{{ $child->id }}" data-zone="{{ $child->zone }}">
+                                        &nbsp;&nbsp;&nbsp;&nbsp;— Sub: {{ $child->customer_name }} ({{ $child->customer_id }})
+                                    </option>
+                                @endforeach
                             @endforeach
                         </select>
                     </div>
@@ -193,9 +278,22 @@
         </div>
     </div>
 
-    {{-- MOBILE FILTER HEADER CARD (d-md-none With Top Margin to Prevent Navbar Overlap) --}}
-    <div class="card border-0 shadow-sm mb-3 no-print d-md-none mt-2" style="border-radius: 12px;">
-        <div class="card-body p-3">
+    {{-- MOBILE OFFCANVAS TRIGGER BUTTON --}}
+    <div class="d-md-none mb-2 no-print">
+        <button class="btn btn-primary w-100 py-2 d-flex align-items-center justify-content-center shadow-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileFilterDrawer" aria-controls="mobileFilterDrawer" style="border-radius: 8px; font-weight: 700; font-size: 13px;">
+            <i class="fas fa-sliders-h me-2"></i> Open Report Filters
+        </button>
+    </div>
+
+    {{-- MOBILE OFFCANVAS DRAWER --}}
+    <div class="offcanvas offcanvas-start d-md-none" tabindex="-1" id="mobileFilterDrawer" aria-labelledby="mobileFilterDrawerLabel">
+        <div class="offcanvas-header bg-light border-bottom py-2">
+            <h6 class="offcanvas-title fw-bold text-dark" id="mobileFilterDrawerLabel" style="font-size: 14px;">
+                <i class="fas fa-filter text-primary me-2"></i>Filter Options
+            </h6>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-3">
             <form id="ledgerFormMob">
                 <div class="row g-2">
                     <div class="col-12 mb-1">
@@ -204,7 +302,7 @@
                         </span>
                     </div>
 
-                    {{-- 1. Zone --}}
+                    {{-- Zone --}}
                     <div class="col-12 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Zone</label>
                         <select name="zone_id" class="form-select form-select-sm select2 zoneSelect">
@@ -215,18 +313,34 @@
                         </select>
                     </div>
 
-                    {{-- 2. Customer --}}
+                    {{-- Customer --}}
                     <div class="col-12 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Customer</label>
                         <select name="customer_id" class="form-select form-select-sm select2 customerSelect">
                             <option value="all" data-zone="">-- All Customers --</option>
-                            @foreach ($customers as $c)
-                                <option value="{{ $c->id }}" data-zone="{{ $c->zone }}">{{ $c->customer_name }}</option>
+                            @foreach ($parents as $parent)
+                                @php $children = $customers->where('parent_id', $parent->id); @endphp
+                                <option value="{{ $parent->id }}" data-zone="{{ $parent->zone }}">
+                                    {{ $parent->customer_name }} ({{ $parent->customer_id }}) {{ $children->count() > 0 ? '— [Main Customer]' : '' }}
+                                </option>
+                                @foreach ($children as $child)
+                                    <option value="{{ $child->id }}" data-zone="{{ $child->zone }}">
+                                        &nbsp;&nbsp;&nbsp;&nbsp;— Sub: {{ $child->customer_name }} ({{ $child->customer_id }})
+                                    </option>
+                                @endforeach
                             @endforeach
                         </select>
                     </div>
 
-                    {{-- 3. Quick Filter --}}
+                    {{-- Sub-Customer toggle --}}
+                    <div class="col-12 mb-2">
+                        <div class="form-check form-switch pt-1">
+                            <input class="form-check-input includeSubCheck" type="checkbox" id="include_sub_mob" checked>
+                            <label class="form-check-label small fw-bold text-dark" for="include_sub_mob">Include Sub-Customers</label>
+                        </div>
+                    </div>
+
+                    {{-- Quick Filter --}}
                     <div class="col-12 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Quick Filter</label>
                         <select class="form-control form-control-sm quickFilterSelect" style="font-size: 11px; height: 34px !important; border-radius: 6px !important; border: 1px solid #cbd5e1 !important; background-color: #ffffff !important;">
@@ -238,7 +352,7 @@
                         </select>
                     </div>
 
-                    {{-- 4. Start & End Date --}}
+                    {{-- Start & End Date --}}
                     <div class="col-6 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Start Date</label>
                         <input type="date" name="start_date" id="start_date_mob" class="form-control form-control-sm startDateInput" value="2000-01-01" style="font-size: 11px;">
@@ -248,14 +362,14 @@
                         <input type="date" name="end_date" id="end_date_mob" class="form-control form-control-sm endDateInput" value="{{ date('Y-m-d') }}" style="font-size: 11px;">
                     </div>
 
-                    {{-- 5. Full Width Generate Button --}}
+                    {{-- Generate Button --}}
                     <div class="col-12 my-2">
                         <button type="button" class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm btnSearchTrigger" style="background-color: #3b82f6; border-color: #3b82f6; font-size: 13px;">
                             <i class="fas fa-filter me-1"></i> Generate Report
                         </button>
                     </div>
 
-                    {{-- 6. Centralized Reset & Print Actions With Horizontal Gap --}}
+                    {{-- Reset & Print Actions --}}
                     <div class="col-12">
                         <div class="d-flex align-items-center justify-content-center gap-2 pt-1" style="gap: 10px !important;">
                             <button type="button" class="btn btn-light border btn-sm flex-fill fw-bold text-secondary btnResetTrigger" style="font-size: 11px; margin-right: 8px !important;">
@@ -271,7 +385,7 @@
         </div>
     </div>
 
-    {{-- DESKTOP SUMMARY METRIC PILL BAR (d-none d-md-block) --}}
+    {{-- DESKTOP SUMMARY METRIC PILL BAR --}}
     <div class="card border-0 shadow-sm mb-2 d-none d-md-block" style="border-radius: 10px; background: #ffffff;">
         <div class="card-body p-2">
             <div class="summary-pill-bar">
@@ -300,7 +414,7 @@
         </div>
     </div>
 
-    {{-- MOBILE SUMMARY METRIC GRID (2 Columns col-6 d-md-none) --}}
+    {{-- MOBILE SUMMARY METRIC GRID --}}
     <div class="row g-2 mb-3 d-md-none no-print px-1">
         <div class="col-6 mb-1">
             <div class="mob-metric-card">
@@ -342,7 +456,30 @@
             </div>
         </div>
 
-        {{-- DESKTOP TABLE VIEW (d-none d-md-block) --}}
+        {{-- SUB-CUSTOMERS BREAKDOWN TABLE (D-NONE BY DEFAULT, SHOWN WHEN SUB-CUSTOMERS EXIST) --}}
+        <div class="card border-0 shadow-sm mb-3 rounded-3 bg-white d-none" id="subCustomerBreakdownCard">
+            <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-primary" style="font-size: 0.85rem;"><i class="fas fa-sitemap me-2"></i>Sub-Customers Balance Breakdown</h6>
+                <span class="badge bg-primary px-2 py-1" id="subCustomerCountBadge">0 Sub-Accounts</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0 align-middle" style="font-size: 0.8rem;">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Customer / Sub-Customer Name</th>
+                            <th class="text-end">Opening Balance</th>
+                            <th class="text-end">Period Debit (Sales)</th>
+                            <th class="text-end">Period Credit (Receipts)</th>
+                            <th class="text-end">Period Closing</th>
+                            <th class="text-end">Current Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subCustomerBreakdownBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- DESKTOP TABLE VIEW --}}
         <div class="card border-0 shadow-sm mb-3 rounded-3 bg-white d-none d-md-block">
             <div class="card-body p-0">
                 <div class="sale-table-wrap">
@@ -350,12 +487,12 @@
                         <thead>
                             <tr>
                                 <th style="width: 10%;">Date</th>
-                                <th style="width: 12%;">Ref / Invoice</th>
-                                <th style="width: 18%;">Customer</th>
+                                <th style="width: 11%;">Ref / Invoice</th>
+                                <th style="width: 18%;">Customer / Sub-Customer</th>
                                 <th>Description</th>
-                                <th style="width: 12%;">Debit (Dr)</th>
-                                <th style="width: 12%;">Credit (Cr)</th>
-                                <th style="width: 14%;">Balance</th>
+                                <th style="width: 12%;" class="text-end">Debit (Dr)</th>
+                                <th style="width: 12%;" class="text-end">Credit (Cr)</th>
+                                <th style="width: 13%;" class="text-end">Running Balance</th>
                             </tr>
                         </thead>
                         <tbody id="ledgerBody"></tbody>
@@ -385,6 +522,7 @@
             // Sync Inputs between Desktop & Mobile
             $('.startDateInput').on('change', function() { $('.startDateInput').val($(this).val()); });
             $('.endDateInput').on('change', function() { $('.endDateInput').val($(this).val()); });
+            $('.includeSubCheck').on('change', function() { $('.includeSubCheck').prop('checked', $(this).is(':checked')); });
             $('.zoneSelect').on('change', function() {
                 let selectedZone = $(this).val();
                 $('.zoneSelect').val(selectedZone);
@@ -443,6 +581,7 @@
                 $('.endDateInput').val('{{ date("Y-m-d") }}');
                 $('.zoneSelect').val('').trigger('change');
                 $('.customerSelect').val('all').trigger('change');
+                $('.includeSubCheck').prop('checked', true);
                 $('.quickFilterSelect').val('custom');
                 loadLedger();
             });
@@ -454,15 +593,18 @@
                 let cid = $(".customerSelect").val();
                 let start = $(".startDateInput").val() || '2000-01-01';
                 let end = $(".endDateInput").val() || '{{ date("Y-m-d") }}';
+                let includeSub = $("#include_sub_desk").is(':checked') ? 1 : 0;
 
                 $("#loader").show();
                 $("#ledgerBox").hide();
+                $("#subCustomerBreakdownCard").addClass('d-none');
 
                 $.get("{{ route('report.customer.ledger.fetch') }}", {
                     zone_id: zid,
                     customer_id: cid || 'all',
                     start_date: start,
-                    end_date: end
+                    end_date: end,
+                    include_sub: includeSub
                 }, function(res) {
                     $("#loader").hide();
                     $("#ledgerBox").show();
@@ -470,16 +612,47 @@
                     let displayStart = formatDisplayDate(start);
                     let displayEnd = formatDisplayDate(end);
 
+                    let titleBadge = '';
+                    if (res.is_consolidated) {
+                        titleBadge = '<span class="badge-main-cust ms-2"><i class="fas fa-sitemap me-1"></i> Consolidated (All Sub-Customers Included)</span>';
+                    }
+
                     // Build Header
                     $("#ledgerHeader").html(`
                         <div>
-                            <h6 class="fw-bold text-dark mb-0">${res.customer.customer_name}</h6>
+                            <h6 class="fw-bold text-dark mb-0 d-flex align-items-center flex-wrap gap-1">
+                                <i class="fas fa-user text-primary me-1"></i> ${res.customer.customer_name} ${titleBadge}
+                            </h6>
                             <small class="text-muted">Period: <strong>${displayStart}</strong> to <strong>${displayEnd}</strong></small>
                         </div>
                         <div>
-                             <span class="badge bg-primary text-white p-2 shadow-sm font-monospace">Statement of Account</span>
+                             <span class="badge bg-primary text-white px-3 py-2 shadow-sm font-monospace">Statement of Account</span>
                         </div>
                     `);
+
+                    // Render Sub-Customer Breakdown table if applicable
+                    if (res.sub_customer_breakdown && res.sub_customer_breakdown.length > 1) {
+                        let bkHtml = '';
+                        res.sub_customer_breakdown.forEach(function(b) {
+                            bkHtml += `
+                                <tr style="${b.is_main ? 'background-color: #f8fafc;' : ''}">
+                                    <td>
+                                        ${b.is_main ? '<span class="badge-main-cust"><i class="fas fa-star text-warning me-1"></i> ' + b.name + '</span>' : '<span class="ms-3 fw-semibold text-dark"><i class="fas fa-code-branch text-info me-1"></i> Sub: ' + b.name + '</span>'}
+                                    </td>
+                                    <td class="text-end font-monospace">Rs ${Math.abs(b.opening_balance).toLocaleString(undefined, {minimumFractionDigits: 2})} <small class="text-muted">${b.opening_balance >= 0 ? 'Dr' : 'Cr'}</small></td>
+                                    <td class="text-end font-monospace text-success fw-bold">Rs ${b.total_debit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                    <td class="text-end font-monospace text-danger fw-bold">Rs ${b.total_credit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                                    <td class="text-end font-monospace fw-bold text-dark">Rs ${Math.abs(b.closing_balance).toLocaleString(undefined, {minimumFractionDigits: 2})} <small class="text-muted">${b.closing_balance >= 0 ? 'Dr' : 'Cr'}</small></td>
+                                    <td class="text-end font-monospace fw-bold text-primary">Rs ${Math.abs(b.current_total_balance).toLocaleString(undefined, {minimumFractionDigits: 2})} <small class="text-muted">${b.current_total_balance >= 0 ? 'Dr' : 'Cr'}</small></td>
+                                </tr>
+                            `;
+                        });
+                        $('#subCustomerBreakdownBody').html(bkHtml);
+                        $('#subCustomerCountBadge').text(res.sub_customer_breakdown.length + ' Sub-Accounts');
+                        $('#subCustomerBreakdownCard').removeClass('d-none');
+                    } else {
+                        $('#subCustomerBreakdownCard').addClass('d-none');
+                    }
 
                     let totalDebit = 0;
                     let totalCredit = 0;
@@ -492,13 +665,13 @@
                     // Desktop Opening Row
                     let html = `
                         <tr class="bg-light fw-bold">
-                            <td class="text-center">-</td>
+                            <td class="text-center small">-</td>
                             <td class="text-center">-</td>
                             <td class="text-center">-</td>
                             <td class="text-start">Opening Balance (B/F)</td>
                             <td class="text-end">-</td>
                             <td class="text-end">-</td>
-                            <td class="text-end text-dark">
+                            <td class="text-end text-dark font-monospace">
                                 Rs ${lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2})} 
                             </td>
                         </tr>
@@ -522,18 +695,23 @@
 
                         let balLabel = lastBalance >= 0 ? 'Dr' : 'Cr';
                         let balClass = lastBalance >= 0 ? 'balance-positive' : 'balance-negative';
-                        let custName = t.customer_name || '-';
+                        let partyBadge = '';
+                        if (t.is_sub) {
+                            partyBadge = `<span class="badge-sub-cust"><i class="fas fa-code-branch me-1"></i> Sub: ${t.party_name}</span>`;
+                        } else {
+                            partyBadge = `<span class="badge-main-cust"><i class="fas fa-user me-1"></i> ${t.party_name || t.customer_name || 'Main Customer'}</span>`;
+                        }
 
                         // Desktop Row
                         html += `
                             <tr>
                                 <td class="text-center small text-nowrap">${t.date}</td>
                                 <td class="text-center"><span class="badge bg-light text-primary border font-monospace">${t.invoice ?? '-'}</span></td>
-                                <td class="fw-bold text-dark">${custName}</td>
+                                <td>${partyBadge}</td>
                                 <td class="text-start">${t.description}</td>
-                                <td class="text-end text-danger fw-semibold">${debit > 0 ? 'Rs ' + debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
-                                <td class="text-end text-success fw-semibold">${credit > 0 ? 'Rs ' + credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
-                                <td class="text-end fw-bold ${balClass}">
+                                <td class="text-end text-success fw-bold font-monospace">${debit > 0 ? 'Rs ' + debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
+                                <td class="text-end text-danger fw-bold font-monospace">${credit > 0 ? 'Rs ' + credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
+                                <td class="text-end fw-bold font-monospace ${balClass}">
                                     Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} 
                                     <small class="text-muted" style="font-size:0.75em">${balLabel}</small>
                                 </td>
@@ -548,18 +726,18 @@
                                     <small class="text-muted" style="font-size: 10.5px;">${t.date}</small>
                                 </div>
                                 <div class="mb-1">
-                                    <strong class="text-dark d-block" style="font-size: 12.5px;">${custName}</strong>
+                                    <div class="mb-1">${partyBadge}</div>
                                     <small class="text-muted d-block" style="font-size: 11px;">${t.description}</small>
                                 </div>
                                 <div class="border-top pt-2 mt-1">
                                     <div class="row g-1 text-center" style="font-size: 11px;">
                                         <div class="col-4 border-end">
                                             <span class="text-muted d-block" style="font-size: 10px;">Debit (Dr)</span>
-                                            <strong class="text-danger">${debit > 0 ? 'Rs ' + debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</strong>
+                                            <strong class="text-success">${debit > 0 ? 'Rs ' + debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</strong>
                                         </div>
                                         <div class="col-4 border-end">
                                             <span class="text-muted d-block" style="font-size: 10px;">Credit (Cr)</span>
-                                            <strong class="text-success">${credit > 0 ? 'Rs ' + credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</strong>
+                                            <strong class="text-danger">${credit > 0 ? 'Rs ' + credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</strong>
                                         </div>
                                         <div class="col-4">
                                             <span class="text-muted d-block" style="font-size: 10px;">Balance</span>
@@ -575,9 +753,9 @@
                     html += `
                         <tr class="fw-bold bg-light">
                             <td colspan="4" class="text-end text-dark">Totals:</td>
-                            <td class="text-end text-danger">Rs ${totalDebit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                            <td class="text-end text-success">Rs ${totalCredit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                            <td class="text-end ${lastBalance >= 0 ? 'balance-positive' : 'balance-negative'}">Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} ${lastBalance >= 0 ? 'Dr' : 'Cr'}</td>
+                            <td class="text-end text-success font-monospace">Rs ${totalDebit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                            <td class="text-end text-danger font-monospace">Rs ${totalCredit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                            <td class="text-end font-monospace ${lastBalance >= 0 ? 'balance-positive' : 'balance-negative'}">Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} ${lastBalance >= 0 ? 'Dr' : 'Cr'}</td>
                         </tr>
                     `;
 

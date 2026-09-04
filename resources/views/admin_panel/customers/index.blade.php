@@ -36,6 +36,7 @@
                         <tr>
                             <th>Customer ID</th>
                             <th>Name</th>
+                            <th>Account Type</th>
                             <th>Mobile</th>
                             <th>Credit Limit</th>
                             <th>Status</th>
@@ -47,7 +48,25 @@
                         @foreach ($customers as $customer)
                             <tr>
                                 <td>{{ $customer->customer_id }}</td>
-                                <td>{{ $customer->customer_name }}</td>
+                                <td>
+                                    <div class="fw-bold">{{ $customer->customer_name }}</div>
+                                    @if($customer->address)
+                                        <small class="text-muted">{{ Str::limit($customer->address, 30) }}</small>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if($customer->parent)
+                                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">
+                                            <i class="fa fa-code-branch me-1"></i> Sub of: {{ $customer->parent->customer_name }}
+                                        </span>
+                                    @elseif($customer->subCustomers && $customer->subCustomers->count() > 0)
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                            <i class="fa fa-sitemap me-1"></i> Main Account ({{ $customer->subCustomers->count() }} Sub)
+                                        </span>
+                                    @else
+                                        <span class="badge bg-light text-secondary border">Single Account</span>
+                                    @endif
+                                </td>
                                 <td>{{ $customer->mobile }}</td>
                                 <td>{{ $customer->balance_range == 0 ? 'Unlimited' : number_format($customer->balance_range, 0) }}</td>
                                 <td>{{ $customer->status }}</td>

@@ -18,8 +18,13 @@ class CustomerController extends Controller
     {
         $type   = $request->type   ?? 'Main Customer';
         $search = $request->search ?? '';
+        $parentId = $request->parent_id ?? null;
 
-        $query = Customer::query();
+        $query = Customer::with(['parent', 'subCustomers']);
+
+        if ($parentId) {
+            $query->where('parent_id', $parentId);
+        }
 
         if ($type && $type !== 'Main Customer' && $type !== 'all') {
             $query->where('customer_type', $type);
@@ -38,14 +43,30 @@ class CustomerController extends Controller
         return response()->json($customers);
     }
 
+    // 🔹 Get Sub-Customers of a Parent Customer
+    public function getSubCustomers($parentId)
+    {
+        $subCustomers = Customer::where('parent_id', $parentId)
+            ->where('status', '!=', 'inactive')
+            ->orderBy('customer_name')
+            ->get(['id', 'customer_id', 'customer_name', 'mobile', 'address', 'customer_type', 'opening_balance']);
+
+        return response()->json([
+            'success' => true,
+            'sub_customers' => $subCustomers
+        ]);
+    }
+
     // 🔹 Single customer detail
     public function show($id)
     {
-        $customer = Customer::findOrFail($id);
+        $customer = Customer::with(['parent', 'subCustomers'])->findOrFail($id);
 
         $data = $customer->toArray();
         $data['previous_balance'] = $customer->previous_balance;
         $data['balance_range'] = $customer->balance_range ?? 0;
+        $data['has_sub_customers'] = $customer->subCustomers->isNotEmpty();
+        $data['parent_name'] = $customer->parent ? $customer->parent->customer_name : null;
 
         // Map status to remarks if needed by frontend
         $data['remarks'] = $customer->status ?? '';
@@ -57,12 +78,8 @@ class CustomerController extends Controller
 
     public function index()
     {
-        $customers = Customer::latest()->get(); // no status filter
+        $customers = Customer::with(['parent', 'subCustomers'])->latest()->get(); // no status filter
 
-        // echo "<pre>";
-        // print_r($customers);
-        // echo "</pre>";
-        // dd();
         return view('admin_panel.customers.index', compact('customers'));
     }
 
@@ -81,7 +98,7 @@ class CustomerController extends Controller
         $ledger = CustomerLedger::where('customer_id', $id)->latest()->first();
 
         return response()->json([
-            'closing_balance' => $ledger->closing_balance,
+            'closing_balance' => $ledger->closing_balance ?? 0,
         ]);
     }
 
@@ -106,13 +123,16 @@ class CustomerController extends Controller
         $latestId = 'CUST-'.str_pad(Customer::max('id') + 1, 4, '0', STR_PAD_LEFT);
         $salesOfficers = SalesOfficer::orderBy('name')->get();
         $zones = Zone::orderBy('zone')->get();
+        // Potential parents are customers who are NOT sub-customers themselves
+        $parentCustomers = Customer::whereNull('parent_id')->orderBy('customer_name')->get();
 
-        return view('admin_panel.customers.create', compact('latestId', 'salesOfficers', 'zones'));
+        return view('admin_panel.customers.create', compact('latestId', 'salesOfficers', 'zones', 'parentCustomers'));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
+            'parent_id'        => 'nullable|exists:customers,id',
             'customer_id'      => 'nullable|unique:customers',
             'customer_name'    => 'nullable',
             'customer_name_ur' => 'nullable',
@@ -149,7 +169,7 @@ class CustomerController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Customer created successfully.',
-                'customer' => $customer
+                'customer' => $customer->load('parent')
             ]);
         }
 
@@ -161,14 +181,26 @@ class CustomerController extends Controller
         $customer = Customer::findOrFail($id);
         $salesOfficers = SalesOfficer::orderBy('name')->get();
         $zones = Zone::orderBy('zone')->get();
+        // Prevent selecting self or its own children as parent to avoid cycles
+        $childIds = Customer::where('parent_id', $id)->pluck('id')->toArray();
+        $excludeIds = array_merge([$id], $childIds);
+        $parentCustomers = Customer::whereNull('parent_id')
+            ->whereNotIn('id', $excludeIds)
+            ->orderBy('customer_name')
+            ->get();
 
-        return view('admin_panel.customers.edit', compact('customer', 'salesOfficers', 'zones'));
+        return view('admin_panel.customers.edit', compact('customer', 'salesOfficers', 'zones', 'parentCustomers'));
     }
 
     public function update(Request $request, $id)
     {
         $customer = Customer::findOrFail($id);
         $data = $request->except('_token');
+
+        // Clean parent_id if empty
+        if (isset($data['parent_id']) && empty($data['parent_id'])) {
+            $data['parent_id'] = null;
+        }
 
         $customer->update($data);
 
@@ -300,33 +332,41 @@ class CustomerController extends Controller
     {
         if (Auth::check()) {
             
-            $customers = Customer::all();
+            // Fetch customers with parent info for organized dropdown
+            $customers = Customer::with('parent', 'subCustomers')->orderBy('customer_name')->get();
             $ledgerData = collect([]);
             $openingBalance = 0;
             $closingBalance = 0;
+            $selectedCustomer = null;
+            $subCustomerBreakdown = [];
+            $isConsolidated = false;
             
             if ($request->filled('customer_id')) {
-                // Use Balance Service for accurate Statement
                 $balanceService = app(\App\Services\BalanceService::class);
                 
                 $startDate = $request->from_date ?? '2000-01-01';
                 $endDate = $request->to_date ?? date('Y-m-d');
+                $includeSub = $request->has('include_sub') ? (bool) $request->include_sub : true;
                 
-                $data = $balanceService->getCustomerLedger($request->customer_id, $startDate, $endDate);
+                $data = $balanceService->getCustomerLedger((int) $request->customer_id, $startDate, $endDate, $includeSub);
                 
+                $selectedCustomer = $data['customer'];
                 $openingBalance = $data['opening_balance'];
                 $closingBalance = $data['closing_balance'];
+                $subCustomerBreakdown = $data['sub_customer_breakdown'] ?? [];
+                $isConsolidated = $data['is_consolidated'] ?? false;
                 
                 // transform for view
                 $ledgerData = collect($data['transactions'])->map(function($t) use ($data) {
                     return (object) [
                         'created_at' => \Carbon\Carbon::parse($t['date']),
                         'customer' => $data['customer'],
+                        'party_name' => $t['party_name'] ?? ($data['customer']->customer_name ?? ''),
+                        'is_sub' => $t['is_sub'] ?? false,
                         'description' => $t['description'],
                         'debit' => $t['debit'],
                         'credit' => $t['credit'],
                         'closing_balance' => $t['balance'],
-                        // We act as if previous balance is calculated, but views usually use these explicitly now
                         'previous_balance' => $t['balance'] - ($t['debit'] - $t['credit']) 
                     ];
                 });
@@ -336,8 +376,11 @@ class CustomerController extends Controller
             return view('admin_panel.customers.customer_ledger', [
                 'CustomerLedgers' => $ledgerData,
                 'customers' => $customers,
+                'selectedCustomer' => $selectedCustomer,
                 'opening_balance' => $openingBalance,
                 'closing_balance' => $closingBalance,
+                'subCustomerBreakdown' => $subCustomerBreakdown,
+                'isConsolidated' => $isConsolidated,
             ]);
             
         } else {

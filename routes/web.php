@@ -211,6 +211,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/customer/payments', [CustomerController::class, 'store_customer_payment'])->name('customer.payments.store');
     Route::post('/customers/snooze-reminder/{id}', [CustomerController::class, 'snoozeReminder'])->name('customers.snoozeReminder');
     Route::get('/customers/payment-reminders', [CustomerController::class, 'getReminders'])->name('customers.reminders');
+    Route::get('/customers/sub-customers/{parentId}', [CustomerController::class, 'getSubCustomers'])->name('customers.subCustomers');
     // web.php
     Route::get('/customer/ledger/{id}', [CustomerController::class, 'getCustomerLedger']);
     Route::delete('/customer-payments/{id}', [CustomerController::class, 'destroy_payment'])->name('customer.payments.destroy');

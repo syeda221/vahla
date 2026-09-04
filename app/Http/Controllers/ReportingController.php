@@ -1688,7 +1688,7 @@ class ReportingController extends Controller
 
     public function customer_ledger_report()
     {
-        $customers = DB::table('customers')->select('id', 'customer_name', 'zone')->get();
+        $customers = DB::table('customers')->select('id', 'parent_id', 'customer_name', 'customer_id', 'zone')->get();
         $zones = \App\Models\Zone::orderBy('zone')->get();
 
         return view('admin_panel.reporting.customer_ledger_report', compact('customers', 'zones'));
@@ -1700,6 +1700,7 @@ class ReportingController extends Controller
         $zoneId = $request->zone_id;
         $start = $request->start_date ?: '2000-01-01';
         $end = $request->end_date ?: date('Y-m-d');
+        $includeSub = $request->has('include_sub') ? (bool) $request->include_sub : true;
 
         $balanceService = app(\App\Services\BalanceService::class);
 
@@ -1720,7 +1721,6 @@ class ReportingController extends Controller
 
             // Apply zone filter if provided
             if ($zoneId) {
-                // Filter allIds to only those customers who belong to the selected zone
                 $validZoneIds = \App\Models\Customer::where('zone', $zoneId)->pluck('id')->toArray();
                 $allIds = array_intersect($allIds, $validZoneIds);
             }
@@ -1730,7 +1730,7 @@ class ReportingController extends Controller
             $totalClosing = 0;
 
             foreach ($allIds as $cid) {
-                $ledgerData = $balanceService->getCustomerLedger($cid, $start, $end);
+                $ledgerData = $balanceService->getCustomerLedger($cid, $start, $end, false);
                 $customerName = $ledgerData['customer']->customer_name ?? 'Unknown';
                 $totalOpening += $ledgerData['opening_balance'];
 
@@ -1739,7 +1739,7 @@ class ReportingController extends Controller
 
                     // Try to find payment account name for receipt entries
                     $accountName = '';
-                    if ($row['credit'] > 0 && $row['source_type']) {
+                    if ($row['credit'] > 0 && ($row['source_type'] ?? null)) {
                         $accountName = $this->getPaymentAccountName($row['source_type'], $row['source_id']);
                     }
                     if ($accountName) {
@@ -1768,6 +1768,8 @@ class ReportingController extends Controller
                         'invoice' => $ref,
                         'description' => $desc,
                         'customer_name' => $customerName,
+                        'party_name' => $row['party_name'] ?? $customerName,
+                        'is_sub' => $row['is_sub'] ?? false,
                         'debit' => $row['debit'] ?? 0,
                         'credit' => $row['credit'] ?? 0,
                         'balance' => $row['balance'] ?? 0,
@@ -1794,6 +1796,8 @@ class ReportingController extends Controller
                 'opening_balance' => $totalOpening,
                 'closing_balance' => $totalClosing,
                 'transactions' => $allTransactions,
+                'sub_customer_breakdown' => [],
+                'is_consolidated' => false,
                 'report_period' => "$start to $end",
             ]);
         }
@@ -1804,9 +1808,9 @@ class ReportingController extends Controller
             return response()->json(['error' => 'Customer not found'], 400);
         }
 
-        $ledgerData = $balanceService->getCustomerLedger($customerId, $start, $end);
+        $ledgerData = $balanceService->getCustomerLedger($customerId, $start, $end, $includeSub);
 
-        $transactions = collect($ledgerData['transactions'])->map(function ($row) {
+        $transactions = collect($ledgerData['transactions'])->map(function ($row) use ($customer) {
             $desc = $row['description'] ?? '';
 
             // Try to find payment account name for receipt entries
@@ -1836,6 +1840,9 @@ class ReportingController extends Controller
                 'date' => $formattedDate,
                 'invoice' => $ref,
                 'description' => $desc,
+                'customer_name' => $customer->customer_name,
+                'party_name' => $row['party_name'] ?? $customer->customer_name,
+                'is_sub' => $row['is_sub'] ?? false,
                 'debit' => $row['debit'] ?? 0,
                 'credit' => $row['credit'] ?? 0,
                 'balance' => $row['balance'] ?? 0,
@@ -1847,6 +1854,8 @@ class ReportingController extends Controller
             'opening_balance' => $ledgerData['opening_balance'],
             'closing_balance' => $ledgerData['closing_balance'] ?? $ledgerData['opening_balance'],
             'transactions' => $transactions,
+            'sub_customer_breakdown' => $ledgerData['sub_customer_breakdown'] ?? [],
+            'is_consolidated' => $ledgerData['is_consolidated'] ?? false,
             'report_period' => "$start to $end",
         ]);
     }

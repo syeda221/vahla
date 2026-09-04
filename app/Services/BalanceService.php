@@ -16,7 +16,7 @@ class BalanceService
      * Positive = Customer owes money (Dr)
      * Negative = Customer has advance/credit (Cr)
      */
-    public function getCustomerBalance($customer): float
+    public function getCustomerBalance($customer, bool $includeSubCustomers = false): float
     {
         if (!($customer instanceof Customer)) {
             $customer = Customer::find($customer);
@@ -28,9 +28,17 @@ class BalanceService
 
         $this->ensureCustomerOpeningBalance($customer);
 
-        // Sum of all journal entries for this customer (includes Opening Balance journal entry)
+        $customerIds = [$customer->id];
+        if ($includeSubCustomers) {
+            $subIds = Customer::where('parent_id', $customer->id)->pluck('id')->toArray();
+            if (!empty($subIds)) {
+                $customerIds = array_merge($customerIds, $subIds);
+            }
+        }
+
+        // Sum of all journal entries for this customer (and sub-customers if requested)
         $journalBalance = JournalEntry::where('party_type', Customer::class)
-            ->where('party_id', $customer->id)
+            ->whereIn('party_id', $customerIds)
             ->selectRaw('COALESCE(SUM(debit) - SUM(credit), 0) as balance')
             ->value('balance') ?? 0;
 
@@ -95,12 +103,14 @@ class BalanceService
     }
 
     /**
-     * Get customer balance before a specific date
+     * Get customer balance before a specific date (supports single ID or array of IDs)
      */
-    public function getCustomerBalanceBeforeDate(int $customerId, string $date): float
+    public function getCustomerBalanceBeforeDate($customerIds, string $date): float
     {
+        $ids = is_array($customerIds) ? $customerIds : [$customerIds];
+
         $journalBalance = JournalEntry::where('party_type', Customer::class)
-            ->where('party_id', $customerId)
+            ->whereIn('party_id', $ids)
             ->where('entry_date', '<', $date)
             ->selectRaw('COALESCE(SUM(debit) - SUM(credit), 0) as balance')
             ->value('balance') ?? 0;
@@ -109,38 +119,61 @@ class BalanceService
     }
 
     /**
-     * Get customer ledger entries for a date range
+     * Get customer ledger entries for a date range (with optional sub-customer consolidation)
      */
-    public function getCustomerLedger(int $customerId, string $startDate, string $endDate): array
+    public function getCustomerLedger(int $customerId, string $startDate, string $endDate, bool $includeSubCustomers = false): array
     {
-        $customer = Customer::find($customerId);
+        $customer = Customer::with('subCustomers')->find($customerId);
         if (! $customer) {
             return [
                 'customer' => null,
                 'opening_balance' => 0,
+                'closing_balance' => 0,
                 'transactions' => [],
+                'sub_customers' => [],
+                'sub_customer_breakdown' => [],
+                'is_consolidated' => false,
             ];
         }
 
         $this->ensureCustomerOpeningBalance($customer);
 
+        $customerIds = [$customer->id];
+        $subCustomers = $customer->subCustomers;
+        $isConsolidated = $includeSubCustomers && $subCustomers->isNotEmpty();
+
+        if ($isConsolidated) {
+            foreach ($subCustomers as $sub) {
+                $this->ensureCustomerOpeningBalance($sub);
+            }
+            $customerIds = array_merge($customerIds, $subCustomers->pluck('id')->toArray());
+        }
+
+        // Customer names map for labeling entries
+        $customersMap = Customer::whereIn('id', $customerIds)->pluck('customer_name', 'id')->toArray();
+
         // Get opening balance (balance before start date)
-        $openingBalance = $this->getCustomerBalanceBeforeDate($customerId, $startDate);
+        $openingBalance = $this->getCustomerBalanceBeforeDate($customerIds, $startDate);
 
         // Get journal entries in range
         $entries = JournalEntry::where('party_type', Customer::class)
-            ->where('party_id', $customerId)
+            ->whereIn('party_id', $customerIds)
             ->whereBetween('entry_date', [$startDate, $endDate])
+            ->orderBy('entry_date', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
         // Calculate running balance
         $runningBalance = $openingBalance;
-        $transactions = $entries->map(function ($entry) use (&$runningBalance) {
+        $transactions = $entries->map(function ($entry) use (&$runningBalance, $customersMap, $customer) {
             $runningBalance += ($entry->debit - $entry->credit);
+            $partyName = $customersMap[$entry->party_id] ?? $customer->customer_name;
 
             return [
                 'id' => $entry->id,
+                'party_id' => $entry->party_id,
+                'party_name' => $partyName,
+                'is_sub' => ($entry->party_id != $customer->id),
                 'date' => $entry->entry_date,
                 'description' => $entry->description,
                 'debit' => $entry->debit,
@@ -151,11 +184,53 @@ class BalanceService
             ];
         });
 
+        // Calculate breakdown for sub-customers if applicable
+        $subCustomerBreakdown = [];
+        if ($subCustomers->isNotEmpty()) {
+            // Main account breakdown
+            $mainOb = $this->getCustomerBalanceBeforeDate($customer->id, $startDate);
+            $mainDeb = (float) JournalEntry::where('party_type', Customer::class)->where('party_id', $customer->id)->whereBetween('entry_date', [$startDate, $endDate])->sum('debit');
+            $mainCred = (float) JournalEntry::where('party_type', Customer::class)->where('party_id', $customer->id)->whereBetween('entry_date', [$startDate, $endDate])->sum('credit');
+            $mainCb = $mainOb + ($mainDeb - $mainCred);
+
+            $subCustomerBreakdown[] = [
+                'id' => $customer->id,
+                'name' => $customer->customer_name . ' (Main Account)',
+                'is_main' => true,
+                'opening_balance' => $mainOb,
+                'total_debit' => $mainDeb,
+                'total_credit' => $mainCred,
+                'closing_balance' => $mainCb,
+                'current_total_balance' => $this->getCustomerBalance($customer->id, false),
+            ];
+
+            foreach ($subCustomers as $sub) {
+                $subOb = $this->getCustomerBalanceBeforeDate($sub->id, $startDate);
+                $subDeb = (float) JournalEntry::where('party_type', Customer::class)->where('party_id', $sub->id)->whereBetween('entry_date', [$startDate, $endDate])->sum('debit');
+                $subCred = (float) JournalEntry::where('party_type', Customer::class)->where('party_id', $sub->id)->whereBetween('entry_date', [$startDate, $endDate])->sum('credit');
+                $subCb = $subOb + ($subDeb - $subCred);
+
+                $subCustomerBreakdown[] = [
+                    'id' => $sub->id,
+                    'name' => $sub->customer_name,
+                    'is_main' => false,
+                    'opening_balance' => $subOb,
+                    'total_debit' => $subDeb,
+                    'total_credit' => $subCred,
+                    'closing_balance' => $subCb,
+                    'current_total_balance' => $this->getCustomerBalance($sub->id, false),
+                ];
+            }
+        }
+
         return [
             'customer' => $customer,
             'opening_balance' => $openingBalance,
             'closing_balance' => $runningBalance,
             'transactions' => $transactions,
+            'sub_customers' => $subCustomers,
+            'sub_customer_breakdown' => $subCustomerBreakdown,
+            'is_consolidated' => $isConsolidated,
         ];
     }
 
