@@ -549,28 +549,32 @@
 
                                 <!-- Payment Voucher Section -->
                                 <div class="pt-2 border-top">
-                                    <h6 class="mb-2 text-uppercase fw-bold text-muted" style="font-size: 0.78rem; letter-spacing: 0.5px;">
-                                        <i class="fas fa-money-bill-wave me-1"></i> Cash / Bank Refund Received (Optional)
-                                    </h6>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0 text-uppercase fw-bold text-muted" style="font-size: 0.78rem; letter-spacing: 0.5px;">
+                                            <i class="fas fa-money-bill-wave me-1"></i> Cash / Bank Refund Received
+                                        </h6>
+                                        <button type="button" class="btn btn-xs btn-link text-primary text-decoration-none p-0 fw-bold" id="btnFillRefund" style="font-size: 0.72rem;">
+                                            Match Refund Due
+                                        </button>
+                                    </div>
 
                                     <div class="payment-voucher-rows">
                                         <div class="payment-row mb-2">
                                             <div class="row g-2">
                                                 <div class="col-7">
-                                                    <select name="payment_account_id[]"
+                                                    <select name="payment_account_id[]" id="paymentAccountId"
                                                         class="form-select form-select-sm payment-account">
-                                                        <option value="">Select Account (Cash/Bank)</option>
                                                         @foreach ($accounts as $acc)
-                                                            <option value="{{ $acc->id }}">{{ $acc->title }}
-                                                                ({{ $acc->account_code }})
+                                                            <option value="{{ $acc->id }}" {{ ($loop->first || stripos($acc->title, 'cash') !== false) ? 'selected' : '' }}>
+                                                                {{ $acc->title }} ({{ $acc->account_code }})
                                                             </option>
                                                         @endforeach
                                                     </select>
                                                 </div>
                                                 <div class="col-5">
-                                                    <input type="number" name="payment_amount[]" id="paymentAmountInput" step="0.01"
-                                                        class="form-control form-control-sm text-end payment-amount"
-                                                        placeholder="Amount">
+                                                    <input type="number" name="payment_amount[]" id="paymentAmountInput" step="0.01" min="0"
+                                                        class="form-control form-control-sm text-end payment-amount fw-bold text-success"
+                                                        placeholder="0.00" value="0.00">
                                                 </div>
                                             </div>
                                         </div>
@@ -687,9 +691,27 @@
                 $('#dispCashRefundable').text('Rs. ' + cashRefundable.toFixed(2));
                 $('#dispNewBillDue').text('Rs. ' + newBillDue.toFixed(2));
 
+                // Auto-sync refund amount if user hasn't explicitly customized it
+                if (!window.userCustomizedRefund) {
+                    $('#paymentAmountInput').val(cashRefundable > 0 ? cashRefundable.toFixed(2) : '0.00');
+                }
+
                 // Update visual indicators
                 updatePartialReturnIndicator();
             }
+
+            // Track if user manually typed refund amount
+            $(document).on('input', '#paymentAmountInput', function() {
+                window.userCustomizedRefund = true;
+            });
+
+            // Match Refund Due Button / Click handler
+            $('#btnFillRefund, #dispCashRefundable').css('cursor', 'pointer').click(function() {
+                const netReturnVal = num($('#netAmount').val());
+                const cashRefundable = Math.max(0, netReturnVal - currentUnpaidDue);
+                $('#paymentAmountInput').val(cashRefundable.toFixed(2));
+                window.userCustomizedRefund = false;
+            });
 
             // Return All Button Logic
             $('#btnReturnAll').click(function() {

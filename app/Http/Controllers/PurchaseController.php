@@ -1942,6 +1942,23 @@ class PurchaseController extends Controller
 
         $purchaseNetAmount = (float) ($purchase->net_amount ?? 0);
         $purchasePaidAmount = (float) ($purchase->paid_amount ?? 0);
+
+        // Fetch actual payment vouchers if any to get exact paid amount
+        $paymentVouchers = \App\Models\VoucherMaster::where('voucher_type', \App\Models\VoucherMaster::TYPE_PAYMENT)
+            ->where(function($q) use ($purchase) {
+                $q->where('remarks', 'like', "%#{$purchase->invoice_no}%")
+                  ->orWhere('remarks', 'like', "%Purchase #{$purchase->id}%");
+            })
+            ->where('status', \App\Models\VoucherMaster::STATUS_POSTED)
+            ->get();
+
+        if ($paymentVouchers->isNotEmpty()) {
+            $purchasePaidAmount = (float) $paymentVouchers->sum('total_amount');
+        }
+
+        // Safety cap: Paid amount cannot exceed purchase net amount
+        $purchasePaidAmount = min($purchasePaidAmount, $purchaseNetAmount);
+
         $pastReturnAmount = (float) $pastReturns->sum('net_amount');
         $purchaseDueAmount = max(0, $purchaseNetAmount - $pastReturnAmount - $purchasePaidAmount);
 
@@ -2165,42 +2182,52 @@ class PurchaseController extends Controller
 
             // 4. Handle Refund Payment
             $totalPaid = 0;
-            if (! empty($request->payment_account_id)) {
-                $voucherService = app(\App\Services\VoucherService::class);
-                $apId = app(\App\Services\BalanceService::class)->getAccountsPayableId();
+            $paymentAccountIds = (array) ($request->input('payment_account_id') ?? []);
+            $paymentAmounts = (array) ($request->input('payment_amount') ?? []);
 
-                foreach ($request->payment_account_id as $idx => $accId) {
-                    $amt = (float) ($request->payment_amount[$idx] ?? 0);
-                    if ($accId && $amt > 0) {
-                        $totalPaid += $amt;
-                        
-                        // Create Receipt Voucher via Service (Cash In)
-                        $voucherData = [
-                            'voucher_type' => \App\Models\VoucherMaster::TYPE_RECEIPT,
-                            'date' => $validated['return_date'],
-                            'status' => \App\Models\VoucherMaster::STATUS_POSTED,
-                            'party_type' => \App\Models\Vendor::class,
-                            'party_id' => $validated['vendor_id'],
-                            'remarks' => "Refund for Return #{$nextInvoice}",
-                        ];
+            $balanceService = app(\App\Services\BalanceService::class);
+            $voucherService = app(\App\Services\VoucherService::class);
+            $apId = $balanceService->getAccountsPayableId();
+            $defaultCashAccId = $balanceService->getCashAccountId();
 
-                        $lines = [
-                            [
-                                'account_id' => $accId, 
-                                'debit' => $amt,
-                                'credit' => 0,
-                                'narration' => 'Cash Refund Received'
-                            ],
-                            [
-                                'account_id' => $apId,
-                                'debit' => 0,
-                                'credit' => $amt,
-                                'narration' => 'Refund from Vendor'
-                            ]
-                        ];
-                        
-                        $voucherService->createVoucher($voucherData, $lines, auth()->id());
+            foreach ($paymentAmounts as $idx => $rawAmt) {
+                $amt = (float) $rawAmt;
+                if ($amt > 0) {
+                    $accId = $paymentAccountIds[$idx] ?? null;
+                    if (empty($accId)) {
+                        $accId = $defaultCashAccId;
                     }
+                    $accId = (int) $accId;
+
+                    $totalPaid += $amt;
+
+                    // Create Receipt Voucher via Service (Cash/Bank In from Vendor Refund)
+                    $voucherData = [
+                        'voucher_type' => \App\Models\VoucherMaster::TYPE_RECEIPT,
+                        'date' => $validated['return_date'],
+                        'status' => \App\Models\VoucherMaster::STATUS_POSTED,
+                        'payment_from' => 'Vendor',
+                        'party_type' => \App\Models\Vendor::class,
+                        'party_id' => $validated['vendor_id'],
+                        'remarks' => "Refund for Return #{$nextInvoice}" . ($purchase ? " (Ref Purchase: {$purchase->invoice_no})" : ""),
+                    ];
+
+                    $lines = [
+                        [
+                            'account_id' => $accId,
+                            'debit' => $amt,
+                            'credit' => 0,
+                            'narration' => "Cash Refund Received (#{$nextInvoice})"
+                        ],
+                        [
+                            'account_id' => $apId,
+                            'debit' => 0,
+                            'credit' => $amt,
+                            'narration' => "Refund from Vendor (#{$nextInvoice})"
+                        ]
+                    ];
+
+                    $voucherService->createVoucher($voucherData, $lines, auth()->id());
                 }
             }
 
