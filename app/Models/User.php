@@ -78,4 +78,59 @@ class User extends Authenticatable
     //                     ->where('model_type', User::class);
     //     }
 
+    /**
+     * Check if user is a Super Admin / unrestricted system owner
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole('Super Admin')
+            || $this->hasRole('superAdmin')
+            || $this->hasRole('admin')
+            || $this->hasRole('superadmin')
+            || $this->email === 'superadmin@example.com';
+    }
+
+    /**
+     * Get all permissions this user is allowed to manage/delegate to other roles.
+     * Super admins get all permissions in the system.
+     * Delegated users only get the permissions they themselves possess.
+     */
+    public function getManageablePermissions()
+    {
+        if ($this->isSuperAdmin()) {
+            return \Spatie\Permission\Models\Permission::orderBy('name', 'asc')->get();
+        }
+
+        return $this->getAllPermissions()->sortBy('name')->values();
+    }
+
+    /**
+     * Get all roles this user is allowed to assign to other users.
+     * Super admins get all roles.
+     * Delegated users only get roles whose permissions are a subset of what the user has.
+     */
+    public function getManageableRoles()
+    {
+        if ($this->isSuperAdmin()) {
+            return \Spatie\Permission\Models\Role::with('permissions')->orderBy('name', 'asc')->get();
+        }
+
+        $myPermNames = $this->getAllPermissions()->pluck('name')->toArray();
+
+        return \Spatie\Permission\Models\Role::with('permissions')
+            ->orderBy('name', 'asc')
+            ->get()
+            ->filter(function ($role) use ($myPermNames) {
+                // Do not allow assigning superadmin roles
+                if (in_array(strtolower($role->name), ['super admin', 'superadmin', 'admin'])) {
+                    return false;
+                }
+
+                $rolePermNames = $role->permissions->pluck('name')->toArray();
+                // A role is assignable only if all of its permissions are possessed by this user
+                return empty(array_diff($rolePermNames, $myPermNames));
+            })
+            ->values();
+    }
+
 }

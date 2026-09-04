@@ -11,102 +11,53 @@ use Spatie\Permission\Models\Permission;
 
 class RoleController extends Controller
 {
-     public function index()
+    public function index()
     {
-        $roles = Role::orderBy('name',"ASC")->get();
-        
-        // Ensure purchase_pos.create & stock.adjust permissions exist automatically (so no live migration is needed)
-        Permission::firstOrCreate(['name' => 'purchase_pos.create']);
-        foreach (['stock.adjust.view', 'stock.adjust.create', 'stock.adjust.edit', 'stock.adjust.delete'] as $permName) {
-            Permission::firstOrCreate(['name' => $permName]);
+        $currentUser = auth()->user();
+        if ($currentUser && $currentUser->isSuperAdmin()) {
+            $roles = Role::orderBy('name', "ASC")->get();
+            $allPermissions = Permission::orderBy('name', "ASC")->get();
+        } else {
+            $roles = $currentUser ? $currentUser->getManageableRoles() : collect();
+            $allPermissions = $currentUser ? $currentUser->getManageablePermissions() : collect();
         }
-        foreach ([
-            'website-settings.view',
-            'website-settings.create',
-            'website-settings.edit',
-            'website-settings.delete',
-            'website-settings.update',
-            'website-settings.upload_manage',
-            
-            // Web Products permissions
-            'web_products.view', 'web_products.read',
-            'web_products.create', 'web_products.add',
-            'web_products.edit', 'web_products.delete',
-            
-            // Coupons permissions
-            'coupons.view', 'coupons.read',
-            'coupons.create', 'coupons.add',
-            'coupons.edit', 'coupons.delete',
-            
-            // Web Orders permissions
-            'web_orders.view', 'web_orders.read',
-            'web_orders.create', 'web_orders.add',
-            'web_orders.edit', 'web_orders.delete',
 
-            // General Settings permissions
-            'settings.view', 'settings.read',
-            'settings.create', 'settings.add',
-            'settings.edit', 'settings.delete', 'settings.update',
-
-            // Web Users permissions
-            'web_users.view', 'web_users.read',
-            'web_users.create', 'web_users.add',
-            'web_users.edit', 'web_users.delete',
-
-            // All Vouchers permissions
-            'all.vouchers.view', 'all.vouchers.delete',
-
-            // Unified Voucher permissions
-            'vouchers.view', 'vouchers.create', 'vouchers.edit', 'vouchers.delete'
-        ] as $permName) {
-            Permission::firstOrCreate(['name' => $permName]);
-        }
-        
-        $allPermissions  = Permission::all();
         return view('admin_panel.roles.role', compact(['roles', 'allPermissions']));
     }
 
     public function store(Request $request)
     {
         $editId = $request->edit_id ?? null;
-         $validator = Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'name' => 'required|unique:roles,name,'.$request->edit_id,
         ]);
-
-        if ($validator->fails()) {
-            return ['errors' => $validator->errors()];
-        }
-
-
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()]);
         }
 
-        // Step 2: Check for user_id uniqueness (exclude self in edit)
-        // $userExists = Branch::where('user_id', $request->user_id)
-        //     ->when($editId, fn($q) => $q->where('id', '!=', $editId))
-        //     ->exists();
-
-        // if ($userExists) {
-        //     return response()->json([
-        //         'errors' => [
-        //             'user_id' => ['This user is already assigned to another branch.']
-        //         ]
-        //     ]);
-        // }
-
-        // Step 3: Save or update logic
+        // Save or update logic
         if (!empty($editId)) {
-            $role = role::find($editId);
+            $role = Role::findOrFail($editId);
+            $currentUser = auth()->user();
+
+            // Prevent renaming default system roles
+            if (in_array(strtolower($role->name), ['super admin', 'superadmin', 'admin']) && strtolower($role->name) !== strtolower($request->name)) {
+                return response()->json([
+                    'errors' => [
+                        'name' => ['System default role names cannot be modified.']
+                    ]
+                ], 422);
+            }
+
             $msg = [
-                'success' => 'Roles Updated Successfully',
+                'success' => 'Role Updated Successfully',
                 'reload' => true
             ];
         } else {
-            $role = new role();
+            $role = new Role();
             $msg = [
-                'success' => 'Roles Created Successfully',
+                'success' => 'Role Created Successfully',
                 'redirect' => route('roles.index')
             ];
         }
@@ -115,37 +66,66 @@ class RoleController extends Controller
         $role->save();
 
         return response()->json($msg);
-
     }
-
-    /**
-     * Display the specified resource.
-     */
 
     /**
      * Remove the specified resource from storage.
      */
     public function delete(string $id)
     {
-        $role = Role::findOrFail($id);
+        $role = Role::with('permissions')->findOrFail($id);
+        $currentUser = auth()->user();
+
+        // Protect Super Admin / Admin roles from deletion
+        if (in_array(strtolower($role->name), ['super admin', 'superadmin', 'admin'])) {
+            return redirect()->route('roles.index')->with('error', 'Default system roles cannot be deleted.');
+        }
+
+        if ($currentUser && ! $currentUser->isSuperAdmin()) {
+            $myPermNames = $currentUser->getAllPermissions()->pluck('name')->toArray();
+            $rolePermNames = $role->permissions->pluck('name')->toArray();
+            
+            // If the role has permissions that the current user does not have, prevent deletion
+            if (! empty(array_diff($rolePermNames, $myPermNames))) {
+                return redirect()->route('roles.index')->with('error', 'You cannot delete roles containing permissions you do not possess.');
+            }
+        }
+
         $role->delete();
 
         return redirect()->route('roles.index')->with('success', 'Role deleted successfully.');
-
     }
 
     public function updatePermissions(Request $request)
     {
-        // $request->validate([
-        //     'edit_id' => 'required|exists:roles,id',
-        //     'permissions' => 'array',
-        //     'permissions.*' => 'exists:permissions,name'
-        // ]);
-        // dd($request->toArray());
-        $role = Role::findOrFail($request->edit_id);
+        $request->validate([
+            'edit_id' => 'required|exists:roles,id',
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'string|exists:permissions,name',
+        ]);
 
-        // Assign new roles (by name)
-        $role->syncPermissions($request->permissions ?? []);
+        $role = Role::with('permissions')->findOrFail($request->edit_id);
+        $currentUser = auth()->user();
+
+        if ($currentUser && $currentUser->isSuperAdmin()) {
+            // Super Admin can sync all permissions freely
+            $role->syncPermissions($request->permissions ?? []);
+        } else {
+            // Delegated user can only grant or revoke permissions they themselves possess
+            $userPermNames = $currentUser ? $currentUser->getAllPermissions()->pluck('name')->toArray() : [];
+            $currentRolePermNames = $role->permissions->pluck('name')->toArray();
+
+            // Permissions submitted that the acting user owns
+            $submittedPerms = array_values(array_intersect($request->permissions ?? [], $userPermNames));
+
+            // Existing permissions on the role that the acting user does NOT own (preserve them)
+            $unmanagedPerms = array_values(array_diff($currentRolePermNames, $userPermNames));
+
+            // Merge unmanaged permissions with user's granted permissions
+            $finalPerms = array_values(array_unique(array_merge($unmanagedPerms, $submittedPerms)));
+
+            $role->syncPermissions($finalPerms);
+        }
 
         return back()->with('success', 'Role permissions updated successfully!');
     }

@@ -62,6 +62,31 @@
     #stockTable th { background: #f8fafc !important; color: #475569 !important; font-size: .68rem; text-transform: uppercase; font-weight: 700; letter-spacing: .5px; padding: 10px 12px; }
     #stockTable td { font-size: .8rem; vertical-align: middle; padding: 9px 12px; }
 
+    /* Select2 styling matching ERP form controls */
+    .select2-container .select2-selection--single {
+        height: 38px !important;
+        border: 1px solid var(--rpt-border) !important;
+        border-radius: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        background: #fff !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 36px !important;
+        padding-left: 10px !important;
+        color: var(--rpt-text) !important;
+        font-size: .84rem !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        right: 8px !important;
+    }
+    .select2-container--default.select2-container--disabled .select2-selection--single {
+        background-color: #f1f5f9 !important;
+        cursor: not-allowed !important;
+        opacity: 0.8 !important;
+    }
+
     @media (max-width: 768px) {
         .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
         .mode-pills { flex-wrap: wrap; }
@@ -167,15 +192,23 @@
             </div>
 
             {{-- Product --}}
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="rpt-flabel">Search Product</label>
                 <select name="product_id" id="product_id" class="form-control select2">
                     <option value="all">-- All Products --</option>
                 </select>
             </div>
 
+            {{-- Product Variant --}}
+            <div class="col-md-2">
+                <label class="rpt-flabel">Product Variant</label>
+                <select name="variant_key" id="variant_key" class="form-control select2" disabled>
+                    <option value="all">-- All Variants --</option>
+                </select>
+            </div>
+
             {{-- Buttons --}}
-            <div class="col-md-3 text-end d-flex gap-2">
+            <div class="col-md-2 text-end d-flex gap-2">
                 <button type="button" id="btnSearch" class="btn btn-primary btn-sm flex-fill fw-bold" style="height:38px; border-radius:8px;">
                     <i class="fas fa-search me-1"></i> Apply Filter
                 </button>
@@ -296,8 +329,55 @@ $(document).ready(function() {
         }
     });
 
+    // Select2 Variant Filter
+    $('#variant_key').select2({
+        placeholder: "-- All Variants --",
+        allowClear: true,
+        width: '100%'
+    });
+
     $('#product_id').on('select2:unselect', function () {
         $(this).val('all').trigger('change');
+    });
+
+    $('#variant_key').on('select2:unselect', function () {
+        $(this).val('all').trigger('change');
+    });
+
+    // When Product changes, fetch variants dynamically
+    $('#product_id').on('change', function () {
+        let productId = $(this).val();
+        let variantSelect = $('#variant_key');
+
+        variantSelect.empty();
+        variantSelect.append('<option value="all">-- All Variants --</option>');
+
+        if (productId && productId !== 'all') {
+            variantSelect.prop('disabled', true);
+            $.ajax({
+                url: "/report/product-variants/" + productId,
+                type: "GET",
+                success: function (res) {
+                    if (res.success && res.has_variants && res.variants && res.variants.length > 0) {
+                        $.each(res.variants, function (i, v) {
+                            variantSelect.append(new Option(v.text, v.key, false, false));
+                        });
+                        variantSelect.prop('disabled', false);
+                    } else {
+                        variantSelect.empty();
+                        variantSelect.append('<option value="all">-- No Variants (Standard Item) --</option>');
+                        variantSelect.prop('disabled', true);
+                    }
+                    variantSelect.val('all').trigger('change.select2');
+                },
+                error: function () {
+                    variantSelect.prop('disabled', true);
+                }
+            });
+        } else {
+            variantSelect.prop('disabled', true);
+            variantSelect.val('all').trigger('change.select2');
+        }
     });
 
     // Report Mode Pill Toggle
@@ -330,6 +410,7 @@ $(document).ready(function() {
                 _token: "{{ csrf_token() }}",
                 category_id: $('#category_id').val(),
                 product_id:  $('#product_id').val(),
+                variant_key: $('#variant_key').val(),
                 warehouse_id: $('#warehouse_id').val(),
                 unit_type:   $('#unit_type').val(),
                 report_mode: mode

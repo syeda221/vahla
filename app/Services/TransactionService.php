@@ -257,8 +257,8 @@ class TransactionService
             }
 
             // Update Paid Amount in Purchase
-            $purchase->paid_amount += $totalPaid;
-            $purchase->due_amount = $purchase->net_amount - $purchase->paid_amount;
+            $purchase->paid_amount = $totalPaid;
+            $purchase->due_amount = max(0, $purchase->net_amount - $purchase->paid_amount);
             $purchase->save();
 
             \Log::info("Payment Voucher Created for Purchase #{$purchase->invoice_no}");

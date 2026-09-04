@@ -1217,7 +1217,54 @@ class SaleController extends Controller
 
                     \Log::info("SaleItem #{$index}: Product {$product->item_name}, InputPrice: {$inputPrice}, FinalPrice: {$dbPrice}");
 
-                    $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
+                    $vData = [];
+                    if (!empty($request->color[$index])) {
+                        $b64 = base64_decode($request->color[$index], true);
+                        $vData = ($b64 !== false) ? json_decode($b64, true) : json_decode($request->color[$index], true);
+                        if (!is_array($vData)) $vData = [];
+                    }
+
+                    $liveVariant = null;
+                    if ($product && !empty($product->color)) {
+                        $prodVariants = json_decode($product->color, true);
+                        if (is_array($prodVariants)) {
+                            if (!empty($vData['barcode'])) {
+                                $liveVariant = collect($prodVariants)->firstWhere('barcode', $vData['barcode']);
+                            }
+                            if (!$liveVariant && !empty($vData['name'])) {
+                                $liveVariant = collect($prodVariants)->first(function($v) use ($vData) {
+                                    $n1 = strtolower(trim($v['name'] ?? ''));
+                                    $n2 = strtolower(trim($vData['name'] ?? ''));
+                                    return $n1 === $n2 || ($n1 && $n2 && (str_contains($n1, $n2) || str_contains($n2, $n1)));
+                                });
+                            }
+                            if (!$liveVariant && !empty($vData['size']) && $vData['size'] !== '-') {
+                                $liveVariant = collect($prodVariants)->first(function($v) use ($vData) {
+                                    $s1 = strtolower(trim($v['size'] ?? ''));
+                                    $s2 = strtolower(trim($vData['size'] ?? ''));
+                                    return $s1 === $s2 || ($s1 && $s2 && (str_starts_with($s1, $s2) || str_starts_with($s2, $s1)));
+                                });
+                            }
+                            if (!$liveVariant && count($prodVariants) === 1) {
+                                $liveVariant = $prodVariants[0];
+                            }
+                        }
+                    }
+
+                    $ppb = 1;
+                    if ($liveVariant && !empty($liveVariant['conv_factor']) && (float)$liveVariant['conv_factor'] > 0) {
+                        $ppb = (float)$liveVariant['conv_factor'];
+                    } elseif ($liveVariant && !empty($liveVariant['pieces_per_box']) && (float)$liveVariant['pieces_per_box'] > 0) {
+                        $ppb = (float)$liveVariant['pieces_per_box'];
+                    } elseif ($product->pieces_per_box > 0) {
+                        $ppb = (float)$product->pieces_per_box;
+                    } elseif (!empty($vData['conv_factor']) && (float)$vData['conv_factor'] > 0) {
+                        $ppb = (float)$vData['conv_factor'];
+                    } elseif (!empty($vData['pieces_per_box']) && (float)$vData['pieces_per_box'] > 0) {
+                        $ppb = (float)$vData['pieces_per_box'];
+                    }
+
+                    if ($ppb <= 0) $ppb = 1;
 
                     $totalPieces = 0;
                     $loose = (float) ($request->loose_pieces[$index] ?? 0); // Legacy/Fallback
@@ -1254,7 +1301,7 @@ class SaleController extends Controller
                     }
 
                     // Calculate boxes for storage (reverse calculation)
-                    $storedQtyBox = $ppb > 0 ? ($totalPieces / $ppb) : 0;
+                    $storedQtyBox = $ppb > 0 ? ($totalPieces / $ppb) : $totalPieces;
                     
                     $productName = $product->item_name;
                     $brandId = $product->brand_id;
@@ -2019,6 +2066,52 @@ class SaleController extends Controller
                 }
             }
 
+            $liveVariant = null;
+            if ($item->product && !empty($item->product->color)) {
+                $prodVariants = json_decode($item->product->color, true);
+                if (is_array($prodVariants)) {
+                    if (!empty($variant['barcode'])) {
+                        $liveVariant = collect($prodVariants)->firstWhere('barcode', $variant['barcode']);
+                    }
+                    if (!$liveVariant && !empty($variant['name'])) {
+                        $liveVariant = collect($prodVariants)->first(function($v) use ($variant) {
+                            $n1 = strtolower(trim($v['name'] ?? ''));
+                            $n2 = strtolower(trim($variant['name'] ?? ''));
+                            return $n1 === $n2 || ($n1 && $n2 && (str_contains($n1, $n2) || str_contains($n2, $n1)));
+                        });
+                    }
+                    if (!$liveVariant && !empty($variant['size']) && $variant['size'] !== '-') {
+                        $liveVariant = collect($prodVariants)->first(function($v) use ($variant) {
+                            $s1 = strtolower(trim($v['size'] ?? ''));
+                            $s2 = strtolower(trim($variant['size'] ?? ''));
+                            return $s1 === $s2 || ($s1 && $s2 && (str_starts_with($s1, $s2) || str_starts_with($s2, $s1)));
+                        });
+                    }
+                    if (!$liveVariant && count($prodVariants) === 1) {
+                        $liveVariant = $prodVariants[0];
+                    }
+                }
+            }
+
+            $ppb = 1;
+            if ($liveVariant && !empty($liveVariant['conv_factor']) && (float)$liveVariant['conv_factor'] > 0) {
+                $ppb = (float)$liveVariant['conv_factor'];
+            } elseif ($liveVariant && !empty($liveVariant['pieces_per_box']) && (float)$liveVariant['pieces_per_box'] > 0) {
+                $ppb = (float)$liveVariant['pieces_per_box'];
+            } elseif ($item->product && (float)$item->product->pieces_per_box > 0) {
+                $ppb = (float)$item->product->pieces_per_box;
+            } elseif (!empty($variant['conv_factor']) && (float)$variant['conv_factor'] > 0) {
+                $ppb = (float)$variant['conv_factor'];
+            } elseif (!empty($variant['pieces_per_box']) && (float)$variant['pieces_per_box'] > 0) {
+                $ppb = (float)$variant['pieces_per_box'];
+            } elseif (!empty($item->pieces_per_box) && (float)$item->pieces_per_box > 0) {
+                $ppb = (float)$item->pieces_per_box;
+            }
+
+            if ($ppb <= 0) $ppb = 1;
+
+            $variantUnit = $variant['unit'] ?? ($liveVariant['unit'] ?? ($item->product->unit->name ?? ''));
+
             return [
                 'is_manual' => $item->is_manual,
                 'product_id' => $item->product_id,
@@ -2030,17 +2123,18 @@ class SaleController extends Controller
                 'qty_box' => (float) $item->qty, // Store Box Count separately
                 'total_pieces' => (int) $item->total_pieces,
                 'loose_pieces' => (int) $item->loose_pieces,
-                'price' => (float) $item->price, // Price Per Piece
+                'price' => (float) $item->price, // Price Per Piece / Unit
                 'discount' => (float) $item->discount_percent, // Legacy
                 'discount_percent' => (float) $item->discount_percent,
                 'discount_amount' => (float) $item->discount_amount,
                 'total' => (float) $item->total,
+                'variant_name' => $variant['name'] ?? '',
                 'color_val' => $variant['color'] ?? '',
                 'size_val' => $variant['size'] ?? '',
-                'variant_unit' => $variant['unit'] ?? '',
+                'variant_unit' => $variantUnit,
                 'weight_per_piece' => $variant['weight_per_piece'] ?? $item->product->weight_per_piece ?? 0,
                 'color' => is_array($variant) ? $variant : [$item->color], // for legacy compatibility
-                'pieces_per_box' => $item->product->pieces_per_box ?? 1,
+                'pieces_per_box' => $ppb,
                 'price_per_piece' => ($item->total_pieces > 0) ? ($item->total / $item->total_pieces) : 0,
                 // Add dimension and m² data from product
                 'height' => $item->product->height ?? 0,

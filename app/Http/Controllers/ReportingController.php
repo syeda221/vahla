@@ -50,6 +50,7 @@ class ReportingController extends Controller
     public function fetchItemStock(Request $request)
     {
         $productId   = $request->product_id;
+        $variantKey  = $request->variant_key;
         $categoryId  = $request->category_id;
         $warehouseId = $request->warehouse_id;
         $unitType    = $request->unit_type; // 'all', 'cartons_pcs', 'weight_kg', 'area_m2'
@@ -265,6 +266,13 @@ class ReportingController extends Controller
                     $vName = $v['name'] ?? $product->item_name;
                     $vSize = $v['size'] ?? '-';
                     $vColor = $v['color'] ?? '-';
+                    $vKey = trim($vName) . '|' . trim($vSize) . '|' . trim($vColor);
+
+                    if ($variantKey && $variantKey !== 'all' && $variantKey !== '') {
+                        if ($vKey !== trim($variantKey) && trim($v['name'] ?? '') !== trim($variantKey)) {
+                            continue;
+                        }
+                    }
 
                     // Variant Unit Logic
                     $vUnitName = $v['unit'] ?? $unitName;
@@ -315,7 +323,12 @@ class ReportingController extends Controller
                                 if ($pPPB <= 0) $pPPB = 1;
 
                                 if (in_array($pUnit, ['carton', 'ctn', 'box'])) {
-                                    $pPieces = ((float) $pItem->qty) * $pPPB;
+                                    if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
+                                        $pPieces = (((int) $pItem->boxes_qty) * $pPPB) + ((int) $pItem->loose_qty);
+                                    } else {
+                                        [$b, $l] = \App\Http\Controllers\PurchaseController::parseCartonQty($pItem->qty);
+                                        $pPieces = ($b * $pPPB) + $l;
+                                    }
                                 } elseif (in_array($pUnit, ['gm', 'g'])) {
                                     $pPieces = ((float) $pItem->qty) / 1000.0;
                                 } else {
@@ -433,6 +446,10 @@ class ReportingController extends Controller
                 }
             } else {
                 // Product has no variants
+                if ($variantKey && $variantKey !== 'all' && $variantKey !== '') {
+                    continue;
+                }
+
                 if ($warehouseId && $warehouseId !== 'all') {
                     $balance = (float) $product->warehouseStocks->where('warehouse_id', $warehouseId)->sum('total_pieces');
                 } else {
@@ -561,6 +578,49 @@ class ReportingController extends Controller
             'total_current_stock'   => $totalCurrentStock,
             'total_adjustments_qty' => $totalAdjustments,
             'total_sold_amount'     => $totalSoldAmount,
+        ]);
+    }
+
+    /**
+     * AJAX endpoint to fetch variants for a specific product for filtering
+     */
+    public function getProductVariants(Request $request, $productId)
+    {
+        $product = Product::find($productId);
+        if (!$product) {
+            return response()->json(['success' => false, 'variants' => []]);
+        }
+
+        $variants = [];
+        if ($product->color) {
+            try {
+                $decoded = is_string($product->color) ? json_decode($product->color, true) : $product->color;
+                if (is_array($decoded) && count($decoded) > 0) {
+                    foreach ($decoded as $v) {
+                        $vName = $v['name'] ?? $product->item_name;
+                        $vSize = $v['size'] ?? '-';
+                        $vColor = $v['color'] ?? '-';
+                        $vKey = trim($vName) . '|' . trim($vSize) . '|' . trim($vColor);
+                        $vText = $vName . ' (' . $vSize . ' | ' . $vColor . ')';
+                        if (!empty($v['barcode'])) {
+                            $vText .= ' - [' . $v['barcode'] . ']';
+                        }
+                        $variants[] = [
+                            'key'   => $vKey,
+                            'name'  => $vName,
+                            'size'  => $vSize,
+                            'color' => $vColor,
+                            'text'  => $vText,
+                        ];
+                    }
+                }
+            } catch (\Exception $e) {}
+        }
+
+        return response()->json([
+            'success'      => true,
+            'has_variants' => count($variants) > 0,
+            'variants'     => $variants,
         ]);
     }
 

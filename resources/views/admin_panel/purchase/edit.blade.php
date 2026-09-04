@@ -451,9 +451,23 @@
                                             @php
                                                 $sizeMode = $item->size_mode ?? 'by_pieces';
                                                 $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : 1);
-                                                $qty = (float) $item->qty;
+                                                $uVal = strtolower($unitName ?? 'pcs');
+                                                $isCtn = in_array($uVal, ['carton', 'ctn', 'box']) || ($sizeMode === 'by_cartons');
+                                                $isKg = in_array($uVal, ['kg', 'gm', 'g']);
 
-                                                $variantNameDisplay = $item->product->item_name ?? 'Product';
+                                                $displayQty = (float) $item->qty;
+                                                if ($isCtn && ($item->loose_qty > 0 || $item->boxes_qty > 0)) {
+                                                    $b = (int) $item->boxes_qty;
+                                                    $l = (int) $item->loose_qty;
+                                                    if ($l > 0) {
+                                                        $displayQty = $b . '.' . $l;
+                                                    } else {
+                                                        $displayQty = $b;
+                                                    }
+                                                }
+
+                                                $baseProductName = $item->product->item_name ?? 'Product';
+                                                $variantNameDisplay = $baseProductName;
                                                 $variantInfo = '';
                                                 $rawVariantData = $item->color ?? '';
                                                 $unitName = !empty($item->unit) ? $item->unit : ($item->product->unit->name ?? 'Pcs');
@@ -465,16 +479,33 @@
                                                         $vData = json_decode($item->color, true);
                                                     }
                                                     if (is_array($vData)) {
-                                                        $vName = $vData['name'] ?? '';
-                                                        $vColorName = $vData['color'] ?? '';
-                                                        $vSize = $vData['size'] ?? '';
+                                                        $vName = trim($vData['name'] ?? ($vData['variant_name'] ?? ''));
+                                                        $vColorName = trim($vData['color'] ?? '');
+                                                        $vSize = trim($vData['size'] ?? '');
                                                         if (empty($item->unit) && !empty($vData['unit'])) {
                                                             $unitName = $vData['unit'];
                                                         }
                                                         $vParts = [];
-                                                        if ($vName && $vName !== ($item->product->item_name ?? '')) {
-                                                            $variantNameDisplay = $vName;
+                                                        $sStr = ($vSize !== '' && $vSize !== '-') ? " {$vSize}" : '';
+                                                        $cStr = ($vColorName !== '' && $vColorName !== '-') ? " ({$vColorName})" : '';
+
+                                                        if ($vName !== '') {
+                                                            if (stripos($vName, $baseProductName) !== false) {
+                                                                $variantNameDisplay = $vName;
+                                                            } else {
+                                                                $variantNameDisplay = $baseProductName . ' — ' . $vName;
+                                                            }
+                                                        } else {
+                                                            $variantNameDisplay = $baseProductName;
                                                         }
+
+                                                        if ($sStr !== '' && stripos($variantNameDisplay, trim($vSize)) === false) {
+                                                            $variantNameDisplay .= $sStr;
+                                                        }
+                                                        if ($cStr !== '' && stripos($variantNameDisplay, trim($vColorName)) === false) {
+                                                            $variantNameDisplay .= $cStr;
+                                                        }
+
                                                         if ($vColorName && $vColorName !== '-') {
                                                             $vParts[] = 'Color: ' . $vColorName;
                                                         }
@@ -484,8 +515,9 @@
                                                         if (!empty($vParts)) {
                                                             $variantInfo = implode(' | ', $vParts);
                                                         }
-                                                    } else {
-                                                        $variantInfo = $item->color;
+                                                    } elseif (is_string($item->color) && trim($item->color) !== '' && trim($item->color) !== '-') {
+                                                        $variantNameDisplay = $baseProductName . ' (' . trim($item->color) . ')';
+                                                        $variantInfo = trim($item->color);
                                                     }
                                                 }
 
@@ -536,9 +568,9 @@
                                                     <input type="hidden" name="unit[]" class="unit-input-val" value="{{ $unitName }}">
                                                 </td>
                                                 <td>
-                                                    <input type="number" step="any" min="0.01" name="qty[]"
+                                                    <input type="number" step="any" min="0.0001" name="qty[]"
                                                         class="form-control text-center main-qty-input"
-                                                        value="{{ (float) $qty }}" placeholder="Qty">
+                                                        value="{{ $displayQty }}" placeholder="Qty">
                                                 </td>
                                                 <td>
                                                     <div class="input-group input-group-sm">
@@ -708,7 +740,10 @@
                 initProductSelect2($(this));
             });
 
-            // Recalc payments & rows on initial load
+            // Recalc rows & payments on initial load
+            $('#purchaseTableBody tr').each(function() {
+                recalcRow($(this));
+            });
             recalcPayments();
             recalcAll();
 
@@ -893,7 +928,8 @@
             }
 
             function recalcRow($row) {
-                const qty = parseFloat($row.find('.main-qty-input').val()) || 0;
+                const qtyStr = ($row.find('.main-qty-input').val() || '').toString();
+                const qty = parseFloat(qtyStr) || 0;
                 const price = parseFloat($row.find('.price').val()) || 0;
                 const discPct = parseFloat($row.find('.item-disc-percent').val()) || 0;
                 const sizeMode = $row.data('sizemode') || $row.find('.hidden-size-mode').val();
@@ -903,12 +939,36 @@
                 const ppb = parseFloat($row.find('.hidden-pieces-per-box').val()) || parseFloat($row.data('pieces_per_box')) || 1;
 
                 let gross = 0;
+                const isCarton = (unitVal === 'carton' || unitVal === 'ctn' || unitVal === 'box' || sizeMode === 'by_cartons');
+
                 if (sizeMode === 'by_size') {
                     gross = (pieces_per_m2 || 1) * qty * price;
                 } else if (unitVal === 'gm' || unitVal === 'g') {
                     gross = (qty / 1000.0) * price;
+                } else if (isCarton) {
+                    let s = qtyStr.trim();
+                    if (s.startsWith('.')) s = '0' + s;
+                    if (s.includes('.')) {
+                        const parts = s.split('.');
+                        const boxes = parseInt(parts[0]) || 0;
+                        const loose = parseInt(parts[1]) || 0;
+                        const piecePrice = ppb > 0 ? (price / ppb) : price;
+                        gross = (boxes * price) + (loose * piecePrice);
+                        $row.find('.hidden-boxes-qty').val(boxes);
+                        $row.find('.hidden-loose-qty').val(loose);
+                    } else {
+                        const boxes = parseInt(s) || 0;
+                        gross = boxes * price;
+                        $row.find('.hidden-boxes-qty').val(boxes);
+                        $row.find('.hidden-loose-qty').val(0);
+                    }
                 } else {
                     gross = qty * price;
+                    if (unitVal === 'pcs' || unitVal === 'pc' || unitVal === 'piece') {
+                        const bQty = ppb > 0 ? (qty / ppb) : qty;
+                        $row.find('.hidden-boxes-qty').val(bQty.toFixed(2));
+                        $row.find('.hidden-loose-qty').val(qty);
+                    }
                 }
 
                 const discAmt = gross * (discPct / 100);
@@ -916,16 +976,6 @@
 
                 $row.find('.item-disc-amt').val(discAmt.toFixed(2));
                 $row.find('.row-total').val(lineTotal.toFixed(2));
-
-                // Sync hidden boxes_qty & loose_qty
-                if (unitVal === 'carton' || unitVal === 'ctn' || unitVal === 'box') {
-                    $row.find('.hidden-boxes-qty').val(qty);
-                    $row.find('.hidden-loose-qty').val(0);
-                } else if (unitVal === 'pcs' || unitVal === 'pc' || unitVal === 'piece') {
-                    const bQty = ppb > 0 ? (qty / ppb) : qty;
-                    $row.find('.hidden-boxes-qty').val(bQty.toFixed(2));
-                    $row.find('.hidden-loose-qty').val(qty);
-                }
             }
 
             function recalcAll() {

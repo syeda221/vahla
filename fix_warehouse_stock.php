@@ -43,7 +43,7 @@ foreach ($products as $product) {
             ->join('purchases as pur', 'pur.id', '=', 'pi.purchase_id')
             ->where('pi.product_id', $product->id)
             ->whereIn('pur.status_purchase', ['approved', 'Returned', 'Partial'])
-            ->select('pi.qty as total_pieces', 'pi.color')
+            ->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.color')
             ->get();
 
         $purchaseReturnsList = DB::table('purchase_return_items as pri')
@@ -66,6 +66,8 @@ foreach ($products as $product) {
 
         foreach ($parsedVariants as $v) {
             $initial = (float) ($v['stock'] ?? 0);
+            $vPpb = (float) ($v['conv_factor'] ?? ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1));
+            if ($vPpb <= 0) $vPpb = 1;
 
             // Match function locally
             $matchSaleItemToVariant = function($itemColor, $variant) {
@@ -101,7 +103,23 @@ foreach ($products as $product) {
             $purchased = 0;
             foreach ($purchasesList as $pItem) {
                 if ($matchSaleItemToVariant($pItem->color, $v)) {
-                    $purchased += (float) $pItem->total_pieces;
+                    $pUnit = strtolower(trim($pItem->unit ?? ''));
+                    $itemPPB = (float) ($pItem->pieces_per_box > 0 ? $pItem->pieces_per_box : $vPpb);
+                    if ($itemPPB <= 0) $itemPPB = 1;
+
+                    if (in_array($pUnit, ['carton', 'ctn', 'box']) || $product->size_mode === 'by_cartons') {
+                        if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
+                            $pPieces = (((int) $pItem->boxes_qty) * $itemPPB) + ((int) $pItem->loose_qty);
+                        } else {
+                            [$b, $l] = \App\Http\Controllers\PurchaseController::parseCartonQty($pItem->qty);
+                            $pPieces = ($b * $itemPPB) + $l;
+                        }
+                    } elseif (in_array($pUnit, ['gm', 'g'])) {
+                        $pPieces = ((float) $pItem->qty) / 1000.0;
+                    } else {
+                        $pPieces = (float) $pItem->qty;
+                    }
+                    $purchased += $pPieces;
                 }
             }
 
@@ -133,10 +151,7 @@ foreach ($products as $product) {
 
             $vBalance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned);
             
-            // If variant has conv_factor (weight mode), apply it
-            $factor = isset($v['conv_factor']) && (float)$v['conv_factor'] > 0 ? (float)$v['conv_factor'] : 1;
-            
-            $totalCalculatedPieces += ($vBalance * $factor);
+            $totalCalculatedPieces += $vBalance;
         }
     } else {
         // No variants, calculate normally from stock_movements or just keep warehouse stock

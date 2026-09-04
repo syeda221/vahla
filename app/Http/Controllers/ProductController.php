@@ -185,7 +185,7 @@ class ProductController extends Controller
                     ->join('purchases as pur', 'pur.id', '=', 'pi.purchase_id')
                     ->where('pi.product_id', $p->id)
                     ->whereIn('pur.status_purchase', ['approved', 'Returned', 'Partial'])
-                    ->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.color')
+                    ->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.color')
                     ->get();
 
                 // Fetch all purchase returns
@@ -245,7 +245,12 @@ class ProductController extends Controller
                                 if ($itemPPB <= 0) $itemPPB = 1;
 
                                 if (in_array($pUnit, ['carton', 'ctn', 'box'])) {
-                                    $pPieces = ((float) $pItem->qty) * $itemPPB;
+                                    if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
+                                        $pPieces = (((int) $pItem->boxes_qty) * $itemPPB) + ((int) $pItem->loose_qty);
+                                    } else {
+                                        [$b, $l] = \App\Http\Controllers\PurchaseController::parseCartonQty($pItem->qty);
+                                        $pPieces = ($b * $itemPPB) + $l;
+                                    }
                                 } elseif (in_array($pUnit, ['gm', 'g'])) {
                                     $pPieces = ((float) $pItem->qty) / 1000.0;
                                 } else {
@@ -1470,26 +1475,43 @@ class ProductController extends Controller
                     $variants = [$decoded];
                 } elseif (isset($decoded[0])) {
                     if (is_array($decoded[0])) {
-                        $variants = $decoded;
+                        $variants = array_values($decoded);
                     } elseif (is_string($decoded[0])) {
-                        foreach ($decoded as $cName) {
+                        foreach ($decoded as $idx => $cName) {
                             $variants[] = [
                                 'name' => $product->item_name . ($cName ? ' - ' . $cName : ''),
                                 'size' => '',
                                 'color' => $cName,
-                                'unit' => 'Pcs',
-                                'stock' => 0,
+                                'unit' => optional($product->unit)->name ?? ($product->size_mode === 'by_cartons' ? 'Carton' : 'Pcs'),
+                                'stock' => $idx === 0 ? (($product->size_mode === 'by_cartons') ? (($product->boxes_quantity ?: 0) . ($product->loose_pieces ? '.' . $product->loose_pieces : '')) : ($totalPieces ?: 0)) : 0,
                                 'sale_price' => $product->sale_price_per_piece ?? $product->sale_price_per_box ?? 0,
                                 'wholesale_price' => $product->wholesale_price ?? 0,
                                 'purch_price' => $product->purchase_price_per_piece ?? 0,
                                 'alert' => $product->alert_quantity ?? 0,
                                 'barcode' => '',
-                                'conv_factor' => 1,
-                                'is_base_variant' => 0
+                                'conv_factor' => ($product->size_mode === 'by_cartons') ? ($product->pieces_per_box ?: 1) : 1,
+                                'is_base_variant' => $idx === 0 ? 1 : 0
                             ];
                         }
                     }
+                } else {
+                    $variants = array_values($decoded);
                 }
+            } elseif (is_string($raw) && trim($raw) !== '' && trim($raw) !== 'null') {
+                $variants[] = [
+                    'name' => $product->item_name . ' - ' . $raw,
+                    'size' => '',
+                    'color' => $raw,
+                    'unit' => optional($product->unit)->name ?? ($product->size_mode === 'by_cartons' ? 'Carton' : 'Pcs'),
+                    'stock' => ($product->size_mode === 'by_cartons') ? (($product->boxes_quantity ?: 0) . ($product->loose_pieces ? '.' . $product->loose_pieces : '')) : ($totalPieces ?: 0),
+                    'sale_price' => $product->sale_price_per_piece ?: $product->sale_price_per_box ?: 0,
+                    'wholesale_price' => $product->wholesale_price ?? 0,
+                    'purch_price' => $product->purchase_price_per_piece ?? 0,
+                    'alert' => $product->alert_quantity ?? 0,
+                    'barcode' => $product->barcode_path ?? '',
+                    'conv_factor' => ($product->size_mode === 'by_cartons') ? ($product->pieces_per_box ?: 1) : 1,
+                    'is_base_variant' => 1
+                ];
             }
         }
 
@@ -1510,6 +1532,19 @@ class ProductController extends Controller
                     'is_base_variant' => 1,
                 ]
             ];
+        }
+
+        if (!empty($variants)) {
+            $hasBase = false;
+            foreach ($variants as $v) {
+                if (!empty($v['is_base_variant'])) {
+                    $hasBase = true;
+                    break;
+                }
+            }
+            if (!$hasBase && isset($variants[0])) {
+                $variants[0]['is_base_variant'] = 1;
+            }
         }
 
         if ($product->size_mode === 'by_cartons' && !empty($variants)) {

@@ -636,12 +636,61 @@
                                                     $prod = $item->product;
                                                     $sizeMode = $item->size_mode ?? ($prod->size_mode ?? 'std');
 
-                                                    $ppb = 1;
-                                                    if ($item->pieces_per_box > 0) {
-                                                        $ppb = $item->pieces_per_box;
-                                                    } elseif ($prod && $prod->pieces_per_box > 0) {
-                                                        $ppb = $prod->pieces_per_box;
+                                                    $variantData = [];
+                                                    if ($item->color) {
+                                                        try {
+                                                            $b64 = base64_decode($item->color, true);
+                                                            $variantData = ($b64 !== false) ? json_decode($b64, true) : json_decode($item->color, true);
+                                                            if (!is_array($variantData)) $variantData = [];
+                                                        } catch (\Exception $e) {
+                                                            $variantData = [];
+                                                        }
                                                     }
+
+                                                    // Check live product variant data for updated pack size / conversion factor
+                                                    $liveVariant = null;
+                                                    if ($prod && !empty($prod->color)) {
+                                                        $prodVariants = json_decode($prod->color, true);
+                                                        if (is_array($prodVariants)) {
+                                                            if (!empty($variantData['barcode'])) {
+                                                                $liveVariant = collect($prodVariants)->firstWhere('barcode', $variantData['barcode']);
+                                                            }
+                                                            if (!$liveVariant && !empty($variantData['name'])) {
+                                                                $liveVariant = collect($prodVariants)->first(function($v) use ($variantData) {
+                                                                    $n1 = strtolower(trim($v['name'] ?? ''));
+                                                                    $n2 = strtolower(trim($variantData['name'] ?? ''));
+                                                                    return $n1 === $n2 || ($n1 && $n2 && (str_contains($n1, $n2) || str_contains($n2, $n1)));
+                                                                });
+                                                            }
+                                                            if (!$liveVariant && !empty($variantData['size']) && $variantData['size'] !== '-') {
+                                                                $liveVariant = collect($prodVariants)->first(function($v) use ($variantData) {
+                                                                    $s1 = strtolower(trim($v['size'] ?? ''));
+                                                                    $s2 = strtolower(trim($variantData['size'] ?? ''));
+                                                                    return $s1 === $s2 || ($s1 && $s2 && (str_starts_with($s1, $s2) || str_starts_with($s2, $s1)));
+                                                                });
+                                                            }
+                                                            if (!$liveVariant && count($prodVariants) === 1) {
+                                                                $liveVariant = $prodVariants[0];
+                                                            }
+                                                        }
+                                                    }
+
+                                                    $ppb = 1;
+                                                    if ($liveVariant && !empty($liveVariant['conv_factor']) && (float)$liveVariant['conv_factor'] > 0) {
+                                                        $ppb = (float)$liveVariant['conv_factor'];
+                                                    } elseif ($liveVariant && !empty($liveVariant['pieces_per_box']) && (float)$liveVariant['pieces_per_box'] > 0) {
+                                                        $ppb = (float)$liveVariant['pieces_per_box'];
+                                                    } elseif ($prod && (float)$prod->pieces_per_box > 0) {
+                                                        $ppb = (float)$prod->pieces_per_box;
+                                                    } elseif (!empty($variantData['conv_factor']) && (float)$variantData['conv_factor'] > 0) {
+                                                        $ppb = (float)$variantData['conv_factor'];
+                                                    } elseif (!empty($variantData['pieces_per_box']) && (float)$variantData['pieces_per_box'] > 0) {
+                                                        $ppb = (float)$variantData['pieces_per_box'];
+                                                    } elseif (!empty($item->pieces_per_box) && (float)$item->pieces_per_box > 0) {
+                                                        $ppb = (float)$item->pieces_per_box;
+                                                    }
+
+                                                    if ($ppb <= 0) $ppb = 1;
 
                                                     $cartons = 0;
                                                     $loose = 0;
@@ -657,21 +706,14 @@
                                                     $toggleText = 'Kg';
                                                     $toggleBtnClass = 'd-none';
                                                     $displayQty = $cartons;
+                                                    $itemTotalPieces = (float)$item->total_pieces;
                                                     $isPcs = false;
 
                                                     if ($sizeMode === 'by_cartons') {
-                                                        $piecePrice = (float)($prod->sale_price_per_piece ?? 0);
-                                                        if ($piecePrice <= 0 && $item->color) {
-                                                            try {
-                                                                $vd = json_decode(base64_decode($item->color), true);
-                                                                $piecePrice = (float)($vd['sale_price'] ?? 0);
-                                                            } catch (\Exception $e) {}
-                                                        }
-                                                        $cartonPrice = $piecePrice > 0 ? ($piecePrice * $ppb) : 0;
-
-                                                        if ($cartons == 0 && $item->total_pieces > 0) {
+                                                        $variantUnit = strtolower($variantData['unit'] ?? ($liveVariant['unit'] ?? ''));
+                                                        if ($variantUnit === 'pcs' || $variantUnit === 'piece' || $variantUnit === 'pieces') {
                                                             $isPcs = true;
-                                                        } elseif ($cartonPrice > 0 && (float)$item->price < ($cartonPrice * 0.75)) {
+                                                        } elseif ((float)$item->qty == (float)$item->total_pieces && $ppb > 1) {
                                                             $isPcs = true;
                                                         }
 
@@ -680,13 +722,18 @@
                                                             $toggleText = 'Pcs';
                                                             $toggleBtnClass = 'btn-outline-info';
                                                             $displayQty = (float) $item->total_pieces;
+                                                            $itemTotalPieces = (float) $item->total_pieces;
                                                         } else {
                                                             $unitMode = 'ctn';
                                                             $toggleText = 'Ctn';
                                                             $toggleBtnClass = 'btn-outline-success';
-                                                            $displayQty = $loose > 0 ? "{$cartons}.{$loose}" : $cartons;
-                                                            if ($cartons == 0 && $loose == 0 && (float)$item->qty > 0) {
-                                                                $displayQty = (float)$item->qty;
+                                                            $savedQty = (float)$item->qty;
+                                                            if ($savedQty > 0) {
+                                                                $displayQty = $savedQty;
+                                                                $itemTotalPieces = $savedQty * $ppb;
+                                                            } else {
+                                                                $displayQty = $loose > 0 ? "{$cartons}.{$loose}" : $cartons;
+                                                                $itemTotalPieces = ($cartons * $ppb) + $loose;
                                                             }
                                                         }
                                                     } elseif ($sizeMode === 'by_kg') {
@@ -714,40 +761,50 @@
                                                     }
 
                                                     $selStockDisp = '';
-                                                    if ($item->warehouse_id) {
-                                                        $selWs = $prod?->warehouseStocks
-                                                            ?->where('warehouse_id', $item->warehouse_id)
-                                                            ->first();
-                                                        if ($selWs) {
-                                                            $stk = (float) $selWs->total_pieces;
-                                                            if ($stk <= 0 && $selWs->quantity > 0) {
-                                                                $stk = $selWs->quantity * $ppb;
+                                                    if (!empty($variantData['current_stock'])) {
+                                                        $selStockDisp = $variantData['current_stock'];
+                                                    } elseif (isset($variantData['stock']) && $variantData['stock'] !== '') {
+                                                        $selStockDisp = $variantData['stock'];
+                                                    } elseif ($prod) {
+                                                        $stk = 0;
+                                                        if ($item->warehouse_id) {
+                                                            $selWs = $prod->warehouseStocks?->where('warehouse_id', $item->warehouse_id)->first();
+                                                            if ($selWs) {
+                                                                $stk = (float) $selWs->total_pieces;
+                                                                if ($stk <= 0 && $selWs->quantity > 0) {
+                                                                    $stk = $selWs->quantity * $ppb;
+                                                                }
                                                             }
+                                                        }
+                                                        if ($stk == 0 && $prod->warehouseStocks) {
+                                                            $stk = (float) $prod->warehouseStocks->sum('total_pieces');
+                                                        }
 
+                                                        if (in_array($sizeMode, ['by_cartons', 'by_size']) && $ppb > 1) {
                                                             $b = floor($stk / $ppb);
                                                             $l = $stk % $ppb;
-
-                                                            $selStockDisp =
-                                                                in_array($sizeMode, ['by_cartons', 'by_size']) && $ppb > 0
-                                                                    ? ($l > 0 ? "$b.$l" : $b)
-                                                                    : $stk;
+                                                            $selStockDisp = $l > 0 ? "$b.$l" : $b;
+                                                        } elseif ($sizeMode === 'by_kg') {
+                                                            if ($stk > 0 && $stk < 1) {
+                                                                $gm = round($stk * 1000);
+                                                                $selStockDisp = "{$stk} Kg ({$gm} Gm)";
+                                                            } else {
+                                                                $selStockDisp = "{$stk} Kg";
+                                                            }
+                                                        } else {
+                                                            $selStockDisp = $stk;
                                                         }
                                                     }
 
                                                     $variantLabel = '';
                                                     $vSize = '-';
                                                     $vCol = '-';
-                                                    if ($item->color) {
-                                                        try {
-                                                            $vData = json_decode(base64_decode($item->color), true);
-                                                            if ($vData && isset($vData['name'])) {
-                                                                $vSize = (isset($vData['size']) && $vData['size'] !== '-') ? $vData['size'] : '-';
-                                                                $vCol  = (isset($vData['color']) && $vData['color'] !== '-') ? $vData['color'] : '-';
-                                                                $sStr = $vSize !== '-' ? " {$vSize}" : '';
-                                                                $cStr = $vCol !== '-' ? " ({$vCol})" : '';
-                                                                $variantLabel = ' — ' . $vData['name'] . $sStr . $cStr;
-                                                            }
-                                                        } catch (\Exception $e) {}
+                                                    if ($variantData && isset($variantData['name'])) {
+                                                        $vSize = (isset($variantData['size']) && $variantData['size'] !== '-') ? $variantData['size'] : '-';
+                                                        $vCol  = (isset($variantData['color']) && $variantData['color'] !== '-') ? $variantData['color'] : '-';
+                                                        $sStr = $vSize !== '-' ? " {$vSize}" : '';
+                                                        $cStr = $vCol !== '-' ? " ({$vCol})" : '';
+                                                        $variantLabel = ' — ' . $variantData['name'] . $sStr . $cStr;
                                                     }
                                                 @endphp
                                                 <tr data-size_mode="{{ $sizeMode }}"
@@ -778,7 +835,7 @@
                                                             class="form-control stock text-center input-readonly" readonly
                                                             value="{{ $selStockDisp }}" tabindex="-1">
                                                         <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ $item->warehouse_id ?? (auth()->user()->warehouse_id ?? 1) }}">
-                                                        <input type="hidden" class="variant-stock-value">
+                                                        <input type="hidden" class="variant-stock-value" value="{{ $selStockDisp }}">
                                                     </td>
 
                                                     <!-- Qty cell with Sub-Unit toggle -->
@@ -797,7 +854,7 @@
                                                     <!-- Loose Pieces (hidden) -->
                                                     <td style="width:70px;" class="d-none">
                                                         <input type="number" class="form-control loose-pcs-input text-end"
-                                                            name="loose_qty[]" value="{{ $loose }}" placeholder="" min="0">
+                                                            name="loose_qty[]" value="0" placeholder="" min="0">
                                                     </td>
 
                                                     <!-- Size -->
@@ -822,7 +879,7 @@
                                                     <td class="col-pieces">
                                                         <input type="text"
                                                             class="form-control total-pieces text-end input-readonly fw-semibold"
-                                                            name="total_pieces[]" readonly value="{{ $item->total_pieces }}"
+                                                            name="total_pieces[]" readonly value="{{ $itemTotalPieces }}"
                                                             placeholder="0" tabindex="-1">
                                                         <input type="hidden" class="sales-qty" name="qty[]" value="{{ $isPcs ? $item->total_pieces : ($cartons . ($loose > 0 ? '.' . $loose : '')) }}">
                                                     </td>
@@ -844,11 +901,11 @@
                                                             name="price_per_piece[]"
                                                             value="{{ $item->price }}">
                                                         <input type="hidden" class="retail-price"
-                                                            value="{{ $prod->retail_price ?? $item->price }}">
+                                                            value="{{ $prod->sale_price_per_piece ?? $item->price }}">
                                                         <input type="hidden" class="wholesale-price"
                                                             value="{{ $prod->wholesale_price ?? 0 }}">
                                                         <input type="hidden" class="weight-per-piece"
-                                                            value="{{ $prod->weight_per_piece ?? 0 }}">
+                                                            value="{{ $variantData['weight_per_piece'] ?? ($prod->weight_per_piece ?? 0) }}">
                                                     </td>
 
                                                     <!-- Discount -->

@@ -233,7 +233,7 @@
                                             </div>
                                         </div>
                                         
-                                        <div class="col-md-4">
+                                        <div class="col-md-3">
                                             <label class="form-label-pro">Category <span class="text-danger">*</span></label>
                                             <div class="d-flex gap-1">
                                                 <select class="form-select form-control-pro form-select-pro" id="category-dropdown" name="category_id" required>
@@ -245,7 +245,7 @@
                                                 <button type="button" class="btn btn-light border px-2 shadow-sm" data-toggle="modal" data-target="#categoryModal">+</button>
                                             </div>
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-3">
                                             <label class="form-label-pro">Sub Category</label>
                                             <div class="d-flex gap-1">
                                                 <select class="form-select form-control-pro form-select-pro" id="subcategory-dropdown" name="sub_category_id">
@@ -259,7 +259,7 @@
                                                 <button type="button" class="btn btn-light border px-2 shadow-sm" data-toggle="modal" data-target="#subcategoryModal">+</button>
                                             </div>
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-3">
                                             <label class="form-label-pro">Brand</label>
                                             <div class="d-flex gap-1">
                                                 <select class="form-select form-control-pro form-select-pro" name="brand_id" required>
@@ -270,6 +270,18 @@
                                                 </select>
                                                 <button type="button" class="btn btn-light border px-2 shadow-sm" data-toggle="modal" data-target="#brandModal">+</button>
                                             </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label-pro">Unit</label>
+                                            <select class="form-select form-control-pro form-select-pro fw-bold" name="size_mode" id="unit-dropdown">
+                                                <option value="by_pieces" {{ $product->size_mode == 'by_pieces' ? 'selected' : '' }}>Pcs</option>
+                                                <option value="by_cartons" {{ $product->size_mode == 'by_cartons' ? 'selected' : '' }}>Carton</option>
+                                                <option value="by_meter" {{ $product->size_mode == 'by_meter' ? 'selected' : '' }}>Meter</option>
+                                                <option value="by_feet" {{ $product->size_mode == 'by_feet' ? 'selected' : '' }}>Ft (Feet)</option>
+                                                <option value="by_kg" {{ $product->size_mode == 'by_kg' ? 'selected' : '' }}>Kg</option>
+                                                <option value="by_gm" {{ $product->size_mode == 'by_gm' ? 'selected' : '' }}>Gm</option>
+                                                <option value="by_ton" {{ $product->size_mode == 'by_ton' ? 'selected' : '' }}>Ton</option>
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
@@ -356,20 +368,6 @@
                                         <span class="text-muted fw-bold">Est. Value:</span>
                                         <span class="text-success fw-bold">PKR <span id="sale_total_display">0.00</span></span>
                                     </div>
-                                </div>
-
-                                {{-- Unit Select --}}
-                                <div class="col-md-4">
-                                     <label class="form-label-pro">Unit</label>
-                                     <select class="form-select form-control-pro form-select-pro fw-bold" name="size_mode" id="unit-dropdown" style="max-width: 200px;">
-                                         <option value="by_pieces" {{ $product->size_mode == 'by_pieces' ? 'selected' : '' }}>Pcs</option>
-                                         <option value="by_cartons" {{ $product->size_mode == 'by_cartons' ? 'selected' : '' }}>Carton</option>
-                                         <option value="by_meter" {{ $product->size_mode == 'by_meter' ? 'selected' : '' }}>Meter</option>
-                                         <option value="by_feet" {{ $product->size_mode == 'by_feet' ? 'selected' : '' }}>Ft (Feet)</option>
-                                         <option value="by_kg" {{ $product->size_mode == 'by_kg' ? 'selected' : '' }}>Kg</option>
-                                         <option value="by_gm" {{ $product->size_mode == 'by_gm' ? 'selected' : '' }}>Gm</option>
-                                         <option value="by_ton" {{ $product->size_mode == 'by_ton' ? 'selected' : '' }}>Ton</option>
-                                     </select>
                                 </div>
                             </div>
                         </div>
@@ -551,295 +549,10 @@
             // --- UI Elements ---
             const unitDropdown = document.getElementById('unit-dropdown');
             const form = document.getElementById('productForm');
- 
-            // Containers
-            const grpBySize = document.querySelectorAll('.group-by-size');
-            const grpLoose = document.querySelectorAll('.group-loose');
-            const grpPieceOnly = document.querySelectorAll('.group-piece-only');
- 
-            function toggleGroup(els, hide) {
-                els.forEach(el => hide ? el.classList.add('d-none') : el.classList.remove('d-none'));
-            }
- 
-            // Labels
-            const unitLabels = document.querySelectorAll('.unit-label');
- 
-            // --- Logic Update Mode ---
-            function updateMode() {
-                if(!unitDropdown) return;
-                const mode = unitDropdown.value;
- 
-                // Hide ALL dynamic wrappers
-                toggleGroup(grpBySize, true);
-                toggleGroup(grpLoose, true);
-                toggleGroup(grpPieceOnly, true);
- 
-                if (mode === 'by_cartons') {
-                    toggleGroup(grpBySize, false);
-                    toggleGroup(grpLoose, false);
-                    unitLabels.forEach(l => l.innerText = '(pc)');
- 
-                    setRequired(['pieces_per_box', 'boxes_quantity', 'sale_price_per_box', 'purchase_price_per_piece'], true);
-                    setRequired(['piece_quantity'], false);
- 
-                } else {
-                    toggleGroup(grpPieceOnly, false);
-                    unitLabels.forEach(l => l.innerText = '(' + (mode === 'by_pieces' ? 'pc' : (mode === 'by_meter' ? 'm' : 'kg')) + ')');
- 
-                    setRequired(['piece_quantity', 'sale_price_per_box', 'purchase_price_per_piece'], true);
-                    setRequired(['pieces_per_box', 'boxes_quantity'], false);
-                }
- 
-                calculate();
-                toggleFactorColumns();
-            }
-            if (unitDropdown) $(unitDropdown).on('change', updateMode);
-
-            function setRequired(ids, isReq) {
-                ids.forEach(id => {
-                    const el = document.getElementById(id);
-                    if (el) isReq ? el.setAttribute('required', 'required') : el.removeAttribute('required');
-                });
-            }
-
-            function calculate() {
-                if(!unitDropdown) return;
-                const mode = unitDropdown.value;
-
-                const v = (id) => parseFloat(document.getElementById(id)?.value) || 0;
-                let stock = 0;
-                let saleVal = 0;
-
-                if (mode === 'by_cartons') {
-                    stock = (v('pieces_per_box') * v('boxes_quantity')) + v('loose_pieces');
-                    saleVal = stock * v('sale_price_per_box');
-
-                } else {
-                    stock = v('piece_quantity');
-                    saleVal = stock * v('sale_price_per_box');
-                }
-
-                setText('total_stock_display', stock);
-                setText('sale_total_display', saleVal.toLocaleString(undefined, { minimumFractionDigits: 2 }));
-            }
-
-            function setText(id, val) {
-                const el = document.getElementById(id);
-                if (el) el.innerText = val;
-            }
-
-            function toggleFactorColumns() {
-                if (!unitDropdown) return;
-                const mode = unitDropdown.value;
-                const showFactor = (mode === 'by_kg' || mode === 'by_meter');
-                
-                const headers = document.querySelectorAll('.factor-header');
-                headers.forEach(h => {
-                    if (showFactor && variantMode !== 'weight') {
-                        h.classList.remove('d-none');
-                        h.textContent = (mode === 'by_kg') ? 'Piece Weight (g)' : 'Piece Length (m)';
-                    } else {
-                        h.classList.add('d-none');
-                    }
-                });
-                
-                const cols = document.querySelectorAll('.factor-col');
-                cols.forEach(c => {
-                    if (showFactor && variantMode !== 'weight') {
-                        c.classList.remove('d-none');
-                    } else {
-                        c.classList.add('d-none');
-                        const inp = c.querySelector('input');
-                        if (inp) inp.value = '0';
-                    }
-                });
- 
-                const mainFactorCol = document.querySelector('.factor-col-main');
-                if (mainFactorCol) {
-                    if (showFactor) {
-                        mainFactorCol.classList.remove('d-none');
-                        const lbl = mainFactorCol.querySelector('.factor-label');
-                        if (lbl) lbl.textContent = (mode === 'by_kg') ? 'Piece Weight (g)' : 'Piece Length (m)';
-                    } else {
-                        mainFactorCol.classList.add('d-none');
-                        const inp = mainFactorCol.querySelector('input');
-                        if (inp) inp.value = '0';
-                    }
-                }
-            }
-
-            // Events
-            form.querySelectorAll('input').forEach(i => i.addEventListener('input', calculate));
-
-            updateMode();
-
-            // Image Handler
-            const imgInput = document.getElementById('imageInput');
-            const preview = document.getElementById('preview');
-            const ph = document.getElementById('uploadPlaceholder');
-            const clr = document.getElementById('clearImageBtn');
-
-            imgInput.addEventListener('change', function() {
-                if (this.files && this.files[0]) {
-                    const r = new FileReader();
-                    r.onload = (e) => {
-                        preview.src = e.target.result;
-                        preview.classList.remove('d-none');
-                        if(ph) ph.classList.add('d-none');
-                        clr.classList.remove('d-none');
-                    };
-                    r.readAsDataURL(this.files[0]);
-                }
-            });
-
-            clr.addEventListener('click', (e) => {
-                e.stopPropagation();
-                imgInput.value = '';
-                
-                @if($product->image)
-                    preview.src = "{{ asset('uploads/products/' . $product->image) }}";
-                    preview.classList.remove('d-none');
-                    if(ph) ph.classList.add('d-none');
-                @else
-                    preview.classList.add('d-none');
-                    if(ph) ph.classList.remove('d-none');
-                    clr.classList.add('d-none');
-                @endif
-            });
-
-            // AJAX Submission
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                 const vStocks = document.querySelectorAll('input[name="variant_stock[]"]');
-                 const vSale = document.querySelectorAll('input[name="variant_sale_price[]"]');
-                 const vWholesale = document.querySelectorAll('input[name="variant_wholesale_price[]"]');
-                 const vWeight = document.querySelectorAll('input[name="variant_weight_per_piece[]"]');
-                 const vPurch = document.querySelectorAll('input[name="variant_purchase_price[]"]');
-                 const vAlert = document.querySelectorAll('input[name="variant_alert_qty[]"]');
-                 const vConvFactors = document.querySelectorAll('input[name="variant_conv_factor[]"]');
- 
-                 let totalStock = 0;
-                 vStocks.forEach(el => totalStock += (parseFloat(el.value) || 0));
- 
-                 let firstSale = vSale.length > 0 ? (parseFloat(vSale[0].value) || 0) : 0;
-                 let firstWholesale = vWholesale.length > 0 ? (parseFloat(vWholesale[0].value) || 0) : 0;
-                 let firstWeight = vWeight.length > 0 ? (parseFloat(vWeight[0].value) || 0) : 0;
-                 let firstPurch = vPurch.length > 0 ? (parseFloat(vPurch[0].value) || 0) : 0;
-                 let firstAlert = vAlert.length > 0 ? (parseFloat(vAlert[0].value) || 0) : 0;
-                 let firstConv = vConvFactors.length > 0 ? (parseFloat(vConvFactors[0].value) || 0) : 0;
- 
-                 const mode = unitDropdown ? unitDropdown.value : 'by_pieces';
-                 
-                 if (vStocks.length > 0) {
-                     if(mode === 'by_cartons') {
-                         let ppb = firstConv > 0 ? firstConv : 1;
-                         document.getElementById('boxes_quantity').value = totalStock;
-                         document.getElementById('pieces_per_box').value = ppb;
-                         document.getElementById('loose_pieces').value = 0;
-                         document.getElementById('piece_quantity').value = 0;
-                     } else {
-                         document.getElementById('piece_quantity').value = totalStock;
-                         document.getElementById('boxes_quantity').value = 0;
-                         document.getElementById('pieces_per_box').value = 1;
-                     }
-                     document.getElementById('sale_price_per_box').value = firstSale;
-                     document.getElementById('wholesale_price').value = firstWholesale;
-                     document.getElementById('weight_per_piece').value = firstWeight;
-                     document.getElementById('purchase_price_per_piece').value = firstPurch;
-                     document.getElementById('alert_carton_quantity').value = firstAlert;
-                 } else {
-                     document.getElementById('wholesale_price_hidden').value = document.getElementById('wholesale_price').value;
-                     document.getElementById('weight_per_piece_hidden').value = document.getElementById('weight_per_piece').value;
-                 }
-
-                const btn = document.querySelector('button[type="submit"]');
-                const originalContent = btn.innerHTML;
-                btn.innerHTML = '<i class="las la-spinner la-spin"></i> Updating...';
-                btn.disabled = true;
-
-                const formData = new FormData(form);
-                fetch(form.action, {
-                    method: 'POST',
-                    headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'},
-                    body: formData
-                })
-                .then(r => r.json().then(data => ({status: r.status, body: data})))
-                .then(({status, body}) => {
-                    if (status === 200 || body.status === 'success') {
-                         Swal.fire({
-                            icon: 'success', title: 'Updated!',
-                            text: 'Product updated successfully', timer: 1500, showConfirmButton: false
-                        }).then(() => window.location.href = "{{ route('product') }}");
-                    } else {
-                        const msg = body.errors ? Object.values(body.errors).flat().join('<br>') : (body.message || 'Error');
-                        Swal.fire({icon: 'error', title: 'Error', html: msg});
-                    }
-                })
-                .catch(err => Swal.fire({icon: 'error', title: 'Error', text: 'Server Error'}))
-                .finally(() => {
-                    btn.innerHTML = originalContent;
-                    btn.disabled = false;
-                });
-            });
-
-            // Barcode
-            const barIn = document.getElementById('barcodeInput');
-            const barBtn = document.getElementById('generateBarcodeBtn');
-            const barcodeUrl = '{{ route('generate-barcode-image') }}';
-            
-            if(barBtn) barBtn.addEventListener('click', () => fetch(barcodeUrl).then(r => r.json()).then(d => barIn.value = d.barcode_number));
-            
-            $('#category-dropdown').on('change', function() {
-                var cid = $(this).val();
-                if (cid) {
-                    $.get('/get-subcategories/' + cid, function(d) {
-                        $('#subcategory-dropdown').empty().append('<option value="">Select...</option>');
-                        $.each(d, function(_, v) {
-                            $('#subcategory-dropdown').append('<option value="' + v.id + '">' + v.name + '</option>');
-                        });
-                    });
-                }
-            });
-
-            // Quick Add AJAX Handlers
-            function handleQuickAdd(modalId, selectSelector) {
-                $('#' + modalId + ' form').on('submit', function(e) {
-                    e.preventDefault();
-                    let form = $(this);
-                    let btn = form.find('button[type="submit"]');
-                    let originalText = btn.text();
-                    btn.text('Saving...').prop('disabled', true);
-                    
-                    $.ajax({
-                        url: form.attr('action'),
-                        method: 'POST',
-                        data: form.serialize(),
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                        success: function(res) {
-                            if(res.success) {
-                                $(selectSelector).append(new Option(res.name, res.id, true, true)).trigger('change');
-                                $('#' + modalId).modal('hide');
-                                form[0].reset();
-                                Swal.fire({icon: 'success', title: 'Added successfully', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500});
-                            }
-                        },
-                        error: function() {
-                            Swal.fire({icon: 'error', title: 'Error', text: 'Something went wrong!'});
-                        },
-                        complete: function() {
-                            btn.text(originalText).prop('disabled', false);
-                        }
-                    });
-                });
-            }
-
-            handleQuickAdd('categoryModal', '#category-dropdown, #subcategoryModal select[name="category_id"]');
-            handleQuickAdd('subcategoryModal', '#subcategory-dropdown');
-            handleQuickAdd('brandModal', 'select[name="brand_id"]');
-
             const enableVariantsBtn = document.getElementById('enableVariantsBtn');
             const variantsContainer = document.getElementById('variantsContainer');
             const variantsBody = document.getElementById('variantsBody');
+            const productNameInput = document.querySelector('input[name="product_name"]');
 
             const weightUnits = ['by_kg', 'by_gm', 'by_ton'];
             let variantMode = 'standard';
@@ -850,12 +563,12 @@
                 return weightUnits.includes(unit);
             }
 
-            function updateVariantModeFromDropdown() {
+            function updateVariantMode() {
                 const currentUnit = unitDropdown ? unitDropdown.value : 'by_pieces';
                 const newMode = isWeightUnit(currentUnit) ? 'weight' : 'standard';
                 
                 if (variantMode !== newMode) {
-                    if (variantsBody.children.length > 0) {
+                    if (variantsBody && variantsBody.children.length > 0) {
                         Swal.fire({
                             title: 'Change Unit?',
                             text: 'This product contains variants. Changing the unit will remove the current variant settings from this form. Do you want to continue?',
@@ -866,16 +579,16 @@
                         }).then((result) => {
                             if (result.isConfirmed) {
                                 variantMode = newMode;
-                                variantsBody.innerHTML = '';
+                                if (variantsBody) variantsBody.innerHTML = '';
                                 manualPrices = {};
                                 manualNames = {};
                                 applyVariantModeUI();
-                                if (variantMode === 'weight' && !variantsContainer.classList.contains('d-none')) {
+                                if (variantMode === 'weight' && variantsContainer && !variantsContainer.classList.contains('d-none')) {
                                     addBaseVariantRow();
                                 }
                             } else {
                                 // Revert dropdown
-                                unitDropdown.value = (variantMode === 'weight') ? 'by_kg' : 'by_pieces';
+                                if (unitDropdown) unitDropdown.value = (variantMode === 'weight') ? 'by_kg' : 'by_pieces';
                             }
                         });
                     } else {
@@ -883,17 +596,6 @@
                         applyVariantModeUI();
                     }
                 }
-            }
-
-            if (unitDropdown) {
-                // Remove the old listener and add a wrapper that does both
-                $(unitDropdown).off('change', updateMode);
-                $(unitDropdown).on('change', function() {
-                    updateMode();
-                    updateVariantModeFromDropdown();
-                    toggleFactorColumns();
-                });
-                toggleFactorColumns();
             }
 
             function applyVariantModeUI() {
@@ -907,23 +609,12 @@
                     stdCols.forEach(col => col.classList.remove('d-none'));
                     weightCols.forEach(col => col.classList.add('d-none'));
                 }
-                toggleFactorColumns(); // To handle the legacy factor cols if needed
+                toggleFactorColumns();
             }
 
             function generateRandomBarcode() {
                 return Math.floor(100000 + Math.random() * 900000).toString();
             }
-
-            // Sync base variant name with product name
-            const productNameInput = document.querySelector('input[name="product_name"]');
-            productNameInput.addEventListener('input', function() {
-                if (variantMode === 'weight') {
-                    const baseInput = document.querySelector('input.base-name-input');
-                    if (baseInput && !manualNames[baseInput.dataset.vid]) {
-                        baseInput.value = this.value;
-                    }
-                }
-            });
 
             function escapeHtml(str) {
                 if (str === null || str === undefined) return '';
@@ -935,10 +626,23 @@
                     .replace(/>/g, '&gt;');
             }
 
+            // Sync base variant name with product name
+            if (productNameInput) {
+                productNameInput.addEventListener('input', function() {
+                    if (variantMode === 'weight') {
+                        const baseInput = document.querySelector('input.base-name-input');
+                        if (baseInput && !manualNames[baseInput.dataset.vid]) {
+                            baseInput.value = this.value;
+                        }
+                    }
+                });
+            }
+
             function addBaseVariantRow(v = null) {
+                if (!variantsBody) return;
                 const tr = document.createElement('tr');
                 const productName = productNameInput ? productNameInput.value || '' : '';
-                const baseUnitName = unitDropdown ? unitDropdown.options[unitDropdown.selectedIndex].text : 'Kg';
+                const baseUnitName = unitDropdown && unitDropdown.selectedIndex >= 0 ? unitDropdown.options[unitDropdown.selectedIndex].text : 'Kg';
                 const isCartonMode = unitDropdown && unitDropdown.value === 'by_cartons';
                 const vid = 'base_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
                 
@@ -1009,14 +713,18 @@
                 if (baseWholesaleInp) baseWholesaleInp.addEventListener('input', updatePriceSuggestions);
                 if (baseStockInp) baseStockInp.addEventListener('input', updateVariantStocksFromBase);
                 
-                tr.querySelector('.base-name-input').addEventListener('input', function() {
-                    manualNames[vid] = true;
-                });
+                const baseNameInp = tr.querySelector('.base-name-input');
+                if (baseNameInp) {
+                    baseNameInp.addEventListener('input', function() {
+                        manualNames[vid] = true;
+                    });
+                }
                 toggleFactorColumns();
             }
 
             function updateVariantStocksFromBase() {
                 if (variantMode !== 'weight' && variantMode !== 'carton') return;
+                if (!variantsBody) return;
 
                 const baseRow = variantsBody.querySelector('tr');
                 if (!baseRow) return;
@@ -1029,11 +737,9 @@
                     if (index === 0) return;
 
                     const factorInp = row.querySelector('.conv-factor-input');
-                    const pieceWtInp = row.querySelector('input[name="variant_weight_per_piece[]"]');
                     const stockInp = row.querySelector('input[name="variant_stock[]"]');
 
                     let factor = parseFloat(factorInp?.value || 0);
-                    let pieceWt = parseFloat(pieceWtInp?.value || 0);
 
                     if (baseStock > 0 && factor > 0 && stockInp) {
                         const calcPcs = Math.round(baseStock / factor);
@@ -1044,6 +750,7 @@
 
             function updatePriceSuggestions() {
                 if (variantMode === 'pcs') return;
+                if (!variantsBody) return;
 
                 const baseRow = variantsBody.querySelector('tr');
                 if (!baseRow) return;
@@ -1085,6 +792,7 @@
             }
 
             function addVariantRow(weightGrams = null, v = null) {
+                if (!variantsBody) return;
                 const tr = document.createElement('tr');
                 const vid = 'var_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
                 tr.dataset.vid = vid;
@@ -1230,106 +938,154 @@
                     convCols.forEach(c => c.classList.remove('d-none'));
                     pieceWtOnlyCols.forEach(c => c.classList.add('d-none'));
                     
-                    const baseRow = variantsBody.querySelector('tr');
-                    if (baseRow) {
-                        const baseConv = baseRow.querySelector('.conv-factor-input');
-                        if (baseConv) {
-                            baseConv.readOnly = false;
-                            baseConv.style.background = '#ffffff';
-                            if (baseConv.value === '1' && !'{{ $product->pieces_per_box }}') {
-                                baseConv.value = '';
+                    if (variantsBody) {
+                        const baseRow = variantsBody.querySelector('tr');
+                        if (baseRow) {
+                            const baseConv = baseRow.querySelector('.conv-factor-input');
+                            if (baseConv) {
+                                baseConv.readOnly = false;
+                                baseConv.style.background = '#ffffff';
+                                if (baseConv.value === '1' && !'{{ $product->pieces_per_box }}') {
+                                    baseConv.value = '';
+                                }
+                                baseConv.placeholder = 'e.g. 6';
+                                baseConv.title = 'Pieces per Carton';
                             }
-                            baseConv.placeholder = 'e.g. 6';
-                            baseConv.title = 'Pieces per Carton';
-                        }
-                        const baseUnit = baseRow.querySelector('select[name="variant_unit[]"]');
-                        if (baseUnit) {
-                            baseUnit.value = 'Carton';
+                            const baseUnit = baseRow.querySelector('select[name="variant_unit[]"]');
+                            if (baseUnit) {
+                                baseUnit.value = 'Carton';
+                            }
                         }
                     }
                 } else if (isWeight) {
                     convCols.forEach(c => c.classList.remove('d-none'));
                     pieceWtOnlyCols.forEach(c => c.classList.remove('d-none'));
-                    const baseRow = variantsBody.querySelector('tr');
-                    if (baseRow) {
-                        const baseConv = baseRow.querySelector('.conv-factor-input');
-                        if (baseConv) {
-                            baseConv.readOnly = true;
-                            baseConv.value = '1';
-                            baseConv.style.background = '#f8f8f8';
-                            baseConv.placeholder = '1';
-                            baseConv.title = 'Base Conv Factor = 1';
+                    if (variantsBody) {
+                        const baseRow = variantsBody.querySelector('tr');
+                        if (baseRow) {
+                            const baseConv = baseRow.querySelector('.conv-factor-input');
+                            if (baseConv) {
+                                baseConv.readOnly = true;
+                                baseConv.value = '1';
+                                baseConv.style.background = '#f8f8f8';
+                                baseConv.placeholder = '1';
+                                baseConv.title = 'Base Conv Factor = 1';
+                            }
                         }
                     }
                 } else {
                     convCols.forEach(c => c.classList.add('d-none'));
                     pieceWtOnlyCols.forEach(c => c.classList.add('d-none'));
                 }
-            }    
+            }
 
-            enableVariantsBtn.addEventListener('click', function() {
-                if (variantsBody.children.length === 0) {
-                    addBaseVariantRow();
-                } else {
-                    addVariantRow();
-                }
-                if (typeof isMobile === 'function' && isMobile()) {
-                    if (typeof rebuildMobileCards === 'function') rebuildMobileCards();
-                    const cards = document.querySelectorAll('.mob-variant-card');
-                    document.querySelectorAll('.mob-variant-card.is-open').forEach(c => c.classList.remove('is-open'));
-                    if (cards.length) cards[cards.length - 1].classList.add('is-open');
+            // Image Handler
+            const imgInput = document.getElementById('imageInput');
+            const preview = document.getElementById('preview');
+            const ph = document.getElementById('uploadPlaceholder');
+            const clr = document.getElementById('clearImageBtn');
+
+            if (imgInput) {
+                imgInput.addEventListener('change', function() {
+                    if (this.files && this.files[0]) {
+                        const r = new FileReader();
+                        r.onload = (e) => {
+                            if (preview) {
+                                preview.src = e.target.result;
+                                preview.classList.remove('d-none');
+                            }
+                            if (ph) ph.classList.add('d-none');
+                            if (clr) clr.classList.remove('d-none');
+                        };
+                        r.readAsDataURL(this.files[0]);
+                    }
+                });
+            }
+
+            if (clr) {
+                clr.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (imgInput) imgInput.value = '';
+                    @if($product->image)
+                        if (preview) {
+                            preview.src = "{{ asset('uploads/products/' . $product->image) }}";
+                            preview.classList.remove('d-none');
+                        }
+                        if (ph) ph.classList.add('d-none');
+                    @else
+                        if (preview) preview.classList.add('d-none');
+                        if (ph) ph.classList.remove('d-none');
+                        clr.classList.add('d-none');
+                    @endif
+                });
+            }
+
+            // Quick Add AJAX Handlers
+            function handleQuickAdd(modalId, selectSelector) {
+                $('#' + modalId + ' form').on('submit', function(e) {
+                    e.preventDefault();
+                    let modalForm = $(this);
+                    let btn = modalForm.find('button[type="submit"]');
+                    let originalText = btn.text();
+                    btn.text('Saving...').prop('disabled', true);
+                    
+                    $.ajax({
+                        url: modalForm.attr('action'),
+                        method: 'POST',
+                        data: modalForm.serialize(),
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        success: function(res) {
+                            if (res.success) {
+                                $(selectSelector).append(new Option(res.name, res.id, true, true)).trigger('change');
+                                $('#' + modalId).modal('hide');
+                                modalForm[0].reset();
+                                Swal.fire({icon: 'success', title: 'Added successfully', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500});
+                            }
+                        },
+                        error: function() {
+                            Swal.fire({icon: 'error', title: 'Error', text: 'Something went wrong!'});
+                        },
+                        complete: function() {
+                            btn.text(originalText).prop('disabled', false);
+                        }
+                    });
+                });
+            }
+
+            handleQuickAdd('categoryModal', '#category-dropdown, #subcategoryModal select[name="category_id"]');
+            handleQuickAdd('subcategoryModal', '#subcategory-dropdown');
+            handleQuickAdd('brandModal', 'select[name="brand_id"]');
+
+            // Category change -> get subcategories
+            $('#category-dropdown').on('change', function() {
+                var cid = $(this).val();
+                if (cid) {
+                    $.get('/get-subcategories/' + cid, function(d) {
+                        $('#subcategory-dropdown').empty().append('<option value="">Select...</option>');
+                        $.each(d, function(_, v) {
+                            $('#subcategory-dropdown').append('<option value="' + v.id + '">' + v.name + '</option>');
+                        });
+                    });
                 }
             });
 
-            // Always ensure the button reads + Add Variant Row
-            enableVariantsBtn.innerHTML = '<i class="fas fa-plus me-1"></i>Add Variant Row';
-            enableVariantsBtn.className = 'btn btn-sm btn-primary';
+            // Barcode auto-gen
+            const barIn = document.getElementById('barcodeInput');
+            const barBtn = document.getElementById('generateBarcodeBtn');
+            const barcodeUrl = '{{ route('generate-barcode-image') }}';
+            if (barBtn && barIn) {
+                barBtn.addEventListener('click', () => fetch(barcodeUrl).then(r => r.json()).then(d => barIn.value = d.barcode_number));
+            }
 
-            variantsBody.addEventListener('click', function(e) {
-                const addBtn = e.target.closest('.add-var-btn');
-                const remBtn = e.target.closest('.remove-var-btn');
-                const genBtn = e.target.closest('.gen-var-barcode');
+            // Unit change listener
+            if (unitDropdown) {
+                $(unitDropdown).on('change', function() {
+                    updateVariantMode();
+                    toggleFactorColumns();
+                });
+            }
 
-                if (addBtn) {
-                    addVariantRow();
-                } else if (remBtn) {
-                    const row = remBtn.closest('tr');
-                    if (row.querySelector('.base-name-input')) {
-                        Swal.fire({icon: 'error', title: 'Cannot Delete', text: 'The base variant cannot be deleted.'});
-                        return;
-                    }
-
-                    if (variantsBody.children.length > 1) {
-                        row.remove();
-                    } else {
-                        row.querySelectorAll('input:not([type="hidden"])').forEach(inp => inp.value = '');
-                        const bc = row.querySelector('input[name="variant_barcode[]"]');
-                        if (bc) bc.value = generateRandomBarcode();
-                    }
-                } else if (genBtn) {
-                    const input = genBtn.closest('td').querySelector('input');
-                    input.value = generateRandomBarcode();
-                }
-            });
-
-            form.addEventListener('submit', function(e) {
-                if (variantMode === 'weight' && !variantsContainer.classList.contains('d-none')) {
-                    const factors = Array.from(document.querySelectorAll('input[name="variant_conv_factor[]"]')).map(el => parseFloat(el.value));
-                    const uniqueFactors = new Set(factors);
-                    if (factors.length !== uniqueFactors.size) {
-                        e.preventDefault();
-                        Swal.fire({icon: 'error', title: 'Validation Error', text: 'A variant with the same Conv Factor already exists.'});
-                        return;
-                    }
-                    if (factors.some(f => f <= 0 || isNaN(f))) {
-                        e.preventDefault();
-                        Swal.fire({icon: 'error', title: 'Validation Error', text: 'Conv Factor must be greater than 0.'});
-                        return;
-                    }
-                }
-            });
-
-            // Initialize existing variants safely
+            // Initialize existing variants safely from server
             try {
                 let parsed = @json($variants ?? []);
                 if (typeof parsed === 'string') {
@@ -1343,7 +1099,6 @@
                     }
                 }
                 
-                // If parsed is an object with numeric or string keys, or a single variant
                 if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
                     if (parsed.name) {
                         parsed = [parsed];
@@ -1358,8 +1113,8 @@
                     
                     applyVariantModeUI();
                     
-                    variantsContainer.classList.remove('d-none');
-                    variantsBody.innerHTML = ''; // clear default empty row
+                    if (variantsContainer) variantsContainer.classList.remove('d-none');
+                    if (variantsBody) variantsBody.innerHTML = '';
                     
                     parsed.forEach((v, index) => {
                         if (typeof v === 'string') {
@@ -1374,18 +1129,176 @@
                         }
                     });
                 }
-            } catch(e) { console.error('Error loading variants:', e); }
+            } catch(e) { 
+                console.error('Error loading variants:', e); 
+            }
 
-            // Call updateMode to set initial visible states
-            updateMode();
+            // Fallback: if no variant rows, add default base variant
+            if (variantsBody && variantsBody.children.length === 0) {
+                addBaseVariantRow();
+            }
+
+            updateVariantMode();
+            toggleFactorColumns();
+
+            if (enableVariantsBtn) {
+                enableVariantsBtn.addEventListener('click', function() {
+                    if (variantsBody && variantsBody.children.length === 0) {
+                        addBaseVariantRow();
+                    } else {
+                        addVariantRow();
+                    }
+                    if (typeof isMobile === 'function' && isMobile()) {
+                        if (typeof rebuildMobileCards === 'function') rebuildMobileCards();
+                        const cards = document.querySelectorAll('.mob-variant-card');
+                        document.querySelectorAll('.mob-variant-card.is-open').forEach(c => c.classList.remove('is-open'));
+                        if (cards.length) cards[cards.length - 1].classList.add('is-open');
+                    }
+                });
+                enableVariantsBtn.innerHTML = '<i class="fas fa-plus me-1"></i>Add Variant Row';
+                enableVariantsBtn.className = 'btn btn-sm btn-primary';
+            }
+
+            if (variantsBody) {
+                variantsBody.addEventListener('click', function(e) {
+                    const addBtn = e.target.closest('.add-var-btn');
+                    const remBtn = e.target.closest('.remove-var-btn');
+                    const genBtn = e.target.closest('.gen-var-barcode');
+
+                    if (addBtn) {
+                        addVariantRow();
+                    } else if (remBtn) {
+                        const row = remBtn.closest('tr');
+                        if (row.querySelector('.base-name-input')) {
+                            Swal.fire({icon: 'error', title: 'Cannot Delete', text: 'The base variant cannot be deleted.'});
+                            return;
+                        }
+
+                        if (variantsBody.children.length > 1) {
+                            row.remove();
+                        } else {
+                            row.querySelectorAll('input:not([type="hidden"])').forEach(inp => inp.value = '');
+                            const bc = row.querySelector('input[name="variant_barcode[]"]');
+                            if (bc) bc.value = generateRandomBarcode();
+                        }
+                    } else if (genBtn) {
+                        const input = genBtn.closest('td').querySelector('input');
+                        if (input) input.value = generateRandomBarcode();
+                    }
+                });
+            }
+
+            // Form Submit handler
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
+                    if (variantMode === 'weight' && variantsContainer && !variantsContainer.classList.contains('d-none')) {
+                        const factors = Array.from(document.querySelectorAll('input[name="variant_conv_factor[]"]')).map(el => parseFloat(el.value));
+                        const uniqueFactors = new Set(factors);
+                        if (factors.length !== uniqueFactors.size) {
+                            Swal.fire({icon: 'error', title: 'Validation Error', text: 'A variant with the same Conv Factor already exists.'});
+                            return;
+                        }
+                        if (factors.some(f => f <= 0 || isNaN(f))) {
+                            Swal.fire({icon: 'error', title: 'Validation Error', text: 'Conv Factor must be greater than 0.'});
+                            return;
+                        }
+                    }
+
+                    // Sync variants data to main fields for backwards compatibility
+                    const vStocks = document.querySelectorAll('input[name="variant_stock[]"]');
+                    const vSale = document.querySelectorAll('input[name="variant_sale_price[]"]');
+                    const vWholesale = document.querySelectorAll('input[name="variant_wholesale_price[]"]');
+                    const vWeight = document.querySelectorAll('input[name="variant_weight_per_piece[]"]');
+                    const vPurch = document.querySelectorAll('input[name="variant_purchase_price[]"]');
+                    const vAlert = document.querySelectorAll('input[name="variant_alert_qty[]"]');
+                    const vConvFactors = document.querySelectorAll('input[name="variant_conv_factor[]"]');
+
+                    let totalStock = 0;
+                    vStocks.forEach(el => totalStock += (parseFloat(el.value) || 0));
+
+                    let firstSale = vSale.length > 0 ? (parseFloat(vSale[0].value) || 0) : 0;
+                    let firstWholesale = vWholesale.length > 0 ? (parseFloat(vWholesale[0].value) || 0) : 0;
+                    let firstWeight = vWeight.length > 0 ? (parseFloat(vWeight[0].value) || 0) : 0;
+                    let firstPurch = vPurch.length > 0 ? (parseFloat(vPurch[0].value) || 0) : 0;
+                    let firstAlert = vAlert.length > 0 ? (parseFloat(vAlert[0].value) || 0) : 0;
+                    let firstConv = vConvFactors.length > 0 ? (parseFloat(vConvFactors[0].value) || 0) : 0;
+
+                    const mode = unitDropdown ? unitDropdown.value : 'by_pieces';
+                    
+                    if (vStocks.length > 0) {
+                        const elBoxQty = document.getElementById('boxes_quantity');
+                        const elPpb = document.getElementById('pieces_per_box');
+                        const elLoose = document.getElementById('loose_pieces');
+                        const elPieceQty = document.getElementById('piece_quantity');
+                        const elSalePrice = document.getElementById('sale_price_per_box');
+                        const elWholesale = document.getElementById('wholesale_price');
+                        const elWeight = document.getElementById('weight_per_piece');
+                        const elPurch = document.getElementById('purchase_price_per_piece');
+                        const elAlert = document.getElementById('alert_carton_quantity');
+
+                        if (mode === 'by_cartons') {
+                            let ppb = firstConv > 0 ? firstConv : 1;
+                            if (elBoxQty) elBoxQty.value = totalStock;
+                            if (elPpb) elPpb.value = ppb;
+                            if (elLoose) elLoose.value = 0;
+                            if (elPieceQty) elPieceQty.value = 0;
+                        } else {
+                            if (elPieceQty) elPieceQty.value = totalStock;
+                            if (elBoxQty) elBoxQty.value = 0;
+                            if (elPpb) elPpb.value = 1;
+                        }
+                        if (elSalePrice) elSalePrice.value = firstSale;
+                        if (elWholesale) elWholesale.value = firstWholesale;
+                        if (elWeight) elWeight.value = firstWeight;
+                        if (elPurch) elPurch.value = firstPurch;
+                        if (elAlert) elAlert.value = firstAlert;
+                    }
+
+                    const btn = form.querySelector('button[type="submit"]');
+                    const originalContent = btn ? btn.innerHTML : '';
+                    if (btn) {
+                        btn.innerHTML = '<i class="las la-spinner la-spin"></i> Updating...';
+                        btn.disabled = true;
+                    }
+
+                    const formData = new FormData(form);
+                    fetch(form.action, {
+                        method: 'POST',
+                        headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'},
+                        body: formData
+                    })
+                    .then(r => r.json().then(data => ({status: r.status, body: data})))
+                    .then(({status, body}) => {
+                        if (status === 200 || body.status === 'success') {
+                            Swal.fire({
+                                icon: 'success', title: 'Updated!',
+                                text: 'Product updated successfully', timer: 1500, showConfirmButton: false
+                            }).then(() => window.location.href = "{{ route('product') }}");
+                        } else {
+                            const msg = body.errors ? Object.values(body.errors).flat().join('<br>') : (body.message || 'Error');
+                            Swal.fire({icon: 'error', title: 'Error', html: msg});
+                        }
+                    })
+                    .catch(err => Swal.fire({icon: 'error', title: 'Error', text: 'Server Error'}))
+                    .finally(() => {
+                        if (btn) {
+                            btn.innerHTML = originalContent;
+                            btn.disabled = false;
+                        }
+                    });
+                });
+            }
 
             // Mobile initial render if on mobile screen
             if (typeof isMobile === 'function' && isMobile() && typeof rebuildMobileCards === 'function') {
                 rebuildMobileCards();
             }
-
         });
+    </script>
 
+    <script>
         // ============================================================
         //  MOBILE VARIANT CARDS SYSTEM
         //  Two-way sync: desktop table <-> mobile accordion cards

@@ -81,7 +81,7 @@ class PurchasePOSController extends Controller
                     ->join('purchases as pur', 'pur.id', '=', 'pi.purchase_id')
                     ->where('pi.product_id', $p->id)
                     ->whereIn('pur.status_purchase', ['approved', 'Returned', 'Partial'])
-                    ->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.color')
+                    ->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.color')
                     ->get();
 
                 $purchaseReturnsList = DB::table('purchase_return_items as pri')
@@ -108,7 +108,12 @@ class PurchasePOSController extends Controller
                             if ($itemPPB <= 0) $itemPPB = 1;
 
                             if (in_array($pUnit, ['carton', 'ctn', 'box'])) {
-                                $pPieces = ((float) $pItem->qty) * $itemPPB;
+                                if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
+                                    $pPieces = (((int) $pItem->boxes_qty) * $itemPPB) + ((int) $pItem->loose_qty);
+                                } else {
+                                    [$b, $l] = \App\Http\Controllers\PurchaseController::parseCartonQty($pItem->qty);
+                                    $pPieces = ($b * $itemPPB) + $l;
+                                }
                             } elseif (in_array($pUnit, ['gm', 'g'])) {
                                 $pPieces = ((float) $pItem->qty) / 1000.0;
                             } else {
@@ -285,7 +290,7 @@ class PurchasePOSController extends Controller
                         'product_id' => $item->product_id,
                         'name' => $itemName,
                         'price' => (float) $item->price,
-                        'qty' => (int) $item->qty,
+                        'qty' => (float) $item->qty,
                         'size_mode' => $sizeMode,
                         'pieces_per_box' => $ppb,
                         'variant_data' => $variantData,
