@@ -2104,21 +2104,23 @@ class PurchaseController extends Controller
 
                 // Check for weight product conversion factor
                 $stockQty = $qty;
-                $colorField = $request->color[$index] ?? null;
-                if (!empty($colorField)) {
-                    try {
-                        $b64Decoded = base64_decode($colorField, true);
-                        $variantData = $b64Decoded !== false ? json_decode($b64Decoded, true) : null;
-                        if (!is_array($variantData)) {
-                            $variantData = is_string($colorField) ? json_decode($colorField, true) : $colorField;
-                        }
-                        if (is_array($variantData) && isset($variantData['conv_factor'])) {
-                            $factor = (float)$variantData['conv_factor'];
-                            if ($factor > 0) {
-                                $stockQty = $stockQty * $factor;
+                if ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
+                    $colorField = $request->color[$index] ?? null;
+                    if (!empty($colorField)) {
+                        try {
+                            $b64Decoded = base64_decode($colorField, true);
+                            $variantData = $b64Decoded !== false ? json_decode($b64Decoded, true) : null;
+                            if (!is_array($variantData)) {
+                                $variantData = is_string($colorField) ? json_decode($colorField, true) : $colorField;
                             }
-                        }
-                    } catch (\Exception $e) {}
+                            if (is_array($variantData) && isset($variantData['conv_factor'])) {
+                                $factor = (float)$variantData['conv_factor'];
+                                if ($factor > 0) {
+                                    $stockQty = $stockQty * $factor;
+                                }
+                            }
+                        } catch (\Exception $e) {}
+                    }
                 }
 
                 // Update Stock (DECREMENT)

@@ -243,17 +243,19 @@ class SaleReturnController extends Controller
 
                 // Calculate Stock Qty with Variant Conv Factor
                 $stockQty = $qty;
-                $rColor = $request->color[$idx] ?? null;
-                if (!empty($rColor)) {
-                    try {
-                        $variantData = is_string($rColor) ? json_decode($rColor, true) : $rColor;
-                        if (is_array($variantData) && isset($variantData['conv_factor'])) {
-                            $factor = (float)$variantData['conv_factor'];
-                            if ($factor > 0) {
-                                $stockQty = $qty * $factor;
+                if ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
+                    $rColor = $request->color[$idx] ?? null;
+                    if (!empty($rColor)) {
+                        try {
+                            $variantData = is_string($rColor) ? json_decode($rColor, true) : $rColor;
+                            if (is_array($variantData) && isset($variantData['conv_factor'])) {
+                                $factor = (float)$variantData['conv_factor'];
+                                if ($factor > 0) {
+                                    $stockQty = $qty * $factor;
+                                }
                             }
-                        }
-                    } catch (\Exception $e) {}
+                        } catch (\Exception $e) {}
+                    }
                 }
 
                 // Update Stock (INCREMENT - goods coming back)
