@@ -379,30 +379,20 @@
                                         </td>
 
                                         {{-- Purchased Qty (Read Only) --}}
+                                        @php
+                                            $remPieces = $item['qty'] ?? 0;
+                                            $origPieces = $item['original_qty'] ?? $remPieces;
+                                            $retPieces = $item['returned_qty'] ?? 0;
+                                        @endphp
                                         <td>
-                                            @php
-                                                $original = $item['original_qty'] ?? $item['qty'];
-                                                $returned = $item['returned_qty'] ?? 0;
-                                                $netRemaining = $item['max_returnable'] ?? ($original - $returned);
-                                                $ppb = $item['pieces_per_box'] ?? 1;
-                                                
-                                                // Format remaining pieces to Box.Piece
-                                                if ($ppb > 1) {
-                                                    $remBoxes = floor($netRemaining / $ppb);
-                                                    $remPcs = $netRemaining % $ppb;
-                                                    $remDisplay = $remBoxes . ($remPcs > 0 ? '.'.$remPcs : '');
-                                                } else {
-                                                    $remDisplay = $netRemaining;
-                                                }
-                                            @endphp
                                             <div class="text-center">
-                                                <span class="fw-bold text-dark fs-6">{{ $remDisplay }}</span>
-                                                <small class="text-muted d-block" style="font-size: 0.65rem;">Remaining Pieces: {{ $netRemaining }}</small>
+                                                <span class="fw-bold text-dark fs-6">{{ $item['remaining_box_display'] ?? $remPieces }}</span>
+                                                <small class="text-muted d-block" style="font-size: 0.65rem;">Remaining Pieces: {{ $remPieces }}</small>
                                             </div>
-                                            @if ($returned > 0)
+                                            @if ($retPieces > 0)
                                                 <div class="mt-1 pt-1 border-top" style="font-size: 0.65rem;">
-                                                    <span class="text-danger">Returned: {{ $returned }}</span>
-                                                    <span class="text-muted ms-1">/ {{ $original }}</span>
+                                                    <span class="text-danger">Returned: {{ $retPieces }} pcs</span>
+                                                    <span class="text-muted ms-1">/ {{ $origPieces }} pcs</span>
                                                 </div>
                                             @endif
                                         </td>
@@ -412,7 +402,7 @@
                                         <td>
                                             <input type="text" name="qty_box[]"
                                                 class="form-control text-center quantity-box" value="0"
-                                                placeholder="0.0" {{ $netRemaining <= 0 ? 'readonly' : '' }}>
+                                                placeholder="0.0" {{ $remPieces <= 0 ? 'readonly' : '' }}>
                                             <small class="text-muted" style="font-size: 0.7rem;">Format: Box.Piece</small>
                                         </td>
 
@@ -420,9 +410,9 @@
                                         <td>
                                             <input type="number" name="qty[]"
                                                 class="form-control text-center fw-bold text-primary quantity"
-                                                value="0" readonly min="0" max="{{ $netRemaining }}"
-                                                data-max="{{ $netRemaining }}" data-original="{{ $original }}"
-                                                data-returned="{{ $returned }}">
+                                                value="0" readonly min="0" max="{{ $remPieces }}"
+                                                data-max="{{ $remPieces }}" data-original="{{ $origPieces }}"
+                                                data-returned="{{ $retPieces }}">
                                         </td>
 
                                         <td><input type="text" name="total[]"
@@ -485,45 +475,83 @@
                         </div>
 
                         <div class="col-md-5">
-                            <div class="summary-card shadow-sm border-0">
-                                <h6 class="mb-3 text-uppercase fw-bold text-muted"
-                                    style="font-size: 0.8rem; letter-spacing: 1px;">Refund Summary</h6>
-                                <div class="summary-row">
-                                    <span class="text-muted">Subtotal</span>
+                            <div class="summary-card shadow-sm border p-3 rounded-3 bg-white">
+                                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                                    <h6 class="mb-0 text-uppercase fw-bold text-dark" style="font-size: 0.85rem; letter-spacing: 0.5px;">
+                                        <i class="fas fa-file-invoice-dollar me-2 text-primary"></i> Return Summary
+                                    </h6>
+                                    <span class="badge bg-light text-dark border px-2 py-1" style="font-size: 0.72rem;">Bill #{{ $purchase->invoice_no }}</span>
+                                </div>
+
+                                <!-- Return Calculation -->
+                                <div class="summary-row mb-2">
+                                    <span class="text-muted small">Return Subtotal</span>
                                     <input type="text" name="total_subtotal" id="billAmount"
-                                        class="form-control form-control-sm w-50 text-end border-0 bg-transparent p-0"
+                                        class="form-control form-control-sm w-50 text-end border-0 bg-transparent p-0 fw-semibold text-dark"
                                         readonly value="0.00">
                                 </div>
-                                <div class="summary-row">
-                                    <span class="text-muted">Less: Item Discount</span>
+                                <div class="summary-row mb-2">
+                                    <span class="text-muted small">Item Discount</span>
                                     <input type="text" name="total_discount" id="itemDiscount"
                                         class="form-control form-control-sm w-50 text-end border-0 bg-transparent p-0 text-danger"
                                         readonly value="0.00">
                                 </div>
-                                <div class="summary-row align-items-center mt-2">
-                                    <span class="text-dark fw-medium">Less: Extra Deductions</span>
+                                <div class="summary-row align-items-center mb-2">
+                                    <span class="text-dark small fw-medium">Extra Deductions</span>
                                     <input type="number" name="extra_discount" id="extraDiscount"
-                                        class="form-control form-control-sm w-50 text-end bg-white" value="0">
+                                        class="form-control form-control-sm w-50 text-end bg-light" value="0">
                                 </div>
-                                <hr class="my-3">
-                                <div class="summary-row total">
-                                    <span>NET REFUND AMOUNT</span>
+                                <hr class="my-2 border-secondary-subtle">
+                                <div class="summary-row total mb-3 py-1">
+                                    <span class="fw-bold text-dark">TOTAL RETURN VALUE</span>
                                     <input type="text" name="net_amount" id="netAmount"
                                         class="form-control form-control-lg w-50 text-end border-0 bg-transparent p-0 fw-bold text-primary"
                                         readonly value="0.00">
                                 </div>
 
-                                <!-- Payment Voucher Section -->
-                                <div class="mt-4 pt-4 border-top">
-                                    <h6 class="mb-3 text-uppercase fw-bold text-muted"
-                                        style="font-size: 0.8rem; letter-spacing: 1px;">
-                                        <i class="fas fa-money-bill-wave me-2"></i>Refund Received (Optional)
-                                    </h6>
-
-                                    <div class="alert alert-light border small text-muted">
-                                        <i class="fas fa-info-circle me-1"></i> If you received cash/bank refund, enter
-                                        details. Otherwise, amount will be credited to Vendor Ledger.
+                                <!-- Original Purchase Status Card -->
+                                <div class="p-3 bg-light rounded-2 border mb-3">
+                                    <div class="small fw-bold text-uppercase text-secondary mb-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                                        Original Purchase Status
                                     </div>
+                                    <div class="d-flex justify-content-between text-muted small mb-1">
+                                        <span>Total Bill:</span>
+                                        <span class="fw-semibold text-dark">Rs. {{ number_format($purchaseNetAmount, 2) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-muted small mb-1">
+                                        <span>Paid Amount:</span>
+                                        <span class="fw-bold {{ $purchasePaidAmount > 0 ? 'text-success' : 'text-muted' }}">Rs. {{ number_format($purchasePaidAmount, 2) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-muted small">
+                                        <span>Current Unpaid Due:</span>
+                                        <span class="fw-bold {{ $purchaseDueAmount > 0 ? 'text-danger' : 'text-success' }}">Rs. {{ number_format($purchaseDueAmount, 2) }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Adjustment Breakdown Card -->
+                                <div class="p-3 bg-light rounded-2 border mb-3">
+                                    <div class="small fw-bold text-uppercase text-secondary mb-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                                        Adjustment Breakdown
+                                    </div>
+                                    <div class="d-flex justify-content-between small mb-2">
+                                        <span class="text-muted">Adjusted in Bill Due:</span>
+                                        <strong class="text-dark" id="dispAdjustedDue">Rs. 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small mb-2">
+                                        <span class="text-muted">Cash / Bank Refund Due:</span>
+                                        <strong class="text-success fs-6" id="dispCashRefundable">Rs. 0.00</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between small pt-2 border-top">
+                                        <span class="text-muted">New Remaining Bill Due:</span>
+                                        <strong class="text-danger" id="dispNewBillDue">Rs. {{ number_format($purchaseDueAmount, 2) }}</strong>
+                                    </div>
+                                </div>
+
+                                <!-- Payment Voucher Section -->
+                                <div class="pt-2 border-top">
+                                    <h6 class="mb-2 text-uppercase fw-bold text-muted" style="font-size: 0.78rem; letter-spacing: 0.5px;">
+                                        <i class="fas fa-money-bill-wave me-1"></i> Cash / Bank Refund Received (Optional)
+                                    </h6>
 
                                     <div class="payment-voucher-rows">
                                         <div class="payment-row mb-2">
@@ -540,7 +568,7 @@
                                                     </select>
                                                 </div>
                                                 <div class="col-5">
-                                                    <input type="number" name="payment_amount[]" step="0.01"
+                                                    <input type="number" name="payment_amount[]" id="paymentAmountInput" step="0.01"
                                                         class="form-control form-control-sm text-end payment-amount"
                                                         placeholder="Amount">
                                                 </div>
@@ -549,12 +577,10 @@
                                     </div>
                                 </div>
 
-
-                                <div class="mt-4 d-grid gap-2">
+                                <div class="mt-3 d-grid gap-2">
                                     <button type="submit" class="btn btn-erp-primary btn-lg shadow-sm">
                                         <i class="fas fa-check-circle me-2"></i> Process Purchase Return
                                     </button>
-
                                 </div>
                             </div>
                         </div>
@@ -570,7 +596,10 @@
     <script>
         $(document).ready(function() {
 
-            // Initialize Select2
+            const originalBillNet = {{ (float) $purchaseNetAmount }};
+            const originalPaid = {{ (float) $purchasePaidAmount }};
+            const currentUnpaidDue = {{ (float) $purchaseDueAmount }};
+
             // Initialize Select2
             if ($.fn.select2) {
                 $('.payment-account').select2();
@@ -601,23 +630,21 @@
 
             function recalcRow($row) {
                 const qty = num($row.find('.quantity').val()); // Pieces (Total)
-                const price = num($row.find('.price').val()); // Price (Unit Price)
+                const price = num($row.find('.price').val()); // Price
                 const sizeMode = $row.find('.size-mode').val();
                 const ppm2 = num($row.find('.pieces-per-m2').val());
                 const ppb = num($row.find('.pieces-per-box').val()) || 1;
+                const unitVal = ($row.find('input[name="unit[]"]').val() || '').toLowerCase();
+                const isCarton = (sizeMode === 'by_cartons' || unitVal === 'carton' || unitVal === 'ctn' || unitVal === 'box' || ppb > 1);
 
                 let total = 0;
 
                 if (sizeMode === 'by_size') {
-                    // Price is per M2. Total M2 = Qty * PPM2 (Wait, check logic)
-                    // usually pieces_per_m2 is M2 per Piece?
-                    // Price is per M2. Total M2 = Qty * PPM2
-                    total = qty * ppm2 * price;
-                } else if (sizeMode === 'by_cartons' || sizeMode === 'by_carton') {
-                    // Price is Per Piece, qty is Total Pieces
-                    total = qty * price;
+                    total = qty * (ppm2 || 1) * price;
+                } else if (isCarton) {
+                    const piecePrice = ppb > 0 ? (price / ppb) : price;
+                    total = qty * piecePrice;
                 } else {
-                    // Price is Per Piece
                     total = qty * price;
                 }
 
@@ -638,18 +665,27 @@
 
                 const extraDiscount = num($('#extraDiscount').val()); // Deduction
 
-                const net = billAmount - extraDiscount;
+                const netReturnVal = Math.max(0, billAmount - extraDiscount);
 
                 $('#billAmount').val(billAmount.toFixed(2));
-                $('#netAmount').val(net.toFixed(2));
+                $('#netAmount').val(netReturnVal.toFixed(2));
 
-                if (net > 0) {
-                    $('#amountInWords').val(numberToWords(Math.round(net)));
+                if (netReturnVal > 0) {
+                    $('#amountInWords').val(numberToWords(Math.round(netReturnVal)));
                 } else {
                     $('#amountInWords').val('Zero Rupees');
                 }
 
                 $('#totalPieces').text(totalQty);
+
+                // Calculate Adjustment & Refund Breakdown
+                const adjustedInDue = Math.min(netReturnVal, currentUnpaidDue);
+                const cashRefundable = Math.max(0, netReturnVal - currentUnpaidDue);
+                const newBillDue = Math.max(0, currentUnpaidDue - netReturnVal);
+
+                $('#dispAdjustedDue').text('Rs. ' + adjustedInDue.toFixed(2));
+                $('#dispCashRefundable').text('Rs. ' + cashRefundable.toFixed(2));
+                $('#dispNewBillDue').text('Rs. ' + newBillDue.toFixed(2));
 
                 // Update visual indicators
                 updatePartialReturnIndicator();

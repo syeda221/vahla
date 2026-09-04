@@ -1813,16 +1813,12 @@ class PurchaseController extends Controller
         
         foreach ($purchase->items as $item) {
             $key = $item->product_id . '_' . ($item->color ?? '');
-            $alreadyReturned = $returnedQtyMap[$key] ?? 0;
-            $remaining = max(0, $item->qty - $alreadyReturned);
-            
-            if ($remaining > 0) {
-                 $hasReturnableItems = true;
-            }
+            $alreadyReturned = (float) ($returnedQtyMap[$key] ?? 0);
             
             $baseProductName = optional($item->product)->item_name ?? 'Unknown Product';
             $variantNameDisplay = '';
             $variantDetails = [];
+            $vPpb = null;
 
             if (!empty($item->color)) {
                 $decoded = base64_decode($item->color, true);
@@ -1845,6 +1841,12 @@ class PurchaseController extends Controller
                     if ($vColorName !== '' && $vColorName !== '-') {
                         $variantDetails[] = 'Color: ' . $vColorName;
                     }
+
+                    if (isset($vData['conv_factor']) && (float)$vData['conv_factor'] > 0) {
+                        $vPpb = (float)$vData['conv_factor'];
+                    } elseif (isset($vData['size']) && is_numeric($vData['size']) && (float)$vData['size'] > 0) {
+                        $vPpb = (float)$vData['size'];
+                    }
                 } elseif (is_string($item->color) && trim($item->color) !== '' && trim($item->color) !== '-') {
                     $variantDetails[] = trim($item->color);
                 }
@@ -1863,24 +1865,71 @@ class PurchaseController extends Controller
             if (!empty($variantDetails)) {
                 $itemName .= ' (' . implode(' | ', $variantDetails) . ')';
             }
+
+            // Accurate PPB for Variant / Product
+            $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : ($vPpb ?? ($item->product->pieces_per_box ?? 1)));
+            if ($vPpb && $vPpb > 0) {
+                $ppb = $vPpb;
+            }
+            if ($ppb <= 0) $ppb = 1;
+
+            $unit = strtolower($item->unit ?? '');
+            $sizeMode = $item->size_mode ?? optional($item->product)->size_mode ?? 'by_pieces';
+            $isCarton = in_array($unit, ['carton', 'ctn', 'box']) || ($sizeMode === 'by_cartons');
+
+            // Calculate Total Purchased in Pieces
+            if ($isCarton) {
+                if (isset($item->boxes_qty) && ($item->boxes_qty > 0 || $item->loose_qty > 0)) {
+                    $b = (int) $item->boxes_qty;
+                    $l = (int) $item->loose_qty;
+                } else {
+                    [$b, $l] = self::parseCartonQty($item->qty);
+                }
+                $totalPurchasedPieces = ($b * $ppb) + $l;
+                $purchasedBoxDisplay = $b . ($l > 0 ? '.' . $l : '');
+            } else {
+                $totalPurchasedPieces = (float) $item->qty;
+                if ($ppb > 1) {
+                    $b = floor($totalPurchasedPieces / $ppb);
+                    $l = $totalPurchasedPieces % $ppb;
+                    $purchasedBoxDisplay = $b . ($l > 0 ? '.' . $l : '');
+                } else {
+                    $purchasedBoxDisplay = (string) $totalPurchasedPieces;
+                }
+            }
+
+            $remainingPieces = max(0, $totalPurchasedPieces - $alreadyReturned);
+            if ($remainingPieces > 0) {
+                $hasReturnableItems = true;
+            }
+
+            // Calculate remaining Box.Piece display
+            if ($ppb > 1) {
+                $remB = floor($remainingPieces / $ppb);
+                $remL = $remainingPieces % $ppb;
+                $remainingBoxDisplay = $remB . ($remL > 0 ? '.' . $remL : '');
+            } else {
+                $remainingBoxDisplay = (string) $remainingPieces;
+            }
             
             $purchaseItems[] = [
                 'product_id' => $item->product_id,
                 'item_name' => $itemName,
                 'brand' => optional(optional($item->product)->brand)->name ?? '',
                 'item_code' => optional($item->product)->item_code ?? '',
-                // Fix: Prioritize Product Master PPB to ensure correct Frontend Box calculation
-                'pieces_per_box' => (optional($item->product)->pieces_per_box > 0) ? $item->product->pieces_per_box : ($item->pieces_per_box ?? 1),
-                'size_mode' => $item->size_mode ?? optional($item->product)->size_mode ?? 'by_pieces',
+                'pieces_per_box' => $ppb,
+                'size_mode' => $sizeMode,
                 'pieces_per_m2' => $item->pieces_per_m2 ?? optional($item->product)->pieces_per_m2 ?? 0,
-                'price' => $item->price,
+                'price' => (float) $item->price,
                 
-                // Qty Logic for Partial Return
-                'original_qty' => $item->qty,
+                // Qty in Pieces for reliable calculations
+                'original_qty' => $totalPurchasedPieces,
                 'returned_qty' => $alreadyReturned,
-                'qty' => $remaining, // Current Limit
+                'qty' => $remainingPieces,
+                'purchased_box_display' => $purchasedBoxDisplay,
+                'remaining_box_display' => $remainingBoxDisplay,
                 
-                'unit' => $item->unit ?? 'pc',
+                'unit' => $item->unit ?? ($isCarton ? 'Carton' : 'pc'),
                 'discount' => $item->item_discount,
                 'color' => $item->color,
             ];
@@ -1888,14 +1937,15 @@ class PurchaseController extends Controller
         
         // Block access if fully returned
         if (!$hasReturnableItems && $purchase->status_purchase == 'Returned') {
-             // Or if total remaining is 0. 
-             // Logic: If status is 'Returned', maybe it was fully returned? 
-             // But partial return also sets status to 'Returned' in current logic (we might want to change that to 'Partial' later).
-             // For now, relies on calculated remaining quantity.
              return redirect()->route('purchase.return.index')->with('error', 'This purchase has clearly been fully returned already.');
         }
 
-        return view('admin_panel.purchase.purchase_return.create', compact('purchase', 'accounts', 'purchaseItems'));
+        $purchaseNetAmount = (float) ($purchase->net_amount ?? 0);
+        $purchasePaidAmount = (float) ($purchase->paid_amount ?? 0);
+        $pastReturnAmount = (float) $pastReturns->sum('net_amount');
+        $purchaseDueAmount = max(0, $purchaseNetAmount - $pastReturnAmount - $purchasePaidAmount);
+
+        return view('admin_panel.purchase.purchase_return.create', compact('purchase', 'accounts', 'purchaseItems', 'purchaseNetAmount', 'purchasePaidAmount', 'purchaseDueAmount', 'pastReturnAmount'));
     }
 
     // store return
@@ -1960,27 +2010,66 @@ class PurchaseController extends Controller
                     continue;
                 }
 
-                // Find original item to get snapshots
+                $colorField = $request->color[$index] ?? null;
+
+                // Find original item to get snapshots matching color
                 $origItem = \App\Models\PurchaseItem::where('purchase_id', $purchase->id ?? 0)
                     ->where('product_id', $productId)
+                    ->where(function($q) use ($colorField) {
+                        if (!empty($colorField)) {
+                            $q->where('color', $colorField);
+                        }
+                    })
                     ->first();
 
-                // Fallback to Product defaults if no original item
+                if (!$origItem) {
+                    $origItem = \App\Models\PurchaseItem::where('purchase_id', $purchase->id ?? 0)
+                        ->where('product_id', $productId)
+                        ->first();
+                }
+
                 $product = Product::find($productId);
-                $ppb = $origItem ? ($origItem->pieces_per_box ?? 1) : ($product->pieces_per_box ?? 1);
+
+                // Resolve variant PPB
+                $vPpb = null;
+                if (!empty($colorField)) {
+                    try {
+                        $b64Decoded = base64_decode($colorField, true);
+                        $vData = $b64Decoded !== false ? json_decode($b64Decoded, true) : null;
+                        if (!is_array($vData)) {
+                            $vData = is_string($colorField) ? json_decode($colorField, true) : $colorField;
+                        }
+                        if (is_array($vData)) {
+                            if (isset($vData['conv_factor']) && (float)$vData['conv_factor'] > 0) {
+                                $vPpb = (float)$vData['conv_factor'];
+                            } elseif (isset($vData['size']) && is_numeric($vData['size']) && (float)$vData['size'] > 0) {
+                                $vPpb = (float)$vData['size'];
+                            }
+                        }
+                    } catch (\Exception $e) {}
+                }
+
+                $ppb = (float) ($origItem ? ($origItem->pieces_per_box ?? 1) : ($vPpb ?? ($product->pieces_per_box ?? 1)));
+                if ($vPpb && $vPpb > 0) {
+                    $ppb = $vPpb;
+                }
+                if ($ppb <= 0) $ppb = 1;
+
                 $sizeMode = $origItem ? ($origItem->size_mode ?? 'by_pieces') : ($product->size_mode ?? 'by_pieces');
+                $unit = strtolower($origItem->unit ?? ($product->unit->name ?? 'pc'));
+                $isCarton = in_array($unit, ['carton', 'ctn', 'box']) || ($sizeMode === 'by_cartons');
                 
                 // Fallback to m2_of_box if pieces_per_m2 is 0 or missing in old data
                 $ppm2 = $origItem && $origItem->pieces_per_m2 > 0 ? $origItem->pieces_per_m2 : ($product->m2_of_box ?? 0);
 
                 // Calculate Line Total Logic (Same as Purchase Store)
                 if ($sizeMode === 'by_size') {
-                    // price is per m2. Gross = TotalPieces * m2_per_piece * price_per_m2
-                    $lineTotal = round($ppm2 * $qty * $price, 2);
-                } elseif ($sizeMode === 'by_cartons' || $sizeMode === 'by_carton') {
-                    $lineTotal = $qty * $price;
+                    $lineTotal = round(($ppm2 ?: 1) * $qty * $price, 2);
+                } elseif ($isCarton) {
+                    $piecePrice = $ppb > 0 ? ($price / $ppb) : $price;
+                    $lineTotal = round($qty * $piecePrice, 2);
                 } else {
-                    $lineTotal = $qty * $price;
+                    $lineTotal = round($qty * $price, 2);
                 }
 
                 $itemDisc = 0;
@@ -1991,9 +2080,9 @@ class PurchaseController extends Controller
                     'qty' => $qty, // Pieces
                     'price' => $price,
                     'item_discount' => $itemDisc,
-                    'unit' => 'pc', // Default
+                    'unit' => $origItem->unit ?? ($isCarton ? 'Carton' : 'pc'),
                     'line_total' => $lineTotal,
-                    'color' => $request->color[$index] ?? null,
+                    'color' => $colorField,
                 ]);
 
                 // Check for weight product conversion factor

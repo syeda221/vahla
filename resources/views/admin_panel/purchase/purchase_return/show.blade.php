@@ -286,10 +286,19 @@
                                 if ($vColorName !== '' && $vColorName !== '-') {
                                     $variantDetails[] = 'Color: ' . $vColorName;
                                 }
+
+                                if (isset($vData['conv_factor']) && (float)$vData['conv_factor'] > 0) {
+                                    $piecesPerBox = (float)$vData['conv_factor'];
+                                } elseif (isset($vData['size']) && is_numeric($vData['size']) && (float)$vData['size'] > 0) {
+                                    $piecesPerBox = (float)$vData['size'];
+                                }
                             } elseif (is_string($item->color) && trim($item->color) !== '' && trim($item->color) !== '-') {
                                 $variantDetails[] = trim($item->color);
                             }
                         }
+
+                        $boxes = $piecesPerBox > 1 ? floor($totalPieces / $piecesPerBox) : 0;
+                        $loosePieces = $piecesPerBox > 1 ? $totalPieces % $piecesPerBox : $totalPieces;
 
                         if ($variantNameDisplay !== '') {
                             if (stripos($variantNameDisplay, $baseProductName) !== false) {
