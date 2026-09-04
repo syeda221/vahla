@@ -22,6 +22,27 @@ class PurchaseController extends Controller
 {
     /** Keep stocks table in sync for a (branch,warehouse,product) */
     /** Keep warehouse_stocks table in sync for a (warehouse,product) */
+    public static function parseCartonQty($qty)
+    {
+        $qtyStr = (string) $qty;
+        if (is_numeric($qtyStr)) {
+            $qtyStr = rtrim(rtrim(sprintf('%.6f', (float) $qtyStr), '0'), '.');
+        }
+        $qtyStr = trim($qtyStr);
+        if (str_starts_with($qtyStr, '.')) {
+            $qtyStr = '0' . $qtyStr;
+        }
+        if (strpos($qtyStr, '.') !== false) {
+            $parts = explode('.', $qtyStr);
+            $boxes = (int) ($parts[0] ?? 0);
+            $loose = (int) ($parts[1] ?? 0);
+        } else {
+            $boxes = (int) ($qtyStr ?: 0);
+            $loose = 0;
+        }
+        return [$boxes, $loose];
+    }
+
     private function upsertStocks(int $productId, float $qtyPiecesDelta, int $branchId, int $warehouseId): void
     {
         // We ignore $branchId as WarehouseStock is warehouse-specific
@@ -402,9 +423,15 @@ class PurchaseController extends Controller
 
                 if ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams') {
                     $baseQty = ((float) $item->qty) / 1000.0;
-                } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box') {
-                    // Full carton purchased: convert cartons to pieces for warehouse_stocks and stock_movements
-                    $baseQty = ((float) $item->qty) * $ppb;
+                } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box' || ($item->size_mode === 'by_cartons')) {
+                    // Full carton / carton.loose purchased: convert cartons to pieces for warehouse_stocks and stock_movements
+                    if ($item->boxes_qty > 0 || $item->loose_qty > 0) {
+                        $boxes = (int) $item->boxes_qty;
+                        $loose = (int) $item->loose_qty;
+                    } else {
+                        [$boxes, $loose] = self::parseCartonQty($item->qty);
+                    }
+                    $baseQty = ($boxes * $ppb) + $loose;
                 } elseif ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece') {
                     // Pieces purchased: qty is directly pieces
                     $baseQty = (float) $item->qty;
@@ -693,25 +720,6 @@ class PurchaseController extends Controller
 
                 $discPercent = (float) ($itemDiscs[$i] ?? 0);
                 $unit = $units[$i] ?? null;
-
-                // Calculate Line Total matching Frontend Logic
-                $curSizeMode = $sizeModes[$i] ?? null;
-                $curPPM2 = (float) ($ppm2[$i] ?? 0); // This is actually m2_per_piece if by_size
-
-                if ($curSizeMode === 'by_size') {
-                    // Frontend: pieces_per_m2 * totalPieces * price
-                    // where pieces_per_m2 is effectively m2 per piece, and price is price per m2
-                    $grossTotal = $curPPM2 * $qty * $price;
-                } else {
-                    // Standard: pieces * price_per_piece
-                    $grossTotal = $qty * $price;
-                }
-
-                // Calculate absolute discount from percentage
-                $discAmount = $grossTotal * ($discPercent / 100);
-                $lineTotal = $grossTotal - $discAmount;
-
-                // Snapshots
                 $u = strtolower($unit ?? '');
                 $curPPB = (float) ($ppbs[$i] ?? 1);
                 if ($curPPB <= 0) {
@@ -720,10 +728,34 @@ class PurchaseController extends Controller
                 }
                 if ($curPPB <= 0) $curPPB = 1;
 
+                // Calculate Line Total matching Frontend Logic
+                $curSizeMode = $sizeModes[$i] ?? null;
+                $curPPM2 = (float) ($ppm2[$i] ?? 0); // This is actually m2_per_piece if by_size
+                $rawQtyStr = (string) ($qtys[$i] ?? '0');
+                $isCarton = in_array($u, ['carton', 'ctn', 'box']) || ($curSizeMode === 'by_cartons');
+
+                if ($curSizeMode === 'by_size') {
+                    // Frontend: pieces_per_m2 * totalPieces * price
+                    $grossTotal = $curPPM2 * $qty * $price;
+                } elseif ($u === 'gm' || $u === 'g') {
+                    $grossTotal = ($qty / 1000.0) * $price;
+                } elseif ($isCarton) {
+                    [$boxes, $loose] = self::parseCartonQty($rawQtyStr);
+                    $piecePrice = $curPPB > 0 ? ($price / $curPPB) : $price;
+                    $grossTotal = ($boxes * $price) + ($loose * $piecePrice);
+                } else {
+                    $grossTotal = $qty * $price;
+                }
+
+                // Calculate absolute discount from percentage
+                $discAmount = $grossTotal * ($discPercent / 100);
+                $lineTotal = $grossTotal - $discAmount;
+
+                // Snapshots
                 $bQty = (float) ($boxesQtys[$i] ?? 0);
                 $lQty = (float) ($looseQtys[$i] ?? 0);
-                if ($bQty == 0 && ($u === 'carton' || $u === 'ctn' || $u === 'box')) {
-                    $bQty = $qty;
+                if ($isCarton) {
+                    [$bQty, $lQty] = self::parseCartonQty($rawQtyStr);
                 } elseif ($bQty == 0 && ($u === 'pcs' || $u === 'pc' || $u === 'piece')) {
                     $bQty = $qty / $curPPB;
                     $lQty = $qty;
@@ -1283,8 +1315,14 @@ class PurchaseController extends Controller
                     $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : ($item->product->pieces_per_box ?? 1));
                     if ($ppb <= 0) $ppb = 1;
                     $u = strtolower($item->unit ?? '');
-                    if ($u === 'carton' || $u === 'ctn' || $u === 'box') {
-                        return (float)$item->qty * $ppb;
+                    if ($u === 'carton' || $u === 'ctn' || $u === 'box' || ($item->size_mode === 'by_cartons')) {
+                        if ($item->boxes_qty > 0 || $item->loose_qty > 0) {
+                            $boxes = (int) $item->boxes_qty;
+                            $loose = (int) $item->loose_qty;
+                        } else {
+                            [$boxes, $loose] = self::parseCartonQty($item->qty);
+                        }
+                        return ($boxes * $ppb) + $loose;
                     } elseif (in_array($u, ['gm', 'g', 'gram', 'grams'])) {
                         return (float)$item->qty / 1000.0;
                     }
@@ -1338,22 +1376,6 @@ class PurchaseController extends Controller
                 $discPercent = (float) ($itemDiscs[$i] ?? 0);
                 $unit = $units[$i] ?? null;
 
-                // --- Calculation Logic (Matches store()) ---
-                $curSizeMode = $sizeModes[$i] ?? null;
-                $curPPM2 = (float) ($ppm2[$i] ?? 0);
-
-                if ($curSizeMode === 'by_size') {
-                    $grossTotal = $curPPM2 * $qty * $price;
-                } elseif (in_array(strtolower($unit ?? ''), ['gm', 'g'])) {
-                    $grossTotal = ($qty / 1000.0) * $price;
-                } else {
-                    $grossTotal = $qty * $price;
-                }
-
-                // Calculate absolute discount from percentage
-                $discAmount = $grossTotal * ($discPercent / 100);
-                $lineTotal = $grossTotal - $discAmount;
-
                 $u = strtolower($unit ?? '');
                 $curPPB = (float) ($ppbs[$i] ?? 1);
                 if ($curPPB <= 0) {
@@ -1362,8 +1384,30 @@ class PurchaseController extends Controller
                 }
                 if ($curPPB <= 0) $curPPB = 1;
 
-                if ($u === 'carton' || $u === 'ctn' || $u === 'box') {
-                    $baseQty = $qty * $curPPB;
+                $curSizeMode = $sizeModes[$i] ?? null;
+                $curPPM2 = (float) ($ppm2[$i] ?? 0);
+                $rawQtyStr = (string) ($qtys[$i] ?? '0');
+                $isCarton = in_array($u, ['carton', 'ctn', 'box']) || ($curSizeMode === 'by_cartons');
+
+                if ($curSizeMode === 'by_size') {
+                    $grossTotal = $curPPM2 * $qty * $price;
+                } elseif (in_array($u, ['gm', 'g'])) {
+                    $grossTotal = ($qty / 1000.0) * $price;
+                } elseif ($isCarton) {
+                    [$boxes, $loose] = self::parseCartonQty($rawQtyStr);
+                    $piecePrice = $curPPB > 0 ? ($price / $curPPB) : $price;
+                    $grossTotal = ($boxes * $price) + ($loose * $piecePrice);
+                } else {
+                    $grossTotal = $qty * $price;
+                }
+
+                // Calculate absolute discount from percentage
+                $discAmount = $grossTotal * ($discPercent / 100);
+                $lineTotal = $grossTotal - $discAmount;
+
+                if ($isCarton) {
+                    [$boxes, $loose] = self::parseCartonQty($rawQtyStr);
+                    $baseQty = ($boxes * $curPPB) + $loose;
                 } elseif (in_array($u, ['gm', 'g', 'gram', 'grams'])) {
                     $baseQty = $qty / 1000.0;
                 } else {
@@ -1372,8 +1416,8 @@ class PurchaseController extends Controller
 
                 $bQty = (float) ($boxesQtys[$i] ?? 0);
                 $lQty = (float) ($looseQtys[$i] ?? 0);
-                if ($bQty == 0 && ($u === 'carton' || $u === 'ctn' || $u === 'box')) {
-                    $bQty = $qty;
+                if ($isCarton) {
+                    [$bQty, $lQty] = self::parseCartonQty($rawQtyStr);
                 } elseif ($bQty == 0 && ($u === 'pcs' || $u === 'pc' || $u === 'piece')) {
                     $bQty = $qty / $curPPB;
                     $lQty = $qty;

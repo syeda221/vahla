@@ -893,7 +893,8 @@
             }
 
             function recalcRow($row) {
-                const qty = parseFloat($row.find('.main-qty-input').val()) || 0;
+                const qtyStr = ($row.find('.main-qty-input').val() || '').toString();
+                const qty = parseFloat(qtyStr) || 0;
                 const price = parseFloat($row.find('.price').val()) || 0;
                 const discPct = parseFloat($row.find('.item-disc-percent').val()) || 0;
                 const sizeMode = $row.data('sizemode') || $row.find('.hidden-size-mode').val();
@@ -903,12 +904,36 @@
                 const ppb = parseFloat($row.find('.hidden-pieces-per-box').val()) || parseFloat($row.data('pieces_per_box')) || 1;
 
                 let gross = 0;
+                const isCarton = (unitVal === 'carton' || unitVal === 'ctn' || unitVal === 'box' || sizeMode === 'by_cartons');
+
                 if (sizeMode === 'by_size') {
                     gross = (pieces_per_m2 || 1) * qty * price;
                 } else if (unitVal === 'gm' || unitVal === 'g') {
                     gross = (qty / 1000.0) * price;
+                } else if (isCarton) {
+                    let s = qtyStr.trim();
+                    if (s.startsWith('.')) s = '0' + s;
+                    if (s.includes('.')) {
+                        const parts = s.split('.');
+                        const boxes = parseInt(parts[0]) || 0;
+                        const loose = parseInt(parts[1]) || 0;
+                        const piecePrice = ppb > 0 ? (price / ppb) : price;
+                        gross = (boxes * price) + (loose * piecePrice);
+                        $row.find('.hidden-boxes-qty').val(boxes);
+                        $row.find('.hidden-loose-qty').val(loose);
+                    } else {
+                        const boxes = parseInt(s) || 0;
+                        gross = boxes * price;
+                        $row.find('.hidden-boxes-qty').val(boxes);
+                        $row.find('.hidden-loose-qty').val(0);
+                    }
                 } else {
                     gross = qty * price;
+                    if (unitVal === 'pcs' || unitVal === 'pc' || unitVal === 'piece') {
+                        const bQty = ppb > 0 ? (qty / ppb) : qty;
+                        $row.find('.hidden-boxes-qty').val(bQty.toFixed(2));
+                        $row.find('.hidden-loose-qty').val(qty);
+                    }
                 }
 
                 const discAmt = gross * (discPct / 100);
@@ -916,16 +941,6 @@
 
                 $row.find('.item-disc-amt').val(discAmt.toFixed(2));
                 $row.find('.row-total').val(lineTotal.toFixed(2));
-
-                // Sync hidden boxes_qty & loose_qty
-                if (unitVal === 'carton' || unitVal === 'ctn' || unitVal === 'box') {
-                    $row.find('.hidden-boxes-qty').val(qty);
-                    $row.find('.hidden-loose-qty').val(0);
-                } else if (unitVal === 'pcs' || unitVal === 'pc' || unitVal === 'piece') {
-                    const bQty = ppb > 0 ? (qty / ppb) : qty;
-                    $row.find('.hidden-boxes-qty').val(bQty.toFixed(2));
-                    $row.find('.hidden-loose-qty').val(qty);
-                }
             }
 
             function recalcAll() {

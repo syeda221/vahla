@@ -1710,7 +1710,7 @@
                         <div class="cart-item-details">
                             <div class="qty-controls">
                                 <button type="button" class="qty-btn btn-qty-minus">-</button>
-                                <input type="number" class="qty-input cart-qty-val" value="${item.qty}" min="1">
+                                <input type="number" class="qty-input cart-qty-val" value="${item.qty}" min="0.01" step="any">
                                 <button type="button" class="qty-btn btn-qty-plus">+</button>
                             </div>
                             <div class="d-flex flex-column align-items-end gap-1">
@@ -1817,7 +1817,7 @@
         $(document).on('change', '.cart-qty-val', function() {
             let index = $(this).closest('.cart-item').data('index');
             let item = cart[index];
-            let val = parseInt($(this).val()) || 1;
+            let val = parseFloat($(this).val()) || 1;
             
             if (val <= 0) val = 1;
             // No stock check required
