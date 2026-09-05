@@ -132,7 +132,7 @@
                         <tr class="text-center">
                             <th>Product</th>
                             <th>Item Code</th>
-                            <th>Color</th>
+                            {{-- <th>Color</th> --}}
                             <th>Brand</th>
                             <th>Unit</th>
                             <th>Price</th>
@@ -152,7 +152,7 @@
                                 <ul class="searchResults list-group mt-1"></ul>
                             </td>
                             <td><input type="text" name="item_code[]" class="form-control" value="{{ $item['item_code'] }}"></td>
-                            <td>
+                            {{-- <td>
                                 <select name="color[{{ $index }}][]" class="form-control select2-color" multiple>
                                     @foreach ($item['color'] as $color)
                                     @if(!empty($color))
@@ -160,7 +160,7 @@
                                     @endif
                                     @endforeach
                                 </select>
-                            </td>
+                            </td> --}}
                             <td><input type="text" name="brand[]" class="form-control" value="{{ $item['brand'] }}"></td>
                             <td><input type="text" name="unit[]" class="form-control" value="{{ $item['unit'] }}"></td>
                             <td><input type="number" name="price[]" step="0.01" class="form-control price"
@@ -423,9 +423,9 @@
             <ul class="searchResults list-group mt-1"></ul>
         </td>
         <td><input type="text" name="item_code[]" class="form-control item_code" readonly></td>
-        <td>
+        {{-- <td>
             <select name="color[new][]" class="form-control select2-color" multiple></select>
-        </td>
+        </td> --}}
         <td><input type="text" name="brand[]" class="form-control brand" readonly></td>
         <td><input type="text" name="unit[]" class="form-control unit" readonly></td>
         <td><input type="number" step="0.01" name="price[]" class="form-control price" value="1"></td>

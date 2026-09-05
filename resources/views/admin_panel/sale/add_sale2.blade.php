@@ -107,7 +107,7 @@
                                 <tr class="text-center">
                                     <th>Product</th>
                                     <th>Item Code</th>
-                                    <th>Color</th>
+                                    {{-- <th>Color</th> --}}
                                     <th>Brand</th>
                                     <th>Unit</th>
                                     <th style="width: 80px;">Stock</th>
@@ -130,13 +130,13 @@
                                     <td class="item_code border">
                                         <input type="text" name="item_code[]" class="form-control" readonly>
                                     </td>
-                                    <td class="color border"
+                                    {{-- <td class="color border"
                                         style="min-width: 180px; max-width: 200px; overflow-x: auto; white-space: nowrap;">
                                         <div style="overflow-x: auto;">
                                             <select class="form-control form-control-sm select2-color" name="color[][]"
                                                 multiple></select>
                                         </div>
-                                    </td>
+                                    </td> --}}
 
                                     <td class="uom border">
                                         <input type="text" name="uom[]" class="form-control" readonly>
@@ -394,9 +394,9 @@
         <ul class="searchResults list-group mt-1"></ul>
     </td>
     <td class="item_code border"><input type="text" name="item_code[]" class="form-control" readonly></td>
-    <td class="color border">
+    {{-- <td class="color border">
         <select class="form-control form-control-sm select2-color" name="color[][]" multiple></select>
-    </td>
+    </td> --}}
     <td class="uom border"><input type="text" name="uom[]" class="form-control" readonly></td>
     <td class="unit border"><input type="text" name="unit[]" class="form-control" readonly></td>
     <td class="stock border"><input type="text" class="form-control stock-qty text-center" readonly tabindex="-1" style="background:#f0f0f0;"></td>

@@ -319,7 +319,7 @@
                                     <th style="width: 20%;"><i class="fas fa-lock me-1"
                                             style="font-size: 0.65rem; opacity: 0.6;"></i>Product</th>
                                     <th style="width: 8%;">Size</th>
-                                    <th style="width: 8%;">Color</th>
+                                    {{-- <th style="width: 8%;">Color</th> --}}
                                     <th style="width: 8%;"><i class="fas fa-lock me-1"
                                             style="font-size: 0.65rem; opacity: 0.6;"></i>Item Code</th>
                                     <th style="width: 12%;"><i class="fas fa-lock me-1"
@@ -362,10 +362,10 @@
                                         </td>
 
                                         {{-- Color --}}
-                                        <td>
+                                        {{-- <td>
                                             <input type="text" class="form-control text-center"
                                                 value="{{ $item['color_val'] ?? '-' }}" readonly>
-                                        </td>
+                                        </td> --}}
 
                                         <td><input type="text" class="form-control text-center"
                                                 value="{{ $item['item_code'] }}" readonly></td>

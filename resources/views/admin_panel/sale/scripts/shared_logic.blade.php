@@ -178,9 +178,9 @@
     </td>
 
     <!-- Color (Display - readonly) -->
-    <td class="col-color">
+    {{-- <td class="col-color">
       <input type="text" class="form-control color-display text-center input-readonly" readonly tabindex="-1" placeholder="-">
-    </td>
+    </td> --}}
 
     <!-- Total Pieces (Calculated) -->
     <td class="col-pieces">
@@ -527,7 +527,9 @@
         // 1. Customer Name
         let customerName = "Select Customer";
         const customerVal = $('#customerSelect').val();
-        if (customerVal) {
+        if (isWalkin) {
+            customerName = $('#walkinNameInput').val() || "Walk-in Customer";
+        } else if (customerVal) {
             let customerData = null;
             if ($('#customerSelect').hasClass('select2-hidden-accessible') || $('#customerSelect').data('select2')) {
                 try {
@@ -887,6 +889,9 @@
         $('#is_walkin').val(isWalkin ? '1' : '0');
         
         if (isWalkin) {
+            $('#btnTypeWalkin').addClass('btn-primary active text-white').removeClass('btn-outline-primary');
+            $('#btnTypeCustomer').removeClass('btn-primary active text-white').addClass('btn-outline-primary');
+            
             $('#customerSelect').addClass('d-none').next('.select2-container').addClass('d-none');
             $('#walkinNameInput').removeClass('d-none');
             
@@ -894,8 +899,13 @@
             $('#totalsSection').removeClass('col-lg-5').addClass('col-lg-12');
             $('#totalsCustomerView').addClass('d-none').removeClass('d-flex');
             $('#totalsWalkinView').removeClass('d-none').addClass('d-flex');
-            $('#rvWrapper').appendTo('#walkinReceiptsContainer');
+            if ($('#walkinReceiptsContainer').length) {
+                $('#rvWrapper').appendTo('#walkinReceiptsContainer');
+            }
         } else {
+            $('#btnTypeCustomer').addClass('btn-primary active text-white').removeClass('btn-outline-primary');
+            $('#btnTypeWalkin').removeClass('btn-primary active text-white').addClass('btn-outline-primary');
+            
             $('#walkinNameInput').addClass('d-none');
             $('#customerSelect').removeClass('d-none').next('.select2-container').removeClass('d-none');
             
@@ -903,7 +913,9 @@
             $('#totalsSection').removeClass('col-lg-12').addClass('col-lg-5');
             $('#totalsWalkinView').addClass('d-none').removeClass('d-flex');
             $('#totalsCustomerView').removeClass('d-none').addClass('d-flex');
-            $('#rvWrapper').appendTo('#receiptVouchersSection .card-body');
+            if ($('#receiptVouchersSection .card-body').length) {
+                $('#rvWrapper').appendTo('#receiptVouchersSection .card-body');
+            }
         }
         if (typeof updateGrandTotals === 'function') updateGrandTotals();
     }
@@ -912,6 +924,19 @@
         handleCustomerTypeChange();
     });
 
+    $(document).on('click', '#btnTypeCustomer', function() {
+        $('#partyTypeSelect').val('Main Customer').trigger('change');
+    });
+
+    $(document).on('click', '#btnTypeWalkin', function() {
+        $('#partyTypeSelect').val('Walking Customer').trigger('change');
+    });
+
+    $(document).on('input', '#walkinNameInput', function() {
+        if ($('#is_walkin').val() === '1') {
+            $('#cc_customer_name').text($(this).val() || 'Walk-in Customer');
+        }
+    });
 
     $(document).ready(function() {
 

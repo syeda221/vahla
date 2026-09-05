@@ -106,7 +106,7 @@
                                 <tr class="text-center">
                                     <th>product</th>
                                     <th>Item Code</th>
-                                    <th>Color</th>
+                                    {{-- <th>Color</th> --}}
 
                                     <th>Brand</th>
                                     <th>Unit</th>
@@ -158,11 +158,11 @@
 
                                     <td class="item_code border">
                                         <input type="text" name="item_code[]" class="form-control" readonly>
- <td class="color border" style="min-width: 180px; max-width: 200px; overflow-x: auto; white-space: nowrap;">
+ {{-- <td class="color border" style="min-width: 180px; max-width: 200px; overflow-x: auto; white-space: nowrap;">
     <div style="overflow-x: auto;">
         <select class="form-control form-control-sm select2-color" name="color[][]" multiple></select>
     </div>
-</td>
+</td> --}}
 
 
 
@@ -377,9 +377,9 @@ $(document).ready(function () {
         <ul class="searchResults list-group mt-1"></ul>
     </td>
     <td class="item_code border"><input type="text" name="item_code[]" class="form-control" readonly></td>
-    <td class="color border">
+    {{-- <td class="color border">
         <select class="form-control form-control-sm select2-color" name="color[][]" multiple></select>
-    </td>
+    </td> --}}
     <td class="uom border"><input type="text" name="uom[]" class="form-control" readonly></td>
     <td class="unit border"><input type="text" name="unit[]" class="form-control" readonly></td>
     <td><input type="number" step="0.01" name="price[]" class="form-control price" value="1" ></td>

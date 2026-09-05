@@ -576,123 +576,171 @@
 
                 <!-- TOP INFORMATION PANEL -->
                 <div class="top-info-card mb-3">
-                    <div class="row g-2 align-items-end w-100 m-0">
-                        <!-- Invoice No with Prefix Dropdown & Refresh -->
-                        <div class="col-sm-6 col-md-3 col-lg-2">
-                            <label class="meta-label"><i class="fas fa-receipt text-primary"></i> Invoice No.</label>
-                            <div class="input-group input-group-sm invoice-group">
-                                <button class="btn btn-prefix dropdown-toggle d-flex align-items-center gap-1" 
-                                        type="button" 
-                                        id="btnInvoicePrefix" 
-                                        data-bs-toggle="dropdown" 
-                                        aria-expanded="false">
-                                    <span id="activePrefixLabel">{{ $activePrefix ?? 'INV' }}</span>
-                                </button>
-                                <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownInvoiceSeriesList" aria-labelledby="btnInvoicePrefix" style="min-width: 155px; font-size: 0.8rem; z-index: 1050;">
-                                    @if(isset($allSeries) && count($allSeries) > 0)
-                                        @foreach($allSeries as $s)
+                    <div class="row g-2 align-items-center w-100 m-0">
+                        <!-- LEFT COLUMN: Customer Form Inputs (col-xl-8 col-lg-7 col-md-12) -->
+                        <div class="col-xl-8 col-lg-7 col-md-12 p-0 pe-lg-2">
+                            <!-- Row 1: Invoice No, Credit Days, Type Toggle, + Add Customer -->
+                            <div class="row g-2 align-items-center mb-2">
+                                <!-- Invoice No -->
+                                <div class="col-sm-4 col-md-4">
+                                    <label class="meta-label"><i class="fas fa-receipt text-primary"></i> Invoice No.</label>
+                                    <div class="input-group input-group-sm invoice-group">
+                                        <button class="btn btn-prefix dropdown-toggle d-flex align-items-center gap-1" 
+                                                type="button" 
+                                                id="btnInvoicePrefix" 
+                                                data-bs-toggle="dropdown" 
+                                                aria-expanded="false">
+                                            <span id="activePrefixLabel">{{ $activePrefix ?? 'INV' }}</span>
+                                        </button>
+                                        <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownInvoiceSeriesList" aria-labelledby="btnInvoicePrefix" style="min-width: 155px; font-size: 0.8rem; z-index: 1050;">
+                                            @if(isset($allSeries) && count($allSeries) > 0)
+                                                @foreach($allSeries as $s)
+                                                    <li>
+                                                        <a class="dropdown-item fw-bold {{ ($activePrefix ?? 'INV') == $s->prefix ? 'text-success active bg-light' : '' }}" 
+                                                           href="#" 
+                                                           data-prefix="{{ $s->prefix }}" 
+                                                           data-next="{{ $s->next_number }}" 
+                                                           data-padding="{{ $s->padding }}">
+                                                            @if(($activePrefix ?? 'INV') == $s->prefix) <i class="fas fa-check text-success me-1"></i> @endif 
+                                                            {{ $s->prefix }} <span class="text-muted small font-monospace">({{ $s->padding }}d)</span>
+                                                        </a>
+                                                    </li>
+                                                @endforeach
+                                            @else
+                                                <li><a class="dropdown-item fw-bold text-success active bg-light" href="#" data-prefix="INV"><i class="fas fa-check text-success me-1"></i> INV (4d)</a></li>
+                                            @endif
+                                            <li><hr class="dropdown-divider my-1"></li>
                                             <li>
-                                                <a class="dropdown-item fw-bold {{ ($activePrefix ?? 'INV') == $s->prefix ? 'text-success active bg-light' : '' }}" 
-                                                   href="#" 
-                                                   data-prefix="{{ $s->prefix }}" 
-                                                   data-next="{{ $s->next_number }}" 
-                                                   data-padding="{{ $s->padding }}">
-                                                    @if(($activePrefix ?? 'INV') == $s->prefix) <i class="fas fa-check text-success me-1"></i> @endif 
-                                                    {{ $s->prefix }} <span class="text-muted small font-monospace">({{ $s->padding }}d)</span>
+                                                <a class="dropdown-item fw-bold text-success d-flex align-items-center gap-1" href="#" id="btnOpenAddSeriesModal">
+                                                    <i class="fas fa-plus-circle me-1"></i> Add Series
                                                 </a>
                                             </li>
+                                        </ul>
+
+                                        <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $nextInvoiceNumber }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+
+                                        <button class="btn btn-refresh" 
+                                                type="button" 
+                                                id="btnRefreshInvoiceNo" 
+                                                title="Regenerate Invoice Number">
+                                            <i class="fas fa-sync-alt" id="iconRefreshInvoice"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Credit Days -->
+                                <div class="col-sm-3 col-md-3">
+                                    <label class="meta-label"><i class="fas fa-clock text-muted"></i> Credit Days</label>
+                                    <input type="number" class="form-control text-center fw-bold" name="credit_days" placeholder="Days" min="0" value="{{ $sale->credit_days ?? '0' }}">
+                                </div>
+
+                                <!-- Customer Type Toggle & Add Customer Button -->
+                                <div class="col-sm-5 col-md-5">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="meta-label mb-0"><i class="fas fa-user-tag text-primary"></i> Type</label>
+                                        <button type="button" id="btnOpenAddCustomerModal" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill fw-bold" data-toggle="modal" data-target="#addCustomerModal" data-bs-toggle="modal" data-bs-target="#addCustomerModal" title="Quick Add Customer (Alt+C or F2)" style="font-size: 0.7rem; height: 20px; line-height: 1;">
+                                            <i class="fas fa-plus"></i> Add Customer
+                                        </button>
+                                    </div>
+                                    <!-- Hidden select for backend/JS sync -->
+                                    <select class="d-none" id="partyTypeSelect" name="partyType">
+                                        @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
+                                            <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
                                         @endforeach
-                                    @else
-                                        <li><a class="dropdown-item fw-bold text-success active bg-light" href="#" data-prefix="INV"><i class="fas fa-check text-success me-1"></i> INV (4d)</a></li>
-                                    @endif
-                                    <li><hr class="dropdown-divider my-1"></li>
-                                    <li>
-                                        <a class="dropdown-item fw-bold text-success d-flex align-items-center gap-1" href="#" id="btnOpenAddSeriesModal">
-                                            <i class="fas fa-plus-circle me-1"></i> Add Series
-                                        </a>
-                                    </li>
-                                </ul>
+                                    </select>
+                                    <!-- Visual Toggle Button Group -->
+                                    <div class="btn-group btn-group-sm w-100 customer-type-btn-group" role="group" aria-label="Customer Type Toggle">
+                                        <button type="button" class="btn btn-primary active text-white fw-bold" id="btnTypeCustomer" style="font-size: 0.75rem; height: 32px;">
+                                            <i class="fas fa-users me-1"></i> Customers
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary fw-bold" id="btnTypeWalkin" style="font-size: 0.75rem; height: 32px;">
+                                            <i class="fas fa-walking me-1"></i> Walk-in
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
 
-                                <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $nextInvoiceNumber }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                            <!-- Row 2: M.Bill (Optional) / Remarks, Date, Customer Search / Walk-in Input -->
+                            <div class="row g-2 align-items-center">
+                                <!-- M.Bill (Optional) / Remarks -->
+                                <div class="col-sm-4 col-md-4">
+                                    <label class="meta-label"><i class="far fa-comment-dots text-muted"></i> M.Bill (Optional):</label>
+                                    <input type="text" class="form-control" name="reference" id="remarks" placeholder="Enter remarks...">
+                                </div>
 
-                                <button class="btn btn-refresh" 
-                                        type="button" 
-                                        id="btnRefreshInvoiceNo" 
-                                        title="Regenerate Invoice Number">
-                                    <i class="fas fa-sync-alt" id="iconRefreshInvoice"></i>
-                                </button>
+                                <!-- Date -->
+                                <div class="col-sm-3 col-md-3">
+                                    <label class="meta-label"><i class="far fa-calendar-alt text-primary"></i> Date:</label>
+                                    <input type="text" name="sale_date" class="form-control datepicker-custom text-center fw-bold" id="displayDateInput" value="{{ date('d/m/Y') }}">
+                                </div>
+
+                                <!-- Customer Search / Walk-in Input -->
+                                <div class="col-sm-5 col-md-5">
+                                    <label class="meta-label"><i class="fas fa-user text-primary"></i> Customer:</label>
+                                    <div id="customerInputWrapper">
+                                        <input type="text" class="form-control fw-bold d-none" name="walkin_name" id="walkinNameInput" value="Walk-in Customer" placeholder="Enter Walk-in Name...">
+                                        <select class="form-select" id="customerSelect" name="customer" style="width:100%">
+                                            <option value=""></option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Date -->
-                        <div class="col-sm-6 col-md-2 col-lg-2">
-                            <label class="meta-label"><i class="far fa-calendar-alt text-primary"></i> Date</label>
-                            <input type="text" name="sale_date" class="form-control datepicker-custom text-center fw-bold" id="displayDateInput" value="{{ date('Y-m-d') }}">
-                        </div>
-
-                        <!-- Cr. Days -->
-                        <div class="col-sm-6 col-md-1 col-lg-1">
-                            <label class="meta-label"><i class="fas fa-clock text-muted"></i> Cr. Days</label>
-                            <input type="number" class="form-control text-center fw-bold" name="credit_days" placeholder="0" min="0" value="{{ $sale->credit_days ?? '0' }}">
-                        </div>
-
-                        <!-- Remarks -->
-                        <div class="col-sm-6 col-md-2 col-lg-2">
-                            <label class="meta-label"><i class="far fa-comment-dots text-muted"></i> Remarks</label>
-                            <input type="text" class="form-control" name="reference" id="remarks" placeholder="Notes / Ref...">
-                        </div>
-
-                        <!-- Customer Type -->
-                        <div class="col-sm-6 col-md-2 col-lg-2" id="customerTypeCol">
-                            <label class="meta-label"><i class="fas fa-user-tag text-primary"></i> Customer Type</label>
-                            <select class="form-select fw-bold" id="partyTypeSelect" name="partyType">
-                                @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
-                                    <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <!-- Customer & Walk-in Toggle -->
-                        <div class="col-sm-6 col-md-2 col-lg-2">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <label class="meta-label mb-0"><i class="fas fa-user text-primary"></i> Customer</label>
-                                <button type="button" id="btnOpenAddCustomerModal" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill fw-bold btn-open-customer-modal" data-toggle="modal" data-target="#addCustomerModal" data-bs-toggle="modal" data-bs-target="#addCustomerModal" title="Quick Add Customer (Alt+C or F2)" style="font-size: 0.7rem; height: 20px; line-height: 1;">
-                                    <i class="fas fa-user-plus"></i> Quick Customer
-                                </button>
+                        <!-- RIGHT COLUMN: Dark Horizontal Customer Summary Widget (col-xl-4 col-lg-5 col-md-12) -->
+                        <div class="col-xl-4 col-lg-5 col-md-12 p-0 ps-lg-1 mt-2 mt-lg-0">
+                            <div class="customer-dark-summary-card p-2 rounded-3 text-white h-100 d-flex flex-column justify-content-between shadow-sm" style="background: #111827; border: 1px solid #374151; min-height: 85px;">
+                                <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom border-secondary">
+                                    <div class="d-flex align-items-center gap-1 fw-bold text-white text-truncate" style="font-size: 0.82rem;">
+                                        <i class="fas fa-user-circle text-primary"></i>
+                                        <span id="cc_customer_name">Select Customer</span>
+                                    </div>
+                                    <button type="button" class="btn btn-link text-secondary p-0 text-decoration-none small hover-white" id="clearCustomerData" style="font-size: 0.72rem;">
+                                        <i class="fas fa-times-circle me-1"></i>Clear
+                                    </button>
+                                </div>
+                                <div class="row g-1 text-center mt-1">
+                                    <div class="col-3">
+                                        <div class="text-secondary text-uppercase fw-semibold" style="font-size: 0.65rem;"><i class="fas fa-history me-1"></i>PREV BAL</div>
+                                        <div class="fw-bold fs-7 text-danger text-truncate" style="font-size: 0.78rem;">
+                                            <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="text-secondary text-uppercase fw-semibold" style="font-size: 0.65rem;"><i class="fas fa-file-invoice me-1"></i>CURRENT</div>
+                                        <div class="fw-bold text-white text-truncate" style="font-size: 0.78rem;" id="cc_current_bill">Rs 0</div>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="text-secondary text-uppercase fw-semibold" style="font-size: 0.65rem;"><i class="fas fa-check-circle me-1"></i>PAID</div>
+                                        <div class="fw-bold text-success text-truncate" style="font-size: 0.78rem;" id="cc_paid_now">Rs 0</div>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="text-secondary text-uppercase fw-semibold" style="font-size: 0.65rem;"><i class="fas fa-calculator me-1"></i>CLOSING</div>
+                                        <div class="fw-bold fs-7 text-danger text-truncate" style="font-size: 0.78rem;">
+                                            <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div id="customerInputWrapper">
-                                <input type="text" class="form-control fw-bold d-none" name="walkin_name" id="walkinNameInput" value="Walk-in Customer" placeholder="Enter Walk-in Name...">
-                                <select class="form-select" id="customerSelect" name="customer" style="width:100%">
-                                    <option value=""></option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Save Sale Button -->
-                        <div class="col-sm-12 col-md-12 col-lg-1 d-flex align-items-end">
-                            <input type="hidden" name="is_walkin" id="is_walkin" value="0">
-                            <button type="button" class="btn btn-top-save w-100 fw-bold d-flex align-items-center justify-content-center gap-1" id="btnHeaderSaveSale" style="font-size: 0.75rem;">
-                                <i class="fas fa-check"></i> Save
-                            </button>
                         </div>
                     </div>
                 </div>
 
                 {{-- Hidden fields for backend --}}
+                <input type="hidden" name="is_walkin" id="is_walkin" value="0">
                 <input type="hidden" id="address" name="address">
                 <input type="hidden" id="tel" name="tel">
                 <input type="hidden" id="previousBalance" value="0">
                 <input type="hidden" id="rangeBalance" value="0">
 
-                <!-- 2-COLUMN RESPONSIVE POS LAYOUT -->
-                <div class="row g-3 align-items-stretch">
-                    <!-- LEFT MAIN AREA: Items Grid Table (col-lg-8 col-xl-9) -->
-                    <div class="col-lg-8 col-xl-9">
-                        <div class="card-panel d-flex flex-column h-100 p-3">
+                <!-- FULL ROW: Order Items Grid Table (col-12) -->
+                <div class="row g-3 mb-3">
+                    <div class="col-12">
+                        <div class="card-panel d-flex flex-column p-3">
                             <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="section-header-title">
-                                        <i class="fas fa-list-check text-primary"></i> Order Items
+                                        <span class="border-start border-4 border-primary ps-2">ITEMS</span>
                                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0" style="font-size:0.7rem;" id="itemsRowCount">0</span>
                                     </div>
                                     <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 rounded-2 fw-semibold d-flex align-items-center gap-1" data-bs-toggle="offcanvas" data-bs-target="#quickProductsOffcanvas" style="font-size:0.75rem;">
@@ -706,16 +754,16 @@
                                 </div>
                             </div>
 
-                            <div class="table-responsive flex-grow-1">
+                            <div class="table-responsive">
                                 <table class="table table-bordered sales-table mb-0">
                                     <thead>
                                         <tr>
                                             <th style="width:30px;" class="text-center">#</th>
-                                            <th class="col-product" style="min-width: 160px;">PRODUCT</th>
+                                            <th class="col-product" style="min-width: 180px;">PRODUCT</th>
                                             <th class="col-stock" style="width: 60px;">STOCK</th>
                                             <th class="col-qty" style="width: 85px;">QTY</th>
                                             <th class="col-size" style="width: 55px;">SIZE</th>
-                                            <th class="col-color" style="width: 65px;">COLOR</th>
+                                            {{-- <th class="col-color" style="width: 65px;">COLOR</th> --}}
                                             <th class="col-pieces" style="width: 55px;">PCS</th>
                                             <th class="col-price-p" style="width: 85px;">PRICE</th>
                                             <th class="col-disc" style="width: 85px;">DISCOUNT</th>
@@ -772,9 +820,9 @@
                                             </td>
 
                                             <!-- Color (Display - readonly) -->
-                                            <td class="col-color">
+                                            {{-- <td class="col-color">
                                                 <input type="text" class="form-control color-display text-center input-readonly" readonly tabindex="-1" placeholder="-">
-                                            </td>
+                                            </td> --}}
 
                                             <!-- Total Pieces (Calculated) -->
                                             <td class="col-pieces">
@@ -826,7 +874,7 @@
                                     </tbody>
                                     <tfoot>
                                         <tr>
-                                            <td colspan="9" class="text-end fw-bold text-uppercase text-secondary" style="font-size:0.8rem;">GRID TOTAL:</td>
+                                            <td colspan="8" class="text-end fw-bold text-uppercase text-secondary" style="font-size:0.8rem;">GRID TOTAL:</td>
                                             <td class="text-end fw-bold text-success fs-6"><span id="totalAmount">0.00</span></td>
                                             <td></td>
                                         </tr>
@@ -835,121 +883,98 @@
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- RIGHT PANEL: Summary & Payment Methods (col-lg-4 col-xl-3) -->
-                    <div class="col-lg-4 col-xl-3">
-                        <div class="d-flex flex-column h-100 gap-3">
-                            <!-- Executive Summary Card -->
-                            <div class="summary-card">
-                                <div class="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom">
-                                    <span class="fw-bold text-dark d-flex align-items-center gap-1" style="font-size:0.85rem;"><i class="fas fa-calculator text-primary"></i> Summary</span>
-                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0" style="font-size:0.7rem;">Live</span>
-                                </div>
-                                
-                                <div class="summary-row">
-                                    <span class="text-muted">Total Amount</span>
-                                    <span class="fw-bold text-dark" id="tGross">0.00</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="text-muted">Line Discount</span>
-                                    <span class="fw-bold text-danger" id="tLineDisc">0.00</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="fw-bold text-dark">Net Total</span>
-                                    <span class="summary-val-net" id="tSub">0.00</span>
-                                </div>
-                                <div class="summary-row">
-                                    <span class="text-muted">Total Paid</span>
-                                    <span class="fw-bold text-success fs-6" id="receiptsTotal">0.00</span>
-                                    <span id="receiptsTotalBadge" style="display:none;">0.00</span>
-                                </div>
-                                <div class="summary-row pt-1">
-                                    <span class="fw-bold text-dark">Change</span>
-                                    <span class="summary-val-change" id="walkinChange">-0.00</span>
-                                </div>
-                                <div class="summary-row pt-2 align-items-center" id="changeAccountRow" style="display: none; border-top: 1px dashed #f1aeb5; background: #fff8f8; padding: 6px 8px; border-radius: 6px;">
-                                    <span class="text-danger fw-bold d-flex align-items-center gap-1" style="font-size:0.76rem;"><i class="fas fa-hand-holding-usd"></i> Change A/C</span>
-                                    <select class="form-select form-select-sm bg-white fw-bold text-danger border-danger" name="change_account_id" id="changeAccountId" style="width: 135px; font-size:0.75rem; height: 28px; padding: 2px 6px;">
+                <!-- BOTTOM AREA: Payment Methods & Financial Summary Cards (col-lg-6 each) -->
+                <div class="row g-3 align-items-stretch">
+                    <!-- LEFT: Payment Methods Card (col-lg-6) -->
+                    <div class="col-lg-6">
+                        <div class="payment-methods-card h-100 d-flex flex-column">
+                            <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
+                                <span class="fw-bold text-dark d-flex align-items-center gap-1" style="font-size:0.85rem;"><i class="fas fa-wallet text-success"></i> Payment Methods</span>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-2 fw-bold" id="btnAddRV" style="font-size:0.7rem;"><i class="fas fa-plus me-1"></i>Add Account</button>
+                            </div>
+
+                            <div id="rvWrapper" class="mb-3">
+                                <div class="d-flex gap-2 align-items-center mb-2 rv-row">
+                                    <select class="form-select form-select-sm rv-account bg-light fw-bold" name="receipt_account_id[]" style="font-size:0.78rem;">
                                         @foreach ($accounts as $acc)
-                                            <option value="{{ $acc->id }}" {{ str_contains(strtolower($acc->title), 'cash') ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                            <option value="{{ $acc->id }}" {{ str_contains(strtolower($acc->title), 'cash') || str_contains(strtolower($acc->title), 'easypaisa') ? 'selected' : '' }}>{{ $acc->title }}</option>
                                         @endforeach
                                     </select>
+                                    <input type="number" step="0.01" class="form-control form-control-sm text-end rv-amount fw-bold" name="receipt_amount[]" placeholder="0.00" style="width: 130px; font-size:0.8rem;">
                                 </div>
                             </div>
 
-                            <!-- Payment Methods Card -->
-                            <div class="payment-methods-card flex-grow-1 d-flex flex-column">
-                                <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
-                                    <span class="fw-bold text-dark d-flex align-items-center gap-1" style="font-size:0.85rem;"><i class="fas fa-wallet text-success"></i> Payment Methods</span>
-                                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-2 fw-bold" id="btnAddRV" style="font-size:0.7rem;"><i class="fas fa-plus me-1"></i>Add Account</button>
-                                </div>
+                            <div class="summary-row pt-2 align-items-center mt-auto" id="changeAccountRow" style="display: none; border-top: 1px dashed #f1aeb5; background: #fff8f8; padding: 6px 8px; border-radius: 6px;">
+                                <span class="text-danger fw-bold d-flex align-items-center gap-1" style="font-size:0.76rem;"><i class="fas fa-hand-holding-usd"></i> Change A/C</span>
+                                <select class="form-select form-select-sm bg-white fw-bold text-danger border-danger" name="change_account_id" id="changeAccountId" style="width: 140px; font-size:0.75rem; height: 28px; padding: 2px 6px;">
+                                    @foreach ($accounts as $acc)
+                                        <option value="{{ $acc->id }}" {{ str_contains(strtolower($acc->title), 'cash') ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </div>
 
-                                <div id="rvWrapper" class="mb-3">
-                                    <div class="d-flex gap-2 align-items-center mb-2 rv-row">
-                                        <select class="form-select form-select-sm rv-account bg-light fw-bold" name="receipt_account_id[]" style="font-size:0.78rem;">
-                                            @foreach ($accounts as $acc)
-                                                <option value="{{ $acc->id }}" {{ str_contains(strtolower($acc->title), 'cash') || str_contains(strtolower($acc->title), 'easypaisa') ? 'selected' : '' }}>{{ $acc->title }}</option>
-                                            @endforeach
-                                        </select>
-                                        <input type="number" step="0.01" class="form-control form-control-sm text-end rv-amount fw-bold" name="receipt_amount[]" placeholder="0.00" style="width: 110px; font-size:0.8rem;">
-                                    </div>
+                    <!-- RIGHT: Executive Summary Card (col-lg-6) -->
+                    <div class="col-lg-6">
+                        <div class="summary-card h-100 d-flex flex-column justify-content-between">
+                            <div class="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom">
+                                <span class="fw-bold text-dark d-flex align-items-center gap-1" style="font-size:0.85rem;"><i class="fas fa-calculator text-primary"></i> Summary</span>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0" style="font-size:0.7rem;">Live</span>
+                            </div>
+                            
+                            <div class="summary-row">
+                                <span class="text-muted">Total Amount</span>
+                                <span class="fw-bold text-dark" id="tGross">0.00</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="text-muted">Line Discount</span>
+                                <span class="fw-bold text-danger" id="tLineDisc">0.00</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="text-muted fw-bold">Discount (Rs.)</span>
+                                <div class="input-group input-group-sm" style="width: 130px;">
+                                    <input type="number" class="form-control text-end fw-bold text-danger" id="walkinDiscountRs" value="0" placeholder="0">
+                                    <span class="input-group-text bg-light text-muted fw-bold" style="font-size:0.75rem;">Rs</span>
                                 </div>
-
-                                <button type="button" class="btn btn-save-complete w-100 mt-auto py-2 d-flex align-items-center justify-content-center gap-2" id="btnSaveAndComplete">
-                                    <i class="fas fa-check-circle"></i> Save & Complete (F9)
-                                </button>
+                            </div>
+                            <div class="summary-row">
+                                <span class="fw-bold text-dark">Net Total</span>
+                                <span class="summary-val-net" id="tSub">0.00</span>
+                                <span id="walkinNetTotal" class="d-none">0.00</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="text-muted">Total Paid</span>
+                                <span class="fw-bold text-success fs-6" id="receiptsTotal">0.00</span>
+                                <span id="receiptsTotalBadge" style="display:none;">0.00</span>
+                                <span id="bottomPaymentsTotal" class="d-none">0.00</span>
+                            </div>
+                            <div class="summary-row pt-1">
+                                <span class="fw-bold text-dark">Change</span>
+                                <span class="summary-val-change" id="walkinChange">-0.00</span>
+                                <span id="bottomChangeVal" class="d-none">-0.00</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- BOTTOM SUMMARY STRIP -->
-                <div class="bottom-summary-strip">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Net Total</span>
-                        <span class="fs-5 fw-bolder text-primary" id="walkinNetTotal">0.00</span>
+                {{-- BOTTOM ACTION BUTTONS ROW --}}
+                <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center py-2 px-3 mt-3 border-top bg-light rounded-3">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <button type="button" class="btn btn-outline-primary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnSave"><i class="fas fa-bookmark"></i> Booking</button>
+                        <button type="button" class="btn btn-primary btn-sm px-4 fw-bold rounded-2 d-flex align-items-center gap-1 shadow-sm" id="btnPosted" disabled><i class="fas fa-shopping-cart"></i> Sale</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnPrint"><i class="fas fa-print"></i> A4 Print</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnEstimate"><i class="fas fa-file-invoice"></i> Estimate</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnPrint2"><i class="fas fa-receipt"></i> Thermal Print</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnDcThermal"><i class="fas fa-truck"></i> DC</button>
                     </div>
-
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Discount (Rs.)</span>
-                        <div class="input-group input-group-sm" style="width: 120px;">
-                            <input type="number" class="form-control text-end fw-bold text-danger" id="walkinDiscountRs" value="0" placeholder="0">
-                            <span class="input-group-text bg-light text-muted fw-bold" style="font-size:0.75rem;">%</span>
-                        </div>
+                    <div>
+                        <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete">
+                            <i class="fas fa-check-circle"></i> Save & Complete (F9)
+                        </button>
                     </div>
-
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Payments</span>
-                        <span class="fs-6 fw-bold text-success" id="bottomPaymentsTotal">0.00</span>
-                    </div>
-
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Change</span>
-                        <span class="fs-6 fw-bold text-danger" id="bottomChangeVal">-0.00</span>
-                    </div>
-
-                    <div class="align-items-center gap-1" id="bottomChangeAccountWrapper" style="display: none;">
-                        <span class="text-danger fw-bold" style="font-size:0.76rem;">Change A/C:</span>
-                        <select class="form-select form-select-sm bg-light fw-bold text-danger border-danger" id="bottomChangeAccountId" style="width: 135px; font-size:0.75rem; height: 30px; padding: 2px 6px;">
-                            @foreach ($accounts as $acc)
-                                <option value="{{ $acc->id }}" {{ str_contains(strtolower($acc->title), 'cash') ? 'selected' : '' }}>{{ $acc->title }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
-                        <i class="fas fa-check-circle"></i> Save & Complete (F9)
-                    </button>
-                </div>
-
-                {{-- ACTION BUTTONS ROW --}}
-                <div class="d-flex flex-wrap gap-2 justify-content-center py-2 px-3 mt-3 border-top bg-light rounded-3">
-                    <button type="button" class="btn btn-outline-primary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnSave"><i class="fas fa-bookmark"></i> Booking</button>
-                    <button type="button" class="btn btn-primary btn-sm px-4 fw-bold rounded-2 d-flex align-items-center gap-1 shadow-sm" id="btnPosted" disabled><i class="fas fa-shopping-cart"></i> Sale</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnPrint"><i class="fas fa-print"></i> A4 Print</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnEstimate"><i class="fas fa-file-invoice"></i> Estimate</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnPrint2"><i class="fas fa-receipt"></i> Thermal Print</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnDcThermal"><i class="fas fa-truck"></i> DC</button>
                 </div>
             </form>
         </div>
