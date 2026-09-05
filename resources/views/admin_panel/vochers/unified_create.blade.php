@@ -31,9 +31,23 @@
 /* ========= VOUCHER TYPE CARDS ========= */
 .voucher-types {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 16px;
     margin-bottom: 24px;
+}
+
+@media (max-width: 991px) {
+    .voucher-types {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+}
+
+@media (max-width: 576px) {
+    .voucher-types {
+        grid-template-columns: repeat(1, 1fr);
+        gap: 10px;
+    }
 }
 
 .voucher-type-btn {
@@ -369,7 +383,7 @@
             </div>
         </div>
 
-        {{-- Voucher Type Toggle Cards (3 Main Vouchers) --}}
+        {{-- Voucher Type Toggle Cards (4 Main Vouchers) --}}
         <div class="voucher-types" id="voucherTypeSelector">
             <div class="voucher-type-btn active" data-type="expense">
                 <i class="fas fa-file-invoice-dollar v-icon"></i>
@@ -382,6 +396,10 @@
             <div class="voucher-type-btn" data-type="payment_out">
                 <i class="fas fa-arrow-up v-icon"></i>
                 <span class="v-label">Payment Out</span>
+            </div>
+            <div class="voucher-type-btn" data-type="party_transfer">
+                <i class="fas fa-right-left v-icon"></i>
+                <span class="v-label">Party To Party</span>
             </div>
         </div>
 
@@ -650,6 +668,130 @@
                 </form>
             </div>
 
+            {{-- ==================== 4. PARTY TO PARTY TRANSFER ==================== --}}
+            <div class="voucher-form-section" id="form-party_transfer">
+                <form class="voucher-form" data-action="{{ route('store_party_transfer') }}" method="POST" novalidate>
+                    @csrf
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Transfer Date <span class="text-danger">*</span></label>
+                            <input type="date" name="transfer_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Voucher ID</label>
+                            <input type="text" class="form-control" value="{{ $nextTvid ?? 'TVID-001' }}" readonly>
+                        </div>
+                    </div>
+
+                    {{-- Two Party Selection Cards (Side-by-side) --}}
+                    <div class="row g-3 mb-3">
+                        {{-- Source Party (Deduct From) --}}
+                        <div class="col-md-6">
+                            <div class="section-card h-100" style="border-left: 3px solid #dc2626;">
+                                <h6 class="sub-heading sub-heading-danger">
+                                    <i class="fas fa-minus-circle text-danger"></i> Source Party (Deduct From)
+                                </h6>
+                                <div class="mb-3">
+                                    <label class="form-label">Party Type <span class="text-danger">*</span></label>
+                                    <div class="party-type-group w-100 d-flex">
+                                        <div class="party-type-option flex-fill text-center">
+                                            <input type="radio" name="source_party_type_choice" id="pt_src_customer" value="customer" class="pt-src-party-type" checked>
+                                            <label for="pt_src_customer" class="w-100">Customer</label>
+                                        </div>
+                                        <div class="party-type-option flex-fill text-center">
+                                            <input type="radio" name="source_party_type_choice" id="pt_src_vendor" value="vendor" class="pt-src-party-type">
+                                            <label for="pt_src_vendor" class="w-100">Vendor</label>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" name="source_party_type" id="pt_source_party_type" value="customer">
+                                </div>
+
+                                <div id="pt_src_customer_wrapper">
+                                    <label class="form-label">Select Party <span class="text-danger">*</span></label>
+                                    <select name="source_party_id" id="pt_src_customer_select" class="form-select select2-customer" required>
+                                        <option value="">Search customer...</option>
+                                        @foreach($customers as $c)
+                                        <option value="{{ $c->id }}">{{ $c->customer_name }} @if(!empty($c->mobile)) ({{ $c->mobile }}) @endif</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div id="pt_src_vendor_wrapper" style="display:none;">
+                                    <label class="form-label">Select Party <span class="text-danger">*</span></label>
+                                    <select name="source_party_id_vendor" id="pt_src_vendor_select" class="form-select select2-vendor" disabled>
+                                        <option value="">Search vendor...</option>
+                                        @foreach($vendors as $v)
+                                        <option value="{{ $v->id }}">{{ $v->name }} @if(!empty($v->phone)) ({{ $v->phone }}) @endif</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Destination Party (Transfer To) --}}
+                        <div class="col-md-6">
+                            <div class="section-card h-100" style="border-left: 3px solid #2563eb;">
+                                <h6 class="sub-heading sub-heading-primary">
+                                    <i class="fas fa-plus-circle text-primary"></i> Destination Party (Transfer To)
+                                </h6>
+                                <div class="mb-3">
+                                    <label class="form-label">Party Type <span class="text-danger">*</span></label>
+                                    <div class="party-type-group w-100 d-flex">
+                                        <div class="party-type-option flex-fill text-center">
+                                            <input type="radio" name="destination_party_type_choice" id="pt_dst_vendor" value="vendor" class="pt-dst-party-type" checked>
+                                            <label for="pt_dst_vendor" class="w-100">Vendor</label>
+                                        </div>
+                                        <div class="party-type-option flex-fill text-center">
+                                            <input type="radio" name="destination_party_type_choice" id="pt_dst_customer" value="customer" class="pt-dst-party-type">
+                                            <label for="pt_dst_customer" class="w-100">Customer</label>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" name="destination_party_type" id="pt_destination_party_type" value="vendor">
+                                </div>
+
+                                <div id="pt_dst_vendor_wrapper">
+                                    <label class="form-label">Select Party <span class="text-danger">*</span></label>
+                                    <select name="destination_party_id" id="pt_dst_vendor_select" class="form-select select2-vendor" required>
+                                        <option value="">Search vendor...</option>
+                                        @foreach($vendors as $v)
+                                        <option value="{{ $v->id }}">{{ $v->name }} @if(!empty($v->phone)) ({{ $v->phone }}) @endif</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div id="pt_dst_customer_wrapper" style="display:none;">
+                                    <label class="form-label">Select Party <span class="text-danger">*</span></label>
+                                    <select name="destination_party_id_customer" id="pt_dst_customer_select" class="form-select select2-customer" disabled>
+                                        <option value="">Search customer...</option>
+                                        @foreach($customers as $c)
+                                        <option value="{{ $c->id }}">{{ $c->customer_name }} @if(!empty($c->mobile)) ({{ $c->mobile }}) @endif</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Amount and Remarks --}}
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Amount <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0.01" name="amount" id="pt_amount" class="form-control" placeholder="Enter amount" required>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Remarks</label>
+                            <textarea name="remarks" class="form-control" rows="2" placeholder="Any additional notes..."></textarea>
+                        </div>
+                    </div>
+
+                    {{-- Submit Button --}}
+                    <div class="d-flex justify-content-end mt-4">
+                        <button type="submit" class="btn btn-voucher px-4 py-2">
+                            <i class="fas fa-check-circle me-1"></i> Process Transfer
+                        </button>
+                    </div>
+                </form>
+            </div>
+
         </div>{{-- /voucher-form-card --}}
     </div>
 </div>
@@ -701,7 +843,8 @@
         const formTitles = {
             expense:          '<i class="fas fa-file-invoice-dollar text-primary"></i> <span>Expense Voucher</span>',
             payment_in:       '<i class="fas fa-arrow-down text-primary"></i> <span>Payment In Voucher</span>',
-            payment_out:      '<i class="fas fa-arrow-up text-danger"></i> <span>Payment Out Voucher</span>'
+            payment_out:      '<i class="fas fa-arrow-up text-danger"></i> <span>Payment Out Voucher</span>',
+            party_transfer:   '<i class="fas fa-right-left text-primary"></i> <span>Party-to-Party Transfer</span>'
         };
 
         // ============== VOUCHER TYPE TOGGLE ==============
@@ -767,6 +910,42 @@
                 $('#po_customer_wrapper').show();
                 $('#po_vendor_select').prop('disabled', true).prop('required', false).attr('name', 'vendor_id_disabled[]');
                 $('#po_customer_select').prop('disabled', false).prop('required', true).attr('name', 'vendor_id[]');
+            }
+            initSelect2();
+        });
+
+        // ============== PARTY TRANSFER: SOURCE PARTY TOGGLE ==============
+        $(document).on('change', '.pt-src-party-type', function() {
+            var val = $(this).val();
+            $('#pt_source_party_type').val(val);
+            if (val === 'customer') {
+                $('#pt_src_customer_wrapper').show();
+                $('#pt_src_vendor_wrapper').hide();
+                $('#pt_src_customer_select').prop('disabled', false).prop('required', true).attr('name', 'source_party_id');
+                $('#pt_src_vendor_select').prop('disabled', true).prop('required', false).attr('name', 'source_party_id_disabled');
+            } else {
+                $('#pt_src_customer_wrapper').hide();
+                $('#pt_src_vendor_wrapper').show();
+                $('#pt_src_customer_select').prop('disabled', true).prop('required', false).attr('name', 'source_party_id_disabled');
+                $('#pt_src_vendor_select').prop('disabled', false).prop('required', true).attr('name', 'source_party_id');
+            }
+            initSelect2();
+        });
+
+        // ============== PARTY TRANSFER: DESTINATION PARTY TOGGLE ==============
+        $(document).on('change', '.pt-dst-party-type', function() {
+            var val = $(this).val();
+            $('#pt_destination_party_type').val(val);
+            if (val === 'vendor') {
+                $('#pt_dst_vendor_wrapper').show();
+                $('#pt_dst_customer_wrapper').hide();
+                $('#pt_dst_vendor_select').prop('disabled', false).prop('required', true).attr('name', 'destination_party_id');
+                $('#pt_dst_customer_select').prop('disabled', true).prop('required', false).attr('name', 'destination_party_id_disabled');
+            } else {
+                $('#pt_dst_vendor_wrapper').hide();
+                $('#pt_dst_customer_wrapper').show();
+                $('#pt_dst_vendor_select').prop('disabled', true).prop('required', false).attr('name', 'destination_party_id_disabled');
+                $('#pt_dst_customer_select').prop('disabled', false).prop('required', true).attr('name', 'destination_party_id');
             }
             initSelect2();
         });
@@ -931,6 +1110,13 @@
         initSelect2();
         calcExpenseTotal();
         $('#form-expense select[name="vendor_id"]').trigger('change');
+
+        // URL param check to switch tab on load if requested
+        var urlParams = new URLSearchParams(window.location.search);
+        var reqType = urlParams.get('type');
+        if (reqType && $('#voucherTypeSelector .voucher-type-btn[data-type="' + reqType + '"]').length) {
+            $('#voucherTypeSelector .voucher-type-btn[data-type="' + reqType + '"]').trigger('click');
+        }
     }
 
     if (document.readyState === 'complete' || document.readyState === 'interactive') {

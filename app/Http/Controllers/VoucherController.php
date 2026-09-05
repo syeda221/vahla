@@ -1671,6 +1671,277 @@ class VoucherController extends Controller
     }
 
     /**
+     * Store Party-to-Party Transfer Voucher
+     */
+    public function store_party_transfer(Request $request)
+    {
+        $request->validate([
+            'transfer_date' => 'required|date',
+            'source_party_type' => 'required|in:customer,vendor',
+            'source_party_id' => 'required',
+            'destination_party_type' => 'required|in:customer,vendor',
+            'destination_party_id' => 'required',
+            'amount' => 'required|numeric|min:0.01',
+            'remarks' => 'nullable|string',
+        ]);
+
+        if ($request->source_party_type === $request->destination_party_type && $request->source_party_id == $request->destination_party_id) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Source party and Destination party cannot be the same.',
+                ], 422);
+            }
+            return back()->with('error', 'Source party and Destination party cannot be the same.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $amount = (float) $request->amount;
+            $date = $request->transfer_date;
+            $remarks = $request->remarks;
+
+            // Generate TVID
+            $lastTv = \App\Models\VoucherMaster::where('voucher_no', 'like', 'TVID-%')
+                ->orWhere('voucher_type', 'journal')
+                ->latest('id')
+                ->first();
+            $nextNum = $lastTv ? ($lastTv->id + 1) : 1;
+            $tvid = 'TVID-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+
+            // Fetch Party Models & Names
+            $srcPartyModel = null;
+            $sourceName = '';
+            if ($request->source_party_type === 'customer') {
+                $srcPartyModel = Customer::find($request->source_party_id);
+                $sourceName = $srcPartyModel ? $srcPartyModel->customer_name : 'Customer #' . $request->source_party_id;
+            } else {
+                $srcPartyModel = \App\Models\Vendor::find($request->source_party_id);
+                $sourceName = $srcPartyModel ? $srcPartyModel->name : 'Vendor #' . $request->source_party_id;
+            }
+
+            $dstPartyModel = null;
+            $destName = '';
+            if ($request->destination_party_type === 'customer') {
+                $dstPartyModel = Customer::find($request->destination_party_id);
+                $destName = $dstPartyModel ? $dstPartyModel->customer_name : 'Customer #' . $request->destination_party_id;
+            } else {
+                $dstPartyModel = \App\Models\Vendor::find($request->destination_party_id);
+                $destName = $dstPartyModel ? $dstPartyModel->name : 'Vendor #' . $request->destination_party_id;
+            }
+
+            $balanceService = app(\App\Services\BalanceService::class);
+            $journalService = app(\App\Services\JournalEntryService::class);
+            $arId = $balanceService->getAccountsReceivableId();
+            $apId = $balanceService->getAccountsPayableId();
+
+            // 1. Source Party Ledger (Deduct)
+            if ($request->source_party_type === 'customer') {
+                $latestLedger = CustomerLedger::where('customer_id', $request->source_party_id)->latest()->first();
+                $prevBal = $latestLedger ? $latestLedger->closing_balance : (Customer::find($request->source_party_id)->opening_balance ?? 0);
+                CustomerLedger::create([
+                    'customer_id'      => $request->source_party_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'previous_balance' => $prevBal,
+                    'opening_balance'  => 0,
+                    'closing_balance'  => $prevBal - $amount,
+                    'description'      => "Party Transfer to {$destName} (Ref: {$tvid})" . ($remarks ? " - {$remarks}" : ""),
+                ]);
+            } else {
+                $latestLedger = VendorLedger::where('vendor_id', $request->source_party_id)->latest()->first();
+                $prevBal = $latestLedger ? $latestLedger->closing_balance : (\App\Models\Vendor::find($request->source_party_id)->opening_balance ?? 0);
+                VendorLedger::create([
+                    'vendor_id'        => $request->source_party_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'previous_balance' => $prevBal,
+                    'opening_balance'  => 0,
+                    'closing_balance'  => $prevBal - $amount,
+                ]);
+            }
+
+            // 2. Destination Party Ledger (Transfer To / Credit)
+            if ($request->destination_party_type === 'customer') {
+                $latestLedger = CustomerLedger::where('customer_id', $request->destination_party_id)->latest()->first();
+                $prevBal = $latestLedger ? $latestLedger->closing_balance : (Customer::find($request->destination_party_id)->opening_balance ?? 0);
+                CustomerLedger::create([
+                    'customer_id'      => $request->destination_party_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'previous_balance' => $prevBal,
+                    'opening_balance'  => 0,
+                    'closing_balance'  => $prevBal + $amount,
+                    'description'      => "Party Transfer from {$sourceName} (Ref: {$tvid})" . ($remarks ? " - {$remarks}" : ""),
+                ]);
+            } else {
+                $latestLedger = VendorLedger::where('vendor_id', $request->destination_party_id)->latest()->first();
+                $prevBal = $latestLedger ? $latestLedger->closing_balance : (\App\Models\Vendor::find($request->destination_party_id)->opening_balance ?? 0);
+                VendorLedger::create([
+                    'vendor_id'        => $request->destination_party_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'previous_balance' => $prevBal,
+                    'opening_balance'  => 0,
+                    'closing_balance'  => $prevBal + $amount,
+                ]);
+            }
+
+            // 3. Control Accounts & VoucherMaster
+            $srcAccountId = ($request->source_party_type === 'customer') ? $arId : $apId;
+            $dstAccountId = ($request->destination_party_type === 'customer') ? $arId : $apId;
+
+            $voucher = \App\Models\VoucherMaster::create([
+                'voucher_type' => 'journal',
+                'voucher_no'   => $tvid,
+                'date'         => $date,
+                'status'       => 'posted',
+                'party_type'   => ($request->source_party_type === 'customer') ? Customer::class : \App\Models\Vendor::class,
+                'party_id'     => $request->source_party_id,
+                'remarks'      => "Party Transfer: {$sourceName} -> {$destName}" . ($remarks ? " | {$remarks}" : ""),
+                'total_amount' => $amount,
+                'created_by'   => auth()->id(),
+            ]);
+
+            if ($srcAccountId && $dstAccountId) {
+                \App\Models\VoucherDetail::create([
+                    'voucher_master_id' => $voucher->id,
+                    'account_id'        => $dstAccountId,
+                    'debit'             => $amount,
+                    'credit'            => 0,
+                    'narration'         => "Transfer to {$destName} from {$sourceName}",
+                ]);
+                \App\Models\VoucherDetail::create([
+                    'voucher_master_id' => $voucher->id,
+                    'account_id'        => $srcAccountId,
+                    'debit'             => 0,
+                    'credit'            => $amount,
+                    'narration'         => "Transfer from {$sourceName} to {$destName}",
+                ]);
+            }
+
+            // 4. Record Journal Entries for Ledgers & Real-time Balances
+            // Source Party Journal Entry:
+            if ($request->source_party_type === 'customer') {
+                if ($arId && $srcPartyModel) {
+                    $journalService->recordEntry(
+                        $voucher,
+                        $arId,
+                        0,
+                        $amount,
+                        "Party Transfer to {$destName} (Ref: {$tvid})" . ($remarks ? " - {$remarks}" : ""),
+                        $date,
+                        $srcPartyModel
+                    );
+                }
+            } else {
+                if ($apId && $srcPartyModel) {
+                    $journalService->recordEntry(
+                        $voucher,
+                        $apId,
+                        $amount,
+                        0,
+                        "Party Transfer to {$destName} (Ref: {$tvid})" . ($remarks ? " - {$remarks}" : ""),
+                        $date,
+                        $srcPartyModel
+                    );
+                }
+            }
+
+            // Destination Party Journal Entry:
+            if ($request->destination_party_type === 'customer') {
+                if ($arId && $dstPartyModel) {
+                    $journalService->recordEntry(
+                        $voucher,
+                        $arId,
+                        $amount,
+                        0,
+                        "Party Transfer from {$sourceName} (Ref: {$tvid})" . ($remarks ? " - {$remarks}" : ""),
+                        $date,
+                        $dstPartyModel
+                    );
+                }
+            } else {
+                if ($apId && $dstPartyModel) {
+                    $vendDebit = ($request->source_party_type === 'customer') ? $amount : 0;
+                    $vendCredit = ($request->source_party_type === 'customer') ? 0 : $amount;
+                    $journalService->recordEntry(
+                        $voucher,
+                        $apId,
+                        $vendDebit,
+                        $vendCredit,
+                        "Party Transfer from {$sourceName} (Ref: {$tvid})" . ($remarks ? " - {$remarks}" : ""),
+                        $date,
+                        $dstPartyModel
+                    );
+                }
+            }
+
+            DB::commit();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Party Transfer of Rs. " . number_format($amount, 2) . " processed successfully!",
+                    'voucher_id' => $voucher->id,
+                    'print_url' => route('print', $voucher->id),
+                    'all_vouchers_url' => route('voucher.history'),
+                ]);
+            }
+
+            return redirect()->route('voucher.history')->with('success', 'Party Transfer processed successfully!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete Party-to-Party Transfer Voucher
+     */
+    public function destroyPartyTransferVoucher($id)
+    {
+        DB::beginTransaction();
+        try {
+            $voucherMaster = \App\Models\VoucherMaster::where('id', $id)
+                ->where('voucher_type', 'journal')
+                ->first();
+
+            if (!$voucherMaster) {
+                return back()->with('error', 'Party Transfer Voucher not found.');
+            }
+
+            $vNo = $voucherMaster->voucher_no;
+
+            // Reverse Journal Entries and update Account Balances
+            $journalService = app(\App\Services\JournalEntryService::class);
+            $journalService->reverseEntriesForSource($voucherMaster);
+
+            // Clean up customer ledger entries linked to this voucher
+            CustomerLedger::where('description', 'like', "%{$vNo}%")->delete();
+
+            $voucherMaster->details()->delete();
+            $voucherMaster->delete();
+
+            DB::commit();
+
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Party Transfer Voucher deleted successfully.']);
+            }
+            return back()->with('success', 'Party Transfer Voucher deleted successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Party Transfer Delete Error: ' . $e->getMessage());
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['message' => 'Failed to delete Party Transfer Voucher: ' . $e->getMessage()], 500);
+            }
+            return back()->with('error', 'Failed to delete Party Transfer Voucher: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Unified All Vouchers Creation View
      */
     public function createUnified()
@@ -1710,12 +1981,20 @@ class VoucherController extends Controller
         $lastExp = DB::table('expense_vouchers')->latest('id')->first();
         $nextEvid = 'EVID-' . str_pad($lastExp ? $lastExp->id + 1 : 1, 3, '0', STR_PAD_LEFT);
 
+        $lastTv = DB::table('voucher_masters')
+            ->where('voucher_no', 'like', 'TVID-%')
+            ->orWhere('voucher_type', 'journal')
+            ->latest('id')
+            ->first();
+        $nextTvid = 'TVID-' . str_pad($lastTv ? $lastTv->id + 1 : 1, 3, '0', STR_PAD_LEFT);
+
         return view('admin_panel.vochers.unified_create', compact(
             'accounts',
             'customers',
             'vendors',
             'expenseCategories',
-            'nextEvid'
+            'nextEvid',
+            'nextTvid'
         ));
     }
 
@@ -2010,6 +2289,55 @@ class VoucherController extends Controller
             }
         }
 
+        // 4. Party Transfers (Party to Party)
+        if ($type === 'all' || $type === 'party_transfer' || $type === 'transfer') {
+            $tvQuery = DB::table('voucher_masters')->where('voucher_type', 'journal');
+
+            if ($fromDate) {
+                $tvQuery->whereDate('date', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $tvQuery->whereDate('date', '<=', $toDate);
+            }
+            if ($minAmount !== null && $minAmount !== '') {
+                $tvQuery->where('total_amount', '>=', (float)$minAmount);
+            }
+            if ($maxAmount !== null && $maxAmount !== '') {
+                $tvQuery->where('total_amount', '<=', (float)$maxAmount);
+            }
+
+            $transferList = $tvQuery->orderBy('id', 'desc')->get();
+
+            foreach ($transferList as $tv) {
+                $partyName = '-';
+                if ($tv->remarks && str_contains($tv->remarks, 'Party Transfer:')) {
+                    $parts = explode('|', $tv->remarks);
+                    $partyName = trim(str_replace('Party Transfer:', '', $parts[0]));
+                } else {
+                    $partyName = $tv->remarks ?: 'Party Transfer';
+                }
+
+                $canDelete = $user && ($user->can('all.vouchers.delete') || $user->can('vouchers.create') || $user->can('payment.voucher.delete'));
+
+                $records->push([
+                    'id' => $tv->id,
+                    'voucher_no' => $tv->voucher_no ?: 'TVID-' . $tv->id,
+                    'type_label' => 'Party Transfer',
+                    'source' => 'party_transfer',
+                    'date' => $tv->date ? date('Y-m-d', strtotime($tv->date)) : '-',
+                    'party_name' => $partyName,
+                    'party_type_label' => 'Party Transfer',
+                    'detail' => 'Transfer',
+                    'amount' => (float)$tv->total_amount,
+                    'remarks' => $tv->remarks ?: '-',
+                    'print_url' => route('print', $tv->id),
+                    'delete_url' => $canDelete ? route('party_transfer.destroy', $tv->id) : null,
+                    'delete_method' => 'DELETE',
+                    'created_at' => $tv->created_at ?? $tv->date,
+                ]);
+            }
+        }
+
         // Global search filtering
         if (!empty($searchValue)) {
             $records = $records->filter(function($item) use ($searchValue) {
@@ -2028,6 +2356,7 @@ class VoucherController extends Controller
         $totalExpense = $records->where('source', 'expense')->sum('amount');
         $totalPaymentIn = $records->where('source', 'payment_in')->sum('amount');
         $totalPaymentOut = $records->where('source', 'payment_out')->sum('amount');
+        $totalPartyTransfer = $records->where('source', 'party_transfer')->sum('amount');
 
         // Sort records by date descending
         $sorted = $records->sortByDesc(function($item) {
@@ -2054,6 +2383,7 @@ class VoucherController extends Controller
                 'total_income' => 0,
                 'total_payment_in' => $totalPaymentIn,
                 'total_payment_out' => $totalPaymentOut,
+                'total_party_transfer' => $totalPartyTransfer,
             ]
         ]);
     }

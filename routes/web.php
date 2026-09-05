@@ -440,6 +440,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/expense_vochers/{id}', [VoucherController::class, 'destroyExpenseVoucher'])->name('expense_vouchers.destroy');
     Route::get('/expenseprint/{id}', [VoucherController::class, 'expenseprint'])->name('expenseprint');
 
+    // Party-to-Party Transfer Vouchers
+    Route::post('/store_party_transfer', [VoucherController::class, 'store_party_transfer'])->middleware('permission:vouchers.create|all.vouchers.create|all.vouchers.view|vouchers.view')->name('store_party_transfer');
+    Route::delete('/party_transfer/{id}', [VoucherController::class, 'destroyPartyTransferVoucher'])->name('party_transfer.destroy');
+
     // AJAX helpers for vouchers
     Route::get('/get-accounts-by-head/{id}', [VoucherController::class, 'getAccountsByHead']);
     Route::get('/getOpeningBalance/{type}/{id}', [VoucherController::class, 'getOpeningBalance']);
