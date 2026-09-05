@@ -713,8 +713,6 @@
                                                         $variantUnit = strtolower($variantData['unit'] ?? ($liveVariant['unit'] ?? ''));
                                                         if ($variantUnit === 'pcs' || $variantUnit === 'piece' || $variantUnit === 'pieces') {
                                                             $isPcs = true;
-                                                        } elseif ((float)$item->qty == (float)$item->total_pieces && $ppb > 1) {
-                                                            $isPcs = true;
                                                         }
 
                                                         if ($isPcs) {
@@ -727,14 +725,9 @@
                                                             $unitMode = 'ctn';
                                                             $toggleText = 'Ctn';
                                                             $toggleBtnClass = 'btn-outline-success';
-                                                            $savedQty = (float)$item->qty;
-                                                            if ($savedQty > 0) {
-                                                                $displayQty = $savedQty;
-                                                                $itemTotalPieces = $savedQty * $ppb;
-                                                            } else {
-                                                                $displayQty = $loose > 0 ? "{$cartons}.{$loose}" : $cartons;
-                                                                $itemTotalPieces = ($cartons * $ppb) + $loose;
-                                                            }
+                                                            // In Carton dot notation: e.g. 1 carton + 6 loose pieces is '1.6'
+                                                            $displayQty = $loose > 0 ? "{$cartons}.{$loose}" : $cartons;
+                                                            $itemTotalPieces = ($cartons * $ppb) + $loose;
                                                         }
                                                     } elseif ($sizeMode === 'by_kg') {
                                                         $unitMode = 'kg';
@@ -758,6 +751,26 @@
                                                         $displayQty = (float) ($item->qty ?: $item->total_pieces);
                                                     } else {
                                                         $displayQty = (float) ($item->qty ?: $item->total_pieces);
+                                                    }
+
+                                                    $pieceRetailPrice = 0;
+                                                    if ($liveVariant && !empty($liveVariant['sale_price']) && (float)$liveVariant['sale_price'] > 0) {
+                                                        $pieceRetailPrice = (float) $liveVariant['sale_price'];
+                                                    } elseif (!empty($variantData['sale_price']) && (float)$variantData['sale_price'] > 0) {
+                                                        $pieceRetailPrice = (float) $variantData['sale_price'];
+                                                    } elseif ($prod && (float) $prod->sale_price_per_piece > 0) {
+                                                        $pieceRetailPrice = (float) $prod->sale_price_per_piece;
+                                                    } elseif ($item && (float) $item->price > 0) {
+                                                        $pieceRetailPrice = ($sizeMode === 'by_cartons' && !$isPcs && $ppb > 0) ? ((float)$item->price / $ppb) : (float)$item->price;
+                                                    }
+
+                                                    $pieceWholesalePrice = 0;
+                                                    if ($liveVariant && !empty($liveVariant['wholesale_price']) && (float)$liveVariant['wholesale_price'] > 0) {
+                                                        $pieceWholesalePrice = (float) $liveVariant['wholesale_price'];
+                                                    } elseif (!empty($variantData['wholesale_price']) && (float)$variantData['wholesale_price'] > 0) {
+                                                        $pieceWholesalePrice = (float) $variantData['wholesale_price'];
+                                                    } elseif ($prod && (float) $prod->wholesale_price > 0) {
+                                                        $pieceWholesalePrice = (float) $prod->wholesale_price;
                                                     }
 
                                                     $selStockDisp = '';
@@ -901,9 +914,9 @@
                                                             name="price_per_piece[]"
                                                             value="{{ $item->price }}">
                                                         <input type="hidden" class="retail-price"
-                                                            value="{{ $prod->sale_price_per_piece ?? $item->price }}">
+                                                            value="{{ $pieceRetailPrice }}">
                                                         <input type="hidden" class="wholesale-price"
-                                                            value="{{ $prod->wholesale_price ?? 0 }}">
+                                                            value="{{ $pieceWholesalePrice }}">
                                                         <input type="hidden" class="weight-per-piece"
                                                             value="{{ $variantData['weight_per_piece'] ?? ($prod->weight_per_piece ?? 0) }}">
                                                     </td>

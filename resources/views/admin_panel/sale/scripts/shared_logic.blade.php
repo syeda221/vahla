@@ -1075,6 +1075,22 @@
                 currentMode = 'pcs';
                 $btn.attr('data-unit-mode', 'pcs').text('Pcs').removeClass('btn-outline-success').addClass('btn-outline-info');
                 $row.find('.carton-qty').attr('placeholder', '0');
+
+                // Convert Quantity from Ctn (dot notation) to Pcs
+                const curQtyStr = ($row.find('.carton-qty').val() || '').toString().trim();
+                if (curQtyStr !== '') {
+                    if (curQtyStr.includes('.')) {
+                        const parts = curQtyStr.split('.');
+                        const boxes = parseInt(parts[0]) || 0;
+                        const loose = parseInt(parts[1]) || 0;
+                        const totalPcs = (boxes * packQty) + loose;
+                        $row.find('.carton-qty').val(totalPcs);
+                    } else {
+                        const boxes = parseFloat(curQtyStr) || 0;
+                        $row.find('.carton-qty').val(boxes * packQty);
+                    }
+                }
+
                 if (packQty > 1 && curPrice > 0) {
                     let piecePrice = curPrice / packQty;
                     $priceInp.val(piecePrice % 1 === 0 ? piecePrice : piecePrice.toFixed(2));
@@ -1086,6 +1102,15 @@
                 currentMode = 'ctn';
                 $btn.attr('data-unit-mode', 'ctn').text('Ctn').removeClass('btn-outline-info').addClass('btn-outline-success');
                 $row.find('.carton-qty').attr('placeholder', '0');
+
+                // Convert Quantity from Pcs to Ctn (dot notation)
+                const curPcs = parseFloat($row.find('.carton-qty').val()) || 0;
+                if (curPcs > 0 && packQty > 1) {
+                    const boxes = Math.floor(curPcs / packQty);
+                    const loose = Math.round(curPcs % packQty);
+                    $row.find('.carton-qty').val(loose > 0 ? `${boxes}.${loose}` : boxes);
+                }
+
                 if (packQty > 1 && curPrice > 0) {
                     let cartonPrice = curPrice * packQty;
                     $priceInp.val(cartonPrice % 1 === 0 ? cartonPrice : cartonPrice.toFixed(2));
@@ -1100,11 +1125,15 @@
         } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
             const $priceInp = $row.find('.visible-price');
             let curPrice = parseFloat($priceInp.val()) || 0;
+            const curQty = parseFloat($row.find('.carton-qty').val()) || 0;
 
             if (currentMode === 'kg') {
                 currentMode = 'gm';
                 $btn.text('Gm').removeClass('btn-outline-primary').addClass('btn-outline-info');
                 $row.find('.carton-qty').attr('placeholder', 'Gm');
+                if (curQty > 0) {
+                    $row.find('.carton-qty').val(Math.round(curQty * 1000));
+                }
                 if (curPrice > 0) {
                     let gmPrice = curPrice / 1000;
                     $priceInp.val(gmPrice.toFixed(4).replace(/\.?0+$/, ''));
@@ -1114,6 +1143,9 @@
                 currentMode = 'kg';
                 $btn.text('Kg').removeClass('btn-outline-info').addClass('btn-outline-primary');
                 $row.find('.carton-qty').attr('placeholder', 'Kg');
+                if (curQty > 0) {
+                    $row.find('.carton-qty').val(curQty / 1000);
+                }
                 if (curPrice > 0) {
                     let kgPrice = curPrice * 1000;
                     $priceInp.val(kgPrice % 1 === 0 ? kgPrice : kgPrice.toFixed(2));
@@ -1189,12 +1221,29 @@
         // Inputs -> Calc
         $(document).on('input', '.carton-qty, .loose-pcs-input, .pack-qty, .discount-value, .visible-price',
             function() {
-                // If user manually changes the visible price, also update the hidden price-per-piece
+                // If user manually changes the visible price, also update the hidden price-per-piece and normalized base rate
                 if ($(this).hasClass('visible-price')) {
                     const $row = $(this).closest('tr');
                     const newPrice = toNum($(this).val());
                     $row.find('.price-per-piece').val(newPrice);
-                    $row.find('.retail-price').val(newPrice);
+
+                    const sizeMode = $row.data('size_mode') || $row.find('.size-mode-text').val();
+                    const packQty = parseFloat($row.find('.pack-qty').val()) || 1;
+                    const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'main';
+                    const rowMode = $row.find('.price-mode-row-toggle').attr('data-mode') || 'retail';
+
+                    let baseRate = newPrice;
+                    if (sizeMode === 'by_cartons') {
+                        baseRate = (unitMode === 'pcs' || packQty <= 1) ? newPrice : (newPrice / packQty);
+                    } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
+                        baseRate = (unitMode === 'gm') ? (newPrice * 1000) : newPrice;
+                    }
+
+                    if (rowMode === 'wholesale') {
+                        $row.find('.wholesale-price').val(baseRate);
+                    } else {
+                        $row.find('.retail-price').val(baseRate);
+                    }
                 }
 
                 computeRow($(this).closest('tr'));
