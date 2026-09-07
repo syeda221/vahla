@@ -1921,6 +1921,270 @@ class ReportingController extends Controller
         ]);
     }
 
+    public function download_customer_ledger_pdf(Request $request)
+    {
+        $customerId = $request->customer_id;
+        $zoneId = $request->zone_id;
+        $start = $request->start_date ?: '2000-01-01';
+        $end = $request->end_date ?: date('Y-m-d');
+
+        $balanceService = app(\App\Services\BalanceService::class);
+        $companyName = DB::table('settings')->where('key', 'company_name')->value('value') ?: 'SM NETWORKING';
+
+        if (!$customerId || $customerId === 'all') {
+            $customerIds = \App\Models\JournalEntry::where('party_type', \App\Models\Customer::class)
+                ->distinct()
+                ->pluck('party_id')
+                ->toArray();
+
+            $obCustomerIds = \App\Models\Customer::where('opening_balance', '>', 0)
+                ->pluck('id')
+                ->toArray();
+
+            $allIds = array_unique(array_merge($customerIds, $obCustomerIds));
+
+            if ($zoneId) {
+                $validZoneIds = \App\Models\Customer::where('zone', $zoneId)->pluck('id')->toArray();
+                $allIds = array_intersect($allIds, $validZoneIds);
+            }
+
+            $allTransactions = [];
+            $totalOpening = 0;
+            $totalClosing = 0;
+            $totalDebit = 0;
+            $totalCredit = 0;
+            $totalQty = 0;
+
+            foreach ($allIds as $cid) {
+                $ledgerData = $balanceService->getCustomerLedger($cid, $start, $end);
+                $customerName = $ledgerData['customer']->customer_name ?? 'Unknown';
+                $totalOpening += $ledgerData['opening_balance'];
+
+                foreach ($ledgerData['transactions'] as $row) {
+                    $desc = $row['description'] ?? '';
+                    $sourceType = $row['source_type'] ?? null;
+                    $sourceId = $row['source_id'] ?? null;
+
+                    $details = 'Other';
+                    $bankName = '-';
+                    $refNo = $desc;
+                    $vNo = '-';
+                    $quantity = 0;
+
+                    if ($sourceType === \App\Models\Sale::class || str_contains($desc, 'Sale Invoice') || str_contains($desc, 'Invoice #')) {
+                        $details = 'Sale Invoice';
+                        if (preg_match('/Invoice #(\S+)/', $desc, $matches)) {
+                            $vNo = $matches[1];
+                        }
+                        if ($sourceId) {
+                            $sale = DB::table('sales')->where('id', $sourceId)->first();
+                            if ($sale && ($vNo === '-' || empty($vNo))) {
+                                $vNo = $sale->invoice_no ?? $sale->id;
+                            }
+                            $quantity = (float) DB::table('sale_items')->where('sale_id', $sourceId)->sum(DB::raw('COALESCE(NULLIF(total_pieces, 0), qty, 0)'));
+                        }
+                    } elseif ($sourceType === \App\Models\SaleReturn::class || str_contains($desc, 'Sale Return') || str_contains($desc, 'Return #')) {
+                        $details = 'Sale Return';
+                        if (preg_match('/(?:Sale Return|Return) #(\S+)/', $desc, $matches)) {
+                            $vNo = $matches[1];
+                        }
+                        if ($sourceId) {
+                            $sr = DB::table('sale_returns')->where('id', $sourceId)->first();
+                            if ($sr && ($vNo === '-' || empty($vNo))) {
+                                $vNo = $sr->return_no ?? $sr->id;
+                            }
+                            $quantity = (float) DB::table('sale_return_items')->where('sale_return_id', $sourceId)->sum('qty');
+                        }
+                    } elseif ($sourceType === \App\Models\VoucherMaster::class || $sourceType === \App\Models\ReceiptVoucher::class || str_contains($desc, 'Receipt') || str_contains($desc, 'Payment')) {
+                        $details = ($row['credit'] > 0) ? 'Payment Received' : 'Payment';
+                        if (preg_match('/(?:Receipt|Voucher) #(\S+)/', $desc, $matches)) {
+                            $vNo = $matches[1];
+                        }
+                        $bankName = $this->getPaymentAccountName($sourceType, $sourceId) ?: '-';
+                    } elseif (str_contains($desc, 'Opening Balance')) {
+                        $details = 'Opening Balance';
+                        $vNo = '-';
+                        $refNo = 'Opening Balance (B/F)';
+                    }
+
+                    $entryDate = $row['date'];
+                    if ($entryDate instanceof \Carbon\Carbon) {
+                        $formattedDate = $entryDate->format('d/m/Y');
+                        $sortDate = $entryDate->format('Y-m-d');
+                    } else {
+                        $formattedDate = \Carbon\Carbon::parse($entryDate)->format('d/m/Y');
+                        $sortDate = \Carbon\Carbon::parse($entryDate)->format('Y-m-d');
+                    }
+
+                    $deb = (float) ($row['debit'] ?? 0);
+                    $crd = (float) ($row['credit'] ?? 0);
+                    $totalDebit += $deb;
+                    $totalCredit += $crd;
+                    $totalQty += $quantity;
+
+                    $allTransactions[] = [
+                        'sort_date' => $sortDate,
+                        'date' => $formattedDate,
+                        'details' => $details,
+                        'bank_name' => $bankName,
+                        'ref_no' => $refNo,
+                        'v_no' => $vNo,
+                        'quantity' => $quantity != 0 ? $quantity : 0,
+                        'customer_name' => $customerName,
+                        'debit' => $deb,
+                        'credit' => $crd,
+                        'balance' => $row['balance'] ?? 0,
+                    ];
+                }
+
+                $totalClosing += $ledgerData['closing_balance'] ?? $ledgerData['opening_balance'];
+            }
+
+            usort($allTransactions, function ($a, $b) {
+                return strcmp($a['sort_date'], $b['sort_date']);
+            });
+
+            $running = $totalOpening;
+            foreach ($allTransactions as &$t) {
+                $running += ($t['debit'] - $t['credit']);
+                $t['balance'] = $running;
+            }
+
+            $customer = (object) [
+                'id' => '-',
+                'customer_name' => 'All Customers',
+                'address' => '',
+                'city' => '',
+                'phone' => ''
+            ];
+            $transactions = $allTransactions;
+            $opening_balance = $totalOpening;
+            $closing_balance = $running;
+        } else {
+            $customer = DB::table('customers')->where('id', $customerId)->first();
+            if (!$customer) {
+                return redirect()->back()->with('error', 'Customer not found');
+            }
+
+            $ledgerData = $balanceService->getCustomerLedger($customerId, $start, $end);
+            $totalDebit = 0;
+            $totalCredit = 0;
+            $totalQty = 0;
+
+            $transactions = collect($ledgerData['transactions'])->map(function ($row) use ($customer, &$totalDebit, &$totalCredit, &$totalQty) {
+                $desc = $row['description'] ?? '';
+                $sourceType = $row['source_type'] ?? null;
+                $sourceId = $row['source_id'] ?? null;
+
+                $details = 'Other';
+                $bankName = '-';
+                $refNo = $desc;
+                $vNo = '-';
+                $quantity = 0;
+
+                if ($sourceType === \App\Models\Sale::class || str_contains($desc, 'Sale Invoice') || str_contains($desc, 'Invoice #')) {
+                    $details = 'Sale Invoice';
+                    if (preg_match('/Invoice #(\S+)/', $desc, $matches)) {
+                        $vNo = $matches[1];
+                    }
+                    if ($sourceId) {
+                        $sale = DB::table('sales')->where('id', $sourceId)->first();
+                        if ($sale && ($vNo === '-' || empty($vNo))) {
+                            $vNo = $sale->invoice_no ?? $sale->id;
+                        }
+                        $quantity = (float) DB::table('sale_items')->where('sale_id', $sourceId)->sum(DB::raw('COALESCE(NULLIF(total_pieces, 0), qty, 0)'));
+                    }
+                } elseif ($sourceType === \App\Models\SaleReturn::class || str_contains($desc, 'Sale Return') || str_contains($desc, 'Return #')) {
+                    $details = 'Sale Return';
+                    if (preg_match('/(?:Sale Return|Return) #(\S+)/', $desc, $matches)) {
+                        $vNo = $matches[1];
+                    }
+                    if ($sourceId) {
+                        $sr = DB::table('sale_returns')->where('id', $sourceId)->first();
+                        if ($sr && ($vNo === '-' || empty($vNo))) {
+                            $vNo = $sr->return_no ?? $sr->id;
+                        }
+                        $quantity = (float) DB::table('sale_return_items')->where('sale_return_id', $sourceId)->sum('qty');
+                    }
+                } elseif ($sourceType === \App\Models\VoucherMaster::class || $sourceType === \App\Models\ReceiptVoucher::class || str_contains($desc, 'Receipt') || str_contains($desc, 'Payment')) {
+                    $details = ($row['credit'] > 0) ? 'Payment Received' : 'Payment';
+                    if (preg_match('/(?:Receipt|Voucher) #(\S+)/', $desc, $matches)) {
+                        $vNo = $matches[1];
+                    }
+                    $bankName = $this->getPaymentAccountName($sourceType, $sourceId) ?: '-';
+                } elseif (str_contains($desc, 'Opening Balance')) {
+                    $details = 'Opening Balance';
+                    $vNo = '-';
+                    $refNo = 'Opening Balance (B/F)';
+                }
+
+                $entryDate = $row['date'];
+                if ($entryDate instanceof \Carbon\Carbon) {
+                    $formattedDate = $entryDate->format('d/m/Y');
+                    $sortDate = $entryDate->format('Y-m-d');
+                } else {
+                    $formattedDate = \Carbon\Carbon::parse($entryDate)->format('d/m/Y');
+                    $sortDate = \Carbon\Carbon::parse($entryDate)->format('Y-m-d');
+                }
+
+                $deb = (float) ($row['debit'] ?? 0);
+                $crd = (float) ($row['credit'] ?? 0);
+                $totalDebit += $deb;
+                $totalCredit += $crd;
+                $totalQty += $quantity;
+
+                return [
+                    'sort_date' => $sortDate,
+                    'date' => $formattedDate,
+                    'details' => $details,
+                    'bank_name' => $bankName,
+                    'ref_no' => $refNo,
+                    'v_no' => $vNo,
+                    'quantity' => $quantity != 0 ? $quantity : 0,
+                    'invoice' => $vNo,
+                    'description' => $desc,
+                    'customer_name' => $customer->customer_name ?? '',
+                    'debit' => $deb,
+                    'credit' => $crd,
+                    'balance' => $row['balance'] ?? 0,
+                ];
+            });
+
+            $opening_balance = (float) $ledgerData['opening_balance'];
+            $closing_balance = (float) ($ledgerData['closing_balance'] ?? $opening_balance);
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin_panel.reporting.customer_ledger_pdf', [
+            'customer' => $customer,
+            'transactions' => $transactions,
+            'opening_balance' => $opening_balance,
+            'closing_balance' => $closing_balance,
+            'total_debit' => $totalDebit,
+            'total_credit' => $totalCredit,
+            'total_qty' => $totalQty,
+            'start' => $start,
+            'end' => $end,
+            'companyName' => $companyName,
+        ])->setPaper('a4', 'portrait');
+
+        $safeName = preg_replace('/[^A-Za-z0-9_\-]/', '_', $customer->customer_name ?? 'Customer');
+        $filename = 'Customer_Statement_' . $safeName . '_' . date('d_m_Y_His') . '.pdf';
+
+        if ($request->ajax() || $request->get('ajax') == '1' || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'filename' => $filename,
+                'pdf_base64' => base64_encode($pdf->output())
+            ]);
+        }
+
+        if ($request->get('view') == '1' || $request->get('stream') == '1') {
+            return $pdf->stream($filename);
+        }
+
+        return $pdf->download($filename);
+    }
+
     /**
      * Get the payment account name from voucher source
      */

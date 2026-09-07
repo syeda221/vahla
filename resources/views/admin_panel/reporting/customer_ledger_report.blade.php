@@ -90,18 +90,24 @@
         position: sticky;
         top: 0;
         z-index: 10;
-        background-color: #000000 !important;
-        color: #ffffff !important;
-        font-size: .78rem;
-        font-weight: 700;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        font-size: .80rem;
+        font-weight: 800;
         padding: 9px 10px;
-        border: 1px solid #222222;
+        border-top: 3px solid #000000 !important;
+        border-bottom: 2px solid #000000 !important;
+        border-left: none !important;
+        border-right: none !important;
         white-space: nowrap;
         letter-spacing: 0.2px;
     }
     .report-table tbody td {
         padding: 7px 10px;
-        border: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb !important;
+        border-top: none !important;
+        border-left: none !important;
+        border-right: none !important;
         color: #000000;
         font-size: .80rem;
     }
@@ -152,12 +158,15 @@
                     </div>
 
                     {{-- Last Buttons with X-Axis Gap --}}
-                    <div class="d-flex align-items-center ms-auto" style="gap: 10px !important;">
-                        <button type="button" class="btn btn-primary btn-sm px-3 fw-bold d-inline-flex align-items-center btnSearchTrigger" style="height: 32px; border-radius: 6px; font-size: .78rem; margin-right: 8px !important;">
+                    <div class="d-flex align-items-center ms-auto flex-wrap" style="gap: 8px !important;">
+                        <button type="button" class="btn btn-primary btn-sm px-3 fw-bold d-inline-flex align-items-center btnSearchTrigger" style="height: 32px; border-radius: 6px; font-size: .78rem;">
                             <i class="fas fa-filter me-1"></i> Generate
                         </button>
-                        <button type="button" class="btn btn-light border btn-sm px-3 fw-bold text-secondary d-inline-flex align-items-center btnResetTrigger" style="height: 32px; border-radius: 6px; font-size: .78rem; margin-right: 8px !important;">
+                        <button type="button" class="btn btn-light border btn-sm px-3 fw-bold text-secondary d-inline-flex align-items-center btnResetTrigger" style="height: 32px; border-radius: 6px; font-size: .78rem;">
                             <i class="fas fa-undo me-1"></i> Reset
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm px-3 fw-bold d-inline-flex align-items-center btnDownloadPdf" style="height: 32px; border-radius: 6px; font-size: .78rem;">
+                            <i class="fas fa-file-pdf me-1"></i> PDF
                         </button>
                         <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold d-inline-flex align-items-center btnPrintReport" style="height: 32px; border-radius: 6px; font-size: .78rem;">
                             <i class="fas fa-print me-1"></i> Print
@@ -263,11 +272,14 @@
                         </button>
                     </div>
 
-                    {{-- 6. Centralized Reset & Print Actions With Horizontal Gap --}}
+                    {{-- 6. Centralized Reset, PDF, Excel & Print Actions --}}
                     <div class="col-12">
-                        <div class="d-flex align-items-center justify-content-center gap-2 pt-1" style="gap: 10px !important;">
-                            <button type="button" class="btn btn-light border btn-sm flex-fill fw-bold text-secondary btnResetTrigger" style="font-size: 11px; margin-right: 8px !important;">
+                        <div class="d-flex align-items-center justify-content-center gap-1 pt-1 flex-wrap">
+                            <button type="button" class="btn btn-light border btn-sm flex-fill fw-bold text-secondary btnResetTrigger" style="font-size: 11px;">
                                 <i class="fas fa-undo me-1"></i> Reset
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm flex-fill fw-bold btnDownloadPdf" style="font-size: 11px;">
+                                <i class="fas fa-file-pdf me-1"></i> PDF
                             </button>
                             <button type="button" class="btn btn-outline-secondary btn-sm flex-fill fw-bold btnPrintReport" style="font-size: 11px;">
                                 <i class="fas fa-print me-1"></i> Print
@@ -458,6 +470,81 @@
             });
 
             $('.btnPrintReport').on('click', () => window.print());
+
+            // Helper: Convert Base64 string to Blob
+            function base64ToPdfBlob(base64Data) {
+                let byteCharacters = atob(base64Data);
+                let byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                let byteArray = new Uint8Array(byteNumbers);
+                return new Blob([byteArray], { type: 'application/pdf' });
+            }
+
+            // Direct Smooth PDF Download via In-Memory Blob (Prevents IDM Interception)
+            $('.btnDownloadPdf').on('click', function() {
+                let $btn = $(this);
+                let origText = $btn.html();
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Generating PDF...');
+
+                let zid = $(".zoneSelect").val() || '';
+                let cid = $(".customerSelect").val() || 'all';
+                let start = $(".startDateInput").val() || '2000-01-01';
+                let end = $(".endDateInput").val() || '{{ date("Y-m-d") }}';
+                let custName = $(".customerSelect option:selected").text() || 'Customer';
+                let safeName = custName.replace(/[^A-Za-z0-9_\-]/g, '_').trim();
+
+                $.ajax({
+                    url: "{{ route('report.customer.ledger.pdf') }}",
+                    type: "GET",
+                    data: {
+                        zone_id: zid,
+                        customer_id: cid,
+                        start_date: start,
+                        end_date: end,
+                        ajax: '1',
+                        _t: new Date().getTime()
+                    },
+                    dataType: "json",
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    success: function(res) {
+                        if (res && res.success && res.pdf_base64) {
+                            let blob = base64ToPdfBlob(res.pdf_base64);
+                            let blobUrl = window.URL.createObjectURL(blob);
+                            let a = document.createElement('a');
+                            a.style.display = 'none';
+                            a.href = blobUrl;
+                            a.download = res.filename || ('Customer_Statement_' + safeName + '_' + new Date().getTime() + '.pdf');
+                            document.body.appendChild(a);
+                            a.click();
+                            setTimeout(() => {
+                                window.URL.revokeObjectURL(blobUrl);
+                                document.body.removeChild(a);
+                            }, 1000);
+                        } else {
+                            if (typeof toastr !== 'undefined') {
+                                toastr.error('Could not generate PDF.');
+                            } else {
+                                alert('Could not generate PDF.');
+                            }
+                        }
+                        $btn.prop('disabled', false).html(origText);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('PDF error:', error);
+                        if (typeof toastr !== 'undefined') {
+                            toastr.error('Failed to generate PDF. Please try again.');
+                        } else {
+                            alert('Failed to generate PDF. Please try again.');
+                        }
+                        $btn.prop('disabled', false).html(origText);
+                    }
+                });
+            });
 
             function loadLedger() {
                 let zid = $(".zoneSelect").val();

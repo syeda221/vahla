@@ -67,10 +67,9 @@
                             </div>
                             <div class="col-md-2 d-flex align-items-end">
                                 <div class="d-flex w-100 gap-2">
-                                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter"></i>
-                                        Filter</button>
-                                    <a href="{{ route('customers.ledger') }}" class="btn btn-outline-secondary"><i
-                                            class="bi bi-arrow-clockwise"></i></a>
+                                    <button type="submit" class="btn btn-primary"><i class="bi bi-filter"></i> Filter</button>
+                                    <button type="button" class="btn btn-danger btnDownloadPdfDirect" title="Download PDF"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                                    <a href="{{ route('customers.ledger') }}" class="btn btn-outline-secondary" title="Reset"><i class="bi bi-arrow-clockwise"></i></a>
                                 </div>
                             </div>
                         </form>
@@ -113,18 +112,18 @@
 
                         <!-- Ledger Table -->
                         <div class="table-responsive">
-                            <table class="table table-bordered table-hover align-middle" id="ledger-table" style="font-size: .80rem; border: 1px solid #000000;">
-                                <thead style="background-color: #000000; color: #ffffff;">
+                            <table class="table table-hover align-middle" id="ledger-table" style="font-size: .80rem;">
+                                <thead>
                                     <tr>
-                                        <th width="9%" class="text-center" style="background-color: #000000; color: #fff; border: 1px solid #222;">Date</th>
-                                        <th width="12%" style="background-color: #000000; color: #fff; border: 1px solid #222;">Details</th>
-                                        <th width="14%" style="background-color: #000000; color: #fff; border: 1px solid #222;">Bank Name</th>
-                                        <th width="20%" style="background-color: #000000; color: #fff; border: 1px solid #222;">Ref No.</th>
-                                        <th width="9%" class="text-center" style="background-color: #000000; color: #fff; border: 1px solid #222;">V No.</th>
-                                        <th width="8%" class="text-center" style="background-color: #000000; color: #fff; border: 1px solid #222;">Quantity</th>
-                                        <th width="9%" class="text-end" style="background-color: #000000; color: #fff; border: 1px solid #222;">Debit</th>
-                                        <th width="9%" class="text-end" style="background-color: #000000; color: #fff; border: 1px solid #222;">Credit</th>
-                                        <th width="10%" class="text-end" style="background-color: #000000; color: #fff; border: 1px solid #222;">Balance</th>
+                                        <th width="9%" class="text-center" style="background-color: #ffffff; color: #000000; font-weight: 800; border-top: 3px solid #000; border-bottom: 2px solid #000; border-left: none; border-right: none;">Date</th>
+                                        <th width="12%" style="background-color: #ffffff; color: #000000; font-weight: 800; border-top: 3px solid #000; border-bottom: 2px solid #000; border-left: none; border-right: none;">Details</th>
+                                        <th width="14%" style="background-color: #ffffff; color: #000000; font-weight: 800; border-top: 3px solid #000; border-bottom: 2px solid #000; border-left: none; border-right: none;">Bank Name</th>
+                                        <th width="20%" style="background-color: #ffffff; color: #000000; font-weight: 800; border-top: 3px solid #000; border-bottom: 2px solid #000; border-left: none; border-right: none;">Ref No.</th>
+                                        <th width="9%" class="text-center" style="background-color: #ffffff; color: #000000; font-weight: 800; border-top: 3px solid #000; border-bottom: 2px solid #000; border-left: none; border-right: none;">V. No.</th>
+                                        <th width="8%" class="text-center" style="background-color: #ffffff; color: #000000; font-weight: 800; border-top: 3px solid #000; border-bottom: 2px solid #000; border-left: none; border-right: none;">Quantity</th>
+                                        <th width="9%" class="text-end" style="background-color: #ffffff; color: #000000; font-weight: 800; border-top: 3px solid #000; border-bottom: 2px solid #000; border-left: none; border-right: none;">Debit</th>
+                                        <th width="9%" class="text-end" style="background-color: #ffffff; color: #000000; font-weight: 800; border-top: 3px solid #000; border-bottom: 2px solid #000; border-left: none; border-right: none;">Credit</th>
+                                        <th width="10%" class="text-end" style="background-color: #ffffff; color: #000000; font-weight: 800; border-top: 3px solid #000; border-bottom: 2px solid #000; border-left: none; border-right: none;">Balance</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -212,6 +211,64 @@
             if ($('.select2').length > 0) {
                 $('.select2').select2();
             }
+
+            $('.btnDownloadPdfDirect').on('click', function() {
+                let $btn = $(this);
+                let origText = $btn.html();
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+                let cid = $('select[name="customer_id"]').val() || 'all';
+                let start = $('input[name="from_date"]').val() || '2000-01-01';
+                let end = $('input[name="to_date"]').val() || '{{ date("Y-m-d") }}';
+                let custName = $('select[name="customer_id"] option:selected').text() || 'Customer';
+                let safeName = custName.replace(/[^A-Za-z0-9_\-]/g, '_').trim();
+
+                $.ajax({
+                    url: "{{ route('report.customer.ledger.pdf') }}",
+                    type: "GET",
+                    data: {
+                        customer_id: cid,
+                        start_date: start,
+                        end_date: end,
+                        ajax: '1',
+                        _t: new Date().getTime()
+                    },
+                    dataType: "json",
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    success: function(res) {
+                        if (res && res.success && res.pdf_base64) {
+                            let byteCharacters = atob(res.pdf_base64);
+                            let byteNumbers = new Array(byteCharacters.length);
+                            for (let i = 0; i < byteCharacters.length; i++) {
+                                byteNumbers[i] = byteCharacters.charCodeAt(i);
+                            }
+                            let byteArray = new Uint8Array(byteNumbers);
+                            let blob = new Blob([byteArray], { type: 'application/pdf' });
+                            let blobUrl = window.URL.createObjectURL(blob);
+                            let a = document.createElement('a');
+                            a.style.display = 'none';
+                            a.href = blobUrl;
+                            a.download = res.filename || ('Customer_Statement_' + safeName + '_' + new Date().getTime() + '.pdf');
+                            document.body.appendChild(a);
+                            a.click();
+                            setTimeout(() => {
+                                window.URL.revokeObjectURL(blobUrl);
+                                document.body.removeChild(a);
+                            }, 1000);
+                        } else {
+                            alert('Could not generate PDF.');
+                        }
+                        $btn.prop('disabled', false).html(origText);
+                    },
+                    error: function() {
+                        alert('Failed to generate PDF. Please try again.');
+                        $btn.prop('disabled', false).html(origText);
+                    }
+                });
+            });
         });
     </script>
 @endpush

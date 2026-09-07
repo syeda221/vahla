@@ -486,6 +486,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('report/customer/ledger', [ReportingController::class, 'customer_ledger_report'])->middleware('permission:customer.ledger.view')->name('report.customer.ledger');
     Route::get('report/customer-ledger/fetch', [ReportingController::class, 'fetch_customer_ledger'])->middleware('permission:customer.ledger.view')->name('report.customer.ledger.fetch');
+    Route::get('report/customer-ledger/pdf', [ReportingController::class, 'download_customer_ledger_pdf'])->middleware('permission:customer.ledger.view')->name('report.customer.ledger.pdf');
 
     Route::get('report/profit-loss', [ReportingController::class, 'profit_loss_report'])->middleware('permission:profit.loss.report.view')->name('report.profit_loss');
     Route::post('report/profit-loss/fetch', [ReportingController::class, 'fetchProfitLoss'])->middleware('permission:profit.loss.report.view')->name('report.profit_loss.fetch');
