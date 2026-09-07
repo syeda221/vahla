@@ -113,54 +113,88 @@
 
                         <!-- Ledger Table -->
                         <div class="table-responsive">
-                            <table class="table table-bordered table-striped table-hover table-ledger" id="ledger-table">
-                                <thead>
+                            <table class="table table-bordered table-hover align-middle" id="ledger-table" style="font-size: .80rem; border: 1px solid #000000;">
+                                <thead style="background-color: #000000; color: #ffffff;">
                                     <tr>
-                                        <th width="5%">#</th>
-                                        <th width="12%">Date</th>
-                                        <th width="18%">Customer</th>
-                                        <th width="30%">Description / Particulars</th>
-                                        <th width="10%" class="text-end">Debit (Dr)</th>
-                                        <th width="10%" class="text-end">Credit (Cr)</th>
-                                        <th width="15%" class="text-end">Balance</th>
+                                        <th width="9%" class="text-center" style="background-color: #000000; color: #fff; border: 1px solid #222;">Date</th>
+                                        <th width="12%" style="background-color: #000000; color: #fff; border: 1px solid #222;">Details</th>
+                                        <th width="14%" style="background-color: #000000; color: #fff; border: 1px solid #222;">Bank Name</th>
+                                        <th width="20%" style="background-color: #000000; color: #fff; border: 1px solid #222;">Ref No.</th>
+                                        <th width="9%" class="text-center" style="background-color: #000000; color: #fff; border: 1px solid #222;">V No.</th>
+                                        <th width="8%" class="text-center" style="background-color: #000000; color: #fff; border: 1px solid #222;">Quantity</th>
+                                        <th width="9%" class="text-end" style="background-color: #000000; color: #fff; border: 1px solid #222;">Debit</th>
+                                        <th width="9%" class="text-end" style="background-color: #000000; color: #fff; border: 1px solid #222;">Credit</th>
+                                        <th width="10%" class="text-end" style="background-color: #000000; color: #fff; border: 1px solid #222;">Balance</th>
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    @if(request('customer_id'))
+                                        <tr class="bg-light fw-bold">
+                                            <td class="text-center">-</td>
+                                            <td>Opening Balance</td>
+                                            <td class="text-center">-</td>
+                                            <td>Opening Balance (B/F)</td>
+                                            <td class="text-center">-</td>
+                                            <td class="text-center">0</td>
+                                            <td class="text-end">-</td>
+                                            <td class="text-end">-</td>
+                                            <td class="text-end text-dark">{{ number_format($opening_balance ?? 0, 2) }}</td>
+                                        </tr>
+                                    @endif
+
+                                    @php
+                                        $totQty = 0;
+                                        $totDeb = 0;
+                                        $totCrd = 0;
+                                    @endphp
+
                                     @forelse ($CustomerLedgers as $key => $ledger)
                                         @php
-                                            // Ledger object now has explicit debit/credit from Controller/BalanceService
                                             $debit = $ledger->debit ?? 0;
                                             $credit = $ledger->credit ?? 0;
+                                            $qty = $ledger->quantity ?? 0;
                                             $balance = $ledger->closing_balance;
-                                            $suffix = $balance >= 0 ? 'Dr' : 'Cr';
+                                            $totDeb += $debit;
+                                            $totCrd += $credit;
+                                            $totQty += $qty;
                                         @endphp
                                         <tr>
-                                            <td>{{ $loop->iteration }}</td>
-                                            <td>{{ $ledger->created_at->format('d/m/Y') }}</td>
-                                            <td class="fw-bold">{{ $ledger->customer->customer_name ?? 'N/A' }}</td>
-                                            <td>
-                                                {{ $ledger->description }}
+                                            <td class="text-center">{{ $ledger->created_at->format('d/m/Y') }}</td>
+                                            <td><span class="fw-semibold text-dark">{{ $ledger->details ?? '-' }}</span></td>
+                                            <td class="text-dark small">{{ $ledger->bank_name && $ledger->bank_name !== '-' ? $ledger->bank_name : '' }}</td>
+                                            <td class="small text-break text-dark">{{ $ledger->ref_no ?? $ledger->description ?? '' }}</td>
+                                            <td class="text-center font-monospace fw-semibold text-dark">{{ $ledger->v_no && $ledger->v_no !== '-' ? $ledger->v_no : '' }}</td>
+                                            <td class="text-center fw-semibold text-dark">{{ $qty != 0 ? number_format($qty) : '0' }}</td>
+                                            <td class="text-end text-dark">
+                                                {{ $debit > 0 ? number_format($debit, 2) : '' }}
                                             </td>
-                                            <td class="text-end text-success">
-                                                {{ $debit > 0 ? number_format($debit, 2) : '-' }}
+                                            <td class="text-end text-dark">
+                                                {{ $credit > 0 ? number_format($credit, 2) : '' }}
                                             </td>
-                                            <td class="text-end text-danger">
-                                                {{ $credit > 0 ? number_format($credit, 2) : '-' }}
-                                            </td>
-                                            <td class="text-end fw-bold">
-                                                {{ number_format(abs($balance), 2) }}
-                                                <small class="text-muted">{{ $suffix }}</small>
+                                            <td class="text-end fw-bold text-dark">
+                                                {{ number_format($balance, 2) }}
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="7" class="text-center text-muted py-4">
+                                            <td colspan="9" class="text-center text-muted py-4">
                                                 <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
                                                 No transactions found in this period.
                                             </td>
                                         </tr>
                                     @endforelse
                                 </tbody>
+                                @if(request('customer_id') && $CustomerLedgers->count() > 0)
+                                    <tfoot style="border-top: 2px solid #000000 !important; border-bottom: 2px solid #000000 !important; background-color: #ffffff;">
+                                        <tr class="fw-bold bg-white">
+                                            <td colspan="5" class="text-end fw-bold text-dark"></td>
+                                            <td class="text-center fw-bold text-dark">{{ number_format($totQty) }}</td>
+                                            <td class="text-end fw-bold text-dark">{{ $totDeb > 0 ? number_format($totDeb, 2) : '' }}</td>
+                                            <td class="text-end fw-bold text-dark">{{ $totCrd > 0 ? number_format($totCrd, 2) : '' }}</td>
+                                            <td class="text-end fw-bold text-dark">{{ number_format($closing_balance ?? 0, 2) }}</td>
+                                        </tr>
+                                    </tfoot>
+                                @endif
                             </table>
                         </div>
 

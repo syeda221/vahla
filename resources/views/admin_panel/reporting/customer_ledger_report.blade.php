@@ -70,40 +70,48 @@
         font-weight: 800;
     }
 
-    /* Table Styling with Sticky Header */
+    /* Table Styling with Sticky Header - Statement Accounting Theme */
     .sale-table-wrap {
         height: calc(100vh - 250px);
         max-height: calc(100vh - 250px);
-        min-height: 380px;
+        min-height: 400px;
         overflow-y: auto;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
+        border: 1px solid #000000;
+        border-radius: 4px;
         background: #ffffff;
     }
     .report-table {
-        font-size: .78rem;
+        font-size: .80rem;
         margin-bottom: 0;
+        color: #000000;
+        border-collapse: collapse;
     }
     .report-table thead th {
         position: sticky;
         top: 0;
         z-index: 10;
-        background-color: #1e293b !important;
+        background-color: #000000 !important;
         color: #ffffff !important;
-        font-size: .75rem;
+        font-size: .78rem;
         font-weight: 700;
         padding: 9px 10px;
-        border-bottom: 2px solid #334155;
+        border: 1px solid #222222;
         white-space: nowrap;
+        letter-spacing: 0.2px;
+    }
+    .report-table tbody td {
+        padding: 7px 10px;
+        border: 1px solid #e5e7eb;
+        color: #000000;
+        font-size: .80rem;
+    }
+    .report-table tbody tr:hover {
+        background-color: #f8fafc;
     }
 
-    .balance-positive {
-        color: #16a34a;
-        font-weight: bold;
-    }
-    .balance-negative {
-        color: #dc2626;
-        font-weight: bold;
+    .balance-text {
+        font-weight: 700;
+        color: #000000;
     }
 
     @media print {
@@ -349,13 +357,15 @@
                     <table class="table table-bordered table-hover align-middle mb-0 report-table">
                         <thead>
                             <tr>
-                                <th style="width: 10%;">Date</th>
-                                <th style="width: 12%;">Ref / Invoice</th>
-                                <th style="width: 18%;">Customer</th>
-                                <th>Description</th>
-                                <th style="width: 12%;">Debit (Dr)</th>
-                                <th style="width: 12%;">Credit (Cr)</th>
-                                <th style="width: 14%;">Balance</th>
+                                <th style="width: 9%;" class="text-center">Date</th>
+                                <th style="width: 12%;">Details</th>
+                                <th style="width: 14%;">Bank Name</th>
+                                <th style="width: 18%;">Ref No.</th>
+                                <th style="width: 9%;" class="text-center">V No.</th>
+                                <th style="width: 8%;" class="text-center">Quantity</th>
+                                <th style="width: 10%;" class="text-end">Debit</th>
+                                <th style="width: 10%;" class="text-end">Credit</th>
+                                <th style="width: 10%;" class="text-end">Balance</th>
                             </tr>
                         </thead>
                         <tbody id="ledgerBody"></tbody>
@@ -477,12 +487,13 @@
                             <small class="text-muted">Period: <strong>${displayStart}</strong> to <strong>${displayEnd}</strong></small>
                         </div>
                         <div>
-                             <span class="badge bg-primary text-white p-2 shadow-sm font-monospace">Statement of Account</span>
+                             <span class="badge bg-primary text-white p-2 shadow-sm font-monospace">Customer Ledger</span>
                         </div>
                     `);
 
                     let totalDebit = 0;
                     let totalCredit = 0;
+                    let totalQty = 0;
                     let lastBalance = parseFloat(res.opening_balance);
 
                     // Update Top Metrics (Desktop & Mobile)
@@ -493,13 +504,15 @@
                     let html = `
                         <tr class="bg-light fw-bold">
                             <td class="text-center">-</td>
+                            <td>Opening Balance</td>
                             <td class="text-center">-</td>
+                            <td>Opening Balance (B/F)</td>
                             <td class="text-center">-</td>
-                            <td class="text-start">Opening Balance (B/F)</td>
+                            <td class="text-center">0</td>
                             <td class="text-end">-</td>
                             <td class="text-end">-</td>
                             <td class="text-end text-dark">
-                                Rs ${lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2})} 
+                                ${lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                             </td>
                         </tr>
                     `;
@@ -508,7 +521,7 @@
                         <div class="mob-card p-2.5 p-2 mb-2 bg-light">
                             <div class="d-flex justify-content-between align-items-center">
                                 <strong class="text-dark" style="font-size: 12.5px;">Opening Balance (B/F)</strong>
-                                <strong class="text-dark" style="font-size: 13px;">Rs ${lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</strong>
+                                <strong class="text-dark" style="font-size: 13px;">Rs ${lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
                             </div>
                         </div>
                     `;
@@ -516,8 +529,10 @@
                     res.transactions.forEach((t, i) => {
                         let debit = t.debit && t.debit > 0 ? parseFloat(t.debit) : 0;
                         let credit = t.credit && t.credit > 0 ? parseFloat(t.credit) : 0;
+                        let qty = t.quantity ? parseFloat(t.quantity) : 0;
                         totalDebit += debit;
                         totalCredit += credit;
+                        totalQty += qty;
                         lastBalance = parseFloat(t.balance);
 
                         let balLabel = lastBalance >= 0 ? 'Dr' : 'Cr';
@@ -528,14 +543,15 @@
                         html += `
                             <tr>
                                 <td class="text-center small text-nowrap">${t.date}</td>
-                                <td class="text-center"><span class="badge bg-light text-primary border font-monospace">${t.invoice ?? '-'}</span></td>
-                                <td class="fw-bold text-dark">${custName}</td>
-                                <td class="text-start">${t.description}</td>
-                                <td class="text-end text-danger fw-semibold">${debit > 0 ? 'Rs ' + debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
-                                <td class="text-end text-success fw-semibold">${credit > 0 ? 'Rs ' + credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
-                                <td class="text-end fw-bold ${balClass}">
-                                    Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} 
-                                    <small class="text-muted" style="font-size:0.75em">${balLabel}</small>
+                                <td><span class="fw-semibold text-dark">${t.details || '-'}</span></td>
+                                <td class="small text-dark">${t.bank_name && t.bank_name !== '-' ? t.bank_name : ''}</td>
+                                <td class="small text-break text-dark">${t.ref_no || ''}</td>
+                                <td class="text-center font-monospace fw-semibold text-dark">${t.v_no && t.v_no !== '-' ? t.v_no : (t.invoice && t.invoice !== '-' ? t.invoice : '')}</td>
+                                <td class="text-center fw-semibold text-dark">${qty !== 0 ? qty.toLocaleString() : '0'}</td>
+                                <td class="text-end text-dark">${debit > 0 ? debit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : ''}</td>
+                                <td class="text-end text-dark">${credit > 0 ? credit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : ''}</td>
+                                <td class="text-end fw-bold text-dark">
+                                    ${lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                 </td>
                             </tr>
                         `;
@@ -544,26 +560,30 @@
                         mobHtml += `
                             <div class="mob-card p-2.5 p-2 mb-2">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="badge bg-light text-primary border font-monospace">${t.invoice ?? 'REF'}</span>
+                                    <span class="badge bg-light text-dark border font-monospace">${t.v_no || t.invoice || 'REF'}</span>
                                     <small class="text-muted" style="font-size: 10.5px;">${t.date}</small>
                                 </div>
                                 <div class="mb-1">
-                                    <strong class="text-dark d-block" style="font-size: 12.5px;">${custName}</strong>
-                                    <small class="text-muted d-block" style="font-size: 11px;">${t.description}</small>
+                                    <strong class="text-dark d-block" style="font-size: 12.5px;">${t.details || 'Transaction'} ${t.bank_name && t.bank_name !== '-' ? '('+t.bank_name+')' : ''}</strong>
+                                    <small class="text-muted d-block" style="font-size: 11px;">${t.ref_no || '-'}</small>
                                 </div>
                                 <div class="border-top pt-2 mt-1">
                                     <div class="row g-1 text-center" style="font-size: 11px;">
-                                        <div class="col-4 border-end">
-                                            <span class="text-muted d-block" style="font-size: 10px;">Debit (Dr)</span>
-                                            <strong class="text-danger">${debit > 0 ? 'Rs ' + debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</strong>
+                                        <div class="col-3 border-end">
+                                            <span class="text-muted d-block" style="font-size: 10px;">Qty</span>
+                                            <strong class="text-dark">${qty !== 0 ? qty.toLocaleString() : '0'}</strong>
                                         </div>
-                                        <div class="col-4 border-end">
-                                            <span class="text-muted d-block" style="font-size: 10px;">Credit (Cr)</span>
-                                            <strong class="text-success">${credit > 0 ? 'Rs ' + credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</strong>
+                                        <div class="col-3 border-end">
+                                            <span class="text-muted d-block" style="font-size: 10px;">Debit</span>
+                                            <strong class="text-dark">${debit > 0 ? debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</strong>
                                         </div>
-                                        <div class="col-4">
+                                        <div class="col-3 border-end">
+                                            <span class="text-muted d-block" style="font-size: 10px;">Credit</span>
+                                            <strong class="text-dark">${credit > 0 ? credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</strong>
+                                        </div>
+                                        <div class="col-3">
                                             <span class="text-muted d-block" style="font-size: 10px;">Balance</span>
-                                            <strong class="${balClass}">Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} <small>${balLabel}</small></strong>
+                                            <strong class="text-dark">${lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</strong>
                                         </div>
                                     </div>
                                 </div>
@@ -571,13 +591,14 @@
                         `;
                     });
 
-                    // Totals Row
+                    // Totals Row (Matching Reference Statement)
                     html += `
-                        <tr class="fw-bold bg-light">
-                            <td colspan="4" class="text-end text-dark">Totals:</td>
-                            <td class="text-end text-danger">Rs ${totalDebit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                            <td class="text-end text-success">Rs ${totalCredit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                            <td class="text-end ${lastBalance >= 0 ? 'balance-positive' : 'balance-negative'}">Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} ${lastBalance >= 0 ? 'Dr' : 'Cr'}</td>
+                        <tr class="fw-bold bg-white" style="border-top: 2px solid #000000 !important; border-bottom: 2px solid #000000 !important;">
+                            <td colspan="5" class="text-end fw-bold text-dark"></td>
+                            <td class="text-center fw-bold text-dark">${totalQty.toLocaleString()}</td>
+                            <td class="text-end fw-bold text-dark">${totalDebit > 0 ? totalDebit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : ''}</td>
+                            <td class="text-end fw-bold text-dark">${totalCredit > 0 ? totalCredit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : ''}</td>
+                            <td class="text-end fw-bold text-dark">${lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                         </tr>
                     `;
 

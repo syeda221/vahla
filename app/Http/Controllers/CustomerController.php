@@ -319,14 +319,70 @@ class CustomerController extends Controller
                 
                 // transform for view
                 $ledgerData = collect($data['transactions'])->map(function($t) use ($data) {
+                    $desc = $t['description'] ?? '';
+                    $sourceType = $t['source_type'] ?? null;
+                    $sourceId = $t['source_id'] ?? null;
+
+                    $details = 'Other';
+                    $bankName = '-';
+                    $refNo = $desc;
+                    $vNo = '-';
+                    $quantity = 0;
+
+                    if ($sourceType === \App\Models\Sale::class || str_contains($desc, 'Sale Invoice') || str_contains($desc, 'Invoice #')) {
+                        $details = 'Sale Invoice';
+                        if (preg_match('/Invoice #(\S+)/', $desc, $matches)) {
+                            $vNo = $matches[1];
+                        }
+                        if ($sourceId) {
+                            $sale = DB::table('sales')->where('id', $sourceId)->first();
+                            if ($sale && ($vNo === '-' || empty($vNo))) {
+                                $vNo = $sale->invoice_no ?? $sale->id;
+                            }
+                            $quantity = (float) DB::table('sale_items')->where('sale_id', $sourceId)->sum(DB::raw('COALESCE(NULLIF(total_pieces, 0), qty, 0)'));
+                        }
+                    } elseif ($sourceType === \App\Models\SaleReturn::class || str_contains($desc, 'Sale Return') || str_contains($desc, 'Return #')) {
+                        $details = 'Sale Return';
+                        if (preg_match('/(?:Sale Return|Return) #(\S+)/', $desc, $matches)) {
+                            $vNo = $matches[1];
+                        }
+                        if ($sourceId) {
+                            $sr = DB::table('sale_returns')->where('id', $sourceId)->first();
+                            if ($sr && ($vNo === '-' || empty($vNo))) {
+                                $vNo = $sr->return_no ?? $sr->id;
+                            }
+                            $quantity = (float) DB::table('sale_return_items')->where('sale_return_id', $sourceId)->sum('qty');
+                        }
+                    } elseif ($sourceType === \App\Models\VoucherMaster::class || $sourceType === \App\Models\ReceiptVoucher::class || str_contains($desc, 'Receipt') || str_contains($desc, 'Payment')) {
+                        $details = ($t['credit'] > 0) ? 'Payment Received' : 'Payment';
+                        if (preg_match('/(?:Receipt|Voucher) #(\S+)/', $desc, $matches)) {
+                            $vNo = $matches[1];
+                        }
+                        if ($sourceType === \App\Models\VoucherMaster::class && $sourceId) {
+                            $vd = \App\Models\VoucherDetail::where('voucher_master_id', $sourceId)->where('debit', '>', 0)->first();
+                            if ($vd && $vd->account_id) {
+                                $acc = \App\Models\Account::find($vd->account_id);
+                                $bankName = $acc ? $acc->title : '-';
+                            }
+                        }
+                    } elseif (str_contains($desc, 'Opening Balance')) {
+                        $details = 'Opening Balance';
+                        $vNo = '-';
+                        $refNo = 'Opening Balance (B/F)';
+                    }
+
                     return (object) [
                         'created_at' => \Carbon\Carbon::parse($t['date']),
                         'customer' => $data['customer'],
-                        'description' => $t['description'],
+                        'details' => $details,
+                        'bank_name' => $bankName,
+                        'ref_no' => $refNo,
+                        'v_no' => $vNo,
+                        'quantity' => $quantity,
+                        'description' => $desc,
                         'debit' => $t['debit'],
                         'credit' => $t['credit'],
                         'closing_balance' => $t['balance'],
-                        // We act as if previous balance is calculated, but views usually use these explicitly now
                         'previous_balance' => $t['balance'] - ($t['debit'] - $t['credit']) 
                     ];
                 });
