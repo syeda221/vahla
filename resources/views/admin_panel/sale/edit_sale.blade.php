@@ -696,7 +696,7 @@
                                                     $loose = 0;
                                                     if ($ppb > 0) {
                                                         $cartons = floor($item->total_pieces / $ppb);
-                                                        $loose = $item->total_pieces % $ppb;
+                                                        $loose = fmod((float)$item->total_pieces, (float)$ppb);
                                                     } else {
                                                         $loose = $item->total_pieces;
                                                     }
@@ -729,29 +729,42 @@
                                                             $displayQty = $loose > 0 ? "{$cartons}.{$loose}" : $cartons;
                                                             $itemTotalPieces = ($cartons * $ppb) + $loose;
                                                         }
-                                                    } elseif ($sizeMode === 'by_kg') {
-                                                        $unitMode = 'kg';
-                                                        $toggleText = 'Kg';
-                                                        $toggleBtnClass = 'btn-outline-primary';
-                                                        $displayQty = (float) ($item->qty ?: $item->total_pieces);
-                                                    } elseif ($sizeMode === 'by_gm') {
-                                                        $unitMode = 'gm';
-                                                        $toggleText = 'Gm';
-                                                        $toggleBtnClass = 'btn-outline-info';
-                                                        $displayQty = (float) ($item->qty ?: $item->total_pieces);
+                                                    } elseif ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
+                                                        $totalWt = (float) ($item->total_pieces ?: $item->qty);
+                                                        $variUnit = strtolower(trim($variantData['unit'] ?? ($liveVariant['unit'] ?? '')));
+                                                        $isWtPcs = in_array($variUnit, ['pcs', 'pc', 'piece', 'pieces']);
+                                                        $isWtGm = ($sizeMode === 'by_gm') || in_array($variUnit, ['gm', 'g']);
+                                                        if ($isWtPcs) {
+                                                            $unitMode = 'pcs';
+                                                            $toggleText = 'Pcs';
+                                                            $toggleBtnClass = 'btn-outline-info';
+                                                            $displayQty = $ppb > 0 ? ($totalWt / $ppb) : $totalWt;
+                                                        } elseif ($isWtGm) {
+                                                            $unitMode = 'gm';
+                                                            $toggleText = 'Gm';
+                                                            $toggleBtnClass = 'btn-outline-info';
+                                                            $displayQty = $totalWt * 1000;
+                                                        } else {
+                                                            $unitMode = 'kg';
+                                                            $toggleText = 'Kg';
+                                                            $toggleBtnClass = 'btn-outline-primary';
+                                                            $displayQty = $totalWt;
+                                                        }
                                                     } elseif ($sizeMode === 'by_feet') {
                                                         $unitMode = 'ft';
                                                         $toggleText = 'Ft';
                                                         $toggleBtnClass = 'btn-outline-primary';
-                                                        $displayQty = (float) ($item->qty ?: $item->total_pieces);
+                                                        $displayQty = (float) ($item->total_pieces ?: $item->qty);
                                                     } elseif ($sizeMode === 'by_meter') {
                                                         $unitMode = 'm';
                                                         $toggleText = 'Mtr';
                                                         $toggleBtnClass = 'btn-outline-primary';
-                                                        $displayQty = (float) ($item->qty ?: $item->total_pieces);
+                                                        $displayQty = (float) ($item->total_pieces ?: $item->qty);
                                                     } else {
-                                                        $displayQty = (float) ($item->qty ?: $item->total_pieces);
+                                                        $displayQty = (float) ($item->total_pieces ?: $item->qty);
                                                     }
+
+                                                    $unitPriceDisplay = (float) $item->price;
 
                                                     $pieceRetailPrice = 0;
                                                     if ($liveVariant && !empty($liveVariant['sale_price']) && (float)$liveVariant['sale_price'] > 0) {
@@ -795,7 +808,7 @@
 
                                                         if (in_array($sizeMode, ['by_cartons', 'by_size']) && $ppb > 1) {
                                                             $b = floor($stk / $ppb);
-                                                            $l = $stk % $ppb;
+                                                            $l = fmod((float)$stk, (float)$ppb);
                                                             $selStockDisp = $l > 0 ? "$b.$l" : $b;
                                                         } elseif ($sizeMode === 'by_kg') {
                                                             if ($stk > 0 && $stk < 1) {
@@ -894,7 +907,7 @@
                                                             class="form-control total-pieces text-end input-readonly fw-semibold"
                                                             name="total_pieces[]" readonly value="{{ $itemTotalPieces }}"
                                                             placeholder="0" tabindex="-1">
-                                                        <input type="hidden" class="sales-qty" name="qty[]" value="{{ $isPcs ? $item->total_pieces : ($cartons . ($loose > 0 ? '.' . $loose : '')) }}">
+                                                        <input type="hidden" class="sales-qty" name="qty[]" value="{{ $isPcs ? $item->total_pieces : (in_array($sizeMode, ['by_kg','by_gm','by_feet','by_meter']) ? $displayQty : ($cartons . ($loose > 0 ? '.' . $loose : ''))) }}">
                                                     </td>
 
                                                     <!-- Price/Piece -->
@@ -903,7 +916,7 @@
                                                             <input type="text"
                                                                 class="form-control visible-price text-end fw-semibold"
                                                                 name="visible_price[]"
-                                                                value="{{ $item->price }}"
+                                                                value="{{ $unitPriceDisplay }}"
                                                                 placeholder="0" style="flex: 1; min-width: 0;">
                                                             <button type="button" class="btn btn-sm btn-outline-primary price-mode-row-toggle px-1 py-0" 
                                                                     data-mode="retail" title="Retail Mode">
@@ -912,7 +925,7 @@
                                                         </div>
                                                         <input type="hidden" class="price-per-piece"
                                                             name="price_per_piece[]"
-                                                            value="{{ $item->price }}">
+                                                            value="{{ $unitPriceDisplay }}">
                                                         <input type="hidden" class="retail-price"
                                                             value="{{ $pieceRetailPrice }}">
                                                         <input type="hidden" class="wholesale-price"

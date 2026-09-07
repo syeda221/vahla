@@ -316,8 +316,14 @@ class SaleReturnController extends Controller
                 $lineTotal -= $itemDisc;
 
                 // Calculate boxes and loose pieces
-                $boxes = floor($qty / $ppb);
-                $loosePieces = $qty % $ppb;
+                // Carton/size: box.loose notation; pieces: ppb=1; kg/gm: no box concept (ppb = conv_factor, avoid huge/crash)
+                if (in_array($sizeMode, ['by_kg', 'by_gm'])) {
+                    $boxes = 0;
+                    $loosePieces = 0;
+                } else {
+                    $boxes = floor($qty / $ppb);
+                    $loosePieces = fmod((float)$qty, (float)$ppb);
+                }
 
                 // Create Return Item
                 SaleReturnItem::create([
@@ -334,22 +340,11 @@ class SaleReturnController extends Controller
                     'line_total' => $lineTotal,
                 ]);
 
-                // Calculate Stock Qty with Variant Conv Factor
+                // Calculate Stock Qty
+                // Return qty[] is in PCS for carton/size products and in KG for weight products.
+                // In both cases WarehouseStock.total_pieces holds the same unit (pcs OR kg),
+                // so restore directly with $qty. (Previously kg/gm was wrongly multiplied by conv_factor.)
                 $stockQty = $qty;
-                if ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
-                    $rColor = $request->color[$idx] ?? null;
-                    if (!empty($rColor)) {
-                        try {
-                            $variantData = is_string($rColor) ? json_decode($rColor, true) : $rColor;
-                            if (is_array($variantData) && isset($variantData['conv_factor'])) {
-                                $factor = (float)$variantData['conv_factor'];
-                                if ($factor > 0) {
-                                    $stockQty = $qty * $factor;
-                                }
-                            }
-                        } catch (\Exception $e) {}
-                    }
-                }
 
                 // Update Stock (INCREMENT - goods coming back)
                 $stock = WarehouseStock::where('warehouse_id', $validated['warehouse_id'])
@@ -364,17 +359,19 @@ class SaleReturnController extends Controller
                         $currentTotalPieces = $stock->quantity * $ppb;
                     }
                     $newTotalPieces = $currentTotalPieces + $stockQty;
-                    
+                    // For kg/gm products, quantity (approx boxes) equals total_pieces in KG.
+                    $qtyDiv = (in_array($sizeMode, ['by_kg', 'by_gm', 'by_feet', 'by_meter', 'by_pieces']) || $ppb <= 1) ? 1 : $ppb;
                     $stock->total_pieces = $newTotalPieces;
-                    $stock->quantity = $newTotalPieces / $ppb;
+                    $stock->quantity = $newTotalPieces / $qtyDiv;
                     $stock->save();
                 } else {
                     // Create new stock entry
+                    $qtyDiv = (in_array($sizeMode, ['by_kg', 'by_gm', 'by_feet', 'by_meter', 'by_pieces']) || $ppb <= 1) ? 1 : $ppb;
                     WarehouseStock::create([
                         'warehouse_id' => $validated['warehouse_id'],
                         'product_id' => $productId,
                         'total_pieces' => $stockQty,
-                        'quantity' => $stockQty / $ppb,
+                        'quantity' => $stockQty / $qtyDiv,
                         'price' => 0
                     ]);
                 }

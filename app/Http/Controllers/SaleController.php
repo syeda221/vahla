@@ -627,9 +627,16 @@ class SaleController extends Controller
                         $variantData = is_string($saleColor) ? json_decode($saleColor, true) : $saleColor;
                     }
                     if (is_array($variantData) && isset($variantData['conv_factor'])) {
-                        $factor = (float)$variantData['conv_factor'];
-                        if ($factor > 0) {
-                            $stockQty = $qty * $factor;
+                        $sizeMode = $item['size_mode'] ?? ($sItem->size_mode ?? '');
+                        // Only carton/size products convert boxes->pieces via conv_factor.
+                        // For kg/gm products total_pieces/qty are already in KG — use as-is.
+                        if (in_array($sizeMode, ['by_kg', 'by_gm', 'by_feet', 'by_meter', 'by_pieces'])) {
+                            $stockQty = $qty;
+                        } else {
+                            $factor = (float)$variantData['conv_factor'];
+                            if ($factor > 0) {
+                                $stockQty = $qty * $factor;
+                            }
                         }
                     }
                 } catch (\Exception $e) {}
@@ -666,8 +673,13 @@ class SaleController extends Controller
                     $saleItem->total_pieces = max(0, $saleItem->total_pieces - $qty);
                     $prod = Product::find($productId);
                     $ppb = $prod->pieces_per_box > 0 ? $prod->pieces_per_box : 1;
-                    $saleItem->qty = $saleItem->total_pieces / $ppb;
-                    $saleItem->loose_pieces = $saleItem->total_pieces % $ppb;
+                    if (in_array($saleItem->size_mode, ['by_cartons', 'by_size'])) {
+                        $saleItem->qty = $saleItem->total_pieces / $ppb;
+                        $saleItem->loose_pieces = fmod((float)$saleItem->total_pieces, (float)$ppb);
+                    } else {
+                        $saleItem->qty = $saleItem->total_pieces;
+                        $saleItem->loose_pieces = 0;
+                    }
                     
                     // Recalculate item total after return
                     $newGross = $saleItem->total_pieces * $saleItem->price;
@@ -1301,7 +1313,13 @@ class SaleController extends Controller
                     }
 
                     // Calculate boxes for storage (reverse calculation)
-                    $storedQtyBox = $ppb > 0 ? ($totalPieces / $ppb) : $totalPieces;
+                    // For weight/measure modes (kg/gm/feet/meter), qty equals total_pieces (quantity in that unit).
+                    // Only carton/size modes treat qty as a BOX count divided by pieces-per-box.
+                    if (in_array($product->size_mode, ['by_cartons', 'by_size'])) {
+                        $storedQtyBox = $ppb > 0 ? ($totalPieces / $ppb) : $totalPieces;
+                    } else {
+                        $storedQtyBox = $totalPieces;
+                    }
                     
                     $productName = $product->item_name;
                     $brandId = $product->brand_id;
@@ -1523,7 +1541,8 @@ class SaleController extends Controller
                                     'purchase_price' => $origSaleItem->purchase_price,
                                 ];
                             } else {
-                                // Normalize qty for stock based on variant conv_factor
+                                // Restore stock — preserve original conversion for carton/size (pieces × conv_factor).
+                                // For kg/gm products return_qty is already KG (max returnable = total_pieces = KG) — use as-is.
                                 $stockQty = $rQty;
                                 if (!empty($rColor)) {
                                     try {
@@ -1533,9 +1552,14 @@ class SaleController extends Controller
                                             $variantData = is_string($rColor) ? json_decode($rColor, true) : $rColor;
                                         }
                                         if (is_array($variantData) && isset($variantData['conv_factor'])) {
-                                            $factor = (float)$variantData['conv_factor'];
-                                            if ($factor > 0) {
-                                                $stockQty = $stockQty * $factor;
+                                            $origSizeMode = $origSaleItem->size_mode ?? '';
+                                            if (in_array($origSizeMode, ['by_kg', 'by_gm'])) {
+                                                $stockQty = $rQty;
+                                            } else {
+                                                $factor = (float)$variantData['conv_factor'];
+                                                if ($factor > 0) {
+                                                    $stockQty = $rQty * $factor;
+                                                }
                                             }
                                         }
                                     } catch (\Exception $e) {}
@@ -1856,10 +1880,9 @@ class SaleController extends Controller
     {
         // Type: 'out' (Sale Posted), 'in' (Sale Cancelled), 'return' (Returned)
 
-        // Load items relationship if not already loaded
-        if (! $sale->relationLoaded('items')) {
-            $sale->load('items.product');
-        }
+        // Load items relationship if not already loaded (always re-query so edits
+        // don't deduct against the stale pre-edit items collection)
+        $sale->load('items.product');
 
         foreach ($sale->items as $item) {
             // Outsourced / Manual products do not affect warehouse stock
@@ -1887,37 +1910,9 @@ class SaleController extends Controller
             $qtyPieces = (float)$item->total_pieces;
 
             if ($productMode === 'by_kg' || $productMode === 'by_gm') {
-                $factor = 1.0;
-                $unit = '';
-
-                if (!empty($item->color)) {
-                    try {
-                        $itemColor = $item->color;
-                        $b64Decoded = base64_decode($itemColor, true);
-                        $variantData = $b64Decoded !== false ? json_decode($b64Decoded, true) : null;
-                        if (!is_array($variantData)) {
-                            $variantData = is_string($itemColor) ? json_decode($itemColor, true) : $itemColor;
-                        }
-                        if (is_array($variantData)) {
-                            if (isset($variantData['conv_factor']) && (float)$variantData['conv_factor'] > 0) {
-                                $factor = (float)$variantData['conv_factor'];
-                            } elseif (isset($variantData['weight_per_piece']) && (float)$variantData['weight_per_piece'] > 0) {
-                                $factor = (float)$variantData['weight_per_piece'] / 1000.0;
-                            }
-                            if (isset($variantData['unit'])) {
-                                $unit = strtolower($variantData['unit']);
-                            }
-                        }
-                    } catch (\Exception $e) {}
-                }
-
-                if ($unit === 'gm' || $unit === 'g') {
-                    $qtyPieces = ((float)$item->qty) / 1000.0;
-                } else if ($unit === 'pcs' || $unit === 'piece' || $unit === 'pieces' || ($factor > 0 && $factor != 1.0)) {
-                    $qtyPieces = ((float)$item->qty) * $factor;
-                } else {
-                    $qtyPieces = (float)$item->qty > 0 ? (float)$item->qty : (float)$item->total_pieces;
-                }
+                // total_pieces is always stored in KG for weight-based products (kg/gm/pcs sub-units
+                // all convert to kg in the frontend). So deduct the KG amount directly — no conversion.
+                $qtyPieces = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
             }
 
             if ($type === 'out') {
@@ -2178,8 +2173,11 @@ class SaleController extends Controller
         // 1. Restore Stock
         $this->handleStockImpact($sale, 'in');
 
-        // Delete stock movements for this sale
-        DB::table('stock_movements')->where('ref_type', 'sale')->where('ref_id', $sale->id)->delete();
+        // NOTE: We intentionally do NOT delete the previous 'sale'/'sale_in' stock movements here.
+        // Stock movements are an append-only audit trail. Deleting the original deduction while
+        // leaving the restore (sale_in) would make the ledger non-conserving (movement sum would
+        // no longer match the warehouse running balance). Each edit appends a fresh
+        // restore (sale_in) + deduct (sale) pair so the trail stays truthful and balanced.
 
         // 2. Reverse and delete Vouchers & Journal Entries
         $journalService = app(\App\Services\JournalEntryService::class);

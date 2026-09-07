@@ -74,6 +74,30 @@ class PurchaseController extends Controller
         }
     }
 
+    private function variantConvUnit(?string $color)
+    {
+        $convFactor = 1.0;
+        $unit = null;
+        if (! empty($color)) {
+            $b64Decoded = base64_decode($color, true);
+            $json = $b64Decoded !== false ? json_decode($b64Decoded, true) : null;
+            if (! is_array($json)) {
+                $json = json_decode($color, true);
+            }
+            if (is_array($json)) {
+                if (isset($json['conv_factor']) && (float) $json['conv_factor'] > 0) {
+                    $convFactor = (float) $json['conv_factor'];
+                } elseif (isset($json['weight_per_piece']) && (float) $json['weight_per_piece'] > 0) {
+                    $convFactor = (float) $json['weight_per_piece'] / 1000.0;
+                }
+                if (isset($json['unit']) && $json['unit'] !== '' && $json['unit'] !== null) {
+                    $unit = strtolower(trim($json['unit']));
+                }
+            }
+        }
+        return [$convFactor, $unit];
+    }
+
     public function index(Request $request)
     {
         $query = Purchase::with(['branch', 'warehouse', 'vendor', 'items', 'returns']);
@@ -1325,7 +1349,10 @@ class PurchaseController extends Controller
                     $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : ($item->product->pieces_per_box ?? 1));
                     if ($ppb <= 0) $ppb = 1;
                     $u = strtolower($item->unit ?? '');
-                    if ($u === 'carton' || $u === 'ctn' || $u === 'box' || ($item->size_mode === 'by_cartons')) {
+                    [$convFactor, $vUnit] = $this->variantConvUnit($item->color);
+                    if (empty($u) && $vUnit) $u = $vUnit;
+                    $pSizeMode = $item->size_mode ?? ($item->product->size_mode ?? '');
+                    if ($u === 'carton' || $u === 'ctn' || $u === 'box' || ($pSizeMode === 'by_cartons')) {
                         if ($item->boxes_qty > 0 || $item->loose_qty > 0) {
                             $boxes = (int) $item->boxes_qty;
                             $loose = (int) $item->loose_qty;
@@ -1335,8 +1362,13 @@ class PurchaseController extends Controller
                         return ($boxes * $ppb) + $loose;
                     } elseif (in_array($u, ['gm', 'g', 'gram', 'grams'])) {
                         return (float)$item->qty / 1000.0;
+                    } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm') {
+                        if (in_array($u, ['pcs', 'pc', 'piece']) || ($convFactor > 0 && $convFactor != 1.0)) {
+                            return ((float) $item->qty) * $convFactor;
+                        }
+                        return (float) $item->qty;
                     }
-                    return (float)$item->qty;
+                    return (float) $item->qty;
                 });
             });
 
@@ -1345,6 +1377,7 @@ class PurchaseController extends Controller
 
             $subtotal = 0;
             $newMap = collect();
+            $sizeModeCache = [];
 
             // Arrays from request
             $pids = $validated['product_id'] ?? [];
@@ -1395,6 +1428,12 @@ class PurchaseController extends Controller
                 if ($curPPB <= 0) $curPPB = 1;
 
                 $curSizeMode = $sizeModes[$i] ?? null;
+                if (empty($curSizeMode) && isset($sizeModeCache[$pid])) {
+                    $curSizeMode = $sizeModeCache[$pid];
+                }
+                if (empty($curSizeMode)) {
+                    $curSizeMode = $sizeModeCache[$pid] = \App\Models\Product::find($pid)->size_mode ?? 'std';
+                }
                 $curPPM2 = (float) ($ppm2[$i] ?? 0);
                 $rawQtyStr = (string) ($qtys[$i] ?? '0');
                 $isCarton = in_array($u, ['carton', 'ctn', 'box']) || ($curSizeMode === 'by_cartons');
@@ -1420,6 +1459,13 @@ class PurchaseController extends Controller
                     $baseQty = ($boxes * $curPPB) + $loose;
                 } elseif (in_array($u, ['gm', 'g', 'gram', 'grams'])) {
                     $baseQty = $qty / 1000.0;
+                } elseif ($curSizeMode === 'by_kg' || $curSizeMode === 'by_gm') {
+                    [$convFactor, $vUnit] = $this->variantConvUnit($colors[$i] ?? null);
+                    if (in_array($u, ['pcs', 'pc', 'piece']) || ($convFactor > 0 && $convFactor != 1.0)) {
+                        $baseQty = $qty * $convFactor;
+                    } else {
+                        $baseQty = $qty;
+                    }
                 } else {
                     $baseQty = $qty;
                 }

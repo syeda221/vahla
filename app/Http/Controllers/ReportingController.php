@@ -903,7 +903,11 @@ class ReportingController extends Controller
                     $vAveragePrice = (float) ($v['purch_price'] ?? $productPurchPrice);
                     $netSoldAmount = $soldAmount - $returnedAmount;
                     $netQtyPieces = $soldQtyPieces - $returnedQtyPieces;
-                    $costOfGoodsSold = $netQtyPieces * $vAveragePrice;
+                    $costQty = $netQtyPieces;
+                    if ($product->size_mode === 'by_kg' && ! $isBase && $vConv > 0) {
+                        $costQty = $netQtyPieces / $vConv;
+                    }
+                    $costOfGoodsSold = $costQty * $vAveragePrice;
                     $grossProfit = $netSoldAmount - $costOfGoodsSold;
 
                     if ($soldQtyPieces > 0 || $returnedQtyPieces > 0) {
@@ -934,8 +938,9 @@ class ReportingController extends Controller
                                 $soldQtyDisplay = number_format($soldQty, 2) . " Kg";
                                 $retQtyDisplay = ($returnedQtyPieces > 0) ? (number_format($returnedQtyPieces, 2) . " Kg") : "0";
                             } else {
-                                $soldQtyDisplay = ((int)$soldQtyPieces) . " Pcs";
-                                $retQtyDisplay = ($returnedQtyPieces > 0) ? (((int)$returnedQtyPieces) . " Pcs") : "0";
+                                $pcsFactor = ($vConv > 0) ? $vConv : 1;
+                                $soldQtyDisplay = number_format(($soldQtyPieces / $pcsFactor), 0) . " Pcs";
+                                $retQtyDisplay = ($returnedQtyPieces > 0) ? (number_format(($returnedQtyPieces / $pcsFactor), 0) . " Pcs") : "0";
                             }
                         } elseif (in_array($product->size_mode, ['by_meter', 'by_feet', 'by_gm'])) {
                             $uom = match($product->size_mode) {

@@ -650,6 +650,27 @@
                                 $variantUnit = strtolower($item['variant_unit'] ?? '');
                                 $weightGrams = (float)($item['weight_per_piece'] ?? 0);
 
+                                // Weight products store qty/total_pieces in Kg. Convert to the
+                                // variant's unit (Pcs/Gm/Kg) for display so pcs variants show a real piece count.
+                                $wtDispQty = null;
+                                $wtDispUnit = null;
+                                $kgWt = 0.0;
+                                if (in_array($sizeMode, ['by_kg', 'by_gm'])) {
+                                    $kgWt = (float)($item['qty_box'] ?? $item['qty'] ?? 0);
+                                    $wtConv = (float)($item['pieces_per_box'] ?? 0);
+                                    if ($wtConv <= 0) $wtConv = 1;
+                                    if (in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
+                                        $wtDispQty = $kgWt > 0 ? $kgWt / $wtConv : 0;
+                                        $wtDispUnit = 'Pcs';
+                                    } elseif (in_array($variantUnit, ['gm', 'g'])) {
+                                        $wtDispQty = $kgWt * 1000;
+                                        $wtDispUnit = 'Gm';
+                                    } else {
+                                        $wtDispQty = $kgWt;
+                                        $wtDispUnit = 'Kg';
+                                    }
+                                }
+
                                 if ($sizeMode === 'by_cartons' || $variantUnit === 'carton' || $variantUnit === 'ctn') {
                                     $totalCartonsCount += $boxes;
                                     $totalLooseCount += $loosePieces;
@@ -688,7 +709,12 @@
                                 </td>
 
                                 <td class="text-center">
-                                    @if ($variantUnit === 'pcs' || $variantUnit === 'piece' || $variantUnit === 'pieces')
+                                    @if ($wtDispQty !== null)
+                                        <span class="fw-bold">{{ ($wtDispQty == (int)$wtDispQty) ? number_format($wtDispQty, 0) : number_format($wtDispQty, 3) }} {{ $wtDispUnit }}</span>
+                                        @if ($sizeMode === 'by_kg' || $sizeMode === 'by_gm')
+                                            <small class="text-muted d-block" style="font-size: 10px;">{{ number_format($kgWt, 5) }} Kg</small>
+                                        @endif
+                                    @elseif ($variantUnit === 'pcs' || $variantUnit === 'piece' || $variantUnit === 'pieces')
                                         <span class="fw-bold">{{ $totalPieces }} Pcs</span>
                                         @if ($weightGrams > 0)
                                             <small class="text-muted d-block" style="font-size: 10px;">({{ $weightGrams == (int)$weightGrams ? (int)$weightGrams : $weightGrams }}g)</small>
@@ -739,7 +765,14 @@
                                 </td>
 
                                 <td class="text-end">
-                                    {{ number_format($item['price'], 2) }}
+                                    @if ($wtDispQty !== null && (float)$wtDispQty > 0)
+                                        @php
+                                            $wtRate = ((float)$item['total'] + (float)($item['discount_amount'] ?? 0)) / $wtDispQty;
+                                        @endphp
+                                        {{ number_format($wtRate, 2) }}
+                                    @else
+                                        {{ number_format($item['price'], 2) }}
+                                    @endif
                                 </td>
 
                                 <td class="text-end">
