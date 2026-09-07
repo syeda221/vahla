@@ -992,6 +992,8 @@
                                         @can('receipts.voucher.view')
                                             <li><a href="{{ route('all_recepit_vochers') }}"><i
                                                         class="fa-solid fa-wallet"></i> Receipts Voucher</a></li>
+                                            <li><a href="{{ route('claim_payment') }}"><i
+                                                        class="fa-solid fa-receipt"></i> Claim Payment</a></li>
                                         @endcan
                                         @can('journal.voucher.view')
                                             <li><a href="{{ route('vouchers.index', 'journal voucher') }}"><i

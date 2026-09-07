@@ -156,6 +156,10 @@ class VoucherController extends Controller
             $voucher->receipt_date = $voucher->date->format('Y-m-d');
             $voucher->entry_date = $voucher->created_at->format('Y-m-d');
 
+            // Attach party info for the Claim button/modal
+            $voucher->party_id = $voucher->party_id;
+            $voucher->party_model = $voucher->party_type;
+
             // Fix: Map total_amount to amount for View compatibility
             if (! isset($voucher->amount)) {
                 $voucher->amount = $voucher->total_amount;
@@ -1314,6 +1318,286 @@ class VoucherController extends Controller
                     'success' => false,
                     'message' => $e->getMessage(),
                 ], 422);
+            }
+
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Create a "Customer Claim" expense entry from a Receipt Voucher.
+     * Auto-selects the customer ledger and creates the expense entry.
+     */
+    public function storeClaimExpense(Request $request)
+    {
+        $request->validate([
+            'receipt_voucher_id' => 'required|exists:voucher_masters,id',
+            'amount'             => 'required|numeric|min:0.01',
+            'description'        => 'nullable|string|max:500',
+        ]);
+
+        $voucher = \App\Models\VoucherMaster::find($request->receipt_voucher_id);
+        if (!$voucher || $voucher->voucher_type !== \App\Models\VoucherMaster::TYPE_RECEIPT) {
+            return response()->json(['success' => false, 'message' => 'Invalid receipt voucher.'], 422);
+        }
+
+        $customer = $voucher->party;
+        if (!$customer || !str_contains(get_class($customer), 'Customer')) {
+            return response()->json(['success' => false, 'message' => 'This receipt is not linked to a customer.'], 422);
+        }
+
+        $amount      = (float) $request->amount;
+        $description = trim($request->description ?? '');
+        $entryDate   = $voucher->date ? $voucher->date->format('Y-m-d') : date('Y-m-d');
+
+        DB::beginTransaction();
+        try {
+            // 1. Ensure "Customer Claim" expense category exists
+            $claimCategory = ExpenseCategory::firstOrCreate(
+                ['name' => 'Customer Claim'],
+                ['code' => 'CUS-CLM', 'description' => 'Auto-created for customer claim entries from receipt vouchers.']
+            );
+
+            // 2. Create a simple expense voucher linked to the customer
+            $evid = ExpenseVoucher::generateInvoiceNo();
+            $narrationText = 'Customer Claim - ' . $customer->customer_name . ' - Receipt ' . $voucher->voucher_no;
+            if ($description) {
+                $narrationText .= ' - ' . $description;
+            }
+
+            $narration = Narration::create([
+                'expense_head' => 'Expense voucher',
+                'narration'    => $narrationText,
+            ]);
+
+            $expense = ExpenseVoucher::create([
+                'evid'             => $evid,
+                'entry_date'       => $entryDate,
+                'type'             => 'customer',
+                'party_id'         => $customer->id,
+                'tel'              => null,
+                'remarks'          => $narrationText,
+                'reference_no'     => $voucher->voucher_no,
+                'narration_id'     => json_encode([(string) $narration->id]),
+                'row_account_head' => json_encode(["0"]),
+                'row_account_id'   => json_encode([(string) $claimCategory->id]),
+                'amount'           => json_encode([$amount]),
+                'total_amount'     => $amount,
+            ]);
+
+            $journalService = app(\App\Services\JournalEntryService::class);
+            $balanceService = app(\App\Services\BalanceService::class);
+
+            // Expense Account Head
+            $expenseHead = AccountHead::firstOrCreate(
+                ['name' => 'Expense'],
+                ['opening_balance' => 0]
+            );
+
+            $generalExpenseAccount = Account::firstOrCreate(
+                ['account_code' => 'GEN-EXP'],
+                [
+                    'head_id'           => $expenseHead->id,
+                    'title'             => 'General Expense',
+                    'opening_balance'   => 0,
+                    'current_balance'   => 0,
+                    'type'              => 'Debit',
+                    'status'            => 1
+                ]
+            );
+
+            // Debit General Expense
+            $journalService->recordEntry(
+                $expense,
+                $generalExpenseAccount->id,
+                $amount, // Debit
+                0,
+                "Claim Expense #$evid ($claimCategory->name)",
+                $entryDate
+            );
+
+            // Credit Accounts Receivable + update customer ledger
+            $ledger = CustomerLedger::where('customer_id', $customer->id)->latest()->first();
+            if ($ledger) {
+                $ledger->previous_balance = $ledger->closing_balance;
+                $ledger->closing_balance  = $ledger->closing_balance - $amount; // claim credit reduces customer balance
+                $ledger->description      = 'Customer Claim ' . $evid;
+                $ledger->save();
+            } else {
+                CustomerLedger::create([
+                    'customer_id'      => $customer->id,
+                    'admin_or_user_id' => auth()->id(),
+                    'previous_balance' => 0,
+                    'opening_balance'  => 0,
+                    'closing_balance'  => -$amount,
+                    'description'      => 'Customer Claim ' . $evid,
+                ]);
+            }
+
+            $journalService->recordEntry(
+                $expense,
+                $balanceService->getAccountsReceivableId(),
+                0,
+                $amount, // Credit AR
+                "Claim Expense #$evid",
+                $entryDate,
+                $customer
+            );
+
+            DB::commit();
+
+            return response()->json([
+                'success'    => true,
+                'message'    => 'Customer claim expense entry created successfully!',
+                'voucher_id' => $expense->id,
+                'print_url'  => route('expenseprint', $expense->id),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Claim Payment page – select customer and enter claim payment amount.
+     */
+    public function claim_payment()
+    {
+        $AccountHeads = AccountHead::whereIn('name', ['Cash', 'bank', 'cash', 'Bank'])->get();
+        $expenseCategories = \App\Models\ExpenseCategory::orderBy('name')->get();
+
+        return view('admin_panel.vochers.claim_payment', compact('AccountHeads', 'expenseCategories'));
+    }
+
+    /**
+     * Save Claim Payment – creates Expense Voucher + customer ledger entry automatically.
+     */
+    public function storeClaimPayment(Request $request)
+    {
+        $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'amount'      => 'required|numeric|min:0.01',
+            'description' => 'nullable|string|max:500',
+            'date'        => 'nullable|date',
+        ]);
+
+        $customer = \App\Models\Customer::find($request->customer_id);
+        $amount   = (float) $request->amount;
+        $description = trim($request->description ?? '');
+        $entryDate   = $request->date ? date('Y-m-d', strtotime($request->date)) : date('Y-m-d');
+
+        DB::beginTransaction();
+        try {
+            // 1. Ensure "Customer Claim" expense category exists
+            $claimCategory = ExpenseCategory::firstOrCreate(
+                ['name' => 'Customer Claim'],
+                ['code' => 'CUS-CLM', 'description' => 'Auto-created for customer claim payments.']
+            );
+
+            // 2. Create expense voucher linked to the customer
+            $evid = ExpenseVoucher::generateInvoiceNo();
+            $narrationText = 'Customer Claim - ' . $customer->customer_name;
+            if ($description) {
+                $narrationText .= ' - ' . $description;
+            }
+
+            $narration = Narration::create([
+                'expense_head' => 'Expense voucher',
+                'narration'    => $narrationText,
+            ]);
+
+            $expense = ExpenseVoucher::create([
+                'evid'             => $evid,
+                'entry_date'       => $entryDate,
+                'type'             => 'customer',
+                'party_id'         => $customer->id,
+                'tel'              => $customer->mobile ?? null,
+                'remarks'          => $narrationText,
+                'reference_no'     => $request->reference_no ?? null,
+                'narration_id'     => json_encode([(string) $narration->id]),
+                'row_account_head' => json_encode(["0"]),
+                'row_account_id'   => json_encode([(string) $claimCategory->id]),
+                'amount'           => json_encode([$amount]),
+                'total_amount'     => $amount,
+            ]);
+
+            $journalService = app(\App\Services\JournalEntryService::class);
+            $balanceService = app(\App\Services\BalanceService::class);
+
+            // Expense Account Head + General Expense Account
+            $expenseHead = AccountHead::firstOrCreate(
+                ['name' => 'Expense'],
+                ['opening_balance' => 0]
+            );
+
+            $generalExpenseAccount = Account::firstOrCreate(
+                ['account_code' => 'GEN-EXP'],
+                [
+                    'head_id'           => $expenseHead->id,
+                    'title'             => 'General Expense',
+                    'opening_balance'   => 0,
+                    'current_balance'   => 0,
+                    'type'              => 'Debit',
+                    'status'            => 1
+                ]
+            );
+
+            // Debit General Expense
+            $journalService->recordEntry(
+                $expense,
+                $generalExpenseAccount->id,
+                $amount, // Debit
+                0,
+                "Claim Expense #$evid ($claimCategory->name)",
+                $entryDate
+            );
+
+            // Credit Accounts Receivable + update customer ledger (claim credit reduces customer balance)
+            $ledger = CustomerLedger::where('customer_id', $customer->id)->latest()->first();
+            if ($ledger) {
+                $ledger->previous_balance = $ledger->closing_balance;
+                $ledger->closing_balance  = $ledger->closing_balance - $amount;
+                $ledger->description      = 'Customer Claim ' . $evid;
+                $ledger->save();
+            } else {
+                CustomerLedger::create([
+                    'customer_id'      => $customer->id,
+                    'admin_or_user_id' => auth()->id(),
+                    'previous_balance' => 0,
+                    'opening_balance'  => 0,
+                    'closing_balance'  => -$amount,
+                    'description'      => 'Customer Claim ' . $evid,
+                ]);
+            }
+
+            // Credit Accounts Receivable
+            $journalService->recordEntry(
+                $expense,
+                $balanceService->getAccountsReceivableId(),
+                0,
+                $amount, // Credit AR
+                "Claim Expense #$evid",
+                $entryDate,
+                $customer
+            );
+
+            DB::commit();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success'    => true,
+                    'message'    => 'Claim payment saved! Expense voucher + customer ledger entry created.',
+                    'voucher_id' => $expense->id,
+                    'print_url'  => route('expenseprint', $expense->id),
+                ]);
+            }
+
+            return redirect()->route('claim_payment')->with('success', 'Claim payment saved successfully! Expense voucher #' . $evid . ' created.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
             }
 
             return back()->with('error', $e->getMessage());

@@ -440,11 +440,16 @@ Route::middleware('auth')->group(function () {
     Route::delete('/expense_vochers/{id}', [VoucherController::class, 'destroyExpenseVoucher'])->name('expense_vouchers.destroy');
     Route::get('/expenseprint/{id}', [VoucherController::class, 'expenseprint'])->name('expenseprint');
 
+    // Claim Payment
+    Route::get('/claim-payment', [VoucherController::class, 'claim_payment'])->name('claim_payment');
+    Route::post('/claim-payment/store', [VoucherController::class, 'storeClaimPayment'])->name('claim_payment.store');
+
     // AJAX helpers for vouchers
     Route::get('/get-accounts-by-head/{id}', [VoucherController::class, 'getAccountsByHead']);
     Route::get('/getOpeningBalance/{type}/{id}', [VoucherController::class, 'getOpeningBalance']);
     Route::get('/party-list', [VoucherController::class, 'partyList'])->name('party.list');
     Route::get('/receipt-vouchers/fetch', [VoucherController::class, 'fetchReceiptVouchers'])->name('receipt_vouchers.fetch');
+    Route::post('/receipt-vouchers/claim', [VoucherController::class, 'storeClaimExpense'])->name('receipt_vouchers.claim');
 
     Route::post('/accounts-head/store', [AccountsHeadController::class, 'storeHead'])->name('account-heads.store');
     Route::post('/accounts/store', [AccountsHeadController::class, 'storeAccount'])->name('accounts.store');
