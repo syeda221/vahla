@@ -378,13 +378,32 @@ class ProductImportExportController extends Controller
             $vIsBase = (int) $get($row, ['variant is base', 'variant_is_base', 'is_base'], 0);
             $vAlert  = (float) $get($row, ['variant alert', 'variant_alert_qty', 'alert'], 0);
 
-            // Auto-calculate conversion factor from piece weight (g) if empty or not provided
-            if ($vPieceWt > 0 && ($rawConvFactor === '' || $vConvFactor <= 0 || $vConvFactor == 1)) {
-                $vConvFactor = $vPieceWt / 1000.0;
-            } elseif ($vPieceWt <= 0 && $vConvFactor > 0 && $vConvFactor < 1) {
-                $vPieceWt = $vConvFactor * 1000.0;
-            } elseif ($vConvFactor <= 0) {
-                $vConvFactor = 1;
+            $isWeightProduct = (isset($productsByRef[$prodRef]) && in_array($productsByRef[$prodRef]['size_mode'], ['by_kg', 'by_gm', 'by_ton']));
+
+            // Auto-calculate conversion factor & piece weight (g)
+            if ($isWeightProduct) {
+                if ($vConvFactor > 0 && $vConvFactor < 1) {
+                    if ($vPieceWt <= 0) {
+                        $vPieceWt = (float) round($vConvFactor * 1000.0, 4);
+                    }
+                } elseif ($vPieceWt > 0) {
+                    // Piece Wt is in GRAMS. Auto-calc conv_factor in KG if not provided.
+                    if ($rawConvFactor === '' || $vConvFactor <= 0 || $vConvFactor == 1) {
+                        $vConvFactor = (float) round($vPieceWt / 1000.0, 8);
+                    }
+                    // If conv_factor was explicitly provided, keep both as-is
+                } elseif ($vConvFactor <= 0) {
+                    $vConvFactor = 1;
+                    $vPieceWt = ($vUnit === 'Kg' || $vIsBase) ? 1000.0 : 0;
+                }
+            } else {
+                if ($vPieceWt > 0 && ($rawConvFactor === '' || $vConvFactor <= 0 || $vConvFactor == 1)) {
+                    $vConvFactor = $vPieceWt / 1000.0;
+                } elseif ($vPieceWt <= 0 && $vConvFactor > 0 && $vConvFactor < 1) {
+                    $vPieceWt = $vConvFactor * 1000.0;
+                } elseif ($vConvFactor <= 0) {
+                    $vConvFactor = 1;
+                }
             }
 
             // Variant Data

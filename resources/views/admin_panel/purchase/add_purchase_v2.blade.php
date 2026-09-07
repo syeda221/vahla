@@ -997,7 +997,16 @@
                     const isCartonMode = (data.size_mode === 'by_cartons' || unitName.toLowerCase() === 'carton' || unitName.toLowerCase() === 'ctn' || ppb > 1);
 
                     // Dynamic Unit & Style
-                    if (isCartonMode) {
+                    let vUnit = data.unit_name || null;
+                    if (data.variant_data) {
+                        try {
+                            const vd = JSON.parse(atob(data.variant_data));
+                            if (vd.unit) vUnit = vd.unit;
+                        } catch(e) {}
+                    }
+                    const vUnitNorm = (vUnit || '').toLowerCase().trim();
+
+                    if (isCartonMode || vUnitNorm === 'carton' || vUnitNorm === 'ctn') {
                         unitName = 'Carton';
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-primary btn-outline-info')
@@ -1006,14 +1015,33 @@
                             .text('Carton');
                         $row.find('.unit-input-val').val('Carton');
                     } else if (data.size_mode === 'by_kg' || data.size_mode === 'by_gm') {
-                        unitName = 'Kg';
-                        $row.find('.unit-toggle-btn')
-                            .removeClass('btn-outline-info btn-outline-success')
-                            .addClass('btn-outline-primary')
-                            .attr('data-unit', 'Kg')
-                            .text('Kg');
-                        $row.find('.unit-input-val').val('Kg');
+                        if (vUnitNorm === 'pcs' || vUnitNorm === 'pc' || vUnitNorm === 'piece') {
+                            unitName = 'Pcs';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-primary btn-outline-success')
+                                .addClass('btn-outline-info')
+                                .attr('data-unit', 'Pcs')
+                                .text('Pcs');
+                            $row.find('.unit-input-val').val('Pcs');
+                        } else if (data.size_mode === 'by_gm' || vUnitNorm === 'gm' || vUnitNorm === 'g') {
+                            unitName = 'Gm';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-primary btn-outline-success')
+                                .addClass('btn-outline-info')
+                                .attr('data-unit', 'Gm')
+                                .text('Gm');
+                            $row.find('.unit-input-val').val('Gm');
+                        } else {
+                            unitName = 'Kg';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-info btn-outline-success')
+                                .addClass('btn-outline-primary')
+                                .attr('data-unit', 'Kg')
+                                .text('Kg');
+                            $row.find('.unit-input-val').val('Kg');
+                        }
                     } else {
+                        unitName = vUnit || unitName || 'Pcs';
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-primary btn-outline-success')
                             .addClass('btn-outline-info')
@@ -1089,7 +1117,7 @@
                 return repo.name || repo.text;
             }
 
-            // Unit Toggle Handler (Carton ↔ Pcs / Kg ↔ Gm)
+            // Unit Toggle Handler (Carton ↔ Pcs / Kg ↔ Gm / Pcs)
             $(document).on('click', '.unit-toggle-btn', function() {
                 const $btn = $(this);
                 const $row = $btn.closest('tr');
@@ -1099,7 +1127,7 @@
                 const $priceInp = $row.find('.price');
                 let curPrice = parseFloat($priceInp.val()) || 0;
 
-                const isCartonOrPcs = (sizeMode === 'by_cartons' || packQty > 1 || ['carton', 'ctn', 'pcs', 'pc', 'piece'].includes(currentUnit.toLowerCase()));
+                const isCartonOrPcs = (sizeMode === 'by_cartons' || packQty > 1 || ['carton', 'ctn'].includes(currentUnit.toLowerCase()));
 
                 if (isCartonOrPcs) {
                     if (currentUnit.toLowerCase() === 'carton' || currentUnit.toLowerCase() === 'ctn') {
@@ -1132,12 +1160,44 @@
                     recalcRow($row);
                     recalcAll();
                 } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
+                    let convFactor = 0;
+                    const vdEncoded = $row.find('.hidden-variant-data').val();
+                    if (vdEncoded) {
+                        try {
+                            const vd = JSON.parse(atob(vdEncoded));
+                            if (vd.conv_factor && parseFloat(vd.conv_factor) > 0) {
+                                convFactor = parseFloat(vd.conv_factor);
+                            } else if (vd.weight_per_piece && parseFloat(vd.weight_per_piece) > 0) {
+                                convFactor = parseFloat(vd.weight_per_piece) / 1000.0;
+                            }
+                        } catch(e) {}
+                    }
                     if (currentUnit.toLowerCase() === 'kg') {
                         currentUnit = 'Gm';
                         $btn.text('Gm').removeClass('btn-outline-primary').addClass('btn-outline-info').attr('data-unit', 'Gm');
+                        if (curPrice > 0) {
+                            $priceInp.val((curPrice / 1000).toFixed(4).replace(/\.?0+$/, ''));
+                        }
+                    } else if (currentUnit.toLowerCase() === 'gm') {
+                        if (convFactor > 0 && convFactor !== 1.0) {
+                            currentUnit = 'Pcs';
+                            $btn.text('Pcs').removeClass('btn-outline-primary').addClass('btn-outline-info').attr('data-unit', 'Pcs');
+                            if (curPrice > 0) {
+                                $priceInp.val(((curPrice * 1000) * convFactor).toFixed(2).replace(/\.?0+$/, ''));
+                            }
+                        } else {
+                            currentUnit = 'Kg';
+                            $btn.text('Kg').removeClass('btn-outline-info').addClass('btn-outline-primary').attr('data-unit', 'Kg');
+                            if (curPrice > 0) {
+                                $priceInp.val((curPrice * 1000).toFixed(2).replace(/\.?0+$/, ''));
+                            }
+                        }
                     } else {
                         currentUnit = 'Kg';
                         $btn.text('Kg').removeClass('btn-outline-info').addClass('btn-outline-primary').attr('data-unit', 'Kg');
+                        if (curPrice > 0 && convFactor > 0) {
+                            $priceInp.val((curPrice / convFactor).toFixed(2).replace(/\.?0+$/, ''));
+                        }
                     }
                     $row.find('.unit-input-val').val(currentUnit);
                     recalcRow($row);
@@ -1182,9 +1242,14 @@
                 } else {
                     gross = qty * price;
                     if (unitVal === 'pcs' || unitVal === 'pc' || unitVal === 'piece') {
-                        const bQty = ppb > 0 ? (qty / ppb) : qty;
-                        $row.find('.hidden-boxes-qty').val(bQty.toFixed(2));
-                        $row.find('.hidden-loose-qty').val(qty);
+                        if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
+                            $row.find('.hidden-boxes-qty').val(0);
+                            $row.find('.hidden-loose-qty').val(qty);
+                        } else {
+                            const bQty = ppb > 0 ? (qty / ppb) : qty;
+                            $row.find('.hidden-boxes-qty').val(bQty.toFixed(2));
+                            $row.find('.hidden-loose-qty').val(qty);
+                        }
                     }
                 }
 

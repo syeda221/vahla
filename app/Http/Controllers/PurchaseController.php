@@ -411,6 +411,8 @@ class PurchaseController extends Controller
                     if (is_array($json)) {
                         if (isset($json['conv_factor']) && (float)$json['conv_factor'] > 0) {
                             $convFactor = (float) $json['conv_factor'];
+                        } elseif (isset($json['weight_per_piece']) && (float)$json['weight_per_piece'] > 0) {
+                            $convFactor = (float) $json['weight_per_piece'] / 1000.0;
                         }
                         if (empty($unit) && isset($json['unit'])) {
                             $unit = strtolower(trim($json['unit']));
@@ -421,9 +423,11 @@ class PurchaseController extends Controller
                 $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : ($item->product->pieces_per_box ?? 1));
                 if ($ppb <= 0) $ppb = 1;
 
+                $pSizeMode = $item->size_mode ?? ($item->product->size_mode ?? '');
+
                 if ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams') {
                     $baseQty = ((float) $item->qty) / 1000.0;
-                } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box' || ($item->size_mode === 'by_cartons')) {
+                } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box' || ($pSizeMode === 'by_cartons')) {
                     // Full carton / carton.loose purchased: convert cartons to pieces for warehouse_stocks and stock_movements
                     if ($item->boxes_qty > 0 || $item->loose_qty > 0) {
                         $boxes = (int) $item->boxes_qty;
@@ -432,6 +436,12 @@ class PurchaseController extends Controller
                         [$boxes, $loose] = self::parseCartonQty($item->qty);
                     }
                     $baseQty = ($boxes * $ppb) + $loose;
+                } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm') {
+                    if ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece' || ($convFactor > 0 && $convFactor != 1.0)) {
+                        $baseQty = ((float) $item->qty) * $convFactor;
+                    } else {
+                        $baseQty = (float) $item->qty;
+                    }
                 } elseif ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece') {
                     // Pieces purchased: qty is directly pieces
                     $baseQty = (float) $item->qty;
@@ -2113,8 +2123,13 @@ class PurchaseController extends Controller
                             if (!is_array($variantData)) {
                                 $variantData = is_string($colorField) ? json_decode($colorField, true) : $colorField;
                             }
-                            if (is_array($variantData) && isset($variantData['conv_factor'])) {
-                                $factor = (float)$variantData['conv_factor'];
+                            if (is_array($variantData)) {
+                                $factor = 1.0;
+                                if (isset($variantData['conv_factor']) && (float)$variantData['conv_factor'] > 0) {
+                                    $factor = (float)$variantData['conv_factor'];
+                                } elseif (isset($variantData['weight_per_piece']) && (float)$variantData['weight_per_piece'] > 0) {
+                                    $factor = (float)$variantData['weight_per_piece'] / 1000.0;
+                                }
                                 if ($factor > 0) {
                                     $stockQty = $stockQty * $factor;
                                 }

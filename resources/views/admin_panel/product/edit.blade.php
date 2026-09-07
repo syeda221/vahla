@@ -783,7 +783,7 @@
                             wholesaleInp.value = (baseWholesale * factor).toFixed(2);
                         }
                         if (pieceWtInp) {
-                            pieceWtInp.value = (factor * 1000).toFixed(0);
+                            pieceWtInp.value = parseFloat((factor * 1000).toFixed(4)).toString();
                         }
                     }
                 });
@@ -900,7 +900,7 @@
                         let fImmediate = parseFloat(self.value);
                         if (isNaN(fImmediate)) fImmediate = 0;
                         if (pieceWtInput && fImmediate > 0 && variantMode === 'weight') {
-                            pieceWtInput.value = (fImmediate * 1000).toFixed(0);
+                            pieceWtInput.value = parseFloat((fImmediate * 1000).toFixed(4)).toString();
                         } else if (pieceWtInput && fImmediate === 0) {
                             pieceWtInput.value = '';
                         }
@@ -1482,7 +1482,7 @@
                     const wsInp2 = card.querySelector('[data-field="variant_wholesale_price[]"]');
 
                     if (f > 0) {
-                        if (pieceWt) pieceWt.value = (f * 1000).toFixed(0);
+                        if (pieceWt) pieceWt.value = parseFloat((f * 1000).toFixed(4)).toString();
 
                         // Auto stock from base row
                         const baseRow = variantsBody.querySelector('tr');

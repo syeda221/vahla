@@ -395,7 +395,29 @@
                 }
             }
         } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
-            if (unitMode === 'gm') {
+            if (unitMode === 'pcs' || unitMode === 'pc' || unitMode === 'piece') {
+                baseQty = rawQty;
+                let convFactor = 0;
+                const vdEncoded = $row.find('.variant-data-hidden').val();
+                if (vdEncoded) {
+                    try {
+                        const vd = JSON.parse(atob(vdEncoded));
+                        if (vd.conv_factor && parseFloat(vd.conv_factor) > 0) {
+                            convFactor = parseFloat(vd.conv_factor);
+                        } else if (vd.weight_per_piece && parseFloat(vd.weight_per_piece) > 0) {
+                            convFactor = parseFloat(vd.weight_per_piece) / 1000.0;
+                        }
+                    } catch(e) {}
+                }
+                if (convFactor <= 0) {
+                    const wpp = parseFloat($row.find('.weight-per-piece').val()) || 0;
+                    if (wpp > 0) convFactor = wpp / 1000.0;
+                }
+                if (convFactor <= 0) convFactor = 1.0;
+
+                pcsDisplay = (rawQty * convFactor);
+                gross = rawQty * unitPrice; // unitPrice is per Piece
+            } else if (unitMode === 'gm') {
                 baseQty = rawQty / 1000;
                 pcsDisplay = baseQty;
                 gross = rawQty * unitPrice; // unitPrice is per Gm
@@ -1001,37 +1023,60 @@
             $row.data('size_mode', data.size_mode);
             $row.data('pieces_per_box', data.pieces_per_box || 1);
             
-            setupRowQtyToggle($row, data.size_mode);
+            let variantUnit = null;
+            if (data.variant_data) {
+                try {
+                    const vd = JSON.parse(atob(data.variant_data));
+                    variantUnit = vd.unit || null;
+                } catch(e) {}
+            }
+            if (!variantUnit && data.unit_name) {
+                variantUnit = data.unit_name;
+            }
+
+            setupRowQtyToggle($row, data.size_mode, variantUnit);
 
             computeRow($row);
         });
 
-    function setupRowQtyToggle($row, sizeMode) {
+    function setupRowQtyToggle($row, sizeMode, variantUnit = null) {
         const $toggleBtn = $row.find('.qty-unit-toggle');
+        const vUnitNorm = (variantUnit || '').toLowerCase().trim();
         if (sizeMode === 'by_cartons') {
+            const isPcs = (vUnitNorm === 'pcs' || vUnitNorm === 'pc' || vUnitNorm === 'piece');
             $toggleBtn.removeClass('d-none')
-                      .attr('data-unit-mode', 'ctn')
-                      .text('Ctn')
-                      .removeClass('btn-outline-primary btn-outline-info btn-outline-warning')
-                      .addClass('btn-outline-success');
-            $row.find('.hidden-sub-unit-mode').val('ctn');
+                      .attr('data-unit-mode', isPcs ? 'pcs' : 'ctn')
+                      .text(isPcs ? 'Pcs' : 'Ctn')
+                      .removeClass('btn-outline-primary btn-outline-info btn-outline-warning btn-outline-success')
+                      .addClass(isPcs ? 'btn-outline-info' : 'btn-outline-success');
+            $row.find('.hidden-sub-unit-mode').val(isPcs ? 'pcs' : 'ctn');
             $row.find('.carton-qty').attr('placeholder', '0');
-        } else if (sizeMode === 'by_kg') {
-            $toggleBtn.removeClass('d-none')
-                      .attr('data-unit-mode', 'kg')
-                      .text('Kg')
-                      .removeClass('btn-outline-info btn-outline-warning btn-outline-success')
-                      .addClass('btn-outline-primary');
-            $row.find('.hidden-sub-unit-mode').val('kg');
-            $row.find('.carton-qty').attr('placeholder', '0');
-        } else if (sizeMode === 'by_gm') {
-            $toggleBtn.removeClass('d-none')
-                      .attr('data-unit-mode', 'gm')
-                      .text('Gm')
-                      .removeClass('btn-outline-primary btn-outline-warning btn-outline-success')
-                      .addClass('btn-outline-info');
-            $row.find('.hidden-sub-unit-mode').val('gm');
-            $row.find('.carton-qty').attr('placeholder', '0');
+        } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
+            if (vUnitNorm === 'pcs' || vUnitNorm === 'pc' || vUnitNorm === 'piece') {
+                $toggleBtn.removeClass('d-none')
+                          .attr('data-unit-mode', 'pcs')
+                          .text('Pcs')
+                          .removeClass('btn-outline-primary btn-outline-warning btn-outline-success')
+                          .addClass('btn-outline-info');
+                $row.find('.hidden-sub-unit-mode').val('pcs');
+                $row.find('.carton-qty').attr('placeholder', '0');
+            } else if (sizeMode === 'by_gm' || vUnitNorm === 'gm' || vUnitNorm === 'g') {
+                $toggleBtn.removeClass('d-none')
+                          .attr('data-unit-mode', 'gm')
+                          .text('Gm')
+                          .removeClass('btn-outline-primary btn-outline-warning btn-outline-success')
+                          .addClass('btn-outline-info');
+                $row.find('.hidden-sub-unit-mode').val('gm');
+                $row.find('.carton-qty').attr('placeholder', '0');
+            } else {
+                $toggleBtn.removeClass('d-none')
+                          .attr('data-unit-mode', 'kg')
+                          .text('Kg')
+                          .removeClass('btn-outline-info btn-outline-warning btn-outline-success')
+                          .addClass('btn-outline-primary');
+                $row.find('.hidden-sub-unit-mode').val('kg');
+                $row.find('.carton-qty').attr('placeholder', '0');
+            }
         } else if (sizeMode === 'by_feet') {
             $toggleBtn.removeClass('d-none')
                       .attr('data-unit-mode', 'ft')
@@ -1127,9 +1172,26 @@
             let curPrice = parseFloat($priceInp.val()) || 0;
             const curQty = parseFloat($row.find('.carton-qty').val()) || 0;
 
+            let convFactor = 0;
+            const vdEncoded = $row.find('.variant-data-hidden').val();
+            if (vdEncoded) {
+                try {
+                    const vd = JSON.parse(atob(vdEncoded));
+                    if (vd.conv_factor && parseFloat(vd.conv_factor) > 0) {
+                        convFactor = parseFloat(vd.conv_factor);
+                    } else if (vd.weight_per_piece && parseFloat(vd.weight_per_piece) > 0) {
+                        convFactor = parseFloat(vd.weight_per_piece) / 1000.0;
+                    }
+                } catch(e) {}
+            }
+            if (convFactor <= 0) {
+                const wpp = parseFloat($row.find('.weight-per-piece').val()) || 0;
+                if (wpp > 0) convFactor = wpp / 1000.0;
+            }
+
             if (currentMode === 'kg') {
                 currentMode = 'gm';
-                $btn.text('Gm').removeClass('btn-outline-primary').addClass('btn-outline-info');
+                $btn.text('Gm').removeClass('btn-outline-primary btn-outline-info').addClass('btn-outline-info');
                 $row.find('.carton-qty').attr('placeholder', 'Gm');
                 if (curQty > 0) {
                     $row.find('.carton-qty').val(Math.round(curQty * 1000));
@@ -1139,15 +1201,41 @@
                     $priceInp.val(gmPrice.toFixed(4).replace(/\.?0+$/, ''));
                     $row.find('.price-per-piece').val($priceInp.val());
                 }
+            } else if (currentMode === 'gm') {
+                if (convFactor > 0 && convFactor !== 1.0) {
+                    currentMode = 'pcs';
+                    $btn.text('Pcs').removeClass('btn-outline-primary btn-outline-info').addClass('btn-outline-info');
+                    $row.find('.carton-qty').attr('placeholder', '0');
+                    if (curQty > 0) {
+                        $row.find('.carton-qty').val(Math.round((curQty / 1000.0) / convFactor));
+                    }
+                    if (curPrice > 0) {
+                        let pcPrice = (curPrice * 1000) * convFactor;
+                        $priceInp.val(pcPrice.toFixed(2).replace(/\.?0+$/, ''));
+                        $row.find('.price-per-piece').val($priceInp.val());
+                    }
+                } else {
+                    currentMode = 'kg';
+                    $btn.text('Kg').removeClass('btn-outline-info').addClass('btn-outline-primary');
+                    $row.find('.carton-qty').attr('placeholder', 'Kg');
+                    if (curQty > 0) {
+                        $row.find('.carton-qty').val(curQty / 1000);
+                    }
+                    if (curPrice > 0) {
+                        let kgPrice = curPrice * 1000;
+                        $priceInp.val(kgPrice % 1 === 0 ? kgPrice : kgPrice.toFixed(2));
+                        $row.find('.price-per-piece').val($priceInp.val());
+                    }
+                }
             } else {
                 currentMode = 'kg';
                 $btn.text('Kg').removeClass('btn-outline-info').addClass('btn-outline-primary');
                 $row.find('.carton-qty').attr('placeholder', 'Kg');
-                if (curQty > 0) {
-                    $row.find('.carton-qty').val(curQty / 1000);
+                if (curQty > 0 && convFactor > 0) {
+                    $row.find('.carton-qty').val((curQty * convFactor).toFixed(3).replace(/\.?0+$/, ''));
                 }
-                if (curPrice > 0) {
-                    let kgPrice = curPrice * 1000;
+                if (curPrice > 0 && convFactor > 0) {
+                    let kgPrice = curPrice / convFactor;
                     $priceInp.val(kgPrice % 1 === 0 ? kgPrice : kgPrice.toFixed(2));
                     $row.find('.price-per-piece').val($priceInp.val());
                 }
