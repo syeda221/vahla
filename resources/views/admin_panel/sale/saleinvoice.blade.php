@@ -6,20 +6,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice - {{ $sale->invoice_no }}</title>
 
+    <!-- Bootstrap 5 CSS -->
     <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --accent-color: #3498db;
-            --border-color: #bdc3c7;
-            --text-color: #2c3e50;
+            --primary: #0f172a;
+            --primary-light: #1e293b;
+            --accent: #2563eb;
+            --accent-soft: #eff6ff;
+            --border: #cbd5e1;
+            --border-light: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --bg-page: #f8fafc;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            background-color: #f8f9fa;
-            color: var(--text-color);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
             font-size: 12px;
             margin: 0;
             padding: 0;
@@ -27,350 +38,430 @@
             print-color-adjust: exact;
         }
 
-        /* Screen Layout */
-        .invoice-container {
+        /* Screen Action Bar */
+        .action-bar {
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-light);
+            padding: 12px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .action-bar .btn {
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 16px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        /* A4 Page Container */
+        .invoice-page {
             max-width: 210mm;
-            margin: 10px auto;
-            background: #fff;
-            padding: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            min-height: 297mm;
+            margin: 24px auto;
+            background: #ffffff;
+            padding: 28px 32px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
             position: relative;
         }
 
-        .company-info {
-            text-align: center;
-            margin-bottom: 20px;
+        /* Header Styling */
+        .invoice-header {
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 16px;
+            margin-bottom: 16px;
         }
 
         .company-name {
-            font-size: 22px;
-            font-weight: bold;
-            color: var(--primary-color);
-            margin-bottom: 2px;
-        }
-
-        .invoice-title {
-            text-align: center;
-            font-size: 18px;
-            font-weight: bold;
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -0.02em;
             text-transform: uppercase;
-            color: var(--accent-color);
-            margin: 15px 0 10px 0;
-            letter-spacing: 2px;
-        }
-
-        .info-box {
-            border: 1px solid var(--border-color);
-            padding: 8px;
-            height: 100%;
-            border-radius: 4px;
-            background-color: #fff;
-        }
-
-        .info-box-header {
-            font-weight: bold;
-            border-bottom: 1px solid var(--border-color);
+            line-height: 1.2;
             margin-bottom: 4px;
-            padding-bottom: 2px;
-            color: var(--primary-color);
-            font-size: 11px;
+        }
+
+        .company-details {
+            font-size: 11.5px;
+            color: var(--text-muted);
+            line-height: 1.45;
+        }
+
+        .company-details i {
+            width: 14px;
+            color: var(--primary-light);
+        }
+
+        .invoice-badge-title {
+            font-size: 20px;
+            font-weight: 800;
             text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--primary);
+            text-align: right;
+            margin-bottom: 4px;
+        }
+
+        .invoice-meta-top {
+            font-size: 12px;
+            text-align: right;
+            color: var(--text-muted);
+        }
+
+        .invoice-meta-top .meta-highlight {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 13px;
+        }
+
+        /* Info Boxes */
+        .info-card {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 14px;
+            background-color: #ffffff;
+            height: 100%;
+        }
+
+        .info-card-header {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--primary);
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .info-row {
+            display: flex;
+            font-size: 11.5px;
+            margin-bottom: 3px;
+            line-height: 1.35;
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
         }
 
         .info-label {
             font-weight: 600;
-            color: #555;
-            min-width: 70px;
-            display: inline-block;
+            color: var(--text-muted);
+            width: 75px;
+            flex-shrink: 0;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: var(--text-main);
+            flex-grow: 1;
+            word-break: break-word;
+        }
+
+        /* Return Note Banner */
+        .return-note-banner {
+            background-color: #fffbeb;
+            border: 1px solid #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 11.5px;
+            color: #92400e;
+            margin-bottom: 14px;
+        }
+
+        /* Main Table */
+        .table-container {
+            margin-top: 14px;
+            margin-bottom: 16px;
+            width: 100%;
         }
 
         .invoice-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            font-size: 11.5px;
         }
 
-        .invoice-table th {
-            background-color: var(--primary-color);
-            color: #fff;
-            text-transform: uppercase;
+        .invoice-table thead th {
+            background-color: var(--primary);
+            color: #ffffff;
+            font-weight: 700;
             font-size: 11px;
-            padding: 6px 4px;
-            border: 1px solid var(--primary-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 7px 8px;
+            border: 1px solid var(--primary);
+            vertical-align: middle;
         }
 
-        .invoice-table td {
-            border: 1px solid var(--border-color);
-            padding: 4px 6px;
+        .invoice-table tbody td {
+            border: 1px solid var(--border);
+            padding: 6px 8px;
             vertical-align: middle;
-            font-size: 12px;
+            color: var(--text-main);
         }
 
         .invoice-table tbody tr:nth-of-type(even) {
-            background-color: #f8f9fa;
+            background-color: #f8fafc;
         }
 
-        .text-end {
-            text-align: right;
+        .item-title {
+            font-weight: 700;
+            font-size: 12px;
+            color: var(--text-main);
+            line-height: 1.3;
         }
 
-        .text-center {
-            text-align: center;
+        .item-subtitle {
+            font-size: 10.5px;
+            color: var(--text-muted);
+            margin-top: 2px;
+            line-height: 1.2;
         }
 
-        .footer-section {
-            margin-top: 20px;
-            border-top: 2px solid var(--primary-color);
-            padding-top: 10px;
+        .item-badge {
+            display: inline-block;
+            background: #f1f5f9;
+            border: 1px solid var(--border-light);
+            color: #334155;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-right: 4px;
         }
 
-        .terms-box {
+        /* Exchange Return Table */
+        .exchange-table thead th {
+            background-color: #475569;
+            color: #ffffff;
+            border: 1px solid #475569;
+        }
+
+        /* Summary & Footer */
+        .bottom-section {
+            margin-top: 16px;
+            page-break-inside: avoid;
+        }
+
+        .terms-card {
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 8px 12px;
+            background: #fafafa;
+            height: 100%;
+        }
+
+        .terms-title {
             font-size: 11px;
-            color: #666;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
         }
 
-        .terms-box ul {
-            padding-left: 20px;
+        .terms-list {
+            padding-left: 16px;
             margin-bottom: 0;
+            font-size: 10.5px;
+            color: #475569;
+            line-height: 1.4;
         }
 
-        .terms-box li {
+        .terms-list li {
             margin-bottom: 2px;
         }
 
+        .words-amount-box {
+            margin-top: 8px;
+            padding: 5px 10px;
+            background-color: #f1f5f9;
+            border-left: 3px solid var(--primary);
+            border-radius: 0 4px 4px 0;
+            font-size: 11px;
+            color: #334155;
+            line-height: 1.3;
+        }
+
+        .signature-section {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .sig-block {
+            text-align: center;
+            width: 170px;
+        }
+
+        .sig-line {
+            border-top: 1px solid #000000;
+            margin-bottom: 5px;
+        }
+
+        .sig-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .printed-time {
+            font-size: 9.5px;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
+        /* Financial Totals Table */
         .totals-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 12px;
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
         }
 
         .totals-table td {
-            padding: 4px 8px;
-            border-bottom: 1px solid #eee;
+            padding: 5px 10px;
+            border-bottom: 1px solid var(--border-light);
+            vertical-align: middle;
         }
 
-        .totals-table .total-row td {
-            border-top: 2px solid var(--primary-color);
-            font-weight: bold;
-            font-size: 14px;
-            color: var(--primary-color);
+        .totals-table tr:last-child td {
+            border-bottom: none;
         }
 
-        .signature-area {
-            margin-top: 40px;
-            border-top: 1px solid #000;
-            width: 180px;
-            text-align: center;
-            padding-top: 5px;
+        .tot-label {
+            color: var(--text-muted);
+            font-weight: 600;
         }
 
-        .print-btn-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
+        .tot-val {
+            text-align: right;
+            font-weight: 600;
+            color: var(--text-main);
         }
 
-        /* Thermal Receipt */
-        .receipt-container {
-            display: none;
+        .grand-total-row td {
+            background-color: #f8fafc;
+            border-top: 2px solid var(--primary);
+            border-bottom: 2px solid var(--primary);
+            font-weight: 800 !important;
+            font-size: 13.5px !important;
+            color: var(--primary) !important;
+            padding: 7px 10px;
         }
 
+        .closing-balance-row td {
+            background-color: #0f172a;
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            font-size: 13px !important;
+            padding: 7px 10px;
+        }
+
+        .closing-balance-row .badge-balance {
+            background-color: #ffffff;
+            color: #0f172a;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 800;
+            margin-left: 4px;
+        }
+
+        .avoid-page-break {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        /* Print Specifics for A4 */
         @media print {
-
             @page {
-                size: 80mm auto;
-                margin: 0;
+                size: A4 portrait;
+                margin: 10mm 12mm 10mm 12mm;
             }
 
             body {
-                width: 100% !important;
+                background: #ffffff !important;
+                color: #000000 !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                background: #fff !important;
-                color: #000 !important;
-                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+                font-size: 11.5px !important;
             }
 
-            .print-btn-container,
             .no-print,
-            .screen-only {
+            .action-bar {
                 display: none !important;
             }
 
-            .receipt-container {
-                display: block !important;
+            .invoice-page {
+                max-width: 100% !important;
+                width: 100% !important;
+                min-height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
                 box-shadow: none !important;
                 border: none !important;
-                margin: 0 auto !important;
-                padding: 3mm 2mm 5mm 2mm !important;
-                width: 76mm !important;
-                max-width: 76mm !important;
-                background: #fff !important;
-                color: #000 !important;
-                font-size: 11px !important;
-                line-height: 1.3 !important;
-                word-wrap: break-word !important;
-                overflow-wrap: break-word !important;
+                border-radius: 0 !important;
             }
 
-            .receipt-container h1,
-            .receipt-container h2,
-            .receipt-container h3,
-            .receipt-container p {
-                margin: 0;
-                padding: 0;
-            }
-
-            .receipt-container .company-name {
-                font-size: 18px !important;
-                font-weight: 700 !important;
-                text-align: center !important;
-                text-transform: uppercase !important;
-                letter-spacing: 0.5px !important;
-                margin-bottom: 2px !important;
-                color: #000 !important;
-            }
-
-            .receipt-container .company-info {
-                font-size: 11px !important;
-                text-align: center !important;
-                color: #000 !important;
-                font-weight: 400 !important;
-                line-height: 1.35 !important;
-                margin-bottom: 4px !important;
-            }
-
-            .receipt-container .policy-banner {
-                background-color: #000 !important;
-                color: #fff !important;
-                text-align: center !important;
-                font-size: 10px !important;
-                font-weight: bold !important;
-                padding: 3px 5px !important;
-                margin: 4px 0 !important;
-                border-radius: 3px !important;
-                text-transform: uppercase !important;
-                letter-spacing: 0.5px !important;
+            .invoice-table thead th {
+                background-color: #0f172a !important;
+                color: #ffffff !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
 
-            .receipt-container .divider {
-                border-top: 1px dashed #000 !important;
-                margin: 4px 0 !important;
+            .invoice-table tbody tr:nth-of-type(even) {
+                background-color: #f8fafc !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
 
-            .receipt-container .meta-grid {
-                display: flex !important;
-                flex-direction: column !important;
-                gap: 2px !important;
-                margin-bottom: 2px !important;
-                color: #000 !important;
+            .grand-total-row td {
+                background-color: #f1f5f9 !important;
+                border-top: 2px solid #000 !important;
+                border-bottom: 2px solid #000 !important;
+                color: #000000 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
 
-            .receipt-container .meta-row {
-                display: flex !important;
-                justify-content: space-between !important;
-                font-size: 10.5px !important;
-                font-weight: 400 !important;
+            .closing-balance-row td {
+                background-color: #0f172a !important;
+                color: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
 
-            .receipt-container .items-table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-                font-size: 10.5px !important;
-                color: #000 !important;
-                margin: 3px 0 !important;
+            .closing-balance-row .badge-balance {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
 
-            .receipt-container .items-table th {
-                border-top: 1px dashed #000 !important;
-                border-bottom: 1px dashed #000 !important;
-                padding: 3px 1px !important;
-                text-align: left !important;
-                font-weight: 700 !important;
-                font-size: 10px !important;
-                text-transform: uppercase !important;
-            }
-
-            .receipt-container .items-table td {
-                padding: 3px 1px !important;
-                vertical-align: top !important;
-                border-bottom: 1px dashed #ccc !important;
-                font-size: 10.5px !important;
-            }
-
-            .receipt-container .item-name {
-                font-weight: 600 !important;
-                font-size: 10.5px !important;
-                color: #000 !important;
-                display: block !important;
-            }
-
-            .receipt-container .item-variant {
-                font-size: 9.5px !important;
-                color: #222 !important;
-                font-weight: 400 !important;
-                margin-top: 1px !important;
-                display: block !important;
-            }
-
-            .receipt-container .totals-section {
-                font-size: 10.5px !important;
-                margin-top: 4px !important;
-                color: #000 !important;
-            }
-
-            .receipt-container .tot-row {
-                display: flex !important;
-                justify-content: space-between !important;
-                padding: 1.5px 0 !important;
-            }
-
-            .receipt-container .tot-row.grand-total {
-                font-size: 12px !important;
-                font-weight: 800 !important;
-                margin: 3px 0 !important;
-                padding: 4px 0 !important;
-                border-top: 1.5px solid #000 !important;
-                border-bottom: 1.5px solid #000 !important;
-                color: #000 !important;
-            }
-
-            .receipt-container .balance-section {
-                font-size: 10.5px !important;
-                margin-top: 3px !important;
-                border-top: 1px dashed #000 !important;
-                padding-top: 3px !important;
-            }
-
-            .receipt-container .balance-section .tot-row.closing-bal {
-                font-weight: 700 !important;
-                background-color: #f8f9fa !important;
-                padding: 3px 2px !important;
-                border: 1px solid #000 !important;
-                margin-top: 2px !important;
-            }
-
-            .receipt-container .footer {
-                text-align: center !important;
-                margin-top: 10px !important;
-                color: #000 !important;
-            }
-
-            .receipt-container .footer p {
-                font-size: 10px !important;
-                font-weight: 600 !important;
-                margin-bottom: 2px !important;
-            }
-
-            .receipt-container .footer .soft-credit {
-                font-size: 8.5px !important;
-                color: #444 !important;
-                margin-top: 2px !important;
-                font-weight: 400 !important;
+            .words-amount-box,
+            .return-note-banner,
+            .terms-card {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
         }
     </style>
@@ -378,328 +469,193 @@
 
 <body>
 
-    <!-- Print / Action Buttons -->
-    <div class="print-btn-container no-print">
-
-        <button onclick="window.print()" class="btn btn-primary btn-sm shadow fw-bold">
-
-            <svg xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                fill="currentColor"
-                class="bi bi-printer-fill me-2"
-                viewBox="0 0 16 16">
-
-                <path d="M0 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V9zm4-6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H4V3z" />
-
-                <path d="M2.5 14.5A1.5 1.5 0 0 1 1 13V9a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v4a1.5 1.5 0 0 1-1.5 1.5h-13z" />
-
-            </svg>
-
-            Print
-
-        </button>
-
-        <a href="javascript:void(0)"
-            onclick="handleGoBack()"
-            class="btn btn-secondary btn-sm shadow ms-2 fw-bold">
-            Back
-        </a>
-
-    </div>
-
-
-    <!-- ========================================== -->
-    <!-- SCREEN VIEW -->
-    <!-- ========================================== -->
-
-    <div class="invoice-container screen-only">
-
-        <!-- Company Header -->
-
-        @if(!($isEstimate ?? false))
-
-            <div class="company-info">
-
-                <div class="company-name">
-                    {{ \App\Models\Setting::get('company_name', 'prowave technogies') }}
-                </div>
-
-                <div style="font-size: 12px;">
-                    {{ \App\Models\Setting::get('company_address', 'Hyderabad') }}
-                </div>
-
-                <p>
-                    {{ \App\Models\Setting::get('company_phone', '0327-9226901') }}
-                </p>
-
-            </div>
-
-        @endif
-
-
-        <div class="invoice-title">
-            {{ ($isEstimate ?? false) ? 'Estimate' : 'Sales Invoice' }}
+    <!-- Action Bar (Screen Only) -->
+    <div class="action-bar no-print d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <span class="fw-bold text-dark fs-6">
+                <i class="fa-solid fa-file-invoice me-1 text-primary"></i>
+                Invoice Preview
+            </span>
+            <span class="badge bg-secondary">A4 Size</span>
         </div>
 
+        <div class="d-flex align-items-center gap-2">
+            <button onclick="window.print()" class="btn btn-primary shadow-sm">
+                <i class="fa-solid fa-print"></i>
+                Print Invoice (A4)
+            </button>
 
-        <!-- Info Grid -->
+            @if(Route::has('sales.receipt'))
+                <a href="{{ route('sales.receipt', $sale->id) }}" target="_blank" class="btn btn-outline-dark shadow-sm">
+                    <i class="fa-solid fa-receipt"></i>
+                    Thermal Receipt
+                </a>
+            @endif
 
-        @if(!($isEstimate ?? false))
+            <a href="javascript:void(0)" onclick="handleGoBack()" class="btn btn-secondary shadow-sm">
+                <i class="fa-solid fa-arrow-left"></i>
+                Back
+            </a>
+        </div>
+    </div>
 
-            <div class="row g-2 mb-2">
+    <!-- A4 Invoice Sheet -->
+    <div class="invoice-page">
 
-                <!-- Customer -->
-
-                <div class="col-6">
-
-                    <div class="info-box">
-
-                        <div class="info-box-header">
-                            Customer
-                        </div>
-
-                        @if($sale->customer_relation?->customer_id)
-
-                            <div style="font-size: 11px; color: #555;">
-                                Code:
-                                <strong>
-                                    {{ $sale->customer_relation->customer_id }}
-                                </strong>
+        <!-- Header -->
+        <div class="invoice-header">
+                <div class="row align-items-center">
+                    <div class="col-7">
+                        @if(!($isEstimate ?? false))
+                            <div class="company-name">
+                                {{ \App\Models\Setting::get('company_name', 'Prowave Technologies') }}
                             </div>
-
+                            <div class="company-details">
+                                <div><i class="fa-solid fa-location-dot"></i> {{ \App\Models\Setting::get('company_address', 'Hyderabad') }}</div>
+                                <div><i class="fa-solid fa-phone"></i> {{ \App\Models\Setting::get('company_phone', '0327-9226901') }}</div>
+                                @if(\App\Models\Setting::get('company_email'))
+                                    <div><i class="fa-solid fa-envelope"></i> {{ \App\Models\Setting::get('company_email') }}</div>
+                                @endif
+                            </div>
+                        @else
+                            <div class="company-name">
+                                {{ \App\Models\Setting::get('company_name', 'Prowave Technologies') }}
+                            </div>
+                            <div class="company-details">
+                                <div>{{ \App\Models\Setting::get('company_address', 'Hyderabad') }}</div>
+                            </div>
                         @endif
-
-                        <div>
-                            <span class="info-label">
-                                Name:
-                            </span>
-
-                            <strong>
-                                {{ $sale->walkin_name ?? ($sale->customer_relation->customer_name ?? 'Walking Customer') }}
-                            </strong>
-                        </div>
-
-                        <div>
-                            <span class="info-label">
-                                Address:
-                            </span>
-
-                            <span style="font-size:11px;">
-                                {{ $sale->customer_relation->address ?? '—' }}
-                            </span>
-                        </div>
-
-                        <div>
-                            <span class="info-label">
-                                Mob:
-                            </span>
-
-                            <span style="font-size:11px;">
-                                {{ $sale->customer_relation->mobile ?? '—' }}
-                            </span>
-                        </div>
-
                     </div>
 
+                    <div class="col-5">
+                        <div class="invoice-badge-title">
+                            {{ ($isEstimate ?? false) ? 'Estimate' : 'Sales Invoice' }}
+                        </div>
+                        <div class="invoice-meta-top">
+                            <div>Invoice #: <span class="meta-highlight">{{ $sale->invoice_no }}</span></div>
+                            <div>Date: <span class="meta-highlight">{{ $sale->created_at ? $sale->created_at->format('d/m/Y') : date('d/m/Y') }}</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer & Invoice Info Cards -->
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <span><i class="fa-solid fa-user me-1"></i> Customer Details</span>
+                            @if($sale->customer_relation?->customer_id)
+                                <span class="badge bg-light text-dark border">Code: {{ $sale->customer_relation->customer_id }}</span>
+                            @endif
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label">Name:</span>
+                            <span class="info-value">{{ $sale->walkin_name ?? ($sale->customer_relation->customer_name ?? 'Walk-in Customer') }}</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label">Phone:</span>
+                            <span class="info-value">{{ $sale->customer_relation->mobile ?? '—' }}</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span class="info-label">Address:</span>
+                            <span class="info-value">{{ $sale->customer_relation->address ?? '—' }}</span>
+                        </div>
+                    </div>
                 </div>
 
-
-                <!-- Reference -->
-
                 <div class="col-6">
-
-                    <div class="info-box">
-
-                        <div class="info-box-header">
-                            Reference
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <span><i class="fa-solid fa-file-lines me-1"></i> Invoice Details</span>
+                            <span class="badge bg-light text-dark border">{{ $sale->created_at ? $sale->created_at->format('h:i A') : date('h:i A') }}</span>
                         </div>
 
-                        <div>
-                            <span class="info-label">
-                                Inv #:
-                            </span>
-
-                            <strong>
-                                {{ $sale->invoice_no }}
-                            </strong>
+                        <div class="info-row">
+                            <span class="info-label">Invoice #:</span>
+                            <span class="info-value fw-bold text-primary">{{ $sale->invoice_no }}</span>
                         </div>
 
-                        <div>
-                            <span class="info-label">
-                                Date:
-                            </span>
-
-                            {{ $sale->created_at
-                                ? $sale->created_at->format('d/m/Y')
-                                : date('d/m/Y') }}
+                        <div class="info-row">
+                            <span class="info-label">Issue Date:</span>
+                            <span class="info-value">{{ $sale->created_at ? $sale->created_at->format('d M, Y') : date('d M, Y') }}</span>
                         </div>
+
+                        @if(!empty($sale->customer_relation?->salesOfficer?->name) || auth()->check())
+                            <div class="info-row">
+                                <span class="info-label">Sales Rep:</span>
+                                <span class="info-value">{{ $sale->customer_relation->salesOfficer->name ?? auth()->user()->name }}</span>
+                            </div>
+                        @endif
 
                         @if($sale->reference)
-
-                            <div style="margin-top:4px; padding-top:4px; border-top:1px dashed #ddd;">
-
-                                <span class="info-label">
-                                    Remarks:
-                                </span>
-
-                                <span style="font-size:11px; color:#333;">
-                                    {{ $sale->reference }}
-                                </span>
-
+                            <div class="info-row">
+                                <span class="info-label">Remarks:</span>
+                                <span class="info-value text-muted">{{ $sale->reference }}</span>
                             </div>
-
                         @endif
-
                     </div>
-
                 </div>
-
             </div>
 
-        @else
-
-            <div class="row g-2 mb-2">
-
-                <div class="col-12 text-end">
-
-                    <div class="info-box">
-
-                        <div>
-
-                            <span class="info-label">
-                                Date:
-                            </span>
-
-                            {{ $sale->created_at
-                                ? $sale->created_at->format('d/m/Y')
-                                : date('d/m/Y') }}
-
-                        </div>
-
-                    </div>
-
+            <!-- Return Note Banner if present -->
+            @if ($sale->return_note)
+                <div class="return-note-banner">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    <strong>Return Note:</strong> {{ $sale->return_note }}
                 </div>
+            @endif
 
-            </div>
+            <!-- Main Items Table -->
+            <div class="table-container">
+                <table class="invoice-table">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 5%;">Sr.</th>
+                            <th class="text-start" style="width: 40%;">Item Description</th>
+                            <th class="text-center" style="width: 14%;">Qty / Shipped</th>
+                            <th class="text-center" style="width: 10%;">UOM</th>
+                            <th class="text-end" style="width: 11%;">Rate</th>
+                            <th class="text-end" style="width: 9%;">Disc</th>
+                            <th class="text-end" style="width: 11%;">Net Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @php
+                            $totalCartonsCount = 0;
+                            $totalLooseCount = 0;
+                            $totalPiecesCount = 0;
+                        @endphp
 
-        @endif
-
-
-        <!-- Return Note -->
-
-        @if ($sale->return_note)
-
-            <div class="row mb-2">
-
-                <div class="col-12">
-
-                    <div class="info-box"
-                        style="min-height: auto; padding: 4px 8px; background-color: #f1f5f9; font-style: italic;">
-
-                        <strong>
-                            Note:
-                        </strong>
-
-                        {{ $sale->return_note }}
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        @endif
-
-
-        <!-- ========================================== -->
-        <!-- MAIN INVOICE TABLE -->
-        <!-- ========================================== -->
-
-        <table class="invoice-table">
-
-            <thead>
-
-                <tr>
-
-                    <th class="text-start" style="width: 38%">
-                        Description
-                    </th>
-
-                    <th class="text-center" style="width: 14%">
-                        Shipped
-                    </th>
-
-                    <th class="text-center" style="width: 10%">
-                        UOM
-                    </th>
-
-                    <th class="text-end" style="width: 10%">
-                        Price
-                    </th>
-
-                    <th class="text-end" style="width: 10%">
-                        Disc
-                    </th>
-
-                    <th class="text-end" style="width: 13%">
-                        Net Amount
-                    </th>
-
-                </tr>
-
-            </thead>
-
-
-            <tbody>
-
-                @foreach ($saleItems as $item)
-
-                    @php
-
-                        $height = $item['height'] ?? 0;
-                        $width = $item['width'] ?? 0;
-
-                        $m2PerPiece =
-                            $height > 0 && $width > 0
-                                ? ($height * $width) / 10000
-                                : 0;
-
-                        $piecesPerBox =
-                            (int)($item['pieces_per_box'] ?? 1);
-
-                        if ($piecesPerBox <= 0) {
-                            $piecesPerBox = 1;
-                        }
-
-                        $m2PerBox =
-                            $m2PerPiece * $piecesPerBox;
-
-                        $totalPieces =
-                            (int)$item['total_pieces'];
-
-                        $boxes =
-                            floor($totalPieces / $piecesPerBox);
-
-                        $loosePieces =
-                            $totalPieces % $piecesPerBox;
-
-                        $totalM2Line =
-                            $m2PerPiece * $totalPieces;
-
-                        $sizeMode =
-                            $item['size_mode'] ?? 'by_size';
-
-                    @endphp
-
-
-                    <tr>
-
-                        <!-- DESCRIPTION -->
-
-                        <td class="text-start">
-
+                        @foreach ($saleItems as $item)
                             @php
+                                $height = (float)($item['height'] ?? 0);
+                                $width = (float)($item['width'] ?? 0);
+                                $m2PerPiece = ($height > 0 && $width > 0) ? ($height * $width) / 10000 : 0;
+                                
+                                $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
+                                if ($piecesPerBox <= 0) $piecesPerBox = 1;
+                                
+                                $totalPieces = (int)($item['total_pieces'] ?? 0);
+                                $totalPiecesCount += $totalPieces;
+
+                                $boxes = floor($totalPieces / $piecesPerBox);
+                                $loosePieces = $totalPieces % $piecesPerBox;
+                                $totalM2Line = $m2PerPiece * $totalPieces;
+
+                                $sizeMode = $item['size_mode'] ?? 'by_size';
+                                $variantUnit = strtolower($item['variant_unit'] ?? '');
+                                $weightGrams = (float)($item['weight_per_piece'] ?? 0);
+
+                                if ($sizeMode === 'by_cartons' || $variantUnit === 'carton' || $variantUnit === 'ctn') {
+                                    $totalCartonsCount += $boxes;
+                                    $totalLooseCount += $loosePieces;
+                                }
+
+                                // Format item titles & labels
                                 $vName = $item['variant_name'] ?? '';
                                 $vSize = (!empty($item['size_val']) && $item['size_val'] !== '-') ? $item['size_val'] : '';
                                 $vColor = (!empty($item['color_val']) && $item['color_val'] !== '-') ? $item['color_val'] : '';
@@ -716,1944 +672,313 @@
                                 $productTitle .= $vExtraStr;
                             @endphp
 
-                            <div style="font-weight: bold; font-size: 12px; margin-bottom: 2px;">
-
-                                {{ $productTitle }}
-
-                            </div>
-
-
-                            <!--
-                                IMPORTANT:
-                                Raw $item['color'] data has intentionally
-                                been removed from this invoice.
-
-                                This prevents values such as:
-
-                                1000 180 180 1000 90 0 24 1 Carton 41.16
-
-                                from appearing here.
-                            -->
-
-
-                            <div style="font-size: 11px; color: #555; line-height: 1.2;">
-
-                                @if ($sizeMode == 'by_size')
-
-                                    <span class="d-inline-block ms-1">
-
-                                        @if ($height > 0 && $width > 0)
-
-                                            Dims:
-                                            {{ number_format($width, 0) }}x{{ number_format($height, 0) }}
-
-                                        @endif
-
-                                    </span>
-
-                                @endif
-
-
-                                @if ($piecesPerBox > 1)
-
-                                    <span class="d-inline-block ms-1">
-
-                                        Pack:
-                                        {{ $piecesPerBox }} pcs
-
-                                    </span>
-
-                                @endif
-
-                            </div>
-
-                        </td>
-
-
-                        <!-- SHIPPED -->
-
-                        <td class="text-center" style="vertical-align: middle;">
-
-                            @php
-
-                                $variantUnit =
-                                    strtolower(
-                                        $item['variant_unit']
-                                        ??
-                                        ''
-                                    );
-
-                                $weightGrams =
-                                    (float)(
-                                        $item['weight_per_piece']
-                                        ?? 0
-                                    );
-
-                            @endphp
-
-
-                            @if (
-                                $variantUnit === 'pcs'
-                                ||
-                                $variantUnit === 'piece'
-                                ||
-                                $variantUnit === 'pieces'
-                            )
-
-                                <div style="font-weight: bold; color: #2c3e50;">
-
-                                    {{ $totalPieces }} Pcs
-
-                                    @if ($weightGrams > 0)
-
-                                        <small class="d-block text-muted"
-                                            style="font-size: 10px;">
-
-                                            (
-                                            {{
-                                                $weightGrams == (int)$weightGrams
-                                                    ? (int)$weightGrams
-                                                    : $weightGrams
-                                            }}g
-                                            )
-
-                                        </small>
-
-                                    @endif
-
-                                </div>
-
-
-                            @elseif (
-                                in_array(
-                                    $sizeMode,
-                                    [
-                                        'by_kg',
-                                        'by_gm',
-                                        'by_feet',
-                                        'by_meter'
-                                    ]
-                                )
-                            )
-
-                                @php
-
-                                    $uomLabel = match($sizeMode) {
-
-                                        'by_kg' =>
-                                            'Kg',
-
-                                        'by_gm' =>
-                                            'Gm',
-
-                                        'by_feet' =>
-                                            'Ft',
-
-                                        'by_meter' =>
-                                            'Meter',
-
-                                        default =>
-                                            '',
-
-                                    };
-
-                                    $qtyVal =
-                                        (float)(
-                                            $item['qty_box']
-                                            ??
-                                            $item['qty']
-                                            ??
-                                            $totalPieces
-                                        );
-
-                                    $displayQty =
-                                        ($qtyVal == (int)$qtyVal)
-                                            ? (int)$qtyVal
-                                            : number_format($qtyVal, 3);
-
-                                @endphp
-
-
-                                <div style="font-weight: bold; color: #2c3e50;">
-
-                                    {{ $displayQty }}
-                                    {{ $uomLabel }}
-
-                                </div>
-
-
-                            @else
-
-                                <div style="font-weight: bold; color: #2c3e50;">
-
-                                    @if ($sizeMode == 'by_pieces')
-
-                                        {{ $totalPieces }} Pcs
-
-                                    @else
-
-                                        @if ($boxes > 0 && $loosePieces > 0)
-
-                                            {{ $boxes }}
-
-                                            {{ $sizeMode == 'by_cartons'
-                                                ? 'Carton'
-                                                : 'Box' }}
-
-                                            +
-
-                                            {{ $loosePieces }}
-                                            Pc
-
-                                        @elseif ($boxes > 0)
-
-                                            {{ $boxes }}
-
-                                            {{ $sizeMode == 'by_cartons'
-                                                ? 'Carton'
-                                                : 'Box' }}
-
-                                        @else
-
-                                            {{ $loosePieces }} Pcs
-
-                                        @endif
-
-                                    @endif
-
-                                </div>
-
-
-                                <small class="text-muted"
-                                    style="font-size: 10px;">
-
-                                    ({{ $totalPieces }} pcs)
-
-                                </small>
-
-                            @endif
-
-                        </td>
-
-
-                        <!-- UOM -->
-
-                        <td class="text-center"
-                            style="vertical-align: middle;">
-
-                            @if (!empty($item['variant_unit']))
-
-                                <span class="fw-bold">
-                                    {{ ucfirst($item['variant_unit']) }}
-                                </span>
-
-                            @elseif ($sizeMode == 'by_pieces')
-
-                                <span class="fw-bold">
-                                    Pieces
-                                </span>
-
-                            @elseif ($sizeMode == 'by_cartons')
-
-                                <span class="fw-bold">
-                                    Cartons
-                                </span>
-
-                            @elseif ($sizeMode == 'by_size')
-
-                                <span class="fw-bold">
-                                    {{ number_format($totalM2Line, 4) }}
-                                </span>
-
-                                m²
-
-                            @else
-
-                                <span class="fw-bold">
-                                    Pieces
-                                </span>
-
-                            @endif
-
-                        </td>
-
-
-                        <!-- PRICE -->
-
-                        <td class="text-end"
-                            style="vertical-align: middle;">
-
-                            {{ number_format($item['price'], 2) }}
-
-                        </td>
-
-
-                        <!-- DISCOUNT -->
-
-                        <td class="text-end"
-                            style="vertical-align: middle;">
-
-                            @php
-
-                                $discAmt =
-                                    (float)(
-                                        $item['discount_amount']
-                                        ?? 0
-                                    );
-
-                                $discPct =
-                                    (float)(
-                                        $item['discount_percent']
-                                        ?? 0
-                                    );
-
-                            @endphp
-
-
-                            @if ($discAmt > 0)
-
-                                <span class="text-danger">
-
-                                    {{ number_format($discAmt, 2) }}
-
-                                </span>
-
-                                @if ($discPct > 0)
-
-                                    <br>
-
-                                    <small class="text-muted">
-
-                                        (
-                                        {{ number_format($discPct, 1) }}%
-                                        )
-
-                                    </small>
-
-                                @else
-
-                                    <br>
-
-                                    <small class="text-muted">
-                                        PKR
-                                    </small>
-
-                                @endif
-
-                            @else
-
-                                <span class="text-muted">
-                                    —
-                                </span>
-
-                            @endif
-
-                        </td>
-
-
-                        <!-- NET AMOUNT -->
-
-                        <td class="text-end fw-bold"
-                            style="vertical-align: middle;">
-
-                            {{ number_format($item['total'], 2) }}
-
-                        </td>
-
-                    </tr>
-
-                @endforeach
-
-            </tbody>
-
-        </table>
-
-        @php
-            $totalCartonsCount = 0;
-            $totalLooseCount = 0;
-            $totalPiecesCount = 0;
-
-            foreach ($saleItems as $it) {
-                $ppb = (float)($it['pieces_per_box'] ?? 1);
-                if ($ppb <= 0) $ppb = 1;
-                $tp = (float)($it['total_pieces'] ?? 0);
-                $totalPiecesCount += $tp;
-
-                $vU = strtolower($it['variant_unit'] ?? '');
-                $sM = $it['size_mode'] ?? 'std';
-
-                if ($sM === 'by_cartons' || $vU === 'carton' || $vU === 'ctn') {
-                    $b = floor($tp / $ppb);
-                    $l = $tp % $ppb;
-                    $totalCartonsCount += $b;
-                    $totalLooseCount += $l;
-                }
-            }
-        @endphp
-
-
-        <!-- ========================================== -->
-        <!-- EXCHANGE RETURN -->
-        <!-- ========================================== -->
-
-        @php
-
-            $exchangeReturn =
-                \App\Models\SaleReturn::with('items.product')
-                    ->where(
-                        'remarks',
-                        'LIKE',
-                        '%Invoice #'.$sale->invoice_no.'%'
-                    )
-                    ->first();
-
-            $exchangeReturnedAmount = 0;
-
-            if ($exchangeReturn) {
-
-                $exchangeReturnedAmount =
-                    $exchangeReturn->items->sum('line_total');
-
-            }
-
-        @endphp
-
-
-        @if($exchangeReturn && $exchangeReturn->items->count() > 0)
-
-            <div class="mt-3">
-
-                <h6 class="fw-bold mb-2">
-                    Returned Items (Exchange)
-                </h6>
-
-
-                <table class="invoice-table">
-
-                    <thead class="bg-light">
-
-                        <tr>
-
-                            <th class="text-start"
-                                style="width: 5%">
-                                S.
-                            </th>
-
-                            <th class="text-start"
-                                style="width: 38%">
-                                Description
-                            </th>
-
-                            <th class="text-center"
-                                style="width: 14%">
-                                Qty
-                            </th>
-
-                            <th class="text-center"
-                                style="width: 10%">
-                                UOM
-                            </th>
-
-                            <th class="text-end"
-                                style="width: 10%">
-                                Price
-                            </th>
-
-                            <th class="text-end"
-                                style="width: 10%">
-                                Disc
-                            </th>
-
-                            <th class="text-end"
-                                style="width: 13%">
-                                Net Amount
-                            </th>
-
-                        </tr>
-
-                    </thead>
-
-
-                    <tbody>
-
-                        @foreach ($exchangeReturn->items as $retItem)
-
                             <tr>
-
+                                <td class="text-center">{{ $loop->iteration }}</td>
+                                
                                 <td class="text-start">
-                                    {{ $loop->iteration }}
-                                </td>
-
-
-                                <td class="text-start">
-
-                                    <div style="font-weight: bold; font-size: 12px; margin-bottom: 2px;">
-
-                                        {{ $retItem->product->item_name ?? 'Unknown' }}
-
+                                    <div class="item-title">{{ $productTitle }}</div>
+                                    <div class="item-subtitle">
+                                        @if ($sizeMode == 'by_size' && $height > 0 && $width > 0)
+                                            <span class="item-badge">Dims: {{ number_format($width, 0) }}x{{ number_format($height, 0) }}</span>
+                                        @endif
+                                        @if ($piecesPerBox > 1)
+                                            <span class="item-badge">Pack: {{ $piecesPerBox }} pcs/box</span>
+                                        @endif
                                     </div>
+                                </td>
 
-                                    @php
-
-                                        $retColorStr = '';
-
-                                        if (!empty($retItem->color)) {
-
-                                            $decoded =
-                                                base64_decode(
-                                                    $retItem->color,
-                                                    true
-                                                );
-
-                                            if (
-                                                $decoded !== false
-                                                &&
-                                                is_string($decoded)
-                                                &&
-                                                str_starts_with(
-                                                    trim($decoded),
-                                                    '{'
-                                                )
-                                            ) {
-
-                                                $parsed =
-                                                    json_decode(
-                                                        $decoded,
-                                                        true
-                                                    );
-
-                                                if (
-                                                    json_last_error()
-                                                    ===
-                                                    JSON_ERROR_NONE
-                                                    &&
-                                                    is_array($parsed)
-                                                ) {
-
-                                                    $parts = [];
-
-                                                    if (
-                                                        !empty($parsed['size'])
-                                                        &&
-                                                        $parsed['size'] !== '-'
-                                                    ) {
-
-                                                        $parts[] =
-                                                            $parsed['size'];
-
-                                                    }
-
-                                                    if (
-                                                        !empty($parsed['color'])
-                                                        &&
-                                                        $parsed['color'] !== '-'
-                                                    ) {
-
-                                                        $parts[] =
-                                                            $parsed['color'];
-
-                                                    }
-
-                                                    $retColorStr =
-                                                        implode(
-                                                            ' | ',
-                                                            $parts
-                                                        );
-
-                                                }
-
-                                            }
-
-                                        }
-
-                                    @endphp
-
-
-                                    @if($retColorStr)
-
-                                        <div style="font-size: 11px; color: #555;">
-
-                                            <span class="badge bg-light text-dark border p-1"
-                                                style="font-size: 9px;">
-
-                                                {{ $retColorStr }}
-
-                                            </span>
-
+                                <td class="text-center">
+                                    @if ($variantUnit === 'pcs' || $variantUnit === 'piece' || $variantUnit === 'pieces')
+                                        <span class="fw-bold">{{ $totalPieces }} Pcs</span>
+                                        @if ($weightGrams > 0)
+                                            <small class="text-muted d-block" style="font-size: 10px;">({{ $weightGrams == (int)$weightGrams ? (int)$weightGrams : $weightGrams }}g)</small>
+                                        @endif
+                                    @elseif (in_array($sizeMode, ['by_kg', 'by_gm', 'by_feet', 'by_meter']))
+                                        @php
+                                            $uomLabel = match($sizeMode) {
+                                                'by_kg' => 'Kg',
+                                                'by_gm' => 'Gm',
+                                                'by_feet' => 'Ft',
+                                                'by_meter' => 'Meter',
+                                                default => '',
+                                            };
+                                            $qtyVal = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
+                                            $displayQty = ($qtyVal == (int)$qtyVal) ? (int)$qtyVal : number_format($qtyVal, 3);
+                                        @endphp
+                                        <span class="fw-bold">{{ $displayQty }} {{ $uomLabel }}</span>
+                                    @else
+                                        <div class="fw-bold">
+                                            @if ($sizeMode == 'by_pieces')
+                                                {{ $totalPieces }} Pcs
+                                            @else
+                                                @if ($boxes > 0 && $loosePieces > 0)
+                                                    {{ $boxes }} {{ $sizeMode == 'by_cartons' ? 'Ctn' : 'Box' }} + {{ $loosePieces }} Pc
+                                                @elseif ($boxes > 0)
+                                                    {{ $boxes }} {{ $sizeMode == 'by_cartons' ? 'Ctn' : 'Box' }}
+                                                @else
+                                                    {{ $loosePieces }} Pcs
+                                                @endif
+                                            @endif
                                         </div>
-
+                                        <small class="text-muted" style="font-size: 10px;">({{ $totalPieces }} pcs)</small>
                                     @endif
-
                                 </td>
 
-
-                                <td class="text-center fw-bold">
-
-                                    {{ (float)$retItem->qty }}
-                                    Pcs
-
+                                <td class="text-center fw-semibold">
+                                    @if (!empty($item['variant_unit']))
+                                        {{ ucfirst($item['variant_unit']) }}
+                                    @elseif ($sizeMode == 'by_pieces')
+                                        Pieces
+                                    @elseif ($sizeMode == 'by_cartons')
+                                        Cartons
+                                    @elseif ($sizeMode == 'by_size')
+                                        {{ number_format($totalM2Line, 2) }} m²
+                                    @else
+                                        Pieces
+                                    @endif
                                 </td>
-
-
-                                <td class="text-center fw-bold">
-                                    Pieces
-                                </td>
-
 
                                 <td class="text-end">
-
-                                    {{ number_format($retItem->price, 2) }}
-
+                                    {{ number_format($item['price'], 2) }}
                                 </td>
 
-
-                                <td class="text-end text-muted">
-                                    —
+                                <td class="text-end">
+                                    @php
+                                        $discAmt = (float)($item['discount_amount'] ?? 0);
+                                        $discPct = (float)($item['discount_percent'] ?? 0);
+                                    @endphp
+                                    @if ($discAmt > 0)
+                                        <span class="text-danger fw-semibold">{{ number_format($discAmt, 2) }}</span>
+                                        @if ($discPct > 0)
+                                            <small class="text-muted d-block" style="font-size: 9.5px;">({{ number_format($discPct, 1) }}%)</small>
+                                        @endif
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
                                 </td>
-
 
                                 <td class="text-end fw-bold">
-
-                                    -
-                                    {{ number_format($retItem->line_total, 2) }}
-
+                                    {{ number_format($item['total'], 2) }}
                                 </td>
-
                             </tr>
-
                         @endforeach
-
                     </tbody>
-
                 </table>
-
             </div>
 
-        @endif
+            <!-- Exchange Return Section if exists -->
+            @php
+                $exchangeReturn = \App\Models\SaleReturn::with('items.product')
+                    ->where('remarks', 'LIKE', '%Invoice #'.$sale->invoice_no.'%')
+                    ->first();
 
+                $exchangeReturnedAmount = 0;
+                if ($exchangeReturn) {
+                    $exchangeReturnedAmount = $exchangeReturn->items->sum('line_total');
+                }
+            @endphp
 
-        <!-- ========================================== -->
-        <!-- FOOTER / TOTALS -->
-        <!-- ========================================== -->
-
-        <div class="row mt-2">
-
-            <div class="col-7">
-
-                <div class="terms-box pt-2">
-
-                    <p class="fw-bold mb-1">
-                        Terms & Conditions:
-                    </p>
-
-                    <ul style="font-size: 10px;">
-
-                        @php
-
-                            $invoiceTerms =
-                                \App\Models\Setting::get(
-                                    'invoice_terms',
-                                    "10% will be deducted on return of purchase goods within 7 days.\nLoose & Water Soak products will not be RETURNED.\nPlease bring this invoice for any returns or exchanges."
-                                );
-
-                            $termLines =
-                                explode("\n", $invoiceTerms);
-
-                        @endphp
-
-
-                        @foreach($termLines as $line)
-
-                            @if(trim($line))
-
-                                <li>
-                                    {{ trim($line) }}
-                                </li>
-
-                            @endif
-
-                        @endforeach
-
-                    </ul>
-
-                </div>
-
-
-                <div class="mt-4 pt-2">
-
-                    <div class="signature-area">
-                        Authorized Signature
+            @if($exchangeReturn && $exchangeReturn->items->count() > 0)
+                <div class="mb-3 avoid-page-break">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="fw-bold text-danger">
+                            <i class="fa-solid fa-arrow-rotate-left me-1"></i>
+                            Returned Items (Exchange Deduction)
+                        </span>
+                        <span class="badge bg-danger">Return #{{ $exchangeReturn->return_invoice ?? $exchangeReturn->id }}</span>
                     </div>
 
-                    <div class="small text-muted mt-1"
-                        style="font-size: 10px;">
+                    <table class="invoice-table exchange-table">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width: 5%;">Sr.</th>
+                                <th class="text-start" style="width: 40%;">Item Description</th>
+                                <th class="text-center" style="width: 14%;">Qty</th>
+                                <th class="text-center" style="width: 10%;">UOM</th>
+                                <th class="text-end" style="width: 11%;">Rate</th>
+                                <th class="text-end" style="width: 9%;">Disc</th>
+                                <th class="text-end" style="width: 11%;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($exchangeReturn->items as $retItem)
+                                <tr>
+                                    <td class="text-center">{{ $loop->iteration }}</td>
+                                    <td class="text-start">
+                                        <span class="item-title">{{ $retItem->product->item_name ?? ($retItem->product_name ?? 'Unknown') }}</span>
+                                    </td>
+                                    <td class="text-center fw-bold">{{ (float)$retItem->qty }} Pcs</td>
+                                    <td class="text-center">Pieces</td>
+                                    <td class="text-end">{{ number_format($retItem->price, 2) }}</td>
+                                    <td class="text-end text-muted">—</td>
+                                    <td class="text-end text-danger fw-bold">- {{ number_format($retItem->line_total, 2) }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
 
-                        Printed on:
-                        {{ date('d/m/Y h:i A') }}
+            <!-- Footer / Financial Breakdown Section -->
+            <div class="bottom-section avoid-page-break">
+            <div class="row g-3">
+                <!-- Terms & Signatures (Left) -->
+                <div class="col-7 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="terms-card">
+                            <div class="terms-title">
+                                <i class="fa-solid fa-shield-halved me-1"></i> Terms & Conditions
+                            </div>
+                            <ul class="terms-list">
+                                @php
+                                    $invoiceTerms = \App\Models\Setting::get(
+                                        'invoice_terms',
+                                        "10% will be deducted on return of purchased goods within 7 days.\nLoose & Water Soaked products will not be RETURNED.\nPlease bring this invoice for any returns or exchanges."
+                                    );
+                                    $termLines = explode("\n", $invoiceTerms);
+                                @endphp
+                                @foreach($termLines as $line)
+                                    @if(trim($line))
+                                        <li>{{ trim($line) }}</li>
+                                    @endif
+                                @endforeach
+                            </ul>
+                        </div>
 
+                        @if(!empty($sale->total_amount_Words))
+                            <div class="words-amount-box">
+                                <strong>Amount in Words:</strong> {{ $sale->total_amount_Words }}
+                            </div>
+                        @endif
                     </div>
 
+                    <div class="signature-section">
+                        <div class="sig-block">
+                            <div class="sig-line"></div>
+                            <div class="sig-title">Customer Signature</div>
+                        </div>
+
+                        <div class="sig-block">
+                            <div class="sig-line"></div>
+                            <div class="sig-title">Authorized Signature</div>
+                            <div class="printed-time">Printed: {{ date('d/m/Y h:i A') }}</div>
+                        </div>
+                    </div>
                 </div>
 
-            </div>
-
-
-            <div class="col-5">
-
-                <div class="info-box"
-                    style="border: none; padding: 0;">
+                <!-- Financial Totals (Right) -->
+                <div class="col-5">
+                    @php
+                        $grossTotal = collect($saleItems)->sum('total');
+                        $totalDisc = collect($saleItems)->sum('discount_amount') + (float)($sale->total_extradiscount ?? 0);
+                        $netBill = (float)$sale->total_net;
+                        $paidAmount = (float)($sale->cash ?? 0);
+                        $finalPayable = $netBill - $exchangeReturnedAmount;
+                        $finalBal = $previousBalance + $finalPayable - $paidAmount;
+                    @endphp
 
                     <table class="totals-table">
-
-                        @php
-
-                            $grossTotal =
-                                collect($saleItems)->sum('total');
-
-                            $totalDisc =
-                                collect($saleItems)->sum('discount_amount');
-
-                            $netBill =
-                                $sale->total_net;
-
-                            $paidAmount =
-                                (float)($sale->cash ?? 0);
-
-                            $finalBal =
-                                $previousBalance
-                                +
-                                $netBill
-                                -
-                                $paidAmount;
-
-                        @endphp
-
-
                         @if ($totalCartonsCount > 0)
-
                             <tr>
-
-                                <td class="text-muted fw-bold">
-                                    Total Cartons
-                                </td>
-
-                                <td class="text-end fw-bold" style="color: var(--primary-color);">
-
+                                <td class="tot-label">Total Cartons</td>
+                                <td class="tot-val text-primary">
                                     @if ($totalLooseCount > 0)
-                                        {{ $totalCartonsCount }} Cartons + {{ $totalLooseCount }} Pcs
+                                        {{ $totalCartonsCount }} Ctn + {{ $totalLooseCount }} Pcs
                                     @else
                                         {{ $totalCartonsCount }} Cartons
                                     @endif
-
                                 </td>
-
                             </tr>
-
                         @endif
 
+                        <tr>
+                            <td class="tot-label">Gross Subtotal</td>
+                            <td class="tot-val">{{ number_format($grossTotal + $totalDisc, 2) }}</td>
+                        </tr>
 
                         @if ($totalDisc > 0)
-
                             <tr>
-
-                                <td class="text-muted">
-                                    Gross Total
-                                </td>
-
-                                <td class="text-end text-muted">
-
-                                    {{
-                                        number_format(
-                                            $grossTotal + $totalDisc,
-                                            2
-                                        )
-                                    }}
-
-                                </td>
-
+                                <td class="tot-label text-danger">Total Discount</td>
+                                <td class="tot-val text-danger">- {{ number_format($totalDisc, 2) }}</td>
                             </tr>
-
-
-                            <tr>
-
-                                <td class="text-muted">
-                                    Total Discount
-                                </td>
-
-                                <td class="text-end text-danger">
-
-                                    -
-                                    {{ number_format($totalDisc, 2) }}
-
-                                </td>
-
-                            </tr>
-
                         @endif
-
 
                         @if ($exchangeReturnedAmount > 0)
-
                             <tr>
-
-                                <td class="text-muted">
-                                    Return Value
-                                </td>
-
-                                <td class="text-end text-danger">
-
-                                    -
-                                    {{
-                                        number_format(
-                                            $exchangeReturnedAmount,
-                                            2
-                                        )
-                                    }}
-
-                                </td>
-
+                                <td class="tot-label text-danger">Exchange Return</td>
+                                <td class="tot-val text-danger">- {{ number_format($exchangeReturnedAmount, 2) }}</td>
                             </tr>
-
                         @endif
 
-
-                        @php
-
-                            $finalPayable =
-                                $netBill
-                                -
-                                $exchangeReturnedAmount;
-
-                        @endphp
-
-
-                        <tr>
-
-                            <td class="fw-bold text-dark fs-6"
-                                style="border-top: 2px solid #34495e; padding-top: 8px;">
-
-                                {{
-                                    $finalPayable < 0
-                                        ? 'Refund To Customer'
-                                        : 'Net Payable'
-                                }}
-
-                            </td>
-
-
-                            <td class="text-end fw-bold text-dark fs-6"
-                                style="border-top: 2px solid #34495e; padding-top: 8px;">
-
-                                {{
-                                    number_format(
-                                        abs($finalPayable),
-                                        2
-                                    )
-                                }}
-
-                            </td>
-
+                        <tr class="grand-total-row">
+                            <td>{{ $finalPayable < 0 ? 'Refund To Customer' : 'Net Bill Amount' }}</td>
+                            <td class="text-end">{{ number_format(abs($finalPayable), 2) }}</td>
                         </tr>
-
 
                         @if (round(abs($previousBalance), 2) > 0)
-
-                            <tr style="border-bottom: 2px solid #eee;">
-
-                                <td class="text-muted">
-                                    Prev Bal
+                            <tr>
+                                <td class="tot-label">Previous Balance</td>
+                                <td class="tot-val">
+                                    {{ number_format(abs($previousBalance), 2) }}
+                                    <small class="text-muted fw-bold">({{ $previousBalance >= 0 ? 'Dr' : 'Cr' }})</small>
                                 </td>
-
-                                <td class="text-end text-muted">
-
-                                    {{
-                                        number_format(
-                                            abs($previousBalance),
-                                            2
-                                        )
-                                    }}
-
-                                    <small>
-                                        {{
-                                            $previousBalance >= 0
-                                                ? 'Dr'
-                                                : 'Cr'
-                                        }}
-                                    </small>
-
-                                </td>
-
                             </tr>
-
                         @endif
 
-
                         <tr>
-
-                            <td>
-                                Paid
-                            </td>
-
-                            <td class="text-end text-success">
-
-                                {{
-                                    number_format(
-                                        $paidAmount,
-                                        2
-                                    )
-                                }}
-
-                            </td>
-
+                            <td class="tot-label text-success">Paid / Cash Received</td>
+                            <td class="tot-val text-success">{{ number_format($paidAmount, 2) }}</td>
                         </tr>
-
 
                         @if ($sale->change > 0)
-
                             <tr>
-
-                                <td>
-
-                                    Change
-
-                                    {{
-                                        $sale->change_account
-                                            ? ' ('.$sale->change_account->title.')'
-                                            : ''
-                                    }}
-
-                                </td>
-
-                                <td class="text-end text-danger">
-
-                                    {{
-                                        number_format(
-                                            $sale->change,
-                                            2
-                                        )
-                                    }}
-
-                                </td>
-
+                                <td class="tot-label text-danger">Change Returned</td>
+                                <td class="tot-val text-danger">{{ number_format($sale->change, 2) }}</td>
                             </tr>
-
                         @endif
 
-
-                        @php
-
-                            $finalBal =
-                                $previousBalance
-                                +
-                                $finalPayable
-                                -
-                                $paidAmount;
-
-                        @endphp
-
-
-                        <tr class="closing-bal">
-
-                            <td class="fw-bold text-dark py-2">
-                                Closing Balance
-                            </td>
-
-                            <td class="text-end fw-bold text-dark py-2">
-
-                                {{
-                                    number_format(
-                                        abs($finalBal),
-                                        2
-                                    )
-                                }}
-
-                                <span class="text-muted"
-                                    style="font-size: 11px;">
-
-                                    {{
-                                        $finalBal >= 0
-                                            ? 'Dr'
-                                            : 'Cr'
-                                    }}
-
-                                </span>
-
-                            </td>
-
-                        </tr>
-
+                        @if(!empty($sale->customer_id) || round(abs($finalBal), 2) > 0)
+                            <tr class="closing-balance-row">
+                                <td>Closing Balance</td>
+                                <td class="text-end">
+                                    {{ number_format(abs($finalBal), 2) }}
+                                    <span class="badge-balance">{{ $finalBal >= 0 ? 'Dr' : 'Cr' }}</span>
+                                </td>
+                            </tr>
+                        @endif
                     </table>
-
                 </div>
-
-
-                <div class="text-end mt-1">
-
-                    <small class="text-muted fst-italic"
-                        style="font-size: 10px;">
-
-                        {{
-                            Str::limit(
-                                $sale->total_amount_Words,
-                                60
-                            )
-                        }}
-
-                    </small>
-
-                </div>
-
             </div>
-
         </div>
 
     </div>
 
-
-    <!-- ========================================== -->
-    <!-- THERMAL RECEIPT -->
-    <!-- ========================================== -->
-
-    <div class="receipt-container">
-
-        <!-- Header -->
-
-        <div class="company-name">
-
-            {{ \App\Models\Setting::get(
-                'company_name',
-                'Three Stars Medical'
-            ) }}
-
-        </div>
-
-
-        <div class="company-info">
-
-            <div>
-                {{ \App\Models\Setting::get(
-                    'company_address',
-                    'Hyderabad'
-                ) }}
-            </div>
-
-            <div>
-                Ph:
-                {{ \App\Models\Setting::get(
-                    'company_phone',
-                    '0327-9226901'
-                ) }}
-            </div>
-
-        </div>
-
-
-        @if(
-            \App\Models\Setting::get('facebook_link')
-            ||
-            \App\Models\Setting::get('tiktok_link')
-            ||
-            \App\Models\Setting::get('instagram_link')
-            ||
-            \App\Models\Setting::get('website_link')
-        )
-
-            <div style="text-align: left; font-size: 10px; line-height: 1.4; word-wrap: break-word; overflow-wrap: break-word; margin-top: 4px;">
-
-                @if(\App\Models\Setting::get('facebook_link'))
-
-                    <div style="margin-bottom: 2px;">
-                        <strong>Facebook:</strong>
-                        {{ \App\Models\Setting::get('facebook_link') }}
-                    </div>
-
-                @endif
-
-
-                @if(\App\Models\Setting::get('tiktok_link'))
-
-                    <div style="margin-bottom: 2px;">
-                        <strong>TikTok:</strong>
-                        {{ \App\Models\Setting::get('tiktok_link') }}
-                    </div>
-
-                @endif
-
-
-                @if(\App\Models\Setting::get('instagram_link'))
-
-                    <div style="margin-bottom: 2px;">
-                        <strong>Instagram:</strong>
-                        {{ \App\Models\Setting::get('instagram_link') }}
-                    </div>
-
-                @endif
-
-
-                @if(\App\Models\Setting::get('website_link'))
-
-                    <div style="margin-bottom: 2px;">
-                        <strong>Website:</strong>
-                        {{ \App\Models\Setting::get('website_link') }}
-                    </div>
-
-                @endif
-
-            </div>
-
-        @endif
-
-
-        <div class="policy-banner">
-            No Return, Only Exchange in 3 days
-        </div>
-
-
-        <div class="divider"></div>
-
-
-        <!-- Meta -->
-
-        @php
-            $isWalkin = empty($sale->customer_id);
-        @endphp
-
-
-        <div class="meta-grid">
-
-            <div class="meta-row">
-
-                <span class="meta-label">
-                    Invoice #:
-                </span>
-
-                <span class="meta-value">
-                    {{ $sale->invoice_no }}
-                </span>
-
-            </div>
-
-
-            <div class="meta-row">
-
-                <span class="meta-label">
-                    Date:
-                </span>
-
-                <span class="meta-value">
-
-                    {{
-                        $sale->created_at
-                            ? $sale->created_at->format('d/m/Y h:i A')
-                            : date('d/m/Y h:i A')
-                    }}
-
-                </span>
-
-            </div>
-
-
-            <div class="meta-row">
-
-                <span class="meta-label">
-                    Customer:
-                </span>
-
-                <span class="meta-value">
-
-                    {{
-                        Str::limit(
-                            $sale->walkin_name
-                            ??
-                            ($sale->customer_relation->customer_name
-                                ?? 'Walking Customer'),
-                            22
-                        )
-                    }}
-
-                </span>
-
-            </div>
-
-
-            @if (auth()->check())
-
-                <div class="meta-row">
-
-                    <span class="meta-label">
-                        Salesperson:
-                    </span>
-
-                    <span class="meta-value">
-                        {{ auth()->user()->name }}
-                    </span>
-
-                </div>
-
-            @endif
-
-
-            @if($sale->reference)
-
-                <div class="meta-row">
-
-                    <span class="meta-label">
-                        Remarks:
-                    </span>
-
-                    <span class="meta-value">
-                        {{ $sale->reference }}
-                    </span>
-
-                </div>
-
-            @endif
-
-        </div>
-
-
-        <div class="divider"></div>
-
-
-        <!-- ========================================== -->
-        <!-- THERMAL ITEMS -->
-        <!-- ========================================== -->
-
-        <table class="items-table">
-
-            <thead>
-
-                <tr>
-
-                    <th style="width: 6%;">
-                        S.
-                    </th>
-
-                    <th style="width: 53%;">
-                        Description
-                    </th>
-
-                    <th style="width: 10%;"
-                        class="text-center">
-                        Qty
-                    </th>
-
-                    <th style="width: 13%;"
-                        class="text-end">
-                        Rate
-                    </th>
-
-                    <th style="width: 18%;"
-                        class="text-end">
-                        Total
-                    </th>
-
-                </tr>
-
-            </thead>
-
-
-            <tbody>
-
-                @foreach ($saleItems as $item)
-
-                    @php
-
-                        $sizeMode =
-                            $item['size_mode'] ?? 'std';
-
-                        $totalPieces =
-                            (int)$item['total_pieces'];
-
-                        $variantUnit =
-                            strtolower(
-                                $item['variant_unit']
-                                ?? ''
-                            );
-
-                        $weightGrams =
-                            (float)(
-                                $item['weight_per_piece']
-                                ?? 0
-                            );
-
-                        $qtyDisplay =
-                            $totalPieces . ' Pcs';
-
-
-                        if (
-                            $variantUnit === 'pcs'
-                            ||
-                            $variantUnit === 'piece'
-                            ||
-                            $variantUnit === 'pieces'
-                        ) {
-
-                            $qtyDisplay =
-                                $totalPieces . ' Pcs';
-
-                            if ($weightGrams > 0) {
-
-                                $qtyDisplay .=
-                                    ' (' .
-                                    (
-                                        $weightGrams == (int)$weightGrams
-                                            ? (int)$weightGrams
-                                            : $weightGrams
-                                    )
-                                    .
-                                    'g)';
-
-                            }
-
-                        }
-
-                        elseif (
-                            in_array(
-                                $sizeMode,
-                                [
-                                    'by_kg',
-                                    'by_gm',
-                                    'by_feet',
-                                    'by_meter'
-                                ]
-                            )
-                        ) {
-
-                            $uomLabel = match($sizeMode) {
-
-                                'by_kg' =>
-                                    'Kg',
-
-                                'by_gm' =>
-                                    'Gm',
-
-                                'by_feet' =>
-                                    'Ft',
-
-                                'by_meter' =>
-                                    'Mtr',
-
-                                default =>
-                                    '',
-
-                            };
-
-
-                            $qtyVal =
-                                (float)(
-                                    $item['qty_box']
-                                    ??
-                                    $item['qty']
-                                    ??
-                                    $totalPieces
-                                );
-
-
-                            $qtyDisplay =
-                                (
-                                    $qtyVal == (int)$qtyVal
-                                        ? (int)$qtyVal
-                                        : number_format($qtyVal, 3)
-                                )
-                                .
-                                ' '
-                                .
-                                $uomLabel;
-
-                        }
-
-                        elseif (
-                            $sizeMode == 'by_cartons'
-                            ||
-                            $sizeMode == 'by_size'
-                        ) {
-
-                            $piecesPerBox =
-                                (int)(
-                                    $item['pieces_per_box']
-                                    ?? 1
-                                );
-
-
-                            if ($piecesPerBox <= 0) {
-                                $piecesPerBox = 1;
-                            }
-
-
-                            $boxes =
-                                floor(
-                                    $totalPieces
-                                    /
-                                    $piecesPerBox
-                                );
-
-
-                            $loose =
-                                $totalPieces
-                                %
-                                $piecesPerBox;
-
-
-                            if (
-                                $boxes > 0
-                                &&
-                                $loose > 0
-                            ) {
-
-                                $qtyDisplay =
-                                    "$boxes.$loose";
-
-                            }
-
-                            elseif ($boxes > 0) {
-
-                                $qtyDisplay =
-                                    $boxes;
-
-                            }
-
-                            else {
-
-                                $qtyDisplay =
-                                    $loose;
-
-                            }
-
-                        }
-
-                    @endphp
-
-
-                    <tr>
-
-                        <td style="width: 6%;">
-                            {{ $loop->iteration }}
-                        </td>
-
-
-                        <td style="width: 53%;">
-
-                            @php
-                                $tVName = $item['variant_name'] ?? '';
-                                $tVSize = (!empty($item['size_val']) && $item['size_val'] !== '-') ? $item['size_val'] : '';
-                                $tVColor = (!empty($item['color_val']) && $item['color_val'] !== '-') ? $item['color_val'] : '';
-                                
-                                $tVExtra = [];
-                                if ($tVSize) $tVExtra[] = $tVSize;
-                                if ($tVColor) $tVExtra[] = $tVColor;
-                                $tVExtraStr = count($tVExtra) > 0 ? ' (' . implode(', ', $tVExtra) . ')' : '';
-
-                                $tProductTitle = $item['item_name'];
-                                if ($tVName && strtolower(trim($tVName)) !== strtolower(trim($tProductTitle))) {
-                                    $tProductTitle .= ' — ' . $tVName;
-                                }
-                                $tProductTitle .= $tVExtraStr;
-                            @endphp
-
-                            <span class="item-name">
-                                {{ $tProductTitle }}
-                            </span>
-
-                            {{-- 
-                                IMPORTANT:
-                                Raw color / variant data intentionally
-                                removed from thermal receipt as well.
-                            --}}
-
-                        </td>
-
-
-                        <td style="width: 10%;"
-                            class="text-center">
-
-                            {{ $qtyDisplay }}
-
-                        </td>
-
-
-                        <td style="width: 13%;"
-                            class="text-end">
-
-                            {{ number_format($item['price'], 0) }}
-
-                        </td>
-
-
-                        <td style="width: 18%;"
-                            class="text-end">
-
-                            {{ number_format($item['total'], 0) }}
-
-                        </td>
-
-                    </tr>
-
-                @endforeach
-
-            </tbody>
-
-        </table>
-
-
-        <!-- Returned Items -->
-
-        @if(
-            $exchangeReturn
-            &&
-            $exchangeReturn->items->count() > 0
-        )
-
-            <div class="divider"
-                style="border-top: 1px dashed #000; margin: 4px 0;">
-            </div>
-
-
-            <div style="font-weight: bold; font-size: 11px; margin-bottom: 2px; color: #000;">
-                Returned Items:
-            </div>
-
-
-            <table class="items-table"
-                style="margin-bottom: 4px;">
-
-                <tbody>
-
-                    @foreach ($exchangeReturn->items as $retItem)
-
-                        <tr>
-
-                            <td style="width: 6%;">
-                                {{ $loop->iteration }}
-                            </td>
-
-
-                            <td style="width: 53%;">
-
-                                @if(
-                                    $retItem->is_manual
-                                    ||
-                                    empty($retItem->product_id)
-                                )
-
-                                    <span class="item-name">
-
-                                        {{ $retItem->product_name }}
-                                        (Manual)
-
-                                    </span>
-
-                                @else
-
-                                    <span class="item-name">
-
-                                        {{
-                                            $retItem->product->item_name
-                                            ?? 'Unknown'
-                                        }}
-
-                                    </span>
-
-                                @endif
-
-                            </td>
-
-
-                            <td style="width: 10%;"
-                                class="text-center">
-
-                                {{ (float)$retItem->qty }}
-
-                            </td>
-
-
-                            <td style="width: 13%;"
-                                class="text-end">
-
-                                {{ number_format($retItem->price, 0) }}
-
-                            </td>
-
-
-                            <td style="width: 18%;"
-                                class="text-end">
-
-                                -
-                                {{
-                                    number_format(
-                                        $retItem->line_total,
-                                        0
-                                    )
-                                }}
-
-                            </td>
-
-                        </tr>
-
-                    @endforeach
-
-                </tbody>
-
-            </table>
-
-        @endif
-
-
-        <!-- Totals -->
-
-        <div class="totals-section">
-
-            <div class="tot-row">
-
-                <span>
-                    Sub Total:
-                </span>
-
-                <span>
-
-                    {{
-                        number_format(
-                            $sale->total_bill_amount,
-                            0
-                        )
-                    }}
-
-                </span>
-
-            </div>
-
-
-            @if ($sale->total_extradiscount > 0)
-
-                <div class="tot-row">
-
-                    <span>
-                        Discount:
-                    </span>
-
-                    <span>
-
-                        -
-                        {{
-                            number_format(
-                                $sale->total_extradiscount,
-                                0
-                            )
-                        }}
-
-                    </span>
-
-                </div>
-
-            @endif
-
-
-            @if ($exchangeReturnedAmount > 0)
-
-                <div class="tot-row">
-
-                    <span>
-                        Return Value:
-                    </span>
-
-                    <span>
-
-                        -
-                        {{
-                            number_format(
-                                $exchangeReturnedAmount,
-                                0
-                            )
-                        }}
-
-                    </span>
-
-                </div>
-
-            @endif
-
-
-            @php
-
-                $finalPayable =
-                    $sale->total_net
-                    -
-                    $exchangeReturnedAmount;
-
-            @endphp
-
-
-            <div class="tot-row grand-total">
-
-                @if($finalPayable < 0)
-
-                    <span>
-                        REFUND TO CUSTOMER:
-                    </span>
-
-                    <span>
-
-                        {{
-                            number_format(
-                                abs($finalPayable),
-                                0
-                            )
-                        }}
-
-                    </span>
-
-                @else
-
-                    <span>
-                        TOTAL PAYABLE:
-                    </span>
-
-                    <span>
-
-                        {{
-                            number_format(
-                                $finalPayable,
-                                0
-                            )
-                        }}
-
-                    </span>
-
-                @endif
-
-            </div>
-
-        </div>
-
-
-        <!-- Ledger -->
-
-        <div class="balance-section">
-
-            @if(!$isWalkin)
-
-                <div class="tot-row">
-
-                    <span>
-                        Prev Balance:
-                    </span>
-
-                    <span>
-
-                        {{
-                            number_format(
-                                abs($previousBalance),
-                                0
-                            )
-                        }}
-
-                        {{
-                            $previousBalance >= 0
-                                ? 'Dr'
-                                : 'Cr'
-                        }}
-
-                    </span>
-
-                </div>
-
-            @endif
-
-
-            <div class="tot-row">
-
-                <span>
-                    Paid Amount:
-                </span>
-
-                <span>
-
-                    {{
-                        number_format(
-                            $sale->cash,
-                            0
-                        )
-                    }}
-
-                </span>
-
-            </div>
-
-
-            @if($sale->change > 0)
-
-                <div class="tot-row">
-
-                    <span>
-
-                        Change
-                        {{
-                            $sale->change_account
-                                ? ' ('.$sale->change_account->title.')'
-                                : ''
-                        }}:
-
-                    </span>
-
-                    <span>
-
-                        {{
-                            number_format(
-                                $sale->change,
-                                0
-                            )
-                        }}
-
-                    </span>
-
-                </div>
-
-            @endif
-
-
-            @if(!$isWalkin)
-
-                @php
-
-                    $finalBalance =
-                        $previousBalance
-                        +
-                        $sale->total_net
-                        -
-                        $sale->cash;
-
-                @endphp
-
-
-                <div class="tot-row closing-bal">
-
-                    <span>
-                        CLOSING BALANCE:
-                    </span>
-
-                    <span>
-
-                        {{
-                            number_format(
-                                abs($finalBalance),
-                                0
-                            )
-                        }}
-
-                        {{
-                            $finalBalance >= 0
-                                ? 'Dr'
-                                : 'Cr'
-                        }}
-
-                    </span>
-
-                </div>
-
-            @endif
-
-        </div>
-
-
-        <!-- Footer -->
-
-        <div class="footer">
-
-            <p>
-                Thank you for shopping with us!
-            </p>
-
-            <div class="soft-credit">
-
-                Powered by Prowave Technologies
-                <br>
-                📞 +92 317 3836 223
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- ========================================== -->
-    <!-- JAVASCRIPT -->
-    <!-- ========================================== -->
-
+    <!-- Navigation Script -->
     <script>
-
         function handleGoBack() {
+            const urlParams = new URLSearchParams(window.location.search);
 
-            const urlParams =
-                new URLSearchParams(
-                    window.location.search
-                );
-
-
-            if (
-                urlParams.get('from') === 'pos'
-                ||
-                (
-                    document.referrer
-                    &&
-                    document.referrer.indexOf('/pos') !== -1
-                )
-            ) {
-
-                window.location.href =
-                    "{{ route('pos.index') }}";
-
+            if (urlParams.get('from') === 'pos' || (document.referrer && document.referrer.indexOf('/pos') !== -1)) {
+                window.location.href = "{{ route('pos.index') }}";
                 return;
-
             }
 
-
-            if (
-                window.opener
-                &&
-                !window.opener.closed
-            ) {
-
+            if (window.opener && !window.opener.closed) {
                 window.close();
-
                 setTimeout(function() {
-
-                    window.location.href =
-                        "{{ route('sale.index') }}";
-
+                    window.location.href = "{{ route('sale.index') }}";
                 }, 150);
-
                 return;
-
             }
 
-
-            if (
-                window.history.length > 1
-                &&
-                document.referrer
-                &&
-                document.referrer.indexOf(
-                    window.location.host
-                ) !== -1
-                &&
-                !document.referrer.includes('/sales/store')
-            ) {
-
+            if (window.history.length > 1 && document.referrer && document.referrer.indexOf(window.location.host) !== -1 && !document.referrer.includes('/sales/store')) {
                 window.history.back();
-
                 return;
-
             }
 
-
-            window.location.href =
-                "{{ route('sale.index') }}";
-
+            window.location.href = "{{ route('sale.index') }}";
         }
-
     </script>
-
 </body>
 
 </html>

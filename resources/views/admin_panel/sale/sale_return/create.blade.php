@@ -623,13 +623,10 @@
                 let total = 0;
 
                 if (sizeMode === 'by_size') {
-                    // Price is per M2. Total M2 = Qty * PPM2 (Wait, check logic)
-                    // usually pieces_per_m2 is M2 per Piece?
-                    // Price is per M2. Total M2 = Qty * PPM2
                     total = qty * ppm2 * price;
                 } else if (sizeMode === 'by_cartons' || sizeMode === 'by_carton') {
-                    // Price is Per Piece, qty is Total Pieces
-                    total = qty * price;
+                    // Price is Per Box, qty is Total Pieces
+                    total = ppb > 0 ? (qty / ppb) * price : qty * price;
                 } else {
                     // Price is Per Piece
                     total = qty * price;

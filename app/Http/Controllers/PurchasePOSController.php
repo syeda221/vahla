@@ -90,7 +90,7 @@ class PurchasePOSController extends Controller
                     ->get();
 
                 $variantItems = [];
-                $totalStockPieces = 0;
+                $totalStockPieces = ($p->size_mode === 'by_kg') ? (float) ($p->warehouseStocks->sum('total_pieces') ?? 0) : 0;
 
                 foreach ($variants as $v) {
                     $size = (isset($v['size']) && $v['size'] !== '-') ? " {$v['size']}" : '';
@@ -157,11 +157,45 @@ class PurchasePOSController extends Controller
                         }
                     }
 
-                    $vBalance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned);
-                    $totalStockPieces += $vBalance;
+                    $vWeightPerPiece = (float) ($v['weight_per_piece'] ?? 0);
+                    if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
+                        $factor = (float) $v['conv_factor'];
+                        if ($factor <= 0 && $vWeightPerPiece > 0) {
+                            $factor = $vWeightPerPiece / 1000.0;
+                        }
+                        $factor = $factor > 0 ? $factor : 1;
+                        if ($vWeightPerPiece <= 0 && $factor > 0 && $factor != 1.0) {
+                            $vWeightPerPiece = $factor * 1000.0;
+                        } elseif ($vWeightPerPiece <= 0 && $factor == 1.0) {
+                            $vWeightPerPiece = 1000.0;
+                        }
+                        if ($factor == 1) {
+                            $vBalance = max(0, $totalStockPieces);
+                        } else {
+                            $vBalance = (int) floor(max(0, $totalStockPieces) / $factor);
+                        }
+                    } else {
+                        $vBalance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned);
+                        $totalStockPieces += $vBalance;
+                    }
 
                     $vStockDisplay = $vBalance;
-                    if (($p->size_mode === 'by_cartons' || $p->size_mode === 'by_size') && $ppb > 1) {
+                    if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
+                        $factor = (float) $v['conv_factor'];
+                        if ($factor == 1) {
+                            if ($vBalance < 0.001) {
+                                $vStockDisplay = "0 Kg (0 Gm)";
+                            } elseif ($vBalance < 1 && $vBalance > 0) {
+                                $gmVal = (int) round($vBalance * 1000);
+                                $vStockDisplay = "{$vBalance} Kg ({$gmVal} Gm)";
+                            } else {
+                                $vStockDisplay = "{$vBalance} Kg";
+                            }
+                        } else {
+                            $pcsCount = (int) floor($vBalance);
+                            $vStockDisplay = "{$pcsCount}";
+                        }
+                    } elseif (($p->size_mode === 'by_cartons' || $p->size_mode === 'by_size') && $ppb > 1) {
                         $vBoxes = floor($vBalance / $ppb);
                         $vLoose = $vBalance % $ppb;
                         $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes;
@@ -177,7 +211,7 @@ class PurchasePOSController extends Controller
                         'color_val' => $v['color'] ?? '-',
                         'price' => $v['purch_price'] ?? $p->purchase_price_per_piece ?? 0,
                         'wholesale_price' => $v['wholesale_price'] ?? $p->wholesale_price ?? 0,
-                        'weight_per_piece' => $v['weight_per_piece'] ?? $p->weight_per_piece ?? 0,
+                        'weight_per_piece' => $vWeightPerPiece,
                         'stock_pieces' => $vBalance,
                         'stock' => $vStockDisplay,
                         'variant_data' => base64_encode($variantJson)
@@ -364,7 +398,21 @@ class PurchasePOSController extends Controller
         }
 
         $productIds = (array) $request->input("product_id", []);
-        $data["unit"] = array_fill(0, count($productIds), "pieces");
+        $colors = (array) $request->input("color", []);
+        $units = [];
+        foreach ($productIds as $i => $pid) {
+            $u = 'pieces';
+            if (!empty($colors[$i])) {
+                $c = $colors[$i];
+                $b64 = base64_decode($c, true);
+                $vd = $b64 !== false ? json_decode($b64, true) : json_decode($c, true);
+                if (is_array($vd) && !empty($vd['unit'])) {
+                    $u = $vd['unit'];
+                }
+            }
+            $units[] = $u;
+        }
+        $data["unit"] = $units;
         
         $itemDiscs = (array) $request->input("item_disc", []);
         $prices = (array) $data["price"];

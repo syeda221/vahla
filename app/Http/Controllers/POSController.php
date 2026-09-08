@@ -91,7 +91,7 @@ class POSController extends Controller
                     ->get();
 
                 $variantItems = [];
-                $totalStockPieces = 0;
+                $totalStockPieces = ($p->size_mode === 'by_kg') ? (float) ($p->warehouseStocks->sum('total_pieces') ?? 0) : 0;
 
                 foreach ($variants as $v) {
                     $size = (isset($v['size']) && $v['size'] !== '-') ? " {$v['size']}" : '';
@@ -158,9 +158,18 @@ class POSController extends Controller
                         }
                     }
 
+                    $vWeightPerPiece = (float) ($v['weight_per_piece'] ?? 0);
                     if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
                         $factor = (float) $v['conv_factor'];
+                        if ($factor <= 0 && $vWeightPerPiece > 0) {
+                            $factor = $vWeightPerPiece / 1000.0;
+                        }
                         $factor = $factor > 0 ? $factor : 1;
+                        if ($vWeightPerPiece <= 0 && $factor > 0 && $factor != 1.0) {
+                            $vWeightPerPiece = $factor * 1000.0;
+                        } elseif ($vWeightPerPiece <= 0 && $factor == 1.0) {
+                            $vWeightPerPiece = 1000.0;
+                        }
                         if ($factor == 1) {
                             $vBalance = max(0, $totalStockPieces);
                         } else {
@@ -203,7 +212,7 @@ class POSController extends Controller
                         'color_val' => $v['color'] ?? '-',
                         'price' => $v['sale_price'] ?? $p->sale_price_per_piece ?? 0,
                         'wholesale_price' => $v['wholesale_price'] ?? $p->wholesale_price ?? 0,
-                        'weight_per_piece' => $v['weight_per_piece'] ?? $p->weight_per_piece ?? 0,
+                        'weight_per_piece' => $vWeightPerPiece,
                         'stock_pieces' => $vBalance,
                         'stock' => $vStockDisplay,
                         'variant_data' => base64_encode($variantJson)
