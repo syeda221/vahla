@@ -642,22 +642,27 @@
                             <input type="text" class="form-control" name="reference" id="remarks" placeholder="Notes / Ref...">
                         </div>
 
-                        <!-- Customer Type -->
-                        <div class="col-sm-6 col-md-2 col-lg-2" id="customerTypeCol">
-                            <label class="meta-label"><i class="fas fa-user-tag text-primary"></i> Customer Type</label>
-                            <select class="form-select fw-bold" id="partyTypeSelect" name="partyType">
-                                @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
-                                    <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
-                                @endforeach
+                        <!-- Customer Type (Hidden) -->
+                        <div class="d-none">
+                            <select id="partyTypeSelect" name="partyType">
+                                <option value="Main Customer" selected>Main Customer</option>
+                                <option value="Walking Customer">Walking Customer</option>
                             </select>
                         </div>
 
                         <!-- Customer & Walk-in Toggle -->
-                        <div class="col-sm-6 col-md-2 col-lg-2">
+                        <div class="col-sm-6 col-md-4 col-lg-3">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="meta-label mb-0"><i class="fas fa-user text-primary"></i> Customer</label>
+                                <div class="btn-group" role="group" id="partyTypeToggle">
+                                    <input type="radio" class="btn-check" name="partyTypeUI" id="typeMain" value="Main Customer" checked>
+                                    <label class="btn btn-outline-primary px-2 py-1 fw-bold" for="typeMain" style="font-size: 0.75rem;">Main</label>
+
+                                    <input type="radio" class="btn-check" name="partyTypeUI" id="typeWalkin" value="Walking Customer">
+                                    <label class="btn btn-outline-primary px-2 py-1 fw-bold" for="typeWalkin" style="font-size: 0.75rem;">Walk-in</label>
+                                </div>
                                 <button type="button" id="btnOpenAddCustomerModal" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill fw-bold btn-open-customer-modal" data-toggle="modal" data-target="#addCustomerModal" data-bs-toggle="modal" data-bs-target="#addCustomerModal" title="Quick Add Customer (Alt+C or F2)" style="font-size: 0.7rem; height: 20px; line-height: 1;">
-                                    <i class="fas fa-user-plus"></i> Quick Customer
+                                    <i class="fas fa-user-plus"></i> Quick
                                 </button>
                             </div>
                             <div id="customerInputWrapper">
@@ -680,9 +685,9 @@
                         <div class="col-sm-12 col-md-12 col-lg-1 d-flex align-items-end">
                             <input type="hidden" name="is_walkin" id="is_walkin" value="0">
                             <input type="hidden" name="actual_customer_id" id="actualCustomerId" value="">
-                            <button type="button" class="btn btn-top-save w-100 fw-bold d-flex align-items-center justify-content-center gap-1" id="btnHeaderSaveSale" style="font-size: 0.75rem;">
+                            {{-- <button type="button" class="btn btn-top-save w-100 fw-bold d-flex align-items-center justify-content-center gap-1" id="btnHeaderSaveSale" style="font-size: 0.75rem;">
                                 <i class="fas fa-check"></i> Save
-                            </button>
+                            </button> --}}
                         </div>
                     </div>
                 </div>
@@ -1015,12 +1020,10 @@
                     <form id="ajaxAddCustomerForm" autocomplete="off">
                         @csrf
                         <div class="row g-3">
-                            <div class="col-md-6 mb-2">
+                            <div class="col-md-6 mb-2 d-none">
                                 <label class="form-label font-weight-bold fw-bold">Customer Type <span class="text-danger">*</span></label>
                                 <select class="form-control form-select" name="customer_type" id="modalCustomerType" required>
-                                    @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
-                                        <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
-                                    @endforeach
+                                    <option value="Main Customer" selected>Main Customer</option>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-2">
@@ -1342,6 +1345,12 @@
                 $('#customerSelect').val(null).trigger('change');
                 clearCustomerInfo();
                 if (typeof updateGrandTotals === 'function') updateGrandTotals();
+            });
+
+            // Sync radio button toggle with hidden select
+            $(document).on('change', 'input[name="partyTypeUI"]', function() {
+                let type = $(this).val();
+                $('#partyTypeSelect').val(type).trigger('change');
             });
 
             $('#btnPrint').on('click', function() {

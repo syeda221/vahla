@@ -197,6 +197,29 @@
             background-color: #cbd5e1;
             border-radius: 20px;
         }
+
+        /* Select2 Styling */
+        .select2-container--default .select2-selection--single {
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: normal;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+            padding-left: 12px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px;
+        }
+        .select2-container--default.select2-container--focus .select2-selection--single {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
     </style>
 
     <div class="main-content">
@@ -246,14 +269,14 @@
                                 @endif
                             </select>
                         </div>
-                        <div class="input-group-modern" style="grid-column: span 2;">
+                        {{-- <div class="input-group-modern" style="grid-column: span 2;">
                             <label class="modern-label">Customer Type <span class="text-danger">*</span></label>
                             <select class="modern-control" name="customer_type" required>
                                 @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
                                     <option value="{{ $type->name }}">{{ $type->name }}</option>
                                 @endforeach
                             </select>
-                        </div>
+                        </div> --}}
                         <div class="input-group-modern" style="grid-column: span 3;">
                             <label class="modern-label">Full Name / Sub-Customer <span class="text-danger">*</span></label>
                             <input type="text" class="modern-control" name="customer_name" required
@@ -380,6 +403,15 @@
             // Aesthetic focus
             let nameField = document.querySelector('input[name="customer_name"]');
             if (nameField) nameField.focus();
+
+            // Initialize Select2 for Parent Account
+            if ($.fn.select2) {
+                $('#parent_id').select2({
+                    placeholder: "-- Main / Independent Customer --",
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
 
             // Confirmation on Submit
             const form = document.querySelector('form.needs-validation');
