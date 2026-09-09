@@ -693,9 +693,10 @@ class ProductController extends Controller
             $imagePath = null;
         }
 
+        $product = null;
         DB::transaction(function () use ($request, $userId, $nextCode, $imagePath, $mode, $height, $width, $piecesPerBox, $boxesQuantity,
             $totalM2, $pricePerM2, $purchasePricePerM2, $totalStockQty, $piecesPerM2,
-            $salePricePerPiece, $salePricePerBox, $purchasePricePerPiece, $purchasePricePerBox) {
+            $salePricePerPiece, $salePricePerBox, $purchasePricePerPiece, $purchasePricePerBox, &$product) {
 
             $variants = [];
             if ($request->has('variant_name')) {
@@ -920,7 +921,12 @@ class ProductController extends Controller
         });
 
         if ($request->wantsJson()) {
-            return response()->json(['status' => 'success', 'message' => 'Product created successfully']);
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Product created successfully',
+                'product_id' => $product ? $product->id : null,
+                'product_name' => $request->product_name,
+            ]);
         }
 
         return redirect()->back()->with('success', 'Product created successfully');

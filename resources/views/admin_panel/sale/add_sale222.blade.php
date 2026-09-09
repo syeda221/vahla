@@ -540,12 +540,16 @@
             background: #ffffff;
             overflow-x: auto;
         }
+        .pos-table-wrap {
+            overflow: hidden;
+        }
         .sales-table {
-            min-width: 1060px;
+            min-width: 0;
             border-collapse: separate;
             border-spacing: 0;
             width: 100%;
             margin-bottom: 0;
+            table-layout: fixed;
         }
         .sales-table thead th {
             background: #F8FAFC;
@@ -566,6 +570,7 @@
         }
         .sales-table tbody td {
             padding: 7px;
+            height: 52px;
             border-bottom: 1px solid #F1F5F9;
             vertical-align: middle;
         }
@@ -640,6 +645,9 @@
         }
 
         /* Product select2 inside table */
+        .sales-table tbody .select2-container {
+            width: 100% !important;
+        }
         .sales-table tbody .select2-container .select2-selection--single {
             height: 38px !important;
             border: 1px solid transparent !important;
@@ -664,6 +672,9 @@
             font-size: 13.5px !important;
             font-weight: 600 !important;
             color: var(--pos-text) !important;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .sales-table tbody .select2-container .select2-selection__arrow {
             height: 36px !important;
@@ -774,6 +785,82 @@
             background: var(--pos-red);
             border-color: var(--pos-red);
             color: #ffffff;
+        }
+
+        /* Responsive: compress controls on smaller screens so the table always fits its container */
+        @media (max-width: 1199.98px) {
+            .sales-table tbody .form-control,
+            .sales-table tbody .form-select {
+                height: 34px !important;
+                font-size: 12px !important;
+                padding: 3px 6px !important;
+            }
+            .sales-table tbody .select2-container .select2-selection--single {
+                height: 34px !important;
+            }
+            .sales-table tbody .select2-container .select2-selection__rendered {
+                line-height: 32px !important;
+                font-size: 12px !important;
+                padding-left: 6px !important;
+                padding-right: 16px !important;
+            }
+            .sales-table tbody td {
+                height: 46px;
+                padding: 5px;
+            }
+            .sales-table thead th {
+                padding: 9px 5px;
+                font-size: 10px;
+            }
+            .qty-unit-toggle,
+            .price-mode-row-toggle,
+            .discount-wrapper .discount-toggle {
+                height: 34px !important;
+            }
+            .qty-unit-toggle {
+                min-width: 34px !important;
+            }
+            .price-mode-row-toggle {
+                min-width: 28px !important;
+            }
+            .sales-table .del-row {
+                width: 30px;
+                height: 30px;
+            }
+            .discount-wrapper .discount-toggle {
+                width: 28px;
+            }
+            .stock-badge {
+                font-size: 11px;
+                padding: 3px 6px;
+            }
+        }
+
+        /* Phones: drop non-essential columns (#, Stock, Pcs, Pcs/Ctn) instead of scrolling */
+        @media (max-width: 767.98px) {
+            .sales-table col:first-child,
+            .sales-table col.c-stock,
+            .sales-table col.c-pcs,
+            .sales-table col.c-pc {
+                width: 0 !important;
+            }
+            .sales-table col:last-child {
+                width: 10%;
+            }
+            .sales-table thead th:first-child,
+            .sales-table thead th.c-stock-th,
+            .sales-table thead th.c-pcs-th,
+            .sales-table thead th.col-pcs-ctn-th,
+            .sales-table tbody td.row-index,
+            .sales-table tbody td.col-stock,
+            .sales-table tbody td.col-pieces,
+            .sales-table tbody td.col-pcs-ctn {
+                display: none !important;
+            }
+            .sales-table thead th {
+                white-space: normal;
+                line-height: 1.2;
+            }
         }
 
         /* Grid total footer */
@@ -1077,14 +1164,7 @@
                         <div class="sale-subtitle">Create a new invoice &amp; manage checkout</div>
                     </div>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                    <button type="button" id="btnHeaderSaveDraft" class="btn btn-outline-primary px-3">
-                        <i class="fas fa-save me-1"></i> Save Draft
-                    </button>
-                    <button type="button" id="btnHeaderSaveSale" class="btn btn-primary btn-save-print px-3">
-                        <i class="fas fa-print me-1"></i> Save &amp; Print Invoice
-                    </button>
-                </div>
+
             </div>
 
             {{-- ============================ SALE INFORMATION CARD ============================ --}}
@@ -1269,8 +1349,8 @@
                         <span class="items-count" id="itemsRowCount">0</span>
                     </div>
                     <div class="d-flex gap-2 flex-wrap">
-                        <button type="button" class="btn btn-outline-primary px-3" data-bs-toggle="offcanvas" data-bs-target="#quickProductsOffcanvas">
-                            <i class="fas fa-th me-1"></i> Quick Products
+                        <button type="button" class="btn btn-outline-primary px-3" id="btnNewProductHeader">
+                            <i class="fas fa-box-open me-1"></i> New Product
                         </button>
                         <button type="button" class="btn btn-primary px-3" id="btnAdd">
                             <i class="fas fa-plus me-1"></i> Add Product
@@ -1278,20 +1358,34 @@
                     </div>
                 </div>
 
-                <div class="table-responsive">
+                <div class="pos-table-wrap">
                     <table class="table sales-table mb-0">
+                        <colgroup>
+                            <col style="width:3%;">
+                            <col style="width:27%;">
+                            <col class="c-stock" style="width:6%;">
+                            <col style="width:8%;">
+                            <col style="width:6%;">
+                            <col class="c-pcs" style="width:6%;">
+                            <col class="c-pc" style="width:7%;">
+                            <col style="width:9%;">
+                            <col style="width:8%;">
+                            <col style="width:12%;">
+                            <col style="width:5%;">
+                        </colgroup>
                         <thead>
                             <tr>
-                                <th style="width:44px;">#</th>
-                                <th class="col-product" style="min-width:230px;">Product</th>
-                                <th style="width:82px;">Stock</th>
-                                <th style="width:112px;">Qty</th>
-                                <th style="width:82px;">Size</th>
-                                <th style="width:82px;">Pcs</th>
-                                <th style="width:118px;">Price</th>
-                                <th style="width:118px;">Discount</th>
-                                <th style="width:132px;">Amount</th>
-                                <th style="width:58px;">Action</th>
+                                <th>#</th>
+                                <th class="col-product">Product</th>
+                                <th class="c-stock-th">Stock</th>
+                                <th>Qty</th>
+                                <th>Size</th>
+                                <th class="c-pcs-th">Pcs</th>
+                                <th class="col-pcs-ctn-th">Pcs/Ctn</th>
+                                <th>Price</th>
+                                <th>Discount</th>
+                                <th>Amount</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="salesTableBody">
@@ -1343,6 +1437,11 @@
                                     <input type="hidden" class="sales-qty" name="qty[]" value="0">
                                 </td>
 
+                                <!-- PCS/CTN (always visible; shows value when unit is Carton, "–" otherwise) -->
+                                <td class="col-pcs-ctn text-center">
+                                    <input type="text" class="form-control pcs-per-ctn text-center input-readonly fw-semibold" readonly tabindex="-1" placeholder="–">
+                                </td>
+
                                 <!-- PRICE -->
                                 <td class="col-price-p">
                                     <div class="price-cell-flex">
@@ -1385,7 +1484,7 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="8" class="grid-total-label">Grid Total:</td>
+                                <td colspan="9" class="grid-total-label">Grid Total:</td>
                                 <td class="grid-total-val">Rs <span id="totalAmount">0.00</span></td>
                                 <td></td>
                             </tr>
@@ -1513,7 +1612,12 @@
     <div class="offcanvas offcanvas-start" tabindex="-1" id="quickProductsOffcanvas" style="width: 360px;">
         <div class="offcanvas-header bg-light py-2 border-bottom">
             <h6 class="offcanvas-title fw-bold text-dark mb-0"><i class="fas fa-th text-primary me-2"></i>Quick Products Panel</h6>
-            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-primary fw-bold" id="btnNewProductFromDrawer">
+                    <i class="fas fa-plus me-1"></i> New Product
+                </button>
+                <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
         </div>
         <div class="offcanvas-body p-2">
             <div class="input-group input-group-sm mb-2">
@@ -1597,8 +1701,8 @@
         </div>
     </div>
 
-    {{-- Quick Add Product Modal --}}
-    @include('admin_panel.partials.quick_add_product_modal')
+    {{-- Quick Build Product Modal --}}
+    @include('admin_panel.partials.quick_build_product_modal')
 @endsection
 
 @section('js')

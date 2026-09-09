@@ -671,6 +671,7 @@
                                             <th class="col-size" style="width: 55px;">SIZE</th>
                                             {{-- <th class="col-color" style="width: 65px;">COLOR</th> --}}
                                             <th class="col-pieces" style="width: 55px;">PCS</th>
+                                            <th class="col-pcs-ctn-th" style="width: 70px;">PCS/CTN</th>
                                             <th class="col-price-p" style="width: 85px;">PRICE</th>
                                             <th class="col-disc" style="width: 85px;">DISCOUNT</th>
                                             <th class="col-amount" style="width: 95px;">AMOUNT</th>
@@ -945,6 +946,13 @@
                                                         <input type="hidden" class="sales-qty" name="qty[]" value="{{ $isPcs ? $item->total_pieces : ($cartons . ($loose > 0 ? '.' . $loose : '')) }}">
                                                     </td>
 
+                                                    <!-- Pcs/Ctn (always visible; shows value when unit is Carton, "–" otherwise) -->
+                                                    <td class="col-pcs-ctn text-center">
+                                                        <input type="text"
+                                                            class="form-control pcs-per-ctn text-center input-readonly fw-semibold"
+                                                            readonly value="{{ $ppb }}" tabindex="-1" placeholder="-">
+                                                    </td>
+
                                                     <!-- Price/Piece -->
                                                     <td class="col-price-p">
                                                         <div class="d-flex align-items-center gap-1">
@@ -1025,6 +1033,7 @@
                                                 <td class="col-size"><input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-"><input type="hidden" class="pack-qty" name="pack_qty[]" value="1"></td>
                                                 {{-- <td class="col-color"><input type="text" class="form-control color-display text-center input-readonly" readonly tabindex="-1" placeholder="-"></td> --}}
                                                 <td class="col-pieces"><input type="text" class="form-control total-pieces text-end input-readonly fw-semibold" name="total_pieces[]" readonly placeholder="0" tabindex="-1"><input type="hidden" class="sales-qty" name="qty[]" value="0"></td>
+                                                <td class="col-pcs-ctn text-center"><input type="text" class="form-control pcs-per-ctn text-center input-readonly fw-semibold" readonly tabindex="-1" placeholder="-"></td>
                                                 <td class="col-price-p">
                                                     <div class="d-flex align-items-center gap-1">
                                                         <input type="text" class="form-control visible-price text-end fw-semibold" name="visible_price[]" placeholder="0" style="flex: 1; min-width: 0;">
@@ -1047,7 +1056,7 @@
                                     </tbody>
                                     <tfoot>
                                         <tr>
-                                            <td colspan="8" class="text-end fw-bold text-uppercase text-secondary" style="font-size:0.8rem;">GRID TOTAL:</td>
+                                            <td colspan="9" class="text-end fw-bold text-uppercase text-secondary" style="font-size:0.8rem;">GRID TOTAL:</td>
                                             <td class="text-end fw-bold text-success fs-6"><span id="totalAmount">0.00</span></td>
                                             <td></td>
                                         </tr>

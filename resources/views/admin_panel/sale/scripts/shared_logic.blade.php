@@ -188,6 +188,11 @@
       <!-- Hidden qty field for backend compatibility -->
       <input type="hidden" class="sales-qty" name="qty[]" value="0">
     </td>
+
+    <!-- PCS/CTN (always visible; shows value when unit is Carton, "–" otherwise) -->
+    <td class="col-pcs-ctn text-center">
+      <input type="text" class="form-control pcs-per-ctn text-center input-readonly" readonly tabindex="-1" placeholder="-">
+    </td>
  
     <!-- Price/Piece (EDITABLE) -->
     <td class="col-price-p">
@@ -227,7 +232,7 @@
 
     <!-- ACTION -->
     <td class="col-action text-center">
-      <button type="button" class="btn btn-sm btn-outline-danger del-row" tabindex="-1">&times;</button>
+      <button type="button" class="btn btn-sm btn-outline-danger del-row" tabindex="-1" title="Delete Row"><i class="fas fa-trash-alt"></i></button>
     </td>
   </tr>`;
 
@@ -940,6 +945,9 @@
 
     $(document).ready(function() {
 
+        // Show Pcs/Ctn header on load if any existing row is in carton mode
+        if (typeof refreshPcsCtnHeader === 'function') refreshPcsCtnHeader();
+
         // Walk-in UI Event Bindings
         $(document).on('input', '#walkinDiscountRs', function() {
             updateGrandTotals();
@@ -1031,8 +1039,25 @@
             computeRow($row);
         });
 
+    // Pcs/Ctn column is always rendered — just set the value based on size mode
+    function updatePcsCtnColumn($row, sizeMode) {
+        const packQty = parseFloat($row.find('.pack-qty').val()) || 1;
+        const $col = $row.find('.col-pcs-ctn');
+        if ($col.length === 0) return;
+        if (sizeMode === 'by_cartons') {
+            $row.find('.pcs-per-ctn').val(packQty);
+        } else {
+            $row.find('.pcs-per-ctn').val('');
+        }
+    }
+
+    function refreshPcsCtnHeader() {
+        $('.col-pcs-ctn-th').show();
+    }
+
     function setupRowQtyToggle($row, sizeMode) {
         const $toggleBtn = $row.find('.qty-unit-toggle');
+        updatePcsCtnColumn($row, sizeMode);
         if (sizeMode === 'by_cartons') {
             $toggleBtn.removeClass('d-none')
                       .attr('data-unit-mode', 'ctn')
@@ -1316,6 +1341,7 @@
                 updateRowIndexes();
                 updateGrandTotals();
                 refreshPostedState();
+                refreshPcsCtnHeader();
             }
         });
 
