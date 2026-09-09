@@ -341,7 +341,7 @@
                                         <input type="hidden" name="color[]" value="{{ $item['color'] ?? '' }}">
                                         {{-- Hidden Discount to preserve refund math if needed --}}
                                         <input type="hidden" name="item_disc[]" class="item_disc"
-                                            value="{{ $item['discount'] ?? 0 }}">
+                                            value="{{ $item['discount'] ?? 0 }}" data-original-discount="{{ $item['discount'] ?? 0 }}">
                                         <input type="hidden" name="unit[]" value="{{ $item['unit'] ?? 'pc' }}">
                                         <input type="hidden" name="size_mode[]" class="size-mode"
                                             value="{{ $item['size_mode'] ?? 'by_pieces' }}">
@@ -638,6 +638,7 @@
             function recalcSummary() {
                 let billAmount = 0;
                 let totalQty = 0;
+                let itemDiscountTotal = 0;
 
                 $('#returnItems tr').each(function() {
                     const qty = num($(this).find('.quantity').val());
@@ -645,13 +646,23 @@
 
                     billAmount += rowTotal;
                     totalQty += qty;
+
+                    const originalDiscount = num($(this).find('.item_disc').attr('data-original-discount'));
+                    const originalQty = num($(this).find('.quantity').attr('data-original'));
+                    
+                    if (originalQty > 0) {
+                        const calculatedDiscount = (originalDiscount / originalQty) * qty;
+                        itemDiscountTotal += calculatedDiscount;
+                        $(this).find('.item_disc').val(calculatedDiscount);
+                    }
                 });
 
                 const extraDiscount = num($('#extraDiscount').val()); // Deduction
 
-                const net = billAmount - extraDiscount;
+                const net = billAmount - itemDiscountTotal - extraDiscount;
 
                 $('#billAmount').val(billAmount.toFixed(2));
+                $('#itemDiscount').val(itemDiscountTotal.toFixed(2));
                 $('#netAmount').val(net.toFixed(2));
 
                 if (net > 0) {
