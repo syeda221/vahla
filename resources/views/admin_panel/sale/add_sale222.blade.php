@@ -12,903 +12,1417 @@
     </div>
     <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/vendors/select2/css/select2.min.css') }}" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        /* ================= MODERN PROFESSIONAL POS & ERP UI ================= */
+        /* ==================== NEW SALE — CLEAN MODERN ERP/POS UI ==================== */
         :root {
-            --pos-bg: #f8fafc;
-            --pos-card-bg: #ffffff;
-            --pos-border: #e2e8f0;
-            --pos-border-focus: #3b82f6;
-            --pos-primary: #2563eb;
-            --pos-primary-hover: #1d4ed8;
-            --pos-success: #10b981;
-            --pos-success-hover: #059669;
-            --pos-danger: #ef4444;
-            --pos-text-main: #0f172a;
-            --pos-text-muted: #64748b;
-            --pos-radius: 8px;
-            --pos-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
-            --pos-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --pos-blue: #2563EB;
+            --pos-blue-hover: #1D4ED8;
+            --pos-blue-soft: #EFF6FF;
+            --pos-green: #16A34A;
+            --pos-green-soft: #F0FDF4;
+            --pos-red: #DC2626;
+            --pos-red-soft: #FEF2F2;
+            --pos-orange: #F59E0B;
+            --pos-orange-soft: #FFFBEB;
+            --pos-text: #1E293B;
+            --pos-muted: #64748B;
+            --pos-border: #C7D0DA;
+            --pos-border-strong: #AEBAC7;
+            --pos-bg: #F8FAFC;
+            --pos-card: #FFFFFF;
+            --pos-radius: 10px;
+            --pos-radius-lg: 14px;
+            --pos-shadow-sm: 0 1px 2px rgba(15,23,42,.04);
+            --pos-shadow-md: 0 6px 20px -6px rgba(15,23,42,.10);
+            --pos-input-h: 42px;
         }
 
         body {
             background-color: var(--pos-bg) !important;
             font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-            color: var(--pos-text-main) !important;
+            color: var(--pos-text) !important;
             -webkit-font-smoothing: antialiased;
         }
 
-        .main-container {
-            border: 1px solid var(--pos-border) !important;
-            border-radius: var(--pos-radius) !important;
-            box-shadow: var(--pos-shadow) !important;
-            background-color: var(--pos-card-bg) !important;
-            padding: 10px !important;
-            max-width: 100%;
+        .sale-page {
+            max-width: 1560px;
+            margin: 0 auto;
         }
 
-        /* Modern Top Information Card */
-        .top-info-card {
-            background-color: #f8fafc !important;
-            border: 1px solid var(--pos-border) !important;
-            border-radius: var(--pos-radius) !important;
-            padding: 10px 12px !important;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+        /* ---------- CARDS ---------- */
+        .sale-card {
+            background: var(--pos-card);
+            border: 1px solid var(--pos-border);
+            border-radius: var(--pos-radius-lg);
+            box-shadow: var(--pos-shadow-sm);
         }
 
-        .meta-label {
-            font-size: 0.7rem !important;
-            font-weight: 700 !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.5px !important;
-            color: #475569 !important;
-            margin-bottom: 4px !important;
-            display: flex;
-            align-items: center;
-            gap: 4px;
+        .card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--pos-text);
+            line-height: 1.3;
         }
 
-        .card-panel {
-            background-color: #ffffff !important;
-            border: 1px solid var(--pos-border) !important;
-            border-radius: var(--pos-radius) !important;
-            padding: 10px !important;
-            box-shadow: var(--pos-shadow) !important;
+        /* ---------- LABELS ---------- */
+        .field-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--pos-muted);
+            margin-bottom: 6px;
+            line-height: 1.2;
         }
 
-        /* Section Header Titles */
-        .section-header-title {
-            font-weight: 700 !important;
-            font-size: 0.82rem !important;
-            color: var(--pos-text-main) !important;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+        /* ---------- INPUTS ---------- */
+        .sale-page .form-control,
+        .sale-page .form-select {
+            height: var(--pos-input-h);
+            border: 1px solid var(--pos-border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--pos-text);
+            background-color: #ffffff;
+            box-shadow: none;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+        .sale-page .form-control::placeholder {
+            color: #94A3B8;
+            font-weight: 400;
+        }
+        .sale-page .form-control:focus,
+        .sale-page .form-select:focus {
+            border-color: var(--pos-blue);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+            outline: none;
+            background-color: #ffffff;
+        }
+        .sale-page .input-readonly,
+        .sale-page input[readonly] {
+            background-color: #F8FAFC !important;
+            color: var(--pos-muted) !important;
+            cursor: default;
         }
 
-        /* Uniform Form Inputs in Top Bar */
-        .form-control,
-        .form-select {
-            border: 1px solid var(--pos-border) !important;
-            border-radius: 6px !important;
-            padding: 4px 8px !important;
-            font-weight: 500 !important;
-            color: var(--pos-text-main) !important;
-            background-color: #ffffff !important;
-            transition: all 0.15s ease-in-out !important;
-            height: 32px !important;
-            font-size: 0.8rem !important;
-        }
-
-        .form-control:focus,
-        .form-select:focus {
-            border-color: var(--pos-border-focus) !important;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
-            outline: none !important;
-            background-color: #ffffff !important;
-        }
-
-        .input-readonly {
-            background-color: #f1f5f9 !important;
-            border-color: var(--pos-border) !important;
-            color: #475569 !important;
-            font-weight: 600 !important;
-            cursor: not-allowed !important;
-        }
-
-        /* Invoice Series Input Group */
-        .invoice-group .btn-prefix {
-            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
-            border: 1px solid #0284c7 !important;
-            color: #ffffff !important;
-            font-weight: 700 !important;
-            border-top-left-radius: 6px !important;
-            border-bottom-left-radius: 6px !important;
-            height: 32px !important;
-            padding: 0 10px !important;
-            font-size: 0.78rem !important;
-        }
-
-        .invoice-group .btn-refresh {
-            background: #f1f5f9 !important;
-            border: 1px solid var(--pos-border) !important;
-            border-left: none !important;
-            color: #475569 !important;
-            border-top-right-radius: 6px !important;
-            border-bottom-right-radius: 6px !important;
-            height: 32px !important;
-            padding: 0 10px !important;
-            transition: all 0.15s;
-        }
-        .invoice-group .btn-refresh:hover {
-            background: #e2e8f0 !important;
-            color: var(--pos-primary) !important;
-        }
-
-        /* Top Save Sale Button */
-        .btn-top-save {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-            border: none !important;
-            color: #ffffff !important;
-            font-weight: 700 !important;
-            height: 32px !important;
-            border-radius: 6px !important;
-            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25) !important;
-            transition: all 0.15s ease !important;
-        }
-        .btn-top-save:hover {
-            background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-            transform: translateY(-1px);
-        }
-
-        /* Select2 Alignment */
+        /* Select2 (customer) */
         #customerInputWrapper .select2-container--default .select2-selection--single {
-            height: 32px !important;
-            min-height: 32px !important;
-            padding: 0 !important;
-            display: flex !important;
-            align-items: center !important;
+            height: var(--pos-input-h) !important;
             border: 1px solid var(--pos-border) !important;
-            border-radius: 6px !important;
+            border-radius: 8px !important;
             background-color: #ffffff !important;
+            padding: 0 !important;
         }
         #customerInputWrapper .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 30px !important;
-            padding-left: 8px !important;
-            font-size: 0.8rem !important;
-            color: var(--pos-text-main) !important;
+            line-height: 40px !important;
+            padding-left: 12px !important;
+            font-size: 14px !important;
             font-weight: 500 !important;
+            color: var(--pos-text) !important;
         }
         #customerInputWrapper .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 30px !important;
-            top: 0 !important;
-            right: 4px !important;
+            height: 40px !important;
+            right: 8px !important;
         }
-        #customerInputWrapper .select2-container--default.select2-container--focus .select2-selection--single {
-            border-color: var(--pos-border-focus) !important;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
-        }
-
-        /* Transaction Grid / Table */
-        .table-responsive {
-            border: 1px solid var(--pos-border) !important;
-            border-radius: 6px !important;
-            overflow-x: auto !important;
-            background-color: #ffffff;
-            box-shadow: none !important;
+        #customerInputWrapper .select2-container--default.select2-container--focus .select2-selection--single,
+        #customerInputWrapper .select2-container--default.select2-container--open .select2-selection--single {
+            border-color: var(--pos-blue) !important;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, .12) !important;
         }
 
-        .sales-table {
-            border-collapse: collapse !important;
-            margin-bottom: 0 !important;
-            width: 100%;
-            min-width: 880px;
+        /* ---------- BUTTONS ---------- */
+        .sale-page .btn-primary {
+            background: var(--pos-blue);
+            border-color: var(--pos-blue);
+            color: #ffffff;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .sale-page .btn-primary:hover,
+        .sale-page .btn-primary:focus {
+            background: var(--pos-blue-hover);
+            border-color: var(--pos-blue-hover);
+            color: #ffffff;
+        }
+        .sale-page .btn-outline-primary {
+            color: var(--pos-blue);
+            border-color: #BFDBFE;
+            background: #ffffff;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .sale-page .btn-outline-primary:hover {
+            background: var(--pos-blue-soft);
+            color: var(--pos-blue-hover);
+            border-color: var(--pos-blue);
+        }
+        .sale-page .btn-outline-secondary {
+            color: var(--pos-muted);
+            border-color: var(--pos-border);
+            background: #ffffff;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .sale-page .btn-outline-secondary:hover {
+            background: #F1F5F9;
+            color: var(--pos-text);
+            border-color: var(--pos-border-strong);
         }
 
-        .sales-table thead th {
-            background-color: #f1f5f9 !important;
-            color: #334155 !important;
-            font-weight: 700 !important;
-            text-transform: uppercase;
-            font-size: 11px !important;
-            letter-spacing: 0.4px;
-            padding: 6px 6px !important;
-            border: 1px solid var(--pos-border) !important;
-            border-bottom: 2px solid #cbd5e1 !important;
-            vertical-align: middle !important;
-            text-align: center;
-            white-space: nowrap;
+        .btn-save-print {
+            padding: 10px 20px !important;
+            box-shadow: 0 4px 12px -2px rgba(37, 99, 235, .35);
         }
 
-        .sales-table thead th.col-product {
-            text-align: left !important;
-            padding-left: 8px !important;
-        }
-
-        .sales-table tbody td {
-            border: 1px solid var(--pos-border) !important;
-            padding: 0 !important;
-            background-color: #ffffff;
-            vertical-align: middle !important;
-        }
-
-        .sales-table tbody tr:hover td {
-            background-color: #f8fafc !important;
-        }
-
-        /* Table Inputs */
-        .sales-table tbody .form-control,
-        .sales-table tbody .form-select {
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            height: 30px !important;
-            margin: 0 !important;
-            padding: 2px 6px !important;
-            width: 100% !important;
-            background-color: transparent !important;
-            text-align: center;
-            color: var(--pos-text-main) !important;
-            font-weight: 500 !important;
-            font-size: 0.78rem !important;
-        }
-
-        .sales-table tbody td.col-product .form-select {
-            text-align: left !important;
-            padding-left: 8px !important;
-        }
-
-        .sales-table tbody .input-readonly,
-        .sales-table tbody input[readonly],
-        .sales-table tbody select[disabled] {
-            background-color: #f8fafc !important;
-            cursor: not-allowed !important;
-            color: #475569 !important;
-            font-weight: 600 !important;
-        }
-
-        .sales-table tbody .form-control:focus,
-        .sales-table tbody .form-select:focus {
-            outline: none !important;
-            background-color: #ffffff !important;
-            box-shadow: inset 0 0 0 2px var(--pos-border-focus) !important;
-        }
-
-        /* Select2 inside Table */
-        .sales-table tbody .select2-container--default .select2-selection--single {
-            height: 30px !important;
-            padding: 0 !important;
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            background-color: transparent !important;
-            display: flex;
-            align-items: center;
-        }
-        .sales-table tbody .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 30px !important;
-            padding-left: 8px !important;
-            padding-right: 16px !important;
-            font-size: 0.78rem !important;
-            color: var(--pos-text-main) !important;
-            font-weight: 500 !important;
-            text-align: left !important;
-        }
-        .sales-table tbody .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 30px !important;
-            right: 4px !important;
-        }
-        .sales-table tbody .select2-container--default.select2-container--focus .select2-selection--single {
-            background-color: #ffffff !important;
-            box-shadow: inset 0 0 0 2px var(--pos-border-focus) !important;
-        }
-
-        /* Discount Input + Button Toggle */
-        .sales-table tbody .discount-wrapper {
-            display: flex !important;
-            align-items: stretch !important;
-            width: 100% !important;
-            height: 30px !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        .sales-table tbody .discount-wrapper .discount-value {
-            flex-grow: 1 !important;
-            border: none !important;
-            border-radius: 0 !important;
-            height: 100% !important;
-            text-align: center;
-            background-color: transparent !important;
-            padding: 2px 4px !important;
-        }
-        .sales-table tbody .discount-wrapper .discount-toggle {
-            border: none !important;
-            border-left: 1px solid var(--pos-border) !important;
-            border-radius: 0 !important;
-            background-color: #f1f5f9 !important;
-            color: #475569 !important;
-            font-weight: 700 !important;
-            font-size: 0.72rem !important;
-            width: 24px !important;
-            min-width: 24px !important;
-            height: 100% !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            padding: 0 !important;
-            cursor: pointer !important;
-            transition: all 0.15s;
-        }
-        .sales-table tbody .discount-wrapper .discount-toggle:hover {
-            background-color: #e2e8f0 !important;
-            color: var(--pos-text-main) !important;
-        }
-
-        .sales-table tfoot td {
-            background-color: #f8fafc !important;
-            border: 1px solid var(--pos-border) !important;
-            border-top: 2px solid #cbd5e1 !important;
-            padding: 6px 8px !important;
-            font-weight: 700 !important;
-            color: #334155 !important;
-            font-size: 0.8rem !important;
-        }
-
-        /* Row Delete Button */
-        .btn-del-row {
-            width: 24px;
-            height: 24px;
-            padding: 0;
-            border-radius: 4px;
+        .btn-icon-back {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: #fef2f2;
-            color: #ef4444;
-            border: 1px solid #fecdd3;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-        .btn-del-row:hover {
-            background: #ef4444;
-            color: #ffffff;
-            border-color: #ef4444;
-        }
-
-        /* Retail Mode Row Toggle Badge */
-        .price-mode-row-toggle {
-            height: 24px !important;
-            min-width: 20px !important;
-            font-size: 0.65rem !important;
-            font-weight: 700 !important;
-            border-radius: 4px !important;
-            padding: 0 4px !important;
-        }
-
-        /* Summary Card Styling */
-        .summary-card {
-            background: #ffffff !important;
-            border: 1px solid var(--pos-border) !important;
-            border-radius: var(--pos-radius) !important;
-            padding: 12px 14px !important;
-            box-shadow: var(--pos-shadow) !important;
-        }
-
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px 0;
-            border-bottom: 1px dashed #f1f5f9;
-            font-size: 0.8rem;
-        }
-        .summary-row:last-child {
-            border-bottom: none;
-        }
-        .summary-val-net {
-            font-weight: 800;
-            color: var(--pos-primary);
-            font-size: 1.1rem;
-        }
-        .summary-val-change {
-            font-weight: 800;
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-size: 1rem;
-            background: #fef2f2;
-            color: #ef4444;
-        }
-        .summary-val-change.text-success {
-            background: #f0fdf4 !important;
-            color: #16a34a !important;
-        }
-
-        /* Payment Methods Card */
-        .payment-methods-card {
-            background: #ffffff !important;
-            border: 1px solid var(--pos-border) !important;
-            border-radius: var(--pos-radius) !important;
-            padding: 12px 14px !important;
-            box-shadow: var(--pos-shadow) !important;
-        }
-
-        /* Bottom Summary Strip */
-        .bottom-summary-strip {
-            background: #ffffff;
             border: 1px solid var(--pos-border);
-            border-radius: var(--pos-radius);
-            padding: 8px 16px;
-            margin-top: 10px;
+            background: #ffffff;
+            color: var(--pos-muted);
+            font-size: 15px;
+            flex-shrink: 0;
+            transition: all .15s ease;
+        }
+        .btn-icon-back:hover {
+            background: #F1F5F9;
+            color: var(--pos-text);
+            border-color: var(--pos-border-strong);
+        }
+
+        /* ---------- PAGE HEADER ---------- */
+        .sale-header {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
             flex-wrap: wrap;
-            gap: 12px;
-            box-shadow: var(--pos-shadow);
-        }
-
-        .btn-save-complete {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-            color: #ffffff !important;
-            font-weight: 700 !important;
-            border-radius: 6px !important;
-            padding: 8px 20px !important;
-            font-size: 0.85rem !important;
-            border: none !important;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
-            transition: all 0.2s ease !important;
-            cursor: pointer;
-        }
-        .btn-save-complete:hover {
-            background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-            transform: translateY(-1px);
-        }
-
-        /* Quick Products Drawer Cards */
-        .pos-product-card {
-            background: #ffffff;
-            border: 1px solid var(--pos-border);
-            border-radius: 8px;
-            padding: 8px 10px;
-            margin-bottom: 8px;
-            display: flex;
             align-items: center;
             justify-content: space-between;
-            transition: all 0.15s ease;
+            gap: 14px;
+            margin-bottom: 20px;
         }
-        .pos-product-card:hover {
-            border-color: var(--pos-border-focus);
-            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.1);
-        }
-        .pos-product-img {
-            width: 36px;
-            height: 36px;
-            border-radius: 6px;
-            object-fit: cover;
-            background: #f1f5f9;
+        .sale-header-left {
             display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .sale-title-ic {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: var(--pos-blue-soft);
+            color: var(--pos-blue);
+            display: inline-flex;
             align-items: center;
             justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .sale-title-main h5 {
+            font-size: 19px;
+            font-weight: 800;
+            letter-spacing: -.3px;
+            color: var(--pos-text);
+            margin-bottom: 2px;
+        }
+        .sale-subtitle {
+            font-size: 13px;
+            color: var(--pos-muted);
+        }
+
+        /* ---------- SALE TYPE SEGMENTED TOGGLE ---------- */
+        .seg-toggle {
+            display: flex;
+            height: var(--pos-input-h);
+            background: #F1F5F9;
+            border: 1px solid var(--pos-border);
+            border-radius: 8px;
+            padding: 3px;
+            width: 100%;
+        }
+        .seg-toggle .btn {
+            flex: 1;
+            border-radius: 6px;
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 0 10px;
+        }
+        .seg-toggle .btn.btn-outline-primary {
+            background: transparent;
+        }
+        .seg-toggle .btn-outline-primary:hover {
+            background: rgba(37, 99, 235, .08);
+        }
+
+        /* ---------- INVOICE GROUP ---------- */
+        .invoice-group {
+            flex-wrap: nowrap;
+        }
+        .invoice-group .btn-prefix {
+            height: var(--pos-input-h);
+            border: 1px solid var(--pos-border);
+            border-right: none;
+            background: #F8FAFC;
+            color: var(--pos-text);
+            font-weight: 700;
+            font-size: 13px;
+            border-radius: 8px 0 0 8px;
+            padding: 0 12px;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .invoice-group .btn-prefix:hover {
+            background: #F1F5F9;
+        }
+        .invoice-group #inputInvoiceNo {
+            border-radius: 0;
+            border-left: none;
+            border-right: none;
+            font-family: Consolas, 'JetBrains Mono', monospace;
+            font-size: 13.5px;
+            font-weight: 700 !important;
+        }
+        .invoice-group .btn-refresh {
+            height: var(--pos-input-h);
+            border: 1px solid var(--pos-border);
+            border-left: none;
+            background: #ffffff;
+            color: var(--pos-muted);
+            border-radius: 0 8px 8px 0;
+            padding: 0 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .15s ease;
+        }
+        .invoice-group .btn-refresh:hover {
+            background: #F1F5F9;
+            color: var(--pos-blue);
+        }
+
+        /* ---------- CUSTOMER BALANCE CARD ---------- */
+        .cust-bal-card {
+            background: linear-gradient(180deg, #EEF6FF 0%, #F7FBFF 70%, #FFFFFF 100%);
+            border: 1px solid #CFE2FA;
+            border-radius: 10px;
+            padding: 8px 12px;
+            box-sizing: border-box;
+            height: 136px;
+            min-height: 136px;
+            max-height: 136px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px -4px rgba(37, 99, 235, .12);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .cb-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+        .cb-id {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
+        .cb-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 9px;
+            background: var(--pos-blue);
+            color: #FFFFFF;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px -2px rgba(37, 99, 235, .45);
+        }
+        .cb-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--pos-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .cb-code {
+            font-size: 11px;
+            color: var(--pos-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .cb-extras {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 5px;
+        }
+        .cb-ext {
+            background: #FFFFFF;
+            border: 1px solid #E3EEFC;
+            border-radius: 7px;
+            padding: 4px 7px;
+        }
+        .cb-ext-label {
+            font-size: 9.5px;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+            font-weight: 600;
+            color: #5B84C4;
+            margin-bottom: 1px;
+        }
+        .cb-ext-val {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--pos-text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .cb-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+        .cb-cell {
+            background: #FFFFFF;
+            border: 1px solid #E3EEFC;
+            border-radius: 7px;
+            padding: 5px 2px;
+            text-align: center;
+        }
+        .cb-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+            font-weight: 600;
+            color: #5B84C4;
+            margin-bottom: 2px;
+            white-space: nowrap;
+        }
+        .cb-value {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--pos-text);
+            white-space: nowrap;
+        }
+        .cust-bal-card .text-danger {
+            color: var(--pos-red) !important;
+        }
+        .cust-bal-card .text-success {
+            color: var(--pos-green) !important;
+        }
+        #cc_paid_now {
+            color: var(--pos-green) !important;
+        }
+
+        /* ---------- ITEMS HEADER ---------- */
+        .items-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--pos-text);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .items-count {
+            background: var(--pos-blue-soft);
+            color: var(--pos-blue);
+            font-weight: 700;
+            border-radius: 999px;
+            padding: 3px 10px;
+            font-size: 12px;
+        }
+
+        /* ---------- PRODUCT CARDS ---------- */
+        .pos-product-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            transition: background .15s ease;
+        }
+        .pos-product-card:last-child {
+            margin-bottom: 0;
+        }
+        .pos-product-card:hover {
+            background: #F8FAFC;
+        }
+        .pos-product-img {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: #F1F5F9;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
         .pos-product-info {
             flex: 1;
-            margin-left: 8px;
-            margin-right: 8px;
-            overflow: hidden;
+            min-width: 0;
         }
         .pos-product-name {
-            font-size: 0.78rem;
-            font-weight: 700;
-            color: var(--pos-text-main);
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--pos-text);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .pos-product-sub {
-            font-size: 0.68rem;
-            color: var(--pos-text-muted);
+            font-size: 12px;
+            color: var(--pos-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .pos-product-price {
-            font-size: 0.78rem;
+            font-size: 13.5px;
             font-weight: 700;
-            color: var(--pos-text-main);
-            text-align: right;
+            color: var(--pos-text);
+            white-space: nowrap;
         }
         .pos-product-add-btn {
-            width: 26px;
-            height: 26px;
-            padding: 0;
-            display: flex;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: var(--pos-blue);
+            color: #ffffff;
+            border: none;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 6px;
-            background: var(--pos-primary);
-            color: #fff;
-            border: none;
-            font-size: 0.8rem;
+            font-size: 13px;
+            flex-shrink: 0;
             cursor: pointer;
+            transition: background .15s ease;
         }
         .pos-product-add-btn:hover {
-            background: var(--pos-primary-hover);
+            background: var(--pos-blue-hover);
+        }
+        .badge-stock-green {
+            background-color: var(--pos-green-soft) !important;
+            color: #15803D !important;
+            font-weight: 700 !important;
+            border: 1px solid #BBF7D0 !important;
+            padding: 2px 8px !important;
+            border-radius: 6px !important;
+            font-size: 11.5px !important;
         }
 
-        .badge-stock-green {
-            background-color: #dcfce7 !important;
-            color: #166534 !important;
+        /* ---------- PRODUCT TABLE ---------- */
+        .table-responsive {
+            border: 1px solid var(--pos-border);
+            border-radius: 10px;
+            background: #ffffff;
+            overflow-x: auto;
+        }
+        .sales-table {
+            min-width: 1060px;
+            border-collapse: separate;
+            border-spacing: 0;
+            width: 100%;
+            margin-bottom: 0;
+        }
+        .sales-table thead th {
+            background: #F8FAFC;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            padding: 11px 8px;
+            border-bottom: 1px solid var(--pos-border);
+            text-align: center;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        .sales-table thead th.col-product {
+            text-align: left;
+            padding-left: 14px;
+        }
+        .sales-table tbody td {
+            padding: 7px;
+            border-bottom: 1px solid #F1F5F9;
+            vertical-align: middle;
+        }
+        .sales-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .sales-table tbody tr:hover td {
+            background: #FBFDFF;
+        }
+        .row-index-cell {
+            font-size: 13px;
+            font-weight: 700;
+            color: #94A3B8;
+            text-align: center;
+        }
+
+        /* Table inputs — clean flat cells that highlight on focus */
+        .sales-table tbody .form-control,
+        .sales-table tbody .form-select {
+            height: 38px !important;
+            border: 1px solid transparent !important;
+            border-radius: 6px !important;
+            padding: 4px 9px !important;
+            font-size: 13.5px !important;
+            font-weight: 500 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: var(--pos-text) !important;
+            width: 100% !important;
+            transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
+        }
+        .sales-table tbody .form-control:hover,
+        .sales-table tbody .form-select:hover {
+            border-color: var(--pos-border) !important;
+            background: #ffffff !important;
+        }
+        .sales-table tbody .form-control:focus,
+        .sales-table tbody .form-select:focus,
+        .sales-table tbody .form-control:focus-visible {
+            border-color: var(--pos-blue) !important;
+            background: #ffffff !important;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, .10) !important;
+            outline: none !important;
+        }
+        .sales-table tbody input[readonly],
+        .sales-table tbody .input-readonly {
+            background: #FAFBFC !important;
+            color: var(--pos-muted) !important;
+            cursor: default !important;
+            font-weight: 600 !important;
+        }
+        .sales-table tbody input[readonly]:hover {
+            border-color: transparent !important;
+        }
+
+        /* Stock badge style inside stock cell */
+        .stock-badge {
+            display: inline-block;
+            background: #F1F5F9;
+            color: #475569;
+            border: 1px solid var(--pos-border);
+            font-size: 12px;
+            font-weight: 700;
+            border-radius: 6px;
+            padding: 4px 8px;
+            line-height: 1.2;
+        }
+        .stock-badge.strong {
+            background: var(--pos-green-soft);
+            color: #15803D;
+            border-color: #BBF7D0;
+        }
+
+        /* Product select2 inside table */
+        .sales-table tbody .select2-container .select2-selection--single {
+            height: 38px !important;
+            border: 1px solid transparent !important;
+            border-radius: 6px !important;
+            background: transparent !important;
+            padding: 0 !important;
+        }
+        .sales-table tbody .select2-container:hover .select2-selection--single {
+            border-color: var(--pos-border) !important;
+            background: #ffffff !important;
+        }
+        .sales-table tbody .select2-container--focus .select2-selection--single,
+        .sales-table tbody .select2-container--open .select2-selection--single {
+            border-color: var(--pos-blue) !important;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, .10) !important;
+            background: #ffffff !important;
+        }
+        .sales-table tbody .select2-container .select2-selection__rendered {
+            line-height: 36px !important;
+            padding-left: 9px !important;
+            padding-right: 18px !important;
+            font-size: 13.5px !important;
+            font-weight: 600 !important;
+            color: var(--pos-text) !important;
+        }
+        .sales-table tbody .select2-container .select2-selection__arrow {
+            height: 36px !important;
+            right: 6px !important;
+        }
+
+        /* Qty cell */
+        .qty-cell-flex {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .qty-cell-flex .carton-qty {
+            flex: 1;
+            min-width: 0;
+        }
+        .qty-unit-toggle {
+            height: 38px !important;
+            min-width: 42px !important;
+            border-radius: 6px !important;
+            font-size: 11px !important;
             font-weight: 700 !important;
-            border: 1px solid #bbf7d0 !important;
-            padding: 2px 6px !important;
-            border-radius: 4px !important;
-            font-size: 0.7rem !important;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px !important;
+        }
+
+        /* Price cell */
+        .price-cell-flex {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .price-cell-flex .visible-price {
+            flex: 1;
+            min-width: 0;
+        }
+        .price-mode-row-toggle {
+            height: 38px !important;
+            min-width: 32px !important;
+            border-radius: 6px !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 !important;
+        }
+
+        /* Discount cell */
+        .discount-wrapper {
+            display: flex;
+            align-items: stretch;
+            gap: 4px;
+        }
+        .discount-wrapper .discount-value {
+            flex: 1;
+            min-width: 0;
+            text-align: right;
+        }
+        .discount-wrapper .discount-toggle {
+            width: 32px;
+            flex-shrink: 0;
+            height: 38px !important;
+            border: 1px solid var(--pos-border) !important;
+            background: #F8FAFC !important;
+            color: var(--pos-muted) !important;
+            font-weight: 700 !important;
+            font-size: 11px !important;
+            border-radius: 6px !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 !important;
+            transition: all .15s ease;
+        }
+        .discount-wrapper .discount-toggle:hover {
+            background: #EEF2F7 !important;
+            color: var(--pos-blue) !important;
+        }
+
+        /* Amount cell */
+        .sales-amount {
+            font-weight: 800 !important;
+            color: var(--pos-text) !important;
+            font-size: 14px !important;
+        }
+
+        /* Row delete button */
+        .sales-table .del-row {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            border: 1px solid #FECACA;
+            background: #ffffff;
+            color: var(--pos-red);
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            cursor: pointer;
+            transition: all .15s ease;
+        }
+        .sales-table .del-row:hover {
+            background: var(--pos-red);
+            border-color: var(--pos-red);
+            color: #ffffff;
+        }
+
+        /* Grid total footer */
+        .sales-table tfoot td {
+            background: #F8FAFC;
+            border-top: 1px solid var(--pos-border);
+            padding: 13px 16px;
+        }
+        .grid-total-label {
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: var(--pos-muted);
+            text-align: right;
+        }
+        .grid-total-val {
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--pos-text);
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ---------- PAYMENT METHODS ---------- */
+        .pay-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding-bottom: 12px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid #F1F5F9;
+        }
+        .rv-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .rv-row .rv-account {
+            flex: 1;
+            min-width: 0;
+        }
+        .rv-row .rv-amount {
+            width: 132px;
+            flex-shrink: 0;
+            text-align: right;
+            font-weight: 600;
+        }
+        .btnRemRV {
+            width: 36px;
+            height: var(--pos-input-h);
+            border-radius: 8px;
+            border: 1px solid var(--pos-border);
+            background: #ffffff;
+            color: var(--pos-muted);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all .15s ease;
+        }
+        .btnRemRV:hover {
+            background: var(--pos-red-soft);
+            color: var(--pos-red);
+            border-color: #FECACA;
+        }
+        .change-row {
+            border-top: 1px dashed var(--pos-border);
+            margin-top: 12px;
+            padding-top: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .change-row .change-label {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--pos-muted);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .change-row .form-select {
+            width: 150px;
+            height: 36px !important;
+        }
+
+        /* ---------- ORDER SUMMARY ---------- */
+        .s-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 0;
+            font-size: 14px;
+        }
+        .s-row + .s-row {
+            border-top: 1px solid #F1F5F9;
+        }
+        .s-label {
+            color: var(--pos-muted);
+        }
+        .s-val {
+            font-weight: 600;
+            color: var(--pos-text);
+            font-variant-numeric: tabular-nums;
+        }
+        .s-row.net {
+            padding: 15px 0;
+            border-top: 2px solid var(--pos-border);
+            align-items: flex-end;
+        }
+        .net-label {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--pos-text);
+        }
+        .net-val {
+            font-size: 23px;
+            font-weight: 800;
+            letter-spacing: -.4px;
+            color: var(--pos-blue);
+            font-variant-numeric: tabular-nums;
+        }
+        .paid-val {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--pos-green);
+            font-variant-numeric: tabular-nums;
+        }
+        .change-val {
+            font-weight: 700;
+            font-size: 14.5px;
+            font-variant-numeric: tabular-nums;
+        }
+        .change-val.text-success {
+            color: var(--pos-green) !important;
+        }
+        .change-val.text-danger {
+            color: var(--pos-red) !important;
+        }
+        .discount-input {
+            width: 150px;
+            flex-shrink: 0;
+        }
+        .discount-input input {
+            font-weight: 600;
+            text-align: right;
+        }
+        .discount-input .input-group-text {
+            background: #F8FAFC;
+            border: 1px solid var(--pos-border);
+            border-radius: 0 8px 8px 0;
+            color: var(--pos-muted);
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        /* ---------- STICKY BOTTOM ACTION BAR ---------- */
+        .sale-bottom-bar {
+            position: sticky;
+            bottom: 0;
+            z-index: 40;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px 18px;
+            background: #ffffff;
+            border: 1px solid var(--pos-border);
+            border-radius: 12px;
+            box-shadow: 0 -8px 24px -12px rgba(15, 23, 42, .18);
+            padding: 12px 18px;
+            margin-top: 18px;
+        }
+        .bb-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 13.5px;
+            color: var(--pos-muted);
+            flex-wrap: wrap;
+        }
+        .bb-left b {
+            color: var(--pos-text);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        .bb-left .text-success {
+            color: var(--pos-green) !important;
+        }
+        .btn-ghost {
+            border: 1px solid var(--pos-border);
+            background: #ffffff;
+            color: var(--pos-muted);
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 12.5px;
+            padding: 6px 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all .15s ease;
+        }
+        .btn-ghost:hover {
+            background: #F8FAFC;
+            color: var(--pos-text);
+            border-color: var(--pos-border-strong);
+        }
+        .bb-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* ---------- OFF-CANVAS (Quick Products) ---------- */
+        .offcanvas-header {
+            border-bottom: 1px solid var(--pos-border);
+        }
+
+        /* ---------- VALIDATION STATES ---------- */
+        .invalid-input,
+        .invalid-select {
+            border-color: var(--pos-red) !important;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, .12) !important;
+        }
+        .invalid-cell {
+            background: #FFF7F7 !important;
+            box-shadow: inset 0 0 0 1px rgba(220, 38, 38, .25) !important;
+        }
+        .invalid-input + .select2-container .select2-selection--single,
+        .invalid-select + .select2-container .select2-selection--single {
+            border-color: var(--pos-red) !important;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, .12) !important;
+        }
+
+        /* ---------- ALERT BOX ---------- */
+        #alertBox {
+            border-radius: 10px;
+            font-size: 13.5px;
+            padding: 12px 16px;
+            margin-bottom: 18px;
+        }
+
+        /* ---------- RESPONSIVE ---------- */
+        @media (max-width: 1199.98px) {
+            .cust-bal-card {
+                height: auto;
+                min-height: 0;
+                max-height: none;
+                overflow: visible;
+            }
+            .cb-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 575.98px) {
+            .sale-subtitle {
+                display: none;
+            }
+            .bb-left {
+                gap: 12px;
+                font-size: 12.5px;
+            }
+            .bb-actions .btn-outline-secondary,
+            .bb-actions .btn-outline-primary {
+                display: none;
+            }
+            .bb-actions .btn-primary {
+                width: 100%;
+            }
         }
     </style>
 
-    <div class="container-fluid py-2 px-2">
-        <div class="main-container bg-white border mx-auto p-3 rounded-3">
+    <div class="container-fluid px-3 px-lg-4 pt-3 pb-4 sale-page">
 
-            <div id="alertBox" class="alert d-none mb-2" role="alert" style="padding:6px 12px; font-size:0.8rem;"></div>
+        <div id="alertBox" class="alert d-none" role="alert"></div>
 
-            <form id="saleForm" autocomplete="off">
-                @csrf
-                <input type="hidden" id="booking_id" name="booking_id" value="">
-                <input type="hidden" id="action" name="action" value="sale">
-                <input type="hidden" name="cash" value="0">
-                <input type="hidden" id="totalBalance" value="0">
+        <form id="saleForm" autocomplete="off">
+            @csrf
+            <input type="hidden" id="booking_id" name="booking_id" value="">
+            <input type="hidden" id="action" name="action" value="sale">
+            <input type="hidden" name="cash" value="0">
+            <input type="hidden" id="totalBalance" value="0">
 
-                {{-- TOP HEADER BAR --}}
-                <div class="d-flex justify-content-between align-items-center mb-2 px-1">
-                    <div class="d-flex align-items-center gap-2">
-                        <a href="{{ route('sale.index') }}" class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Back"><i class="fas fa-arrow-left text-secondary"></i></a>
-                        <div>
-                            <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 1.05rem;">
-                                <i class="fas fa-shopping-cart text-primary"></i> New Sale
-                            </h5>
-                            <small class="text-muted" style="font-size: 0.72rem;">Create a new invoice & manage checkout</small>
-                        </div>
+            {{-- ============================ PAGE HEADER ============================ --}}
+            <div class="sale-header">
+                <div class="sale-header-left">
+                    <a href="{{ route('sale.index') }}" class="btn-icon-back" title="Back to Sales List">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <div class="sale-title-ic">
+                        <i class="fas fa-shopping-cart"></i>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-sm btn-light border rounded-2 text-secondary px-2 py-1" title="Calculator"><i class="fas fa-calculator"></i></button>
-                        <button type="button" class="btn btn-sm btn-light border rounded-2 text-secondary px-2 py-1" title="Toggle Theme"><i class="fas fa-moon"></i></button>
-                        <button type="button" class="btn btn-sm btn-light border rounded-2 text-secondary px-2 py-1" title="Fullscreen" onclick="document.documentElement.requestFullscreen()"><i class="fas fa-expand"></i></button>
+                    <div class="sale-title-main">
+                        <h5 class="header-text mb-0">New Sale</h5>
+                        <div class="sale-subtitle">Create a new invoice &amp; manage checkout</div>
                     </div>
                 </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" id="btnHeaderSaveDraft" class="btn btn-outline-primary px-3">
+                        <i class="fas fa-save me-1"></i> Save Draft
+                    </button>
+                    <button type="button" id="btnHeaderSaveSale" class="btn btn-primary btn-save-print px-3">
+                        <i class="fas fa-print me-1"></i> Save &amp; Print Invoice
+                    </button>
+                </div>
+            </div>
 
-                <!-- TOP INFORMATION PANEL -->
-                <div class="top-info-card mb-3">
-                    <div class="row g-2 align-items-center w-100 m-0">
-                        <!-- LEFT COLUMN: Customer Form Inputs (col-xl-8 col-lg-7 col-md-12) -->
-                        <div class="col-xl-8 col-lg-7 col-md-12 p-0 pe-lg-2">
-                            <!-- Row 1: Invoice No, Credit Days, Type Toggle, + Add Customer -->
-                            <div class="row g-2 align-items-center mb-2">
-                                <!-- Invoice No -->
-                                <div class="col-sm-4 col-md-4">
-                                    <label class="meta-label"><i class="fas fa-receipt text-primary"></i> Invoice No.</label>
-                                    <div class="input-group input-group-sm invoice-group">
-                                        <button class="btn btn-prefix dropdown-toggle d-flex align-items-center gap-1" 
-                                                type="button" 
-                                                id="btnInvoicePrefix" 
-                                                data-bs-toggle="dropdown" 
-                                                aria-expanded="false">
-                                            <span id="activePrefixLabel">{{ $activePrefix ?? 'INV' }}</span>
-                                        </button>
-                                        <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownInvoiceSeriesList" aria-labelledby="btnInvoicePrefix" style="min-width: 155px; font-size: 0.8rem; z-index: 1050;">
-                                            @if(isset($allSeries) && count($allSeries) > 0)
-                                                @foreach($allSeries as $s)
-                                                    <li>
-                                                        <a class="dropdown-item fw-bold {{ ($activePrefix ?? 'INV') == $s->prefix ? 'text-success active bg-light' : '' }}" 
-                                                           href="#" 
-                                                           data-prefix="{{ $s->prefix }}" 
-                                                           data-next="{{ $s->next_number }}" 
-                                                           data-padding="{{ $s->padding }}">
-                                                            @if(($activePrefix ?? 'INV') == $s->prefix) <i class="fas fa-check text-success me-1"></i> @endif 
-                                                            {{ $s->prefix }} <span class="text-muted small font-monospace">({{ $s->padding }}d)</span>
-                                                        </a>
-                                                    </li>
-                                                @endforeach
-                                            @else
-                                                <li><a class="dropdown-item fw-bold text-success active bg-light" href="#" data-prefix="INV"><i class="fas fa-check text-success me-1"></i> INV (4d)</a></li>
-                                            @endif
-                                            <li><hr class="dropdown-divider my-1"></li>
-                                            <li>
-                                                <a class="dropdown-item fw-bold text-success d-flex align-items-center gap-1" href="#" id="btnOpenAddSeriesModal">
-                                                    <i class="fas fa-plus-circle me-1"></i> Add Series
-                                                </a>
-                                            </li>
-                                        </ul>
+            {{-- ============================ SALE INFORMATION CARD ============================ --}}
+            <div class="sale-card mb-3 p-4">
+                <div class="row g-4">
+                    <div class="col-xl-8">
+                        <div class="row g-3">
+                            {{-- Invoice No --}}
+                            <div class="col-6 col-md-3">
+                                <label class="field-label" for="inputInvoiceNo">Invoice No.</label>
+                                <div class="input-group invoice-group">
+                                    <button class="btn btn-prefix dropdown-toggle d-flex align-items-center gap-1"
+                                            type="button"
+                                            id="btnInvoicePrefix"
+                                            data-bs-toggle="dropdown"
+                                            aria-expanded="false">
+                                        <span id="activePrefixLabel">{{ $activePrefix ?? 'INV' }}</span>
+                                    </button>
+                                    <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownInvoiceSeriesList" aria-labelledby="btnInvoicePrefix" style="min-width: 160px; font-size: 13px; z-index: 1050;">
+                                        @if(isset($allSeries) && count($allSeries) > 0)
+                                            @foreach($allSeries as $s)
+                                                <li>
+                                                    <a class="dropdown-item fw-bold {{ ($activePrefix ?? 'INV') == $s->prefix ? 'text-success active bg-light' : '' }}"
+                                                       href="#"
+                                                       data-prefix="{{ $s->prefix }}"
+                                                       data-next="{{ $s->next_number }}"
+                                                       data-padding="{{ $s->padding }}">
+                                                        @if(($activePrefix ?? 'INV') == $s->prefix) <i class="fas fa-check text-success me-1"></i> @endif
+                                                        {{ $s->prefix }} <span class="text-muted small font-monospace">({{ $s->padding }}d)</span>
+                                                    </a>
+                                                </li>
+                                            @endforeach
+                                        @else
+                                            <li><a class="dropdown-item fw-bold text-success active bg-light" href="#" data-prefix="INV"><i class="fas fa-check text-success me-1"></i> INV (4d)</a></li>
+                                        @endif
+                                        <li><hr class="dropdown-divider my-1"></li>
+                                        <li>
+                                            <a class="dropdown-item fw-bold text-success d-flex align-items-center gap-1" href="#" id="btnOpenAddSeriesModal">
+                                                <i class="fas fa-plus-circle me-1"></i> Add Series
+                                            </a>
+                                        </li>
+                                    </ul>
 
-                                        <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $nextInvoiceNumber }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                                    <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $nextInvoiceNumber }}" readonly>
 
-                                        <button class="btn btn-refresh" 
-                                                type="button" 
-                                                id="btnRefreshInvoiceNo" 
-                                                title="Regenerate Invoice Number">
-                                            <i class="fas fa-sync-alt" id="iconRefreshInvoice"></i>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Credit Days -->
-                                <div class="col-sm-3 col-md-3">
-                                    <label class="meta-label"><i class="fas fa-clock text-muted"></i> Credit Days</label>
-                                    <input type="number" class="form-control text-center fw-bold" name="credit_days" placeholder="Days" min="0" value="{{ $sale->credit_days ?? '0' }}">
-                                </div>
-
-                                <!-- Customer Type Toggle & Add Customer Button -->
-                                <div class="col-sm-5 col-md-5">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <label class="meta-label mb-0"><i class="fas fa-user-tag text-primary"></i> Type</label>
-                                        <button type="button" id="btnOpenAddCustomerModal" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill fw-bold" data-toggle="modal" data-target="#addCustomerModal" data-bs-toggle="modal" data-bs-target="#addCustomerModal" title="Quick Add Customer (Alt+C or F2)" style="font-size: 0.7rem; height: 20px; line-height: 1;">
-                                            <i class="fas fa-plus"></i> Add Customer
-                                        </button>
-                                    </div>
-                                    <!-- Hidden select for backend/JS sync -->
-                                    <select class="d-none" id="partyTypeSelect" name="partyType">
-                                        @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
-                                            <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
-                                        @endforeach
-                                    </select>
-                                    <!-- Visual Toggle Button Group -->
-                                    <div class="btn-group btn-group-sm w-100 customer-type-btn-group" role="group" aria-label="Customer Type Toggle">
-                                        <button type="button" class="btn btn-primary active text-white fw-bold" id="btnTypeCustomer" style="font-size: 0.75rem; height: 32px;">
-                                            <i class="fas fa-users me-1"></i> Customers
-                                        </button>
-                                        <button type="button" class="btn btn-outline-primary fw-bold" id="btnTypeWalkin" style="font-size: 0.75rem; height: 32px;">
-                                            <i class="fas fa-walking me-1"></i> Walk-in
-                                        </button>
-                                    </div>
+                                    <button class="btn btn-refresh"
+                                            type="button"
+                                            id="btnRefreshInvoiceNo"
+                                            title="Regenerate Invoice Number">
+                                        <i class="fas fa-sync-alt" id="iconRefreshInvoice"></i>
+                                    </button>
                                 </div>
                             </div>
 
-                            <!-- Row 2: M.Bill (Optional) / Remarks, Date, Customer Search / Walk-in Input -->
-                            <div class="row g-2 align-items-center">
-                                <!-- M.Bill (Optional) / Remarks -->
-                                <div class="col-sm-4 col-md-4">
-                                    <label class="meta-label"><i class="far fa-comment-dots text-muted"></i> M.Bill (Optional):</label>
-                                    <input type="text" class="form-control" name="reference" id="remarks" placeholder="Enter remarks...">
-                                </div>
+                            {{-- Credit Days --}}
+                            <div class="col-6 col-md-2">
+                                <label class="field-label" for="creditDaysInput">Credit Days</label>
+                                <input type="number" class="form-control text-center" id="creditDaysInput" name="credit_days" placeholder="Days" min="0" value="{{ $sale->credit_days ?? '0' }}">
+                            </div>
 
-                                <!-- Date -->
-                                <div class="col-sm-3 col-md-3">
-                                    <label class="meta-label"><i class="far fa-calendar-alt text-primary"></i> Date:</label>
-                                    <input type="text" name="sale_date" class="form-control datepicker-custom text-center fw-bold" id="displayDateInput" value="{{ date('d/m/Y') }}">
+                            {{-- Sale Type --}}
+                            <div class="col-12 col-md-4">
+                                <label class="field-label">Sale Type</label>
+                                <div class="seg-toggle" role="group" aria-label="Sale Type">
+                                    <button type="button" class="btn btn-primary active text-white" id="btnTypeCustomer">
+                                        <i class="fas fa-users me-1"></i> Customer
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" id="btnTypeWalkin">
+                                        <i class="fas fa-walking me-1"></i> Walk-in
+                                    </button>
                                 </div>
+                                <select class="d-none" id="partyTypeSelect" name="partyType">
+                                    @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
+                                        <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                                <!-- Customer Search / Walk-in Input -->
-                                <div class="col-sm-5 col-md-5">
-                                    <label class="meta-label"><i class="fas fa-user text-primary"></i> Customer:</label>
-                                    <div id="customerInputWrapper">
-                                        <input type="text" class="form-control fw-bold d-none" name="walkin_name" id="walkinNameInput" value="Walk-in Customer" placeholder="Enter Walk-in Name...">
+                            {{-- Date --}}
+                            <div class="col-6 col-md-3">
+                                <label class="field-label" for="displayDateInput">Date</label>
+                                <input type="text" name="sale_date" class="form-control datepicker-custom" id="displayDateInput" value="{{ date('d/m/Y') }}">
+                            </div>
+
+                            {{-- Reference / Remarks --}}
+                            <div class="col-6 col-md-3">
+                                <label class="field-label" for="remarks">Reference / Remarks</label>
+                                <input type="text" class="form-control" name="reference" id="remarks" placeholder="Optional">
+                            </div>
+
+                            {{-- Customer --}}
+                            <div class="col-12 col-md-6">
+                                <label class="field-label" for="customerSelect">Customer</label>
+                                <div class="d-flex gap-2">
+                                    <div id="customerInputWrapper" class="flex-grow-1" style="min-width: 0;">
+                                        <input type="text" class="form-control d-none" name="walkin_name" id="walkinNameInput" value="Walk-in Customer" placeholder="Enter Walk-in Name...">
                                         <select class="form-select" id="customerSelect" name="customer" style="width:100%">
                                             <option value=""></option>
                                         </select>
                                     </div>
+                                    <button type="button" id="btnOpenAddCustomerModal"
+                                            class="btn btn-outline-primary flex-shrink-0 align-self-stretch"
+                                            style="width: var(--pos-input-h); padding: 0; display: inline-flex; align-items: center; justify-content: center;"
+                                            data-toggle="modal" data-target="#addCustomerModal"
+                                            data-bs-toggle="modal" data-bs-target="#addCustomerModal"
+                                            title="Quick Add Customer (Alt+C or F2)">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- RIGHT COLUMN: Dark Horizontal Customer Summary Widget (col-xl-4 col-lg-5 col-md-12) -->
-                        <div class="col-xl-4 col-lg-5 col-md-12 p-0 ps-lg-1 mt-2 mt-lg-0">
-                            <div class="customer-dark-summary-card p-2 rounded-3 text-white h-100 d-flex flex-column justify-content-between shadow-sm" style="background: #111827; border: 1px solid #374151; min-height: 85px;">
-                                <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom border-secondary">
-                                    <div class="d-flex align-items-center gap-1 fw-bold text-white text-truncate" style="font-size: 0.82rem;">
-                                        <i class="fas fa-user-circle text-primary"></i>
-                                        <span id="cc_customer_name">Select Customer</span>
+                    {{-- Customer Balance Card (right) --}}
+                    <div class="col-xl-4">
+                        <div class="cust-bal-card">
+                            <div class="cb-head">
+                                <div class="cb-id">
+                                    <div class="cb-avatar"><i class="fas fa-user"></i></div>
+                                    <div style="min-width:0;">
+                                        <div class="cb-name" id="cc_customer_name">Select Customer</div>
+                                        <div class="cb-code">Code: <span id="ci_code">—</span></div>
                                     </div>
-                                    <button type="button" class="btn btn-link text-secondary p-0 text-decoration-none small hover-white" id="clearCustomerData" style="font-size: 0.72rem;">
-                                        <i class="fas fa-times-circle me-1"></i>Clear
-                                    </button>
                                 </div>
-                                <div class="row g-1 text-center mt-1">
-                                    <div class="col-3">
-                                        <div class="text-secondary text-uppercase fw-semibold" style="font-size: 0.65rem;"><i class="fas fa-history me-1"></i>PREV BAL</div>
-                                        <div class="fw-bold fs-7 text-danger text-truncate" style="font-size: 0.78rem;">
-                                            <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span>
-                                        </div>
+                                <button type="button" class="btn btn-link btn-sm text-muted text-decoration-none p-0" id="clearCustomerData" style="font-size:12px;">Clear</button>
+                            </div>
+
+                            <div id="customerInfoCard" class="d-none cb-extras">
+                                <div class="cb-ext">
+                                    <div class="cb-ext-label">Full Name</div>
+                                    <div class="cb-ext-val" id="ci_name">—</div>
+                                </div>
+                                <div class="cb-ext">
+                                    <div class="cb-ext-label">Mobile</div>
+                                    <div class="cb-ext-val" id="ci_mobile">—</div>
+                                </div>
+                                <div class="cb-ext">
+                                    <div class="cb-ext-label">Address</div>
+                                    <div class="cb-ext-val" id="ci_address">—</div>
+                                </div>
+                            </div>
+
+                            <div class="cb-grid">
+                                <div class="cb-cell">
+                                    <div class="cb-label">Prev. Due</div>
+                                    <div class="cb-value">
+                                        <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span>
                                     </div>
-                                    <div class="col-3">
-                                        <div class="text-secondary text-uppercase fw-semibold" style="font-size: 0.65rem;"><i class="fas fa-file-invoice me-1"></i>CURRENT</div>
-                                        <div class="fw-bold text-white text-truncate" style="font-size: 0.78rem;" id="cc_current_bill">Rs 0</div>
-                                    </div>
-                                    <div class="col-3">
-                                        <div class="text-secondary text-uppercase fw-semibold" style="font-size: 0.65rem;"><i class="fas fa-check-circle me-1"></i>PAID</div>
-                                        <div class="fw-bold text-success text-truncate" style="font-size: 0.78rem;" id="cc_paid_now">Rs 0</div>
-                                    </div>
-                                    <div class="col-3">
-                                        <div class="text-secondary text-uppercase fw-semibold" style="font-size: 0.65rem;"><i class="fas fa-calculator me-1"></i>CLOSING</div>
-                                        <div class="fw-bold fs-7 text-danger text-truncate" style="font-size: 0.78rem;">
-                                            <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span>
-                                        </div>
+                                </div>
+                                <div class="cb-cell">
+                                    <div class="cb-label">Current Due</div>
+                                    <div class="cb-value" id="cc_current_bill">Rs 0</div>
+                                </div>
+                                <div class="cb-cell">
+                                    <div class="cb-label">Paid</div>
+                                    <div class="cb-value" id="cc_paid_now">Rs 0</div>
+                                </div>
+                                <div class="cb-cell">
+                                    <div class="cb-label">Closing</div>
+                                    <div class="cb-value">
+                                        <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {{-- Hidden fields for backend --}}
-                <input type="hidden" name="is_walkin" id="is_walkin" value="0">
-                <input type="hidden" id="address" name="address">
-                <input type="hidden" id="tel" name="tel">
-                <input type="hidden" id="previousBalance" value="0">
-                <input type="hidden" id="rangeBalance" value="0">
+            {{-- Hidden fields for backend --}}
+            <input type="hidden" name="is_walkin" id="is_walkin" value="0">
+            <input type="hidden" id="address" name="address">
+            <input type="hidden" id="tel" name="tel">
+            <input type="hidden" id="previousBalance" value="0">
+            <input type="hidden" id="rangeBalance" value="0">
 
-                <!-- FULL ROW: Order Items Grid Table (col-12) -->
-                <div class="row g-3 mb-3">
-                    <div class="col-12">
-                        <div class="card-panel d-flex flex-column p-3">
-                            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                                <div class="d-flex align-items-center gap-2">
-                                    <div class="section-header-title">
-                                        <span class="border-start border-4 border-primary ps-2">ITEMS</span>
-                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0" style="font-size:0.7rem;" id="itemsRowCount">0</span>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 rounded-2 fw-semibold d-flex align-items-center gap-1" data-bs-toggle="offcanvas" data-bs-target="#quickProductsOffcanvas" style="font-size:0.75rem;">
-                                        <i class="fas fa-th"></i> Quick Products
-                                    </button>
-                                </div>
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-primary btn-sm py-1 px-3 rounded-2 fw-bold d-flex align-items-center gap-1 shadow-sm" id="btnAdd" style="font-size:0.75rem;">
-                                        <i class="fas fa-plus"></i> Add Row
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="table-responsive">
-                                <table class="table table-bordered sales-table mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th style="width:30px;" class="text-center">#</th>
-                                            <th class="col-product" style="min-width: 180px;">PRODUCT</th>
-                                            <th class="col-stock" style="width: 60px;">STOCK</th>
-                                            <th class="col-qty" style="width: 85px;">QTY</th>
-                                            <th class="col-size" style="width: 55px;">SIZE</th>
-                                            {{-- <th class="col-color" style="width: 65px;">COLOR</th> --}}
-                                            <th class="col-pieces" style="width: 55px;">PCS</th>
-                                            <th class="col-price-p" style="width: 85px;">PRICE</th>
-                                            <th class="col-disc" style="width: 85px;">DISCOUNT</th>
-                                            <th class="col-amount" style="width: 95px;">AMOUNT</th>
-                                            <th class="col-action" style="width: 34px;">×</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="salesTableBody">
-                                        <tr>
-                                            <!-- # ROW INDEX -->
-                                            <td class="text-center fw-bold text-muted row-index" style="vertical-align:middle; font-size:0.75rem;">1</td>
-
-                                            <!-- PRODUCT -->
-                                            <td class="col-product">
-                                                <select class="form-select product" style="width:100%">
-                                                    <option value=""></option>
-                                                </select>
-                                                <input type="hidden" class="product-id-hidden" name="product_id[]">
-                                                <input type="hidden" class="variant-data-hidden" name="color[]">
-                                                <input type="hidden" class="item-code-display">
-                                                <input type="hidden" class="size-h">
-                                                <input type="hidden" class="size-w">
-                                                <input type="hidden" class="size-mode-text">
-                                            </td>
-
-                                            <!-- STOCK -->
-                                            <td class="col-stock">
-                                                <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1">
-                                                <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ auth()->user()->warehouse_id ?? 1 }}">
-                                                <input type="hidden" class="variant-stock-value">
-                                            </td>
-
-                                            <!-- Qty cell with Sub-Unit toggle -->
-                                            <td style="width:85px;" class="col-qty-wrapper">
-                                                <div class="d-flex align-items-center gap-1">
-                                                    <input type="number" step="any" class="form-control carton-qty text-start fw-bold" name="carton_qty[]" placeholder="0" min="0" value="" style="flex: 1; min-width: 0; padding-left: 6px;">
-                                                    <button type="button" class="btn btn-sm btn-outline-primary qty-unit-toggle px-1 py-0 d-none" 
-                                                            data-unit-mode="main" title="Toggle Unit" style="font-size: 0.65rem; height: 26px; min-width: 28px; font-weight: 700; border-radius: 4px; flex-shrink: 0;">
-                                                        Kg
-                                                    </button>
-                                                </div>
-                                                <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
-                                            </td>
-
-                                            <!-- Loose Pieces -->
-                                            <td style="width:70px;" class="d-none">
-                                                <input type="number" class="form-control loose-pcs-input text-end" name="loose_qty[]" placeholder="" min="0" value="">
-                                            </td>
-
-                                            <!-- Size -->
-                                            <td class="col-size">
-                                                <input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-">
-                                                <input type="hidden" class="pack-qty" name="pack_qty[]" value="1">
-                                            </td>
-
-                                            <!-- Color (Display - readonly) -->
-                                            {{-- <td class="col-color">
-                                                <input type="text" class="form-control color-display text-center input-readonly" readonly tabindex="-1" placeholder="-">
-                                            </td> --}}
-
-                                            <!-- Total Pieces (Calculated) -->
-                                            <td class="col-pieces">
-                                                <input type="text" class="form-control total-pieces text-end input-readonly fw-semibold" name="total_pieces[]" readonly placeholder="0" tabindex="-1">
-                                                <input type="hidden" class="sales-qty" name="qty[]" value="0">
-                                            </td>
-                                         
-                                            <!-- Price/Piece (EDITABLE) -->
-                                            <td class="col-price-p">
-                                                <div class="d-flex align-items-center gap-1">
-                                                    <input type="text" class="form-control visible-price text-end fw-semibold" name="visible_price[]" placeholder="0" style="flex: 1; min-width: 0;">
-                                                    <button type="button" class="btn btn-sm btn-outline-primary price-mode-row-toggle px-1 py-0" 
-                                                            data-mode="retail" title="Retail Mode">
-                                                        R
-                                                    </button>
-                                                </div>
-                                                <input type="hidden" class="price-per-piece" name="price_per_piece[]">
-                                                <input type="hidden" class="retail-price">
-                                                <input type="hidden" class="wholesale-price">
-                                                <input type="hidden" class="weight-per-piece">
-                                            </td>
-
-                                            <!-- SINGLE DISCOUNT COLUMN -->
-                                            <td class="col-disc">
-                                                <div class="discount-wrapper">
-                                                    <input type="number"
-                                                           class="form-control discount-value text-end"
-                                                           name="item_disc[]"
-                                                           placeholder="0">
-                                                    <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="percent">
-                                                    <button type="button"
-                                                            class="btn btn-outline-secondary discount-toggle"
-                                                            data-type="percent" tabindex="-1">%</button>
-                                                </div>
-                                                <input type="hidden" class="discount-amount" value="0">
-                                            </td>
-
-                                            <!-- NET AMOUNT -->
-                                            <td class="col-amount">
-                                                <input type="text" class="form-control sales-amount text-end input-readonly fw-bold text-dark" name="total[]" value="0" readonly tabindex="-1">
-                                                <input type="hidden" class="gross-amount" name="gross_amount[]">
-                                            </td>
-
-                                            <!-- ACTION -->
-                                            <td class="col-action text-center">
-                                                <button type="button" class="btn-del-row del-row" tabindex="-1" title="Delete Row">&times;</button>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td colspan="8" class="text-end fw-bold text-uppercase text-secondary" style="font-size:0.8rem;">GRID TOTAL:</td>
-                                            <td class="text-end fw-bold text-success fs-6"><span id="totalAmount">0.00</span></td>
-                                            <td></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
+            {{-- ============================ ITEMS SECTION ============================ --}}
+            <div class="sale-card mb-3 p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div class="items-title">
+                        Items
+                        <span class="items-count" id="itemsRowCount">0</span>
+                    </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-outline-primary px-3" data-bs-toggle="offcanvas" data-bs-target="#quickProductsOffcanvas">
+                            <i class="fas fa-th me-1"></i> Quick Products
+                        </button>
+                        <button type="button" class="btn btn-primary px-3" id="btnAdd">
+                            <i class="fas fa-plus me-1"></i> Add Product
+                        </button>
                     </div>
                 </div>
 
-                <!-- BOTTOM AREA: Payment Methods & Financial Summary Cards (col-lg-6 each) -->
-                <div class="row g-3 align-items-stretch">
-                    <!-- LEFT: Payment Methods Card (col-lg-6) -->
-                    <div class="col-lg-6">
-                        <div class="payment-methods-card h-100 d-flex flex-column">
-                            <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
-                                <span class="fw-bold text-dark d-flex align-items-center gap-1" style="font-size:0.85rem;"><i class="fas fa-wallet text-success"></i> Payment Methods</span>
-                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-2 fw-bold" id="btnAddRV" style="font-size:0.7rem;"><i class="fas fa-plus me-1"></i>Add Account</button>
-                            </div>
+                <div class="table-responsive">
+                    <table class="table sales-table mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width:44px;">#</th>
+                                <th class="col-product" style="min-width:230px;">Product</th>
+                                <th style="width:82px;">Stock</th>
+                                <th style="width:112px;">Qty</th>
+                                <th style="width:82px;">Size</th>
+                                <th style="width:82px;">Pcs</th>
+                                <th style="width:118px;">Price</th>
+                                <th style="width:118px;">Discount</th>
+                                <th style="width:132px;">Amount</th>
+                                <th style="width:58px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesTableBody">
+                            <tr>
+                                <td class="row-index-cell row-index">1</td>
 
-                            <div id="rvWrapper" class="mb-3">
-                                <div class="d-flex gap-2 align-items-center mb-2 rv-row">
-                                    <select class="form-select form-select-sm rv-account bg-light fw-bold" name="receipt_account_id[]" style="font-size:0.78rem;">
-                                        @foreach ($accounts as $acc)
-                                            <option value="{{ $acc->id }}" {{ str_contains(strtolower($acc->title), 'cash') || str_contains(strtolower($acc->title), 'easypaisa') ? 'selected' : '' }}>{{ $acc->title }}</option>
-                                        @endforeach
+                                <!-- PRODUCT -->
+                                <td class="col-product">
+                                    <select class="form-select product" style="width:100%">
+                                        <option value=""></option>
                                     </select>
-                                    <input type="number" step="0.01" class="form-control form-control-sm text-end rv-amount fw-bold" name="receipt_amount[]" placeholder="0.00" style="width: 130px; font-size:0.8rem;">
-                                </div>
-                            </div>
+                                    <input type="hidden" class="product-id-hidden" name="product_id[]">
+                                    <input type="hidden" class="variant-data-hidden" name="color[]">
+                                    <input type="hidden" class="item-code-display">
+                                    <input type="hidden" class="size-h">
+                                    <input type="hidden" class="size-w">
+                                    <input type="hidden" class="size-mode-text">
+                                </td>
 
-                            <div class="summary-row pt-2 align-items-center mt-auto" id="changeAccountRow" style="display: none; border-top: 1px dashed #f1aeb5; background: #fff8f8; padding: 6px 8px; border-radius: 6px;">
-                                <span class="text-danger fw-bold d-flex align-items-center gap-1" style="font-size:0.76rem;"><i class="fas fa-hand-holding-usd"></i> Change A/C</span>
-                                <select class="form-select form-select-sm bg-white fw-bold text-danger border-danger" name="change_account_id" id="changeAccountId" style="width: 140px; font-size:0.75rem; height: 28px; padding: 2px 6px;">
+                                <!-- STOCK -->
+                                <td class="col-stock text-center">
+                                    <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1">
+                                    <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ auth()->user()->warehouse_id ?? 1 }}">
+                                    <input type="hidden" class="variant-stock-value">
+                                </td>
+
+                                <!-- QTY -->
+                                <td class="col-qty-wrapper">
+                                    <div class="qty-cell-flex">
+                                        <input type="number" step="any" class="form-control carton-qty text-start fw-bold" name="carton_qty[]" placeholder="0" min="0" value="">
+                                        <button type="button" class="btn btn-sm qty-unit-toggle px-1 py-0 d-none"
+                                                data-unit-mode="main" title="Toggle Unit"
+                                                style="background: #fff; color: #2563EB; border: 1px solid #BFDBFE;">
+                                            Kg
+                                        </button>
+                                    </div>
+                                    <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
+                                </td>
+
+                                <!-- SIZE -->
+                                <td class="col-size">
+                                    <input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-">
+                                    <input type="hidden" class="pack-qty" name="pack_qty[]" value="1">
+                                </td>
+
+                                <!-- PCS -->
+                                <td class="col-pieces">
+                                    <input type="text" class="form-control total-pieces text-end input-readonly fw-semibold" name="total_pieces[]" readonly placeholder="0" tabindex="-1">
+                                    <input type="hidden" class="sales-qty" name="qty[]" value="0">
+                                </td>
+
+                                <!-- PRICE -->
+                                <td class="col-price-p">
+                                    <div class="price-cell-flex">
+                                        <input type="text" class="form-control visible-price text-end fw-semibold" name="visible_price[]" placeholder="0">
+                                        <button type="button" class="btn btn-sm price-mode-row-toggle px-1 py-0"
+                                                data-mode="retail" title="Retail Mode"
+                                                style="background: #fff; border: 1px solid #BFDBFE; color: #2563EB;">
+                                            R
+                                        </button>
+                                    </div>
+                                    <input type="hidden" class="price-per-piece" name="price_per_piece[]">
+                                    <input type="hidden" class="retail-price">
+                                    <input type="hidden" class="wholesale-price">
+                                    <input type="hidden" class="weight-per-piece">
+                                </td>
+
+                                <!-- DISCOUNT -->
+                                <td class="col-disc">
+                                    <div class="discount-wrapper">
+                                        <input type="number" class="form-control discount-value text-end" name="item_disc[]" placeholder="0">
+                                        <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="percent">
+                                        <button type="button" class="btn btn-outline-secondary discount-toggle" data-type="percent" tabindex="-1">%</button>
+                                    </div>
+                                    <input type="hidden" class="discount-amount" value="0">
+                                </td>
+
+                                <!-- AMOUNT -->
+                                <td class="col-amount">
+                                    <input type="text" class="form-control sales-amount text-end input-readonly" name="total[]" value="0" readonly tabindex="-1">
+                                    <input type="hidden" class="gross-amount" name="gross_amount[]">
+                                </td>
+
+                                <!-- ACTION -->
+                                <td class="col-action text-center">
+                                    <button type="button" class="del-row" tabindex="-1" title="Delete Row">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="8" class="grid-total-label">Grid Total:</td>
+                                <td class="grid-total-val">Rs <span id="totalAmount">0.00</span></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            {{-- ============================ PAYMENT METHODS & ORDER SUMMARY ============================ --}}
+            <div class="row g-3 align-items-stretch">
+                {{-- LEFT: Payment Methods --}}
+                <div class="col-lg-6">
+                    <div class="sale-card h-100 p-4 d-flex flex-column">
+                        <div class="pay-head">
+                            <span class="card-title">Payment Methods</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary px-3" id="btnAddRV">
+                                <i class="fas fa-plus me-1"></i> Add Payment
+                            </button>
+                        </div>
+
+                        <div id="rvWrapper">
+                            <div class="rv-row">
+                                <select class="form-select rv-account" name="receipt_account_id[]">
+                                    @foreach ($accounts as $acc)
+                                        <option value="{{ $acc->id }}" {{ str_contains(strtolower($acc->title), 'cash') || str_contains(strtolower($acc->title), 'easypaisa') ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="number" step="0.01" class="form-control rv-amount" name="receipt_amount[]" placeholder="0.00">
+                            </div>
+                        </div>
+
+                        <div class="mt-auto pt-3">
+                            <div class="change-row" id="changeAccountRow" style="display:none;">
+                                <span class="change-label">
+                                    <i class="fas fa-exchange-alt me-1"></i> Change Account
+                                </span>
+                                <select class="form-select" name="change_account_id" id="changeAccountId">
                                     @foreach ($accounts as $acc)
                                         <option value="{{ $acc->id }}" {{ str_contains(strtolower($acc->title), 'cash') ? 'selected' : '' }}>{{ $acc->title }}</option>
                                     @endforeach
@@ -916,68 +1430,83 @@
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- RIGHT: Executive Summary Card (col-lg-6) -->
-                    <div class="col-lg-6">
-                        <div class="summary-card h-100 d-flex flex-column justify-content-between">
-                            <div class="d-flex justify-content-between align-items-center pb-2 mb-2 border-bottom">
-                                <span class="fw-bold text-dark d-flex align-items-center gap-1" style="font-size:0.85rem;"><i class="fas fa-calculator text-primary"></i> Summary</span>
-                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0" style="font-size:0.7rem;">Live</span>
+                {{-- RIGHT: Order Summary --}}
+                <div class="col-lg-6">
+                    <div class="sale-card h-100 p-4 d-flex flex-column">
+                        <div class="pay-head">
+                            <span class="card-title">Order Summary</span>
+                        </div>
+
+                        <div class="flex-grow-1">
+                            <div class="s-row">
+                                <span class="s-label">Subtotal</span>
+                                <span class="s-val" id="tGross">0.00</span>
                             </div>
-                            
-                            <div class="summary-row">
-                                <span class="text-muted">Total Amount</span>
-                                <span class="fw-bold text-dark" id="tGross">0.00</span>
+                            <div class="s-row">
+                                <span class="s-label">Line Discount</span>
+                                <span class="s-val" id="tLineDisc">0.00</span>
                             </div>
-                            <div class="summary-row">
-                                <span class="text-muted">Line Discount</span>
-                                <span class="fw-bold text-danger" id="tLineDisc">0.00</span>
-                            </div>
-                            <div class="summary-row">
-                                <span class="text-muted fw-bold">Discount (Rs.)</span>
-                                <div class="input-group input-group-sm" style="width: 130px;">
-                                    <input type="number" class="form-control text-end fw-bold text-danger" id="walkinDiscountRs" value="0" placeholder="0">
-                                    <span class="input-group-text bg-light text-muted fw-bold" style="font-size:0.75rem;">Rs</span>
+                            <div class="s-row">
+                                <span class="s-label">Discount (Rs)</span>
+                                <div class="input-group input-group-sm discount-input">
+                                    <input type="number" class="form-control text-end" id="walkinDiscountRs" value="0" placeholder="0">
+                                    <span class="input-group-text">Rs</span>
                                 </div>
                             </div>
-                            <div class="summary-row">
-                                <span class="fw-bold text-dark">Net Total</span>
-                                <span class="summary-val-net" id="tSub">0.00</span>
+                            <div class="s-row net">
+                                <span class="net-label">Net Total</span>
+                                <span class="net-val" id="tSub">0.00</span>
                                 <span id="walkinNetTotal" class="d-none">0.00</span>
                             </div>
-                            <div class="summary-row">
-                                <span class="text-muted">Total Paid</span>
-                                <span class="fw-bold text-success fs-6" id="receiptsTotal">0.00</span>
+                            <div class="s-row">
+                                <span class="s-label">Total Paid</span>
+                                <span class="paid-val" id="receiptsTotal">0.00</span>
                                 <span id="receiptsTotalBadge" style="display:none;">0.00</span>
                                 <span id="bottomPaymentsTotal" class="d-none">0.00</span>
                             </div>
-                            <div class="summary-row pt-1">
-                                <span class="fw-bold text-dark">Change</span>
-                                <span class="summary-val-change" id="walkinChange">-0.00</span>
+                            <div class="s-row">
+                                <span class="s-label">Remaining</span>
+                                <span class="s-val" id="tPayable">0.00</span>
+                            </div>
+                            <div class="s-row">
+                                <span class="s-label">Change</span>
+                                <span class="change-val" id="walkinChange">-0.00</span>
                                 <span id="bottomChangeVal" class="d-none">-0.00</span>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {{-- BOTTOM ACTION BUTTONS ROW --}}
-                <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center py-2 px-3 mt-3 border-top bg-light rounded-3">
-                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <button type="button" class="btn btn-outline-primary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnSave"><i class="fas fa-bookmark"></i> Booking</button>
-                        <button type="button" class="btn btn-primary btn-sm px-4 fw-bold rounded-2 d-flex align-items-center gap-1 shadow-sm" id="btnPosted" disabled><i class="fas fa-shopping-cart"></i> Sale</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnPrint"><i class="fas fa-print"></i> A4 Print</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnEstimate"><i class="fas fa-file-invoice"></i> Estimate</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnPrint2"><i class="fas fa-receipt"></i> Thermal Print</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnDcThermal"><i class="fas fa-truck"></i> DC</button>
-                    </div>
-                    <div>
-                        <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete">
-                            <i class="fas fa-check-circle"></i> Save & Complete (F9)
-                        </button>
-                    </div>
+            {{-- ============================ STICKY BOTTOM ACTION BAR ============================ --}}
+            <div class="sale-bottom-bar">
+                <div class="bb-left">
+                    <span>Items: <b id="footerItemCount">0</b></span>
+                    <span>Total: <b>Rs <span id="footerTotal">0.00</span></b></span>
+                    <span>Paid: <b class="text-success">Rs <span id="footerPaid">0.00</span></b></span>
                 </div>
-            </form>
-        </div>
+
+                <div class="bb-secondary">
+                    <button type="button" class="btn-ghost" id="btnPrint"><i class="fas fa-print"></i> A4 Print</button>
+                    <button type="button" class="btn-ghost" id="btnEstimate"><i class="fas fa-file-invoice"></i> Estimate</button>
+                    <button type="button" class="btn-ghost" id="btnPrint2"><i class="fas fa-receipt"></i> Thermal</button>
+                    <button type="button" class="btn-ghost" id="btnDcThermal"><i class="fas fa-truck"></i> DC</button>
+                    <button type="button" class="d-none" id="btnPosted">Sale</button>
+                </div>
+
+                <div class="bb-actions">
+                    <a href="{{ route('sale.index') }}" class="btn btn-outline-secondary px-3">Cancel</a>
+                    <button type="button" class="btn btn-outline-primary px-3" id="btnSave">
+                        <i class="fas fa-save me-1"></i> Save Draft
+                    </button>
+                    <button type="button" class="btn btn-primary btn-save-print px-3" id="btnSaveAndComplete">
+                        <i class="fas fa-print me-1"></i> Save &amp; Print Invoice
+                    </button>
+                </div>
+            </div>
+        </form>
     </div>
 
     <!-- Quick Products Offcanvas Drawer -->
@@ -1019,7 +1548,7 @@
     <div class="modal fade" id="addCustomerModal" tabindex="-1" role="dialog" aria-labelledby="addCustomerModalLabel" aria-hidden="true" style="z-index: 1060;">
         <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
             <div class="modal-content border-0 shadow">
-                <div class="modal-header bg-primary text-white py-2">
+                <div class="modal-header" style="background: #2563EB !important; padding: 14px 18px;">
                     <h5 class="modal-title font-weight-bold fw-bold text-white mb-0" id="addCustomerModalLabel" style="font-size: 1rem;">
                         <i class="fas fa-user-plus me-2 mr-2"></i>Quick Customer
                     </h5>
@@ -1031,7 +1560,7 @@
                     <form id="ajaxAddCustomerForm" autocomplete="off">
                         @csrf
                         <div class="row g-3">
-                            <div class="col-md-6 mb-2">
+                            <div class="col-12 col-md-6">
                                 <label class="form-label font-weight-bold fw-bold">Customer Type <span class="text-danger">*</span></label>
                                 <select class="form-control form-select" name="customer_type" id="modalCustomerType" required>
                                     @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
@@ -1039,19 +1568,19 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-6 mb-2">
+                            <div class="col-12 col-md-6">
                                 <label class="form-label font-weight-bold fw-bold">Full Name <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" name="customer_name" id="modalCustomerName" required placeholder="Customer Name">
                             </div>
-                            <div class="col-md-6 mb-2">
+                            <div class="col-12 col-md-6">
                                 <label class="form-label font-weight-bold fw-bold">Mobile</label>
                                 <input type="text" class="form-control" name="mobile" placeholder="0300-1234567">
                             </div>
-                            <div class="col-md-6 mb-2">
+                            <div class="col-12 col-md-6">
                                 <label class="form-label font-weight-bold fw-bold">Opening Balance</label>
                                 <input type="number" step="0.01" class="form-control" name="opening_balance" value="0">
                             </div>
-                            <div class="col-12 mb-2">
+                            <div class="col-12">
                                 <label class="form-label font-weight-bold fw-bold">Address</label>
                                 <input type="text" class="form-control" name="address" placeholder="Address">
                             </div>
@@ -1067,87 +1596,6 @@
             </div>
         </div>
     </div>
-
-    {{-- ===== QUICK ADD PRODUCT MODAL ===== --}}
-<!-- <div class="modal fade" id="quickAddProductModal" tabindex="-1" aria-labelledby="quickAddProductModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-light border-bottom-0 pb-2">
-                <h5 class="modal-title fw-bold" id="quickAddProductModalLabel">
-                    <i class="fa fa-plus-circle text-primary me-2"></i>Quick Add Product
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="quickAddProductForm">
-                @csrf
-                <div class="modal-body pt-2">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label fw-bold small text-muted">Product Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="product_name" required placeholder="Enter product name">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Category <span class="text-danger">*</span></label>
-                            <select class="form-select" name="category_id" id="qap_category" required>
-                                <option value="">Select Category</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Sub Category</label>
-                            <select class="form-select" name="sub_category_id" id="qap_subcategory">
-                                <option value="">Select Sub Category</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Brand <span class="text-danger">*</span></label>
-                            <select class="form-select" name="brand_id" id="qap_brand" required>
-                                <option value="">Select Brand</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Model / Series</label>
-                            <input type="text" class="form-control" name="model" placeholder="Optional">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Size Mode <span class="text-danger">*</span></label>
-                            <select class="form-select" name="size_mode" id="qap_size_mode" required>
-                                <option value="by_cartons" selected>By Cartons</option>
-                                <option value="by_pieces">By Pieces</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6" id="qap_ppb_wrap">
-                            <label class="form-label fw-bold small text-muted">Pieces Per Box</label>
-                            <input type="number" class="form-control" name="pieces_per_box" id="qap_ppb" value="1" min="1" placeholder="e.g. 12">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Low Stock (Cartons)</label>
-                            <input type="number" class="form-control" name="alert_carton_quantity" min="0" placeholder="e.g. 5">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Purchase Price /pc</label>
-                            <input type="number" step="0.01" class="form-control" name="purchase_price_per_piece" value="0" placeholder="0.00">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Sale Price /pc</label>
-                            <input type="number" step="0.01" class="form-control" name="sale_price_per_box" value="0" placeholder="0.00">
-                        </div>
-                    </div>
-                    {{-- Hidden defaults for validation --}}
-                    <input type="hidden" name="boxes_quantity" value="0">
-                    <input type="hidden" name="loose_pieces" value="0">
-                    <input type="hidden" name="piece_quantity" value="0">
-                </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary px-4 fw-bold" id="btnQuickSaveProduct">
-                        <i class="fa fa-save me-1"></i>Save Product
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
--->
 
     {{-- Quick Add Product Modal --}}
     @include('admin_panel.partials.quick_add_product_modal')
@@ -1546,6 +1994,28 @@
                         }
                     }
                 });
+            });
+        });
+    </script>
+
+    {{-- New Sale UI additions (footer totals sync, header save-draft, global product search) --}}
+    <script>
+        $(function() {
+            // Footer totals sync (display-only mirror of existing values)
+            if (typeof window.updateGrandTotals === 'function') {
+                var __baseUGT = window.updateGrandTotals;
+                window.updateGrandTotals = function() {
+                    __baseUGT();
+                    if ($('#footerItemCount').length) $('#footerItemCount').text($('#itemsRowCount').text());
+                    if ($('#footerTotal').length) $('#footerTotal').text($('#tSub').text());
+                    if ($('#footerPaid').length) $('#footerPaid').text($('#receiptsTotal').text());
+                };
+                window.updateGrandTotals();
+            }
+
+            // Header Save Draft -> existing booking/save flow
+            $('#btnHeaderSaveDraft').on('click', function() {
+                $('#btnSave').trigger('click');
             });
         });
     </script>
