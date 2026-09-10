@@ -645,6 +645,8 @@
                                                         <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;">Sale Price</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;">Wholesale</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;">Purch Price</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Sale Disc (%)</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Purch Disc (%)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 55px; font-size: 10px;">Alert</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 100px; font-size: 10px;">Barcode</th>
                                                         <th class="text-uppercase text-muted p-1 text-center" style="width: 50px; font-size: 10px;">Action</th>
@@ -1061,6 +1063,8 @@
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm base-sale-input" name="variant_sale_price[]" step="any" placeholder="0.00" required></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_wholesale_price[]" step="any" placeholder="0.00" value="0"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm base-purch-input" name="variant_purchase_price[]" step="any" placeholder="0.00" required></td>
+                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_sale_discount[]" step="0.01" placeholder="0" value="0" title="Sale Discount %"></td>
+                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_purchase_discount[]" step="0.01" placeholder="0" value="0" title="Purchase Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_alert_qty[]" value="0" placeholder="0"></td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_barcode[]" value="${generateRandomBarcode()}"></td>
                     <td class="p-1 text-center">
@@ -1224,6 +1228,8 @@
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm sale-price-input" name="variant_sale_price[]" step="any" value="${suggSale}" placeholder="0.00" required></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_wholesale_price[]" step="any" placeholder="0.00" value="${suggWholesale}"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm purch-price-input" name="variant_purchase_price[]" step="any" value="${suggPurch}" placeholder="0.00" required></td>
+                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_sale_discount[]" step="0.01" placeholder="0" value="0" title="Sale Discount %"></td>
+                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_purchase_discount[]" step="0.01" placeholder="0" value="0" title="Purchase Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_alert_qty[]" value="0" placeholder="0"></td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_barcode[]" value="${randBarcode}"></td>
                     <td class="p-1 text-center">
@@ -1433,6 +1439,8 @@
             const saleVal    = tr.querySelector('[name="variant_sale_price[]"]')?.value || '';
             const wsaleVal   = tr.querySelector('[name="variant_wholesale_price[]"]')?.value || '';
             const purchVal   = tr.querySelector('[name="variant_purchase_price[]"]')?.value || '';
+            const saleDiscVal   = tr.querySelector('[name="variant_sale_discount[]"]')?.value || '';
+            const purchDiscVal  = tr.querySelector('[name="variant_purchase_discount[]"]')?.value || '';
             const alertVal   = tr.querySelector('[name="variant_alert_qty[]"]')?.value || '0';
             const barcodeVal = tr.querySelector('[name="variant_barcode[]"]')?.value || '';
             const stockReadonly = stockInp?.hasAttribute('readonly') ? 'readonly' : '';
@@ -1538,6 +1546,16 @@
                     <div class="mob-field-group">
                         <div class="mob-label">Purchase Price <span class="req">*</span></div>
                         <input type="number" class="mob-input mob-sync" data-field="variant_purchase_price[]" value="${purchVal}" placeholder="0.00" step="any" required>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <div class="mob-field-group">
+                            <div class="mob-label">Sale Disc (%)</div>
+                            <input type="number" class="mob-input mob-sync" data-field="variant_sale_discount[]" value="${saleDiscVal}" placeholder="0" step="0.01">
+                        </div>
+                        <div class="mob-field-group">
+                            <div class="mob-label">Purch Disc (%)</div>
+                            <input type="number" class="mob-input mob-sync" data-field="variant_purchase_discount[]" value="${purchDiscVal}" placeholder="0" step="0.01">
+                        </div>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                         <div class="mob-field-group">

@@ -21,7 +21,7 @@ class SaleController extends Controller
     public function index(Request $request)
     {
         $query = Sale::with(['customer_relation', 'items.product', 'returns'])
-            ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned']);
+            ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned', 'quotation']);
 
         // Apply Status Filter
         if ($request->has('status') && $request->status != 'all') {
@@ -104,6 +104,7 @@ class SaleController extends Controller
             'posted_count' => $sales->where('sale_status', 'posted')->count(),
             'draft_count' => $sales->where('sale_status', 'draft')->count(),
             'booked_count' => $sales->where('sale_status', 'booked')->count(),
+            'quotation_count' => $sales->where('sale_status', 'quotation')->count(),
             'returned_count' => $sales->whereIn('sale_status', ['returned', 1])->count(),
         ];
 
@@ -1082,7 +1083,7 @@ class SaleController extends Controller
         //     throw \Illuminate\Validation\ValidationException::withMessages(['product_id' => 'Duplicate products are not allowed in a single sale. Please merge quantities.']);
         // }
 
-        $status = in_array($request->action, ['post', 'sale', 'posted']) ? 'posted' : 'booked';
+        $status = in_array($request->action, ['post', 'sale', 'posted']) ? 'posted' : ($request->action === 'quotation' ? 'quotation' : 'booked');
 
         // Concurrency Safe Transaction
         try {
@@ -1922,10 +1923,15 @@ class SaleController extends Controller
 
             if ($type === 'out') {
                 // Deduct
-                if ($stock->total_pieces < $qtyPieces) {
-                    $availFormatted = number_format($stock->total_pieces, 3);
+                $available = $this->calculateAvailableForItem($item, $stock);
+                if ($available < $qtyPieces) {
+                    $availFormatted = number_format($available, 3);
                     $unitLabel = ($productMode === 'by_kg' || $productMode === 'by_gm') ? 'Kg' : 'Pcs';
                     throw new \Exception('Insufficient stock for '.$item->product_name.'. Available: '.$availFormatted.' '.$unitLabel);
+                }
+                // Reconcile physical stock with the variant ledger shown in the UI
+                if ($available > $stock->total_pieces) {
+                    $stock->total_pieces = $available;
                 }
                 $stock->total_pieces -= $qtyPieces;
                 // Update approx boxes for display
@@ -1965,6 +1971,215 @@ class SaleController extends Controller
                 ]);
             }
         }
+    }
+
+    /**
+     * Compute available stock for a sale item. For variant products, uses the same
+     * per-variant ledger that the item stock report / sale create page display.
+     * Falls back to physical warehouse stock for non-variant products.
+     */
+    private function calculateAvailableForItem($item, $stock)
+    {
+        $product = $item->product;
+
+        // Parse product variants
+        $parsedVariants = [];
+        if (!empty($product->color)) {
+            $decoded = json_decode($product->color, true);
+            if (is_array($decoded) && count($decoded) > 0) {
+                $parsedVariants = $decoded;
+            }
+        }
+        if (count($parsedVariants) === 0) {
+            return (float) $stock->total_pieces;
+        }
+
+        // Find the matching product variant
+        $matched = null;
+        foreach ($parsedVariants as $v) {
+            if ($this->matchStockVariant($item, $v)) {
+                $matched = $v;
+                break;
+            }
+        }
+        if ($matched === null) {
+            return (float) $stock->total_pieces;
+        }
+
+        $vUnitName = $matched['unit'] ?? '';
+        $isCartonMode = ($product->size_mode === 'by_cartons' || strtolower($vUnitName) === 'carton');
+        $ppb = (float) ($product->pieces_per_box ?? 1);
+        if ($isCartonMode) {
+            $vConv = (float) ($matched['conv_factor'] ?? 0);
+            if ($vConv > 0) $ppb = $vConv;
+        }
+        if ($ppb <= 0) $ppb = 1;
+
+        // Initial stock in pieces (carton notation may be boxes.loose)
+        $vRawStock = (string) ($matched['stock'] ?? '0');
+        if ($isCartonMode && $ppb > 1) {
+            if (strpos($vRawStock, '.') !== false) {
+                $parts = explode('.', $vRawStock);
+                $initial = (((int) ($parts[0] ?? 0)) * $ppb) + ((int) ($parts[1] ?? 0));
+            } else {
+                $initial = (float) $vRawStock * $ppb;
+            }
+        } else {
+            $initial = (float) $vRawStock;
+        }
+
+        // Purchased
+        $purchased = 0;
+        $purchasesList = DB::table('purchase_items as pi')
+            ->join('purchases as pur', 'pur.id', '=', 'pi.purchase_id')
+            ->where('pi.product_id', $product->id)
+            ->whereIn('pur.status_purchase', ['approved', 'Returned', 'Partial'])
+            ->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.color')
+            ->get();
+        foreach ($purchasesList as $pItem) {
+            if (!$this->matchStockVariant($pItem, $matched)) continue;
+            $pUnit = strtolower(trim($pItem->unit ?? ''));
+            $pPPB = (float) ($pItem->pieces_per_box > 0 ? $pItem->pieces_per_box : $ppb);
+            if ($pPPB <= 0) $pPPB = 1;
+            if (in_array($pUnit, ['carton', 'ctn', 'box'])) {
+                if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
+                    $pPieces = (((int) $pItem->boxes_qty) * $pPPB) + ((int) $pItem->loose_qty);
+                } else {
+                    [$b, $l] = \App\Http\Controllers\PurchaseController::parseCartonQty($pItem->qty);
+                    $pPieces = ($b * $pPPB) + $l;
+                }
+            } elseif (in_array($pUnit, ['gm', 'g'])) {
+                $pPieces = ((float) $pItem->qty) / 1000.0;
+            } else {
+                $pPieces = (float) $pItem->qty;
+            }
+            $purchased += $pPieces;
+        }
+
+        // Sold (posted/returned sales only - bookings & quotations are excluded)
+        $sold = 0;
+        $salesList = DB::table('sale_items as si')
+            ->join('sales as s', 's.id', '=', 'si.sale_id')
+            ->where('si.product_id', $product->id)
+            ->whereIn('s.sale_status', ['posted', 'returned'])
+            ->select('si.total_pieces', 'si.color')
+            ->get();
+        foreach ($salesList as $sItem) {
+            if ($this->matchStockVariant($sItem, $matched)) {
+                $sold += (float) $sItem->total_pieces;
+            }
+        }
+
+        // Returned
+        $returnedQty = 0;
+        $returnsList = DB::table('sale_return_items as sri')
+            ->join('sale_returns as sr', 'sr.id', '=', 'sri.sale_return_id')
+            ->where('sri.product_id', $product->id)
+            ->select('sri.qty', 'sri.color', 'sr.sale_id')
+            ->get();
+        foreach ($returnsList as $rItem) {
+            if ($this->matchStockVariant($rItem, $matched)) {
+                $returnedQty += (float) $rItem->qty;
+            }
+        }
+
+        // Purchase returned
+        $pReturned = 0;
+        $pReturnsList = DB::table('purchase_return_items')
+            ->where('product_id', $product->id)
+            ->select('qty', 'color')
+            ->get();
+        foreach ($pReturnsList as $prItem) {
+            if ($this->matchStockVariant($prItem, $matched)) {
+                $pReturned += (float) $prItem->qty;
+            }
+        }
+
+        // Adjustments (excluding INIT)
+        $adjustments = 0;
+        $adjList = DB::table('stock_movements')
+            ->where('product_id', $product->id)
+            ->where('type', 'adjustment')
+            ->where(function ($q) {
+                $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT');
+            })
+            ->select('qty', 'note')
+            ->get();
+        foreach ($adjList as $adjItem) {
+            $note = strtolower($adjItem->note ?? '');
+            $vSize  = strtolower(trim($matched['size'] ?? '-'));
+            $vColor = strtolower(trim($matched['color'] ?? '-'));
+            $sizeMatch = true;
+            if ($vSize !== '-' && !empty($vSize)) {
+                $sizeMatch = preg_match('/\b' . preg_quote($vSize, '/') . '\b/i', $note) === 1;
+            }
+            $colorMatch = true;
+            if ($vColor !== '-' && !empty($vColor)) {
+                $colorMatch = preg_match('/\b' . preg_quote($vColor, '/') . '\b/i', $note) === 1;
+            }
+            if ($sizeMatch && $colorMatch) {
+                $adjustments += (float) $adjItem->qty;
+            }
+        }
+
+        return max(0, $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments);
+    }
+
+    /**
+     * Match a sale/purchase/return item to a product variant (barcode-first).
+     */
+    private function matchStockVariant($item, $variant)
+    {
+        $itemColor = $item->color ?? '';
+        if (empty($itemColor)) {
+            return false;
+        }
+
+        $itemVariant = [];
+        $b64Decoded = base64_decode($itemColor, true);
+        if ($b64Decoded !== false) {
+            $json = json_decode($b64Decoded, true);
+            if (is_array($json)) {
+                $itemVariant = $json;
+            }
+        }
+        if (empty($itemVariant)) {
+            $json = json_decode($itemColor, true);
+            if (is_array($json)) {
+                $itemVariant = $json;
+            }
+        }
+
+        if (empty($itemVariant)) {
+            return strtolower(trim($itemColor)) === strtolower(trim($variant['color'] ?? ''));
+        }
+
+        $vBarcode = trim($variant['barcode'] ?? '');
+        $itemBarcode = trim($itemVariant['barcode'] ?? '');
+        if (!empty($vBarcode) && !empty($itemBarcode)) {
+            return $vBarcode === $itemBarcode;
+        }
+
+        $vColor = strtolower(trim($variant['color'] ?? '-'));
+        $vSize = strtolower(trim($variant['size'] ?? '-'));
+        $vName = strtolower(trim($variant['name'] ?? ''));
+
+        $itemVColor = strtolower(trim($itemVariant['color'] ?? ($itemVariant['color_val'] ?? '-')));
+        $itemVSize = strtolower(trim($itemVariant['size'] ?? ($itemVariant['size_val'] ?? '-')));
+        $itemVName = strtolower(trim($itemVariant['name'] ?? ''));
+
+        if ($vColor === '') $vColor = '-';
+        if ($vSize === '') $vSize = '-';
+        if ($itemVColor === '') $itemVColor = '-';
+        if ($itemVSize === '') $itemVSize = '-';
+
+        $colorSizeMatch = ($vColor === $itemVColor && $vSize === $itemVSize);
+
+        if ($vName !== '' && $itemVName !== '') {
+            return $colorSizeMatch && ($vName === $itemVName);
+        }
+
+        return $colorSizeMatch;
     }
 
     public function updateLedger(Sale $sale, $customAmount = null)
@@ -2178,8 +2393,15 @@ class SaleController extends Controller
         // 1. Restore Stock
         $this->handleStockImpact($sale, 'in');
 
-        // Delete stock movements for this sale
-        DB::table('stock_movements')->where('ref_type', 'sale')->where('ref_id', $sale->id)->delete();
+        // Delete stock movements for this sale (both 'sale' out and 'sale_in' restore records)
+        DB::table('stock_movements')
+            ->where('ref_id', $sale->id)
+            ->where(function ($q) {
+                $q->where('ref_type', 'sale')
+                  ->orWhere('ref_type', 'sale_in')
+                  ->orWhere('ref_type', 'sale_return');
+            })
+            ->delete();
 
         // 2. Reverse and delete Vouchers & Journal Entries
         $journalService = app(\App\Services\JournalEntryService::class);
@@ -2221,8 +2443,8 @@ class SaleController extends Controller
     {
         $sale = Sale::findOrFail($id);
 
-        if ($sale->sale_status !== 'booked') {
-            return redirect()->back()->with('error', 'Only booked sales can be confirmed.');
+        if (!in_array($sale->sale_status, ['booked', 'quotation'])) {
+            return redirect()->back()->with('error', 'Only booked or quotation sales can be confirmed.');
         }
 
         DB::beginTransaction();

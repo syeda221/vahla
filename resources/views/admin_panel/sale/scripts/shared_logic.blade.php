@@ -716,11 +716,10 @@
             const cartons = parseInt($r.find('.carton-qty').val()) || 0;
             const loose   = parseInt($r.find('.loose-pcs-input').val()) || 0;
             const qty = cartons + loose;
-            if ((qty <= 0) || ((!prod || prod === '') && (!wh || wh === ''))) {
+            if ((!prod || prod === '') && qty <= 0) {
                 if ($('#salesTableBody tr').length > 1) {
                     $r.remove();
                 } else {
-                    // clear last row if needed
                     $r.find('select').val('');
                     $r.find('input').val('');
                     $r.find('.carton-qty').val(0);
@@ -1434,6 +1433,34 @@
             }
             $('#action').val('booking');
             ensureSaved();
+        });
+
+        // Buttons: Quotation (No stock / no ledger)
+        $('#btnQuotation').off('click').on('click', function() {
+            cleanupEmptyRows();
+            updateGrandTotals();
+            refreshPostedState();
+
+            const v = validateFormAll();
+            if (!v.ok) {
+                showAlert('warning', v.message);
+                if (v.el && v.el.length) {
+                    v.el.focus();
+                    if (v.el.hasClass('js-customer')) v.el.select2?.('open');
+                }
+                return;
+            }
+            $('#action').val('quotation');
+            ensureSaved().then(function() {
+                Swal.fire({
+                    title: 'Quotation Saved',
+                    text: 'Quotation saved successfully (no stock or ledger impact)',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                setTimeout(() => window.location.href = "{{ route('sale.index') }}", 1500);
+            });
         });
 
         // Buttons: Sale (Post)

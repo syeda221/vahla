@@ -124,11 +124,14 @@ class ReportingController extends Controller
                     [$parentPurchased, $parentPurchaseAmount] = $this->getPurchasedQtyAndNetAmount($product->id, ['from' => $dateFrom, 'to' => $dateTo], $warehouseId);
 
                     // Parent Sold qty & amount
-                    $saleStatsQuery = DB::table('sale_items')->where('product_id', $product->id);
-                    if ($warehouseId && $warehouseId !== 'all') $saleStatsQuery->where('warehouse_id', $warehouseId);
-                    if ($dateFrom) $saleStatsQuery->whereDate('created_at', '>=', $dateFrom);
-                    if ($dateTo)   $saleStatsQuery->whereDate('created_at', '<=', $dateTo);
-                    $saleStats = $saleStatsQuery->selectRaw('COALESCE(SUM(total_pieces),0) as total_qty, COALESCE(SUM(total),0) as total_amount')->first();
+                    $saleStatsQuery = DB::table('sale_items')
+                        ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                        ->where('sale_items.product_id', $product->id)
+                        ->whereIn('sales.sale_status', ['posted', 'returned']);
+                    if ($warehouseId && $warehouseId !== 'all') $saleStatsQuery->where('sale_items.warehouse_id', $warehouseId);
+                    if ($dateFrom) $saleStatsQuery->whereDate('sale_items.created_at', '>=', $dateFrom);
+                    if ($dateTo)   $saleStatsQuery->whereDate('sale_items.created_at', '<=', $dateTo);
+                    $saleStats = $saleStatsQuery->selectRaw('COALESCE(SUM(sale_items.total_pieces),0) as total_qty, COALESCE(SUM(sale_items.total),0) as total_amount')->first();
                     $parentSold       = (float) $saleStats->total_qty;
                     $parentSaleAmount = (float) $saleStats->total_amount;
 
@@ -172,13 +175,16 @@ class ReportingController extends Controller
                     $parentOpening = max(0, $parentClosing - $parentPurchased + $parentSold - $parentReturnedQty + $parentPReturned - $parentAdjustments);
                 } else {
                     // Fetch all sales and returns for this product to distribute
-                    $salesQuery = DB::table('sale_items')->where('product_id', $product->id);
+                    $salesQuery = DB::table('sale_items')
+                        ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                        ->where('sale_items.product_id', $product->id)
+                        ->whereIn('sales.sale_status', ['posted', 'returned']);
                     if ($warehouseId && $warehouseId !== 'all') {
-                        $salesQuery->where('warehouse_id', $warehouseId);
+                        $salesQuery->where('sale_items.warehouse_id', $warehouseId);
                     }
-                    if ($dateFrom) $salesQuery->whereDate('created_at', '>=', $dateFrom);
-                    if ($dateTo)   $salesQuery->whereDate('created_at', '<=', $dateTo);
-                    $salesList = $salesQuery->select('total_pieces', 'total', 'color')->get();
+                    if ($dateFrom) $salesQuery->whereDate('sale_items.created_at', '>=', $dateFrom);
+                    if ($dateTo)   $salesQuery->whereDate('sale_items.created_at', '<=', $dateTo);
+                    $salesList = $salesQuery->select('sale_items.total_pieces', 'sale_items.total', 'sale_items.color')->get();
 
                     // Fetch confirmed web sales
                     $webSalesQuery = DB::table('ecommerce_order_items as eoi')
@@ -459,11 +465,14 @@ class ReportingController extends Controller
                 [$purchased, $purchaseAmount] = $this->getPurchasedQtyAndNetAmount($product->id, ['from' => $dateFrom, 'to' => $dateTo], $warehouseId);
 
                 // Sold qty & amount
-                $saleStatsQuery = DB::table('sale_items')->where('product_id', $product->id);
-                if ($warehouseId && $warehouseId !== 'all') $saleStatsQuery->where('warehouse_id', $warehouseId);
-                if ($dateFrom) $saleStatsQuery->whereDate('created_at', '>=', $dateFrom);
-                if ($dateTo)   $saleStatsQuery->whereDate('created_at', '<=', $dateTo);
-                $saleStats = $saleStatsQuery->selectRaw('COALESCE(SUM(total_pieces),0) as total_qty, COALESCE(SUM(total),0) as total_amount')->first();
+                $saleStatsQuery = DB::table('sale_items')
+                    ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                    ->where('sale_items.product_id', $product->id)
+                    ->whereIn('sales.sale_status', ['posted', 'returned']);
+                if ($warehouseId && $warehouseId !== 'all') $saleStatsQuery->where('sale_items.warehouse_id', $warehouseId);
+                if ($dateFrom) $saleStatsQuery->whereDate('sale_items.created_at', '>=', $dateFrom);
+                if ($dateTo)   $saleStatsQuery->whereDate('sale_items.created_at', '<=', $dateTo);
+                $saleStats = $saleStatsQuery->selectRaw('COALESCE(SUM(sale_items.total_pieces),0) as total_qty, COALESCE(SUM(sale_items.total),0) as total_amount')->first();
 
                 $sold       = (float) $saleStats->total_qty;
                 $saleAmount = (float) $saleStats->total_amount;

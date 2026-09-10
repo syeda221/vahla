@@ -137,8 +137,10 @@ class ProductController extends Controller
             if (count($variants) > 0) {
                 // Fetch all sales and returns for this product to distribute
                 $salesList = DB::table('sale_items')
-                    ->where('product_id', $p->id)
-                    ->select('total_pieces', 'color')
+                    ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                    ->where('sale_items.product_id', $p->id)
+                    ->whereIn('sales.sale_status', ['posted', 'returned'])
+                    ->select('sale_items.total_pieces', 'sale_items.color')
                     ->get();
 
                 // Fetch confirmed web sales
@@ -346,6 +348,7 @@ class ProductController extends Controller
                         'purchase_price_per_box' => ($v['purch_price'] ?? $p->purchase_price_per_piece ?? 0) * $vPpb,
                         'purchase_price_per_m2' => $p->purchase_price_per_m2 ?? 0,
                         'sale_discount_percent' => $p->sale_discount_percent ?? 0,
+                        'purchase_discount_percent' => $p->purchase_discount_percent ?? 0,
                         'variant_data' => base64_encode($variantJson)
                     ];
                 }
@@ -371,6 +374,7 @@ class ProductController extends Controller
                 'purchase_price_per_box' => $p->purchase_price_per_box ?? (($p->purchase_price_per_piece ?? 0) * $ppb),
                 'purchase_price_per_m2' => $p->purchase_price_per_m2 ?? 0,
                 'sale_discount_percent' => $p->sale_discount_percent ?? 0,
+                'purchase_discount_percent' => $p->purchase_discount_percent ?? 0,
                 'variant_data' => ''
             ]];
         });
@@ -708,6 +712,8 @@ class ProductController extends Controller
                 $wholesale_prices = $request->variant_wholesale_price;
                 $weight_factors = $request->variant_weight_per_piece;
                 $purch_prices = $request->variant_purchase_price;
+                $sale_discounts = $request->variant_sale_discount;
+                $purch_discounts = $request->variant_purchase_discount;
                 $alerts = $request->variant_alert_qty;
                 $barcodes = $request->variant_barcode;
                 $conv_factors = $request->variant_conv_factor;
@@ -794,6 +800,8 @@ class ProductController extends Controller
                             'wholesale_price' => $vWholesalePrice,
                             'weight_per_piece' => $weight_factors[$i] ?? 0,
                             'purch_price' => $vPurchPrice,
+                            'sale_discount_percent' => (float)($sale_discounts[$i] ?? 0),
+                            'purchase_discount_percent' => (float)($purch_discounts[$i] ?? 0),
                             'alert' => $alerts[$i] ?? 0,
                             'barcode' => $barcodes[$i] ?? '',
                             'conv_factor' => $vConvFactor,
@@ -818,6 +826,17 @@ class ProductController extends Controller
                         $salePricePerBox = round($salePricePerPiece * $piecesPerBox, 2);
                     }
                 }
+
+                // Promote base-variant discounts to product-level so sale/purchase pages can fetch them
+                $saleDiscountPercent = (float)($request->sale_discount_percent ?? 0);
+                $purchaseDiscountPercent = (float)($request->purchase_discount_percent ?? 0);
+                if (count($variants) > 0) {
+                    $baseVariant = collect($variants)->firstWhere('is_base_variant', 1) ?? $variants[0];
+                    if ($baseVariant) {
+                        $saleDiscountPercent = (float)($baseVariant['sale_discount_percent'] ?? 0);
+                        $purchaseDiscountPercent = (float)($baseVariant['purchase_discount_percent'] ?? 0);
+                    }
+                }
             }
 
             // Create product
@@ -833,8 +852,8 @@ class ProductController extends Controller
                 'model' => $request->model,
                 'image' => $imagePath,
                 'color' => count($variants) > 0 ? json_encode($variants) : ($request->color ? json_encode($request->color) : null),
-                'purchase_discount_percent' => $request->purchase_discount_percent ?? 0,
-                'sale_discount_percent' => $request->sale_discount_percent ?? 0,
+                'purchase_discount_percent' => $purchaseDiscountPercent,
+                'sale_discount_percent' => $saleDiscountPercent,
                 'alert_quantity' => $request->alert_quantity,
                 'alert_carton_quantity' => $request->alert_carton_quantity,
 
@@ -1117,6 +1136,8 @@ class ProductController extends Controller
                 $wholesale_prices = $request->variant_wholesale_price;
                 $weight_factors = $request->variant_weight_per_piece;
                 $purch_prices = $request->variant_purchase_price;
+                $sale_discounts = $request->variant_sale_discount;
+                $purch_discounts = $request->variant_purchase_discount;
                 $alerts = $request->variant_alert_qty;
                 $barcodes = $request->variant_barcode;
                 $conv_factors = $request->variant_conv_factor;
@@ -1183,6 +1204,8 @@ class ProductController extends Controller
                             'wholesale_price' => $vWholesalePrice,
                             'weight_per_piece' => $weight_factors[$i] ?? 0,
                             'purch_price' => $vPurchPrice,
+                            'sale_discount_percent' => (float)($sale_discounts[$i] ?? 0),
+                            'purchase_discount_percent' => (float)($purch_discounts[$i] ?? 0),
                             'alert' => $alerts[$i] ?? 0,
                             'barcode' => $barcodes[$i] ?? '',
                             'conv_factor' => $vConvFactor,
@@ -1199,6 +1222,17 @@ class ProductController extends Controller
                         $purchasePricePerPiece = (float)($baseVariant['purch_price'] ?? 0);
                         $purchasePricePerBox = round($purchasePricePerPiece * $piecesPerBox, 2);
                         $salePricePerBox = round($salePricePerPiece * $piecesPerBox, 2);
+                    }
+                }
+
+                // Promote base-variant discounts to product-level so sale/purchase pages can fetch them
+                $saleDiscountPercent = (float)($request->sale_discount_percent ?? 0);
+                $purchaseDiscountPercent = (float)($request->purchase_discount_percent ?? 0);
+                if (count($variants) > 0) {
+                    $baseVariant = collect($variants)->firstWhere('is_base_variant', 1) ?? $variants[0];
+                    if ($baseVariant) {
+                        $saleDiscountPercent = (float)($baseVariant['sale_discount_percent'] ?? 0);
+                        $purchaseDiscountPercent = (float)($baseVariant['purchase_discount_percent'] ?? 0);
                     }
                 }
             }
@@ -1226,8 +1260,8 @@ class ProductController extends Controller
                 'model' => $request->model,
                 'image' => $imagePath,
                 'color' => $final_color,
-                'purchase_discount_percent' => $request->purchase_discount_percent ?? 0,
-                'sale_discount_percent' => $request->sale_discount_percent ?? 0,
+                'purchase_discount_percent' => $purchaseDiscountPercent,
+                'sale_discount_percent' => $saleDiscountPercent,
                 'alert_quantity' => $request->alert_quantity,
                 'alert_carton_quantity' => $request->alert_carton_quantity,
 
@@ -1679,7 +1713,39 @@ class ProductController extends Controller
             return strtolower(trim($itemColor)) === strtolower(trim($variant['color'] ?? ''));
         }
 
-        // Compare name, color and size
+        // 1. Compare barcodes if present on both sides
+        $vBarcode = trim($variant['barcode'] ?? '');
+        $itemBarcode = trim($itemVariant['barcode'] ?? '');
+        if (!empty($vBarcode) && !empty($itemBarcode)) {
+            return $vBarcode === $itemBarcode;
+        }
+
+        // 2. Compare base variant status if present
+        if (isset($variant['is_base_variant']) && isset($itemVariant['is_base_variant'])) {
+            $vIsBase = (int) $variant['is_base_variant'];
+            $itemIsBase = (int) $itemVariant['is_base_variant'];
+            if ($vIsBase !== $itemIsBase) {
+                return false;
+            }
+        }
+
+        // 3. Compare conversion factors if present
+        if (isset($variant['conv_factor']) && isset($itemVariant['conv_factor'])) {
+            $vConv = (float) $variant['conv_factor'];
+            $itemConv = (float) $itemVariant['conv_factor'];
+            if ($vConv > 0 && $itemConv > 0 && abs($vConv - $itemConv) > 0.0001) {
+                return false;
+            }
+        }
+
+        // 4. Compare unit names if present
+        $vUnit = strtolower(trim($variant['unit'] ?? ''));
+        $itemUnit = strtolower(trim($itemVariant['unit'] ?? ''));
+        if (!empty($vUnit) && !empty($itemUnit) && $vUnit !== $itemUnit) {
+            return false;
+        }
+
+        // 5. Compare name, color and size
         $vColor = strtolower(trim($variant['color'] ?? '-'));
         $vSize = strtolower(trim($variant['size'] ?? '-'));
         $vName = strtolower(trim($variant['name'] ?? ''));

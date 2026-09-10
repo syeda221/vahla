@@ -517,7 +517,8 @@
                                 <div class="summary-row align-items-center mt-2">
                                     <span class="text-dark fw-medium">Less: Extra Deductions</span>
                                     <input type="number" name="extra_discount" id="extraDiscount"
-                                        class="form-control form-control-sm w-50 text-end bg-white" value="0">
+                                        class="form-control form-control-sm w-50 text-end bg-white"
+                                        value="{{ (float) ($sale->total_extradiscount ?? 0) }}">
                                 </div>
                                 <hr class="my-3">
                                 <div class="summary-row total">

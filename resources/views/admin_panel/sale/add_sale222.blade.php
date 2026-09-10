@@ -1598,8 +1598,11 @@
 
                 <div class="bb-actions">
                     <a href="{{ route('sale.index') }}" class="btn btn-outline-secondary px-3">Cancel</a>
+                    <button type="button" class="btn btn-outline-warning px-3" id="btnQuotation">
+                        <i class="fas fa-file-alt me-1"></i> Quotation
+                    </button>
                     <button type="button" class="btn btn-outline-primary px-3" id="btnSave">
-                        <i class="fas fa-save me-1"></i> Save Draft
+                        <i class="fas fa-save me-1"></i> Booking
                     </button>
                     <button type="button" class="btn btn-primary btn-save-print px-3" id="btnSaveAndComplete">
                         <i class="fas fa-print me-1"></i> Save &amp; Print Invoice
@@ -1728,6 +1731,14 @@
                 $('#action').val('booking');
                 $('#btnPosted').addClass('d-none');
                 $('#btnHeaderPosted').addClass('d-none');
+            }
+            if (urlParams.get('type') === 'quotation') {
+                $('.header-text').html('<i class="fas fa-file-alt text-warning me-2"></i>Add Quotation');
+                $('#action').val('quotation');
+                $('#btnPosted').addClass('d-none');
+                $('#btnHeaderPosted').addClass('d-none');
+                $('#btnSave').addClass('d-none');
+                $('#btnHeaderSaveDraft').addClass('d-none');
             }
 
             // ============================================================

@@ -22,6 +22,8 @@
             }
         } elseif ($sale->sale_status === 'booked') {
             $statusBadge = '<span class="badge badge-warning text-dark border border-warning"><i class="fas fa-bookmark me-1"></i>Booked</span>';
+        } elseif ($sale->sale_status === 'quotation') {
+            $statusBadge = '<span class="badge badge-primary text-white border border-primary"><i class="fas fa-file-alt me-1"></i>Quotation</span>';
         } elseif ($sale->sale_status === 'returned') {
             $statusBadge = '<span class="badge badge-danger border border-danger">Returned</span>';
         } elseif ($sale->sale_status == 1) {
@@ -135,13 +137,13 @@
                         </li>
                     @endcan
 
-                    @if ($sale->sale_status === 'draft' || $sale->sale_status === 'booked')
+                    @if (in_array($sale->sale_status, ['draft', 'booked', 'quotation']))
                         @can('sales.create')
                             <li>
                                 <form action="{{ route('sales.confirm', $sale->id) }}" method="POST" class="confirm-booking-form">
                                     @csrf
                                     <button type="submit" class="dropdown-item text-success d-flex align-items-center gap-2 py-2">
-                                        <i class="fas fa-check-circle fa-fw"></i> Confirm Booking
+                                        <i class="fas fa-check-circle fa-fw"></i> Confirm to Post
                                     </button>
                                 </form>
                             </li>

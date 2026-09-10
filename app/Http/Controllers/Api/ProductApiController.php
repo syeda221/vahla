@@ -133,7 +133,12 @@ class ProductApiController extends Controller
         }
 
         // Fetch sales
-        $salesList = DB::table('sale_items')->where('product_id', $product->id)->select('total_pieces', 'color')->get();
+        $salesList = DB::table('sale_items')
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->where('sale_items.product_id', $product->id)
+            ->whereIn('sales.sale_status', ['posted', 'returned'])
+            ->select('sale_items.total_pieces', 'sale_items.color')
+            ->get();
 
         // Fetch web sales
         $webSalesList = DB::table('ecommerce_order_items as eoi')
@@ -275,6 +280,38 @@ class ProductApiController extends Controller
 
         if (empty($itemVariant)) {
             return strtolower(trim($itemColor)) === strtolower(trim($variant['color'] ?? ''));
+        }
+
+        // 1. Compare barcodes if present on both sides
+        $vBarcode = trim($variant['barcode'] ?? '');
+        $itemBarcode = trim($itemVariant['barcode'] ?? '');
+        if (!empty($vBarcode) && !empty($itemBarcode)) {
+            return $vBarcode === $itemBarcode;
+        }
+
+        // 2. Compare base variant status if present
+        if (isset($variant['is_base_variant']) && isset($itemVariant['is_base_variant'])) {
+            $vIsBase = (int) $variant['is_base_variant'];
+            $itemIsBase = (int) $itemVariant['is_base_variant'];
+            if ($vIsBase !== $itemIsBase) {
+                return false;
+            }
+        }
+
+        // 3. Compare conversion factors if present
+        if (isset($variant['conv_factor']) && isset($itemVariant['conv_factor'])) {
+            $vConv = (float) $variant['conv_factor'];
+            $itemConv = (float) $itemVariant['conv_factor'];
+            if ($vConv > 0 && $itemConv > 0 && abs($vConv - $itemConv) > 0.0001) {
+                return false;
+            }
+        }
+
+        // 4. Compare unit names if present
+        $vUnit = strtolower(trim($variant['unit'] ?? ''));
+        $itemUnit = strtolower(trim($itemVariant['unit'] ?? ''));
+        if (!empty($vUnit) && !empty($itemUnit) && $vUnit !== $itemUnit) {
+            return false;
         }
 
         $vColor = strtolower(trim($variant['color'] ?? '-'));

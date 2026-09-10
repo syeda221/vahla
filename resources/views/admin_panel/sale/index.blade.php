@@ -386,6 +386,10 @@
                         class="btn btn-sm {{ request('status') == 'booked' ? 'btn-info text-white' : 'btn-outline-info' }} rounded-3 shadow-sm px-3 fw-bold">
                         Booked <span class="badge bg-white text-info ms-1">{{ $stats['booked_count'] ?? 0 }}</span>
                     </a>
+                    <a href="{{ route('sale.index', ['status' => 'quotation']) }}"
+                        class="btn btn-sm {{ request('status') == 'quotation' ? 'btn-primary' : 'btn-outline-primary' }} rounded-3 shadow-sm px-3 fw-bold">
+                        Quotation <span class="badge bg-white text-primary ms-1">{{ $stats['quotation_count'] ?? 0 }}</span>
+                    </a>
                     <a href="{{ route('sale.index', ['status' => 'returned']) }}"
                         class="btn btn-sm {{ request('status') == 'returned' ? 'btn-danger' : 'btn-outline-danger' }} rounded-3 shadow-sm px-3 fw-bold">
                         Returned <span class="badge bg-white text-danger ms-1">{{ $stats['returned_count'] ?? 0 }}</span>
@@ -715,8 +719,8 @@
                 let form = $(this).closest("form");
 
                 Swal.fire({
-                    title: "Confirm Booking?",
-                    text: "Are you sure you want to convert this booking to a posted sale? This will update stocks and post ledgers.",
+                    title: "Confirm to Post?",
+                    text: "This will convert the sale to Posted status. Stock will be deducted and ledger will be updated.",
                     icon: "warning",
                     showCancelButton: true,
                     confirmButtonColor: "#28a745",
