@@ -12,6 +12,19 @@ use Illuminate\Support\Facades\DB;
 class BalanceService
 {
     /**
+     * Get account (Cash/Bank/any GL account) balance from journal entries
+     * Positive = net Dr balance, Negative = net Cr balance
+     */
+    public function getAccountBalance(int $accountId): float
+    {
+        $balance = JournalEntry::where('account_id', $accountId)
+            ->selectRaw('COALESCE(SUM(debit) - SUM(credit), 0) as balance')
+            ->value('balance') ?? 0;
+
+        return (float) $balance;
+    }
+
+    /**
      * Get customer balance from journal entries
      * Positive = Customer owes money (Dr)
      * Negative = Customer has advance/credit (Cr)

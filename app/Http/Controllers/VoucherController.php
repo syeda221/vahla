@@ -169,6 +169,41 @@ class VoucherController extends Controller
     {
         \Log::info('Print Voucher Requested. ID: '.$id);
 
+        // 0. Party Transfer (Journal type) — Party to Party Voucher
+        $partyTransfer = \App\Models\VoucherMaster::where('id', $id)
+            ->where('voucher_type', \App\Models\VoucherMaster::TYPE_JOURNAL)
+            ->first();
+
+        if ($partyTransfer) {
+            $partyTransfer->load(['details.account']);
+
+            $sourceName = '';
+            $destName = '';
+            if ($partyTransfer->remarks && str_contains($partyTransfer->remarks, 'Party Transfer:')) {
+                $parts = explode('->', $partyTransfer->remarks);
+                $srcPart = trim(str_replace('Party Transfer:', '', $parts[0]));
+                $sourceName = $srcPart;
+                if (isset($parts[1])) {
+                    $destPart = trim(explode('|', $parts[1])[0]);
+                    $destName = $destPart;
+                }
+            } else {
+                $sourceName = $partyTransfer->remarks ?: 'Party Transfer';
+            }
+
+            $rows = [];
+            foreach ($partyTransfer->details as $detail) {
+                $rows[] = [
+                    'account_name' => $detail->account->title ?? '-',
+                    'narration'    => $detail->narration,
+                    'debit'        => (float) $detail->debit,
+                    'credit'       => (float) $detail->credit,
+                ];
+            }
+
+            return view('admin_panel.vochers.party_transfer_print', compact('partyTransfer', 'sourceName', 'destName', 'rows'));
+        }
+
         // 1. Try V2 VoucherMaster of type receipt by ID
         $voucherV2 = \App\Models\VoucherMaster::where('id', $id)
             ->where('voucher_type', \App\Models\VoucherMaster::TYPE_RECEIPT)
@@ -1026,6 +1061,44 @@ class VoucherController extends Controller
         }
 
         return view('admin_panel.vochers.payment_vochers.print', compact('voucher', 'rows', 'party', 'previousBalance'));
+    }
+
+    /**
+     * Reusable live balance lookup for voucher forms.
+     * type: customer | walkin | vendor | account
+     * Returns net ledger balance with DR/CR label computed from the actual ledger.
+     */
+    public function voucherBalance($type, $id)
+    {
+        $type = strtolower((string) $type);
+        $balanceService = app(\App\Services\BalanceService::class);
+        $balance = 0.0;
+        $label = 'Dr';
+
+        if (in_array($type, ['customer', 'walkin'])) {
+            $balance = $balanceService->getCustomerBalance((int) $id);
+            $label = $balance >= 0 ? 'Dr' : 'Cr';
+        } elseif ($type === 'vendor') {
+            $balance = $balanceService->getVendorBalance((int) $id);
+            $label = $balance >= 0 ? 'Cr' : 'Dr';
+        } else {
+            // Cash / Bank / any control account
+            $balance = $balanceService->getAccountBalance((int) $id);
+            $label = $balance >= 0 ? 'Dr' : 'Cr';
+        }
+
+        $zero = abs($balance) < 0.005;
+        $display = $zero
+            ? 'Rs. 0'
+            : 'Rs. '.number_format(abs($balance), 2).' '.$label;
+
+        return response()->json([
+            'balance' => round($balance, 2),
+            'label'   => $zero ? '' : $label,
+            'display' => $display,
+            'type'    => $type,
+            'id'      => (int) $id,
+        ]);
     }
 
     public function partyList(Request $request)

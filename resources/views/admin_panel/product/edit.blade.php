@@ -328,6 +328,8 @@
                                                         <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;">Sale Price</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;">Wholesale</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;">Purch Price</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Sale Disc (%)</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Purch Disc (%)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 55px; font-size: 10px;">Alert</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 100px; font-size: 10px;">Barcode</th>
                                                         <th class="text-uppercase text-muted p-1 text-center" style="width: 50px; font-size: 10px;">Action</th>
@@ -656,6 +658,8 @@
                 const saleVal = (v && v.sale_price !== undefined && v.sale_price !== null) ? v.sale_price : '';
                 const wholesaleVal = (v && v.wholesale_price !== undefined && v.wholesale_price !== null) ? v.wholesale_price : '0';
                 const purchVal = (v && v.purch_price !== undefined && v.purch_price !== null) ? v.purch_price : '';
+                const saleDiscVal = (v && v.sale_discount_percent !== undefined && v.sale_discount_percent !== null && v.sale_discount_percent !== '') ? v.sale_discount_percent : '0';
+                const purchDiscVal = (v && v.purchase_discount_percent !== undefined && v.purchase_discount_percent !== null && v.purchase_discount_percent !== '') ? v.purchase_discount_percent : '0';
                 const alertVal = (v && v.alert !== undefined && v.alert !== null) ? v.alert : '0';
                 const barcodeVal = (v && v.barcode !== undefined && v.barcode !== null && v.barcode !== '') ? v.barcode : generateRandomBarcode();
                 
@@ -695,6 +699,8 @@
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm base-sale-input" name="variant_sale_price[]" step="any" value="${escapeHtml(saleVal)}" placeholder="0.00" required></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_wholesale_price[]" step="any" value="${escapeHtml(wholesaleVal)}" placeholder="0.00"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm base-purch-input" name="variant_purchase_price[]" step="any" value="${escapeHtml(purchVal)}" placeholder="0.00" required></td>
+                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_sale_discount[]" step="0.01" value="${escapeHtml(saleDiscVal)}" placeholder="0" title="Sale Discount %"></td>
+                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_purchase_discount[]" step="0.01" value="${escapeHtml(purchDiscVal)}" placeholder="0" title="Purchase Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_alert_qty[]" value="${escapeHtml(alertVal)}" placeholder="0"></td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_barcode[]" value="${escapeHtml(barcodeVal)}"></td>
                     <td class="p-1 text-center">
@@ -835,6 +841,8 @@
                 const stockVal = (v && v.stock !== undefined && v.stock !== null && v.stock !== '') ? v.stock : '0';
                 const convVal = (v && v.conv_factor !== undefined && v.conv_factor !== null && v.conv_factor !== '') ? v.conv_factor : (isCartonMode ? '0' : '');
                 const weightVal = (v && v.weight_per_piece !== undefined && v.weight_per_piece !== null && v.weight_per_piece !== '') ? v.weight_per_piece : (weightGrams || (factor < 10 ? (factor * 1000).toFixed(1).replace(/\.0$/, '') : factor));
+                const saleDiscVal = (v && v.sale_discount_percent !== undefined && v.sale_discount_percent !== null && v.sale_discount_percent !== '') ? v.sale_discount_percent : '0';
+                const purchDiscVal = (v && v.purchase_discount_percent !== undefined && v.purchase_discount_percent !== null && v.purchase_discount_percent !== '') ? v.purchase_discount_percent : '0';
                 const alertVal = (v && v.alert !== undefined && v.alert !== null) ? v.alert : '0';
                 const barcodeVal = (v && v.barcode !== undefined && v.barcode !== null && v.barcode !== '') ? v.barcode : generateRandomBarcode();
                 
@@ -874,6 +882,8 @@
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm sale-price-input" name="variant_sale_price[]" step="any" value="${escapeHtml(suggSale)}" placeholder="0.00" required></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_wholesale_price[]" step="any" value="${escapeHtml(suggWholesale)}" placeholder="0.00"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm purch-price-input" name="variant_purchase_price[]" step="any" value="${escapeHtml(suggPurch)}" placeholder="0.00" required></td>
+                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_sale_discount[]" step="0.01" value="${escapeHtml(saleDiscVal)}" placeholder="0" title="Sale Discount %"></td>
+                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_purchase_discount[]" step="0.01" value="${escapeHtml(purchDiscVal)}" placeholder="0" title="Purchase Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_alert_qty[]" value="${escapeHtml(alertVal)}" placeholder="0"></td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_barcode[]" value="${escapeHtml(barcodeVal)}"></td>
                     <td class="p-1 text-center">
@@ -1337,6 +1347,8 @@
             const saleVal    = tr.querySelector('[name="variant_sale_price[]"]')?.value || '';
             const wsaleVal   = tr.querySelector('[name="variant_wholesale_price[]"]')?.value || '';
             const purchVal   = tr.querySelector('[name="variant_purchase_price[]"]')?.value || '';
+            const saleDiscVal   = tr.querySelector('[name="variant_sale_discount[]"]')?.value || '';
+            const purchDiscVal  = tr.querySelector('[name="variant_purchase_discount[]"]')?.value || '';
             const alertVal   = tr.querySelector('[name="variant_alert_qty[]"]')?.value || '0';
             const barcodeVal = tr.querySelector('[name="variant_barcode[]"]')?.value || '';
             const stockReadonly = stockInp?.hasAttribute('readonly') ? 'readonly' : '';
@@ -1439,10 +1451,20 @@
                             <input type="number" class="mob-input mob-sync" data-field="variant_wholesale_price[]" value="${escapeHtml(wsaleVal)}" placeholder="0.00" step="any">
                         </div>
                     </div>
-                    <div class="mob-field-group">
-                        <div class="mob-label">Purchase Price <span class="req">*</span></div>
-                        <input type="number" class="mob-input mob-sync" data-field="variant_purchase_price[]" value="${escapeHtml(purchVal)}" placeholder="0.00" step="any" required>
-                    </div>
+<div class="mob-field-group">
+                            <div class="mob-label">Purchase Price <span class="req">*</span></div>
+                            <input type="number" class="mob-input mob-sync" data-field="variant_purchase_price[]" value="${escapeHtml(purchVal)}" placeholder="0.00" step="any" required>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                            <div class="mob-field-group">
+                                <div class="mob-label">Sale Disc (%)</div>
+                                <input type="number" class="mob-input mob-sync" data-field="variant_sale_discount[]" value="${escapeHtml(saleDiscVal)}" placeholder="0" step="0.01">
+                            </div>
+                            <div class="mob-field-group">
+                                <div class="mob-label">Purch Disc (%)</div>
+                                <input type="number" class="mob-input mob-sync" data-field="variant_purchase_discount[]" value="${escapeHtml(purchDiscVal)}" placeholder="0" step="0.01">
+                            </div>
+                        </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                         <div class="mob-field-group">
                             <div class="mob-label">Alert Qty</div>

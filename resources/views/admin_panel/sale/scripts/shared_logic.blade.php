@@ -474,15 +474,13 @@
         });
 
         const isWalkin = $('#is_walkin').val() === '1';
-        
+
         let orderDisc = 0;
-        if (isWalkin) {
-            orderDisc = toNum($('#walkinDiscountRs').val());
-            $('#discountPercent').val(0); // clear percent
-        } else {
-            const orderPct = toNum($('#discountPercent').val());
-            orderDisc = (tNet * orderPct) / 100;
-        }
+        // Rs discount is always applied (Order Summary -> Discount (Rs))
+        const rsDisc = toNum($('#walkinDiscountRs').length ? $('#walkinDiscountRs').val() : 0);
+        // % discount additionally applied if provided
+        const orderPct = toNum($('#discountPercent').length ? $('#discountPercent').val() : 0);
+        orderDisc = (rsDisc > 0 ? rsDisc : 0) + ((orderPct > 0 && tNet > 0) ? (tNet * orderPct) / 100 : 0);
 
         const prev = toNum($('#previousBalance').val());
         const receipts = toNum($('#receiptsTotal').text());
@@ -492,7 +490,7 @@
         $('#tQty').text(tQty.toFixed(0));
         $('#tGross').text(tGross.toFixed(2));
         $('#tLineDisc').text(tLineDisc.toFixed(2));
-        $('#tSub').text(tNet.toFixed(2));
+        $('#tSub').text(currentInvoiceTotal.toFixed(2));
         $('#tOrderDisc').text(orderDisc.toFixed(2));
         $('#tPrev').text(prev.toFixed(2));
         $('#tPayable').text(payable.toFixed(2));

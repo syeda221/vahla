@@ -1413,6 +1413,9 @@
                             $totalDisc =
                                 collect($saleItems)->sum('discount_amount');
 
+                            $extraDisc =
+                                (float)($sale->total_extradiscount ?? 0);
+
                             $netBill =
                                 $sale->total_net;
 
@@ -1452,7 +1455,7 @@
                         @endif
 
 
-                        @if ($totalDisc > 0)
+                        @if ($totalDisc > 0 || $extraDisc > 0)
 
                             <tr>
 
@@ -1483,7 +1486,7 @@
                                 <td class="text-end text-danger">
 
                                     -
-                                    {{ number_format($totalDisc, 2) }}
+                                    {{ number_format($totalDisc + $extraDisc, 2) }}
 
                                 </td>
 

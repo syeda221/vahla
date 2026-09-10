@@ -1149,6 +1149,7 @@
             <input type="hidden" id="action" name="action" value="sale">
             <input type="hidden" name="cash" value="0">
             <input type="hidden" id="totalBalance" value="0">
+            <input type="hidden" name="total_extra_cost" id="discountAmount" value="0">
 
             {{-- ============================ PAGE HEADER ============================ --}}
             <div class="sale-header">

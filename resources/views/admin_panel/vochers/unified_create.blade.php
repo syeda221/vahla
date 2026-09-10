@@ -182,6 +182,52 @@
     cursor: default;
 }
 
+/* ========= LIVE BALANCE INDICATOR ========= */
+.voucher-balance {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 7px;
+    height: 30px;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.voucher-balance .vb-ttl {
+    color: #64748b;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.voucher-balance strong {
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.voucher-balance.dr {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+}
+.voucher-balance.cr {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #86efac;
+}
+.voucher-balance.zero {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+.voucher-balance.loading {
+    background: #f1f5f9;
+    color: #94a3b8;
+    border: 1px dashed #cbd5e1;
+}
+
 /* ========= SELECT2 CUSTOM STYLING ========= */
 .select2-container {
     width: 100% !important;
@@ -549,6 +595,9 @@
                                         @endforeach
                                     </select>
                                 </div>
+                                <div class="voucher-balance zero mt-3" id="pi_party_balance">
+                                    <span class="vb-ttl">Current Balance:</span> <strong>Rs. 0</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -556,12 +605,15 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-5">
                             <label class="form-label">Deposit To (Cash/Bank Account) <span class="text-danger">*</span></label>
-                            <select name="row_account_id[]" class="form-select select2-account" required>
+                            <select name="row_account_id[]" id="pi_deposit_account" class="form-select select2-account" required>
                                 <option value="">Search cash/bank account...</option>
                                 @foreach($accounts as $acc)
                                 <option value="{{ $acc->id }}">{{ $acc->title }} ({{ $acc->account_code }})</option>
                                 @endforeach
                             </select>
+                            <div class="voucher-balance zero mt-2" id="pi_deposit_balance">
+                                <span class="vb-ttl">Current Balance:</span> <strong>Rs. 0</strong>
+                            </div>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Amount <span class="text-danger">*</span></label>
@@ -634,6 +686,9 @@
                                         @endforeach
                                     </select>
                                 </div>
+                                <div class="voucher-balance zero mt-3" id="po_party_balance">
+                                    <span class="vb-ttl">Current Balance:</span> <strong>Rs. 0</strong>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -641,12 +696,15 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-5">
                             <label class="form-label">Pay From (Cash/Bank Account) <span class="text-danger">*</span></label>
-                            <select name="header_account_id" class="form-select select2-account" required>
+                            <select name="header_account_id" id="po_payfrom_account" class="form-select select2-account" required>
                                 <option value="">Search cash/bank account...</option>
                                 @foreach($accounts as $acc)
                                 <option value="{{ $acc->id }}">{{ $acc->title }} ({{ $acc->account_code }})</option>
                                 @endforeach
                             </select>
+                            <div class="voucher-balance zero mt-2" id="po_payfrom_balance">
+                                <span class="vb-ttl">Current Balance:</span> <strong>Rs. 0</strong>
+                            </div>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Amount <span class="text-danger">*</span></label>
@@ -725,6 +783,9 @@
                                         @endforeach
                                     </select>
                                 </div>
+                                <div class="voucher-balance zero mt-3" id="pt_src_balance">
+                                    <span class="vb-ttl">Current Balance:</span> <strong>Rs. 0</strong>
+                                </div>
                             </div>
                         </div>
 
@@ -766,6 +827,9 @@
                                         <option value="{{ $c->id }}">{{ $c->customer_name }} @if(!empty($c->mobile)) ({{ $c->mobile }}) @endif</option>
                                         @endforeach
                                     </select>
+                                </div>
+                                <div class="voucher-balance zero mt-3" id="pt_dst_balance">
+                                    <span class="vb-ttl">Current Balance:</span> <strong>Rs. 0</strong>
                                 </div>
                             </div>
                         </div>
@@ -949,6 +1013,105 @@
             }
             initSelect2();
         });
+
+        // ============== LIVE BALANCE INDICATORS (Payment In/Out & Party Transfer) ==============
+        var voucherBalanceUrl = '{{ route("voucher.balance", ["type" => "__TYPE__", "id" => "__ID__"]) }}';
+
+        function renderVoucherBalance($el, balance, label, display) {
+            $el.removeClass('loading dr cr zero');
+            balance = (typeof balance === 'number' && !isNaN(balance)) ? balance : 0;
+            var abs = Math.abs(balance);
+            if (abs < 0.005 && (!label || label === '')) {
+                $el.addClass('zero');
+                $el.html('<span class="vb-ttl">Current Balance:</span> <strong>Rs. 0</strong>');
+                return;
+            }
+            var badgeLabel = label === 'Cr' ? 'Cr' : 'Dr';
+            var text = display || ('Rs. ' + abs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + badgeLabel);
+            $el.addClass(badgeLabel === 'Cr' ? 'cr' : 'dr');
+            $el.html('<span class="vb-ttl">Current Balance:</span> <strong>' + text + '</strong>');
+        }
+
+        function fetchVoucherBalance($el, type, id) {
+            if (!type || !id) {
+                renderVoucherBalance($el, 0, '', null);
+                return;
+            }
+            $el.removeClass('dr cr zero').addClass('loading');
+            $el.html('<i class="fas fa-spinner fa-spin me-1"></i> Loading balance...');
+            $.getJSON(voucherBalanceUrl.replace('__TYPE__', encodeURIComponent(type)).replace('__ID__', encodeURIComponent(id)))
+                .done(function(res) {
+                    renderVoucherBalance($el, res.balance, res.label, res.display);
+                })
+                .fail(function() {
+                    renderVoucherBalance($el, 0, '', null);
+                });
+        }
+
+        // ---- Payment In ----
+        function piPartyType() {
+            return $('.pi-party-type:checked').val() || 'customer';
+        }
+        $(document).on('change', '#pi_customer_select, #pi_vendor_select', function() {
+            fetchVoucherBalance($('#pi_party_balance'), piPartyType(), $(this).val());
+        });
+        $(document).on('change', '#pi_deposit_account', function() {
+            fetchVoucherBalance($('#pi_deposit_balance'), 'account', $(this).val());
+        });
+        // When party type radio changes, re-fetch on the currently active party select
+        var piPartyTypeHandler = function() {
+            var id = $('#pi_vendor_wrapper').is(':visible') ? $('#pi_vendor_select').val() : $('#pi_customer_select').val();
+            fetchVoucherBalance($('#pi_party_balance'), piPartyType(), id);
+        };
+        $(document).on('change', '.pi-party-type', piPartyTypeHandler);
+
+        // ---- Payment Out ----
+        function poPartyType() {
+            return $('.po-party-type:checked').val() || 'vendor';
+        }
+        $(document).on('change', '#po_vendor_select, #po_customer_select', function() {
+            fetchVoucherBalance($('#po_party_balance'), poPartyType(), $(this).val());
+        });
+        $(document).on('change', '#po_payfrom_account', function() {
+            fetchVoucherBalance($('#po_payfrom_balance'), 'account', $(this).val());
+        });
+        var poPartyTypeHandler = function() {
+            var id = $('#po_customer_wrapper').is(':visible') ? $('#po_customer_select').val() : $('#po_vendor_select').val();
+            fetchVoucherBalance($('#po_party_balance'), poPartyType(), id);
+        };
+        $(document).on('change', '.po-party-type', poPartyTypeHandler);
+
+        // ---- Party-To-Party Transfer ----
+        function ptSrcType() {
+            return $('.pt-src-party-type:checked').val() || 'customer';
+        }
+        function ptDstType() {
+            return $('.pt-dst-party-type:checked').val() || 'vendor';
+        }
+        $(document).on('change', '#pt_src_customer_select, #pt_src_vendor_select', function() {
+            fetchVoucherBalance($('#pt_src_balance'), ptSrcType(), $(this).val());
+        });
+        $(document).on('change', '#pt_dst_vendor_select, #pt_dst_customer_select', function() {
+            fetchVoucherBalance($('#pt_dst_balance'), ptDstType(), $(this).val());
+        });
+        var ptSrcPartyTypeHandler = function() {
+            var id = $('#pt_src_vendor_wrapper').is(':visible') ? $('#pt_src_vendor_select').val() : $('#pt_src_customer_select').val();
+            fetchVoucherBalance($('#pt_src_balance'), ptSrcType(), id);
+        };
+        var ptDstPartyTypeHandler = function() {
+            var id = $('#pt_dst_customer_wrapper').is(':visible') ? $('#pt_dst_customer_select').val() : $('#pt_dst_vendor_select').val();
+            fetchVoucherBalance($('#pt_dst_balance'), ptDstType(), id);
+        };
+        $(document).on('change', '.pt-src-party-type', ptSrcPartyTypeHandler);
+        $(document).on('change', '.pt-dst-party-type', ptDstPartyTypeHandler);
+
+        // Normalize indicators to the zero state on load
+        renderVoucherBalance($('#pi_party_balance'), 0, '', null);
+        renderVoucherBalance($('#pi_deposit_balance'), 0, '', null);
+        renderVoucherBalance($('#po_party_balance'), 0, '', null);
+        renderVoucherBalance($('#po_payfrom_balance'), 0, '', null);
+        renderVoucherBalance($('#pt_src_balance'), 0, '', null);
+        renderVoucherBalance($('#pt_dst_balance'), 0, '', null);
 
         // ============== EXPENSE: SOURCE ACCOUNT SELECT ==============
         $(document).on('change', '#form-expense select[name="vendor_id"]', function() {
