@@ -242,6 +242,11 @@
                 </table>
             </div>
 
+            <div id="paginationContainer" class="d-flex justify-content-between align-items-center p-3 border-top bg-light">
+                <div id="paginationInfo" class="text-muted small"></div>
+                <div id="paginationLinks" class="d-flex gap-1"></div>
+            </div>
+
         </div>
     </div>
 
@@ -388,8 +393,11 @@ $(document).ready(function() {
         fetchStockReport();
     });
 
+    let currentPage = 1;
+
     // Search Click
     $('#btnSearch').on('click', function () {
+        currentPage = 1;
         fetchStockReport();
     });
 
@@ -413,7 +421,9 @@ $(document).ready(function() {
                 variant_key: $('#variant_key').val(),
                 warehouse_id: $('#warehouse_id').val(),
                 unit_type:   $('#unit_type').val(),
-                report_mode: mode
+                report_mode: mode,
+                page: currentPage,
+                per_page: 50
             },
             success: function (res) {
                 $('#loader').hide();
@@ -432,6 +442,7 @@ $(document).ready(function() {
                 $('#kpiSoldAmount').text('Rs ' + (res.total_sold_amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2}));
 
                 renderTableBody(res.data, mode);
+                renderPagination(res.pagination);
             },
             error: function () {
                 $('#loader').hide();
@@ -439,6 +450,55 @@ $(document).ready(function() {
             }
         });
     }
+
+    function renderPagination(pag) {
+        if (!pag || pag.total === 0) {
+            $('#paginationInfo').text('Showing 0 of 0 items');
+            $('#paginationLinks').empty();
+            return;
+        }
+
+        let start = ((pag.current_page - 1) * 50) + 1;
+        let end = Math.min(pag.current_page * 50, pag.total);
+        $('#paginationInfo').text(`Showing ${start} to ${end} of ${pag.total} items (Totals above are for current page)`);
+
+        let links = '';
+        if (pag.current_page > 1) {
+            links += `<button class="btn btn-sm btn-outline-primary page-btn" data-page="${pag.current_page - 1}">Prev</button>`;
+        }
+
+        let startPage = Math.max(1, pag.current_page - 2);
+        let endPage = Math.min(pag.last_page, pag.current_page + 2);
+
+        if (startPage > 1) {
+            links += `<button class="btn btn-sm btn-outline-primary page-btn" data-page="1">1</button>`;
+            if (startPage > 2) links += `<span class="btn btn-sm btn-light disabled" style="padding-top:5px;">...</span>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === pag.current_page) {
+                links += `<button class="btn btn-sm btn-primary page-btn" data-page="${i}">${i}</button>`;
+            } else {
+                links += `<button class="btn btn-sm btn-outline-primary page-btn" data-page="${i}">${i}</button>`;
+            }
+        }
+
+        if (endPage < pag.last_page) {
+            if (endPage < pag.last_page - 1) links += `<span class="btn btn-sm btn-light disabled" style="padding-top:5px;">...</span>`;
+            links += `<button class="btn btn-sm btn-outline-primary page-btn" data-page="${pag.last_page}">${pag.last_page}</button>`;
+        }
+        
+        if (pag.current_page < pag.last_page) {
+            links += `<button class="btn btn-sm btn-outline-primary page-btn" data-page="${pag.current_page + 1}">Next</button>`;
+        }
+        
+        $('#paginationLinks').html(links);
+    }
+
+    $(document).on('click', '.page-btn', function() {
+        currentPage = $(this).data('page');
+        fetchStockReport();
+    });
 
     function renderTableHeader(mode) {
         let thead = $('#tableHeader');

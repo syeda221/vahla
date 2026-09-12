@@ -49,6 +49,8 @@ class ReportingController extends Controller
     // AJAX endpoint to fetch report rows
     public function fetchItemStock(Request $request)
     {
+        ini_set('memory_limit', '-1');
+        set_time_limit(0);
         $productId   = $request->product_id;
         $variantKey  = $request->variant_key;
         $categoryId  = $request->category_id;
@@ -78,7 +80,10 @@ class ReportingController extends Controller
             }
         }
 
-        $products = $productsQuery->orderBy('item_name')->get();
+        $perPage = $request->input('per_page', 50);
+        // Order by item_code naturally (by casting the numerical part if possible, otherwise just string sort)
+        $paginator = $productsQuery->orderByRaw("CAST(SUBSTRING_INDEX(item_code, '-', -1) AS UNSIGNED) ASC, item_code ASC")->paginate($perPage);
+        $products = $paginator->items();
 
         $rows = [];
         $grandTotalValue   = 0;
@@ -578,6 +583,11 @@ class ReportingController extends Controller
             'total_current_stock'   => $totalCurrentStock,
             'total_adjustments_qty' => $totalAdjustments,
             'total_sold_amount'     => $totalSoldAmount,
+            'pagination'            => [
+                'current_page' => $paginator->currentPage(),
+                'last_page'    => $paginator->lastPage(),
+                'total'        => $paginator->total(),
+            ]
         ]);
     }
 
