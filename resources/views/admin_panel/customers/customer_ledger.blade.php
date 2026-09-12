@@ -161,7 +161,9 @@
                                             <td class="text-center">{{ $ledger->created_at->format('d/m/Y') }}</td>
                                             <td><span class="fw-semibold text-dark">{{ $ledger->details ?? '-' }}</span></td>
                                             <td class="text-dark small">{{ $ledger->bank_name && $ledger->bank_name !== '-' ? $ledger->bank_name : '' }}</td>
-                                            <td class="small text-break text-dark">{{ $ledger->ref_no ?? $ledger->description ?? '' }}</td>
+                                            <td class="small text-break text-dark" title="{{ $ledger->ref_no ?? $ledger->description ?? '' }}">
+                                                {{ \Illuminate\Support\Str::limit($ledger->ref_no ?? $ledger->description ?? '', 40, '...') }}
+                                            </td>
                                             <td class="text-center font-monospace fw-semibold text-dark">{{ $ledger->v_no && $ledger->v_no !== '-' ? $ledger->v_no : '' }}</td>
                                             <td class="text-center fw-semibold text-dark">{{ $qty != 0 ? number_format($qty) : '0' }}</td>
                                             <td class="text-end text-dark">

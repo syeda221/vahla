@@ -36,7 +36,8 @@
         }
         .info-table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             margin-bottom: 12px;
         }
         .info-table td {
@@ -57,8 +58,10 @@
         }
         .statement-table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             margin-top: 5px;
+            table-layout: fixed;
         }
         .statement-table th {
             background-color: #ffffff;
@@ -80,12 +83,22 @@
             border-right: none;
             font-size: 9.5px;
             color: #000000;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
         .text-center { text-align: center; }
         .text-end { text-align: right; }
         .text-start { text-align: left; }
         .fw-bold { font-weight: bold; }
         
+        .statement-table {
+            page-break-inside: auto;
+        }
+        .statement-table tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+
         .totals-row td {
             border-top: 2px solid #000000 !important;
             border-bottom: 2px solid #000000 !important;
@@ -95,7 +108,10 @@
             font-size: 10px;
         }
         .footer-note {
-            margin-top: 20px;
+            position: fixed;
+            bottom: -10px;
+            left: 0;
+            right: 0;
             text-align: center;
             font-size: 8.5px;
             color: #777777;
@@ -197,7 +213,7 @@
                     <td class="text-center">{{ $t['date'] }}</td>
                     <td>{{ $t['details'] ?? '-' }}</td>
                     <td>{{ !empty($t['bank_name']) && $t['bank_name'] !== '-' ? $t['bank_name'] : '' }}</td>
-                    <td>{{ $t['ref_no'] ?? '' }}</td>
+                    <td>{{ \Illuminate\Support\Str::limit($t['ref_no'] ?? '', 40, '...') }}</td>
                     <td class="text-center">{{ !empty($t['v_no']) && $t['v_no'] !== '-' ? $t['v_no'] : '' }}</td>
                     <td class="text-center">{{ $qty != 0 ? number_format($qty) : '0' }}</td>
                     <td class="text-end">{{ $debit > 0 ? number_format($debit, 2) : '' }}</td>
@@ -205,16 +221,15 @@
                     <td class="text-end fw-bold">{{ number_format($bal, 2) }}</td>
                 </tr>
             @endforeach
-        </tbody>
-        <tfoot>
+            {{-- Totals Row --}}
             <tr class="totals-row">
-                <td colspan="5" class="text-end"></td>
-                <td class="text-center fw-bold">{{ number_format($total_qty) }}</td>
-                <td class="text-end fw-bold">{{ $total_debit > 0 ? number_format($total_debit, 2) : '' }}</td>
-                <td class="text-end fw-bold">{{ $total_credit > 0 ? number_format($total_credit, 2) : '' }}</td>
-                <td class="text-end fw-bold">{{ number_format($closing_balance, 2) }}</td>
+                <td colspan="5" class="text-end fw-bold text-dark border-0 border-bottom"></td>
+                <td class="text-center fw-bold text-dark">{{ number_format($total_qty) }}</td>
+                <td class="text-end fw-bold text-dark">{{ $total_debit > 0 ? number_format($total_debit, 2) : '' }}</td>
+                <td class="text-end fw-bold text-dark">{{ $total_credit > 0 ? number_format($total_credit, 2) : '' }}</td>
+                <td class="text-end fw-bold text-dark">{{ number_format($closing_balance, 2) }}</td>
             </tr>
-        </tfoot>
+        </tbody>
     </table>
 
     <div class="footer-note">

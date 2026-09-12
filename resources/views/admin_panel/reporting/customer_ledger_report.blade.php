@@ -121,16 +121,25 @@
     }
 
     @media print {
-        body { background: #ffffff !important; font-size: 11px; }
+        body { background: #ffffff !important; font-size: 11px; margin: 0; padding: 0; }
         .no-print, header, .sidebar, .navbar, footer, .rt_nav_header, .page-navigation { display: none !important; }
-        .sale-report-container { padding: 0 !important; background: #fff !important; }
+        .sale-report-container { padding: 0 !important; background: #fff !important; min-height: auto !important; height: auto !important; }
         .card { border: 1px solid #dee2e6 !important; box-shadow: none !important; margin-bottom: 10px !important; }
         .print-only { display: block !important; }
-        .sale-table-wrap { height: auto !important; max-height: none !important; overflow: visible !important; border: none !important; }
+        .sale-table-wrap { height: auto !important; max-height: none !important; min-height: auto !important; overflow: visible !important; border: none !important; margin: 0 !important; padding: 0 !important; }
+        .report-table { margin-bottom: 0 !important; }
         .report-table thead th { position: static !important; }
         /* Force desktop table to show on print, hide mobile cards */
         .print-table { display: block !important; }
         .print-hide { display: none !important; }
+
+        /* Fix page breaks */
+        table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+        tr { page-break-inside: avoid; page-break-after: auto; }
+        thead { display: table-header-group; }
+        tbody { page-break-inside: auto; }
+        tfoot { display: table-row-group; page-break-inside: avoid; }
+        .sticky-tbody { page-break-inside: auto !important; }
     }
     @media screen {
         .print-only { display: none !important; }
@@ -678,7 +687,10 @@
                         </div>
                     `;
 
-                    res.transactions.forEach((t, i) => {
+                    let mainBodyHtml = '';
+                    let lastRowHtml = '';
+
+                    res.transactions.forEach((t, index) => {
                         let debit = t.debit && t.debit > 0 ? parseFloat(t.debit) : 0;
                         let credit = t.credit && t.credit > 0 ? parseFloat(t.credit) : 0;
                         let qty = t.quantity ? parseFloat(t.quantity) : 0;
@@ -687,17 +699,13 @@
                         totalQty += qty;
                         lastBalance = parseFloat(t.balance);
 
-                        let balLabel = lastBalance >= 0 ? 'Dr' : 'Cr';
-                        let balClass = lastBalance >= 0 ? 'balance-positive' : 'balance-negative';
-                        let custName = t.customer_name || '-';
-
-                        // Desktop Row
-                        html += `
+                        let isLast = index === res.transactions.length - 1;
+                        let rowHtml = `
                             <tr>
                                 <td class="text-center small text-nowrap">${t.date}</td>
                                 <td><span class="fw-semibold text-dark">${t.details || '-'}</span></td>
                                 <td class="small text-dark">${t.bank_name && t.bank_name !== '-' ? t.bank_name : ''}</td>
-                                <td class="small text-break text-dark">${t.ref_no || ''}</td>
+                                <td class="small text-break text-dark" title="${t.ref_no || ''}">${t.ref_no && t.ref_no.length > 40 ? t.ref_no.substring(0, 40) + '...' : (t.ref_no || '')}</td>
                                 <td class="text-center font-monospace fw-semibold text-dark">${t.v_no && t.v_no !== '-' ? t.v_no : (t.invoice && t.invoice !== '-' ? t.invoice : '')}</td>
                                 <td class="text-center fw-semibold text-dark">${qty !== 0 ? qty.toLocaleString() : '0'}</td>
                                 <td class="text-end text-dark">${debit > 0 ? debit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : ''}</td>
@@ -708,6 +716,12 @@
                             </tr>
                         `;
 
+                        if (isLast) {
+                            lastRowHtml = rowHtml;
+                        } else {
+                            mainBodyHtml += rowHtml;
+                        }
+
                         // Mobile Card
                         mobHtml += `
                             <div class="mob-card p-2.5 p-2 mb-2">
@@ -717,7 +731,7 @@
                                 </div>
                                 <div class="mb-1">
                                     <strong class="text-dark d-block" style="font-size: 12.5px;">${t.details || 'Transaction'} ${t.bank_name && t.bank_name !== '-' ? '('+t.bank_name+')' : ''}</strong>
-                                    <small class="text-muted d-block" style="font-size: 11px;">${t.ref_no || '-'}</small>
+                                    <small class="text-muted d-block" title="${t.ref_no || '-'}" style="font-size: 11px;">${t.ref_no && t.ref_no.length > 40 ? t.ref_no.substring(0, 40) + '...' : (t.ref_no || '-')}</small>
                                 </div>
                                 <div class="border-top pt-2 mt-1">
                                     <div class="row g-1 text-center" style="font-size: 11px;">
@@ -744,8 +758,8 @@
                     });
 
                     // Totals Row (Matching Reference Statement)
-                    html += `
-                        <tr class="fw-bold bg-white" style="border-top: 2px solid #000000 !important; border-bottom: 2px solid #000000 !important;">
+                    let totalsHtml = `
+                        <tr class="fw-bold bg-white totals-row" style="border-top: 2px solid #000000 !important; border-bottom: 2px solid #000000 !important;">
                             <td colspan="5" class="text-end fw-bold text-dark"></td>
                             <td class="text-center fw-bold text-dark">${totalQty.toLocaleString()}</td>
                             <td class="text-end fw-bold text-dark">${totalDebit > 0 ? totalDebit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : ''}</td>
@@ -754,7 +768,11 @@
                         </tr>
                     `;
 
-                    $("#ledgerBody").html(html);
+                    // Inject the main rows into the existing tbody
+                    $("#ledgerBody").html(html + mainBodyHtml + lastRowHtml + totalsHtml);
+                    $("#ledgerFooter").remove(); // clean up if exists
+                    $(".sticky-tbody").remove(); // clean up old ones
+
                     $("#ledgerMobileContainer").html(mobHtml);
 
                     // Update Top Summary Pills (Desktop & Mobile)

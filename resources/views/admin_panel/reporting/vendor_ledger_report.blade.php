@@ -107,10 +107,23 @@
     }
 
     @media print {
-        body { background: #ffffff !important; font-size: 11px; }
-        .no-print, header, .sidebar, .navbar, footer { display: none !important; }
-        .sale-report-container { padding: 0 !important; background: #fff !important; }
-        .card { border: 1px solid #dee2e6 !important; box-shadow: none !important; margin-bottom: 10px !important; }
+        body { background: #ffffff !important; font-size: 11px; margin: 0; padding: 0; }
+        .no-print, header, .sidebar, .navbar, footer, .rt_nav_header, .page-navigation { display: none !important; }
+        .sale-report-container { padding: 0 !important; background: #fff !important; min-height: auto !important; height: auto !important; }
+        .card { border: none !important; box-shadow: none !important; margin-bottom: 0 !important; }
+        .print-only { display: block !important; }
+        .sale-table-wrap { height: auto !important; max-height: none !important; min-height: auto !important; overflow: visible !important; border: none !important; margin: 0 !important; padding: 0 !important; }
+        .report-table { margin-bottom: 0 !important; }
+        .report-table thead th { position: static !important; }
+        .print-table { display: block !important; }
+        .print-hide { display: none !important; }
+
+        /* Fix page breaks */
+        table { page-break-inside: auto; width: 100%; border-collapse: collapse; }
+        tr { page-break-inside: avoid; page-break-after: auto; }
+        thead { display: table-header-group; }
+        tbody { page-break-inside: auto; }
+        tfoot { display: table-row-group; page-break-inside: avoid; }
     }
 </style>
 

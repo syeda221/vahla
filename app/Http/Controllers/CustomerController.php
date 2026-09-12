@@ -369,6 +369,22 @@ class CustomerController extends Controller
                         $details = 'Opening Balance';
                         $vNo = '-';
                         $refNo = 'Opening Balance (B/F)';
+                    } elseif (str_contains(strtolower($desc), 'claim')) {
+                        $details = 'Claim';
+                        $refNo = $desc;
+                        if ($sourceType === \App\Models\ExpenseVoucher::class && $sourceId) {
+                            $voucher = DB::table('expense_vouchers')->where('id', $sourceId)->first();
+                            if ($voucher && $voucher->remarks) {
+                                $refNo = $voucher->remarks;
+                            }
+                        }
+                        if (preg_match('/(EVID-\d+)/', $desc, $matches)) {
+                            $vNo = $matches[1];
+                        } elseif (preg_match('/#(\S+)/', $desc, $matches)) {
+                            $vNo = $matches[1];
+                        } else {
+                            $vNo = '-';
+                        }
                     }
 
                     return (object) [
