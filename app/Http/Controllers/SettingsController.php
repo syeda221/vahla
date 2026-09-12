@@ -40,6 +40,13 @@ class SettingsController extends Controller
         ]);
 
         foreach ($validated['settings'] as $key => $value) {
+            // Handle file uploads if any
+            if ($request->hasFile("settings.{$key}")) {
+                $file = $request->file("settings.{$key}");
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('uploads/settings'), $filename);
+                $value = 'uploads/settings/' . $filename;
+            }
             Setting::set($key, $value);
         }
 

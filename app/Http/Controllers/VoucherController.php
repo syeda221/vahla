@@ -1604,6 +1604,193 @@ class VoucherController extends Controller
         }
     }
 
+    public function allClaimVouchers()
+    {
+        $claimCategory = ExpenseCategory::where('code', 'CUS-CLM')->first();
+        if (!$claimCategory) {
+            $claims = [];
+        } else {
+            $claims = DB::table('expense_vouchers')
+                ->leftJoin('customers', function ($join) {
+                    $join->on('expense_vouchers.party_id', '=', 'customers.id')
+                        ->where('expense_vouchers.type', '=', 'customer');
+                })
+                ->select('expense_vouchers.*', 'customers.customer_name as party_name')
+                ->where('expense_vouchers.row_account_id', 'LIKE', '%"' . $claimCategory->id . '"%')
+                ->orderBy('expense_vouchers.id', 'desc')
+                ->get();
+        }
+
+        return view('admin_panel.vochers.all_claim_vouchers', compact('claims'));
+    }
+
+    public function editClaimPayment($id)
+    {
+        $voucher = ExpenseVoucher::findOrFail($id);
+        
+        // Extract amount and description
+        $amounts = json_decode($voucher->amount, true);
+        $amount = is_array($amounts) ? (float) ($amounts[0] ?? 0) : (float) $voucher->amount;
+        
+        $narrations = json_decode($voucher->narration_id, true);
+        $narrationId = is_array($narrations) ? ($narrations[0] ?? null) : $voucher->narration_id;
+        
+        $description = '';
+        if ($narrationId) {
+            $narrationRec = \App\Models\Narration::find($narrationId);
+            if ($narrationRec) {
+                $description = $narrationRec->narration;
+            }
+        }
+        
+        $AccountHeads = AccountHead::whereIn('name', ['Cash', 'bank', 'cash', 'Bank'])->get();
+        $expenseCategories = \App\Models\ExpenseCategory::orderBy('name')->get();
+        $customer = \App\Models\Customer::find($voucher->party_id);
+        if ($customer) {
+            $customer->closing_balance = app(\App\Services\BalanceService::class)->getCustomerBalance($customer->id);
+        }
+        
+        return view('admin_panel.vochers.edit_claim_payment', compact('voucher', 'amount', 'description', 'AccountHeads', 'expenseCategories', 'customer'));
+    }
+
+    public function updateClaimPayment(Request $request, $id)
+    {
+        $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'amount'      => 'required|numeric|min:0.01',
+            'description' => 'nullable|string|max:500',
+            'date'        => 'nullable|date',
+        ]);
+
+        $expense = ExpenseVoucher::findOrFail($id);
+        $customer = \App\Models\Customer::find($request->customer_id);
+        $amount = (float) $request->amount;
+        $description = trim($request->description ?? '');
+        $entryDate = $request->date ? date('Y-m-d', strtotime($request->date)) : date('Y-m-d');
+        $evid = $expense->evid;
+
+        DB::beginTransaction();
+        try {
+            $journalService = app(\App\Services\JournalEntryService::class);
+            $balanceService = app(\App\Services\BalanceService::class);
+
+            // 1. Reverse all previous journal entries for this voucher
+            $journalService->reverseEntriesForSource($expense);
+
+            // 2. Revert previous customer ledger entry
+            if ($expense->type === 'customer' && $expense->party_id) {
+                $oldLedger = CustomerLedger::where('customer_id', $expense->party_id)
+                    ->where('description', 'like', "%{$evid}%")
+                    ->latest()
+                    ->first();
+                if ($oldLedger) {
+                    $oldLedger->delete();
+                }
+            }
+            
+            // 3. Delete old narrations
+            $oldNarrations = json_decode($expense->narration_id, true) ?? [];
+            if (is_array($oldNarrations)) {
+                foreach ($oldNarrations as $nId) {
+                    \App\Models\Narration::where('id', $nId)->delete();
+                }
+            }
+
+            // 4. Create new narration
+            $narrationText = 'Customer Claim - ' . $customer->customer_name;
+            if ($description) {
+                if (strpos($description, $narrationText) === 0) {
+                    $narrationText = $description;
+                } else {
+                    $narrationText .= ' - ' . $description;
+                }
+            }
+
+            $narration = Narration::create([
+                'expense_head' => 'Expense voucher',
+                'narration'    => $narrationText,
+            ]);
+
+            // 5. Update Expense Voucher
+            $claimCategory = ExpenseCategory::firstOrCreate(
+                ['name' => 'Customer Claim'],
+                ['code' => 'CUS-CLM', 'description' => 'Auto-created for customer claim payments.']
+            );
+            
+            $expense->entry_date = $entryDate;
+            $expense->party_id = $customer->id;
+            $expense->tel = $customer->mobile ?? null;
+            $expense->remarks = $narrationText;
+            $expense->narration_id = json_encode([(string) $narration->id]);
+            $expense->amount = json_encode([$amount]);
+            $expense->total_amount = $amount;
+            $expense->save();
+
+            // 6. Record New Journal Entries
+            $expenseHead = AccountHead::firstOrCreate(
+                ['name' => 'Expense'],
+                ['opening_balance' => 0]
+            );
+
+            $generalExpenseAccount = Account::firstOrCreate(
+                ['account_code' => 'GEN-EXP'],
+                [
+                    'head_id'           => $expenseHead->id,
+                    'title'             => 'General Expense',
+                    'opening_balance'   => 0,
+                    'current_balance'   => 0,
+                    'type'              => 'Debit',
+                    'status'            => 1
+                ]
+            );
+
+            // Debit General Expense
+            $journalService->recordEntry(
+                $expense,
+                $generalExpenseAccount->id,
+                $amount, // Debit
+                0,
+                "Claim Expense #$evid ($claimCategory->name)",
+                $entryDate
+            );
+
+            // Credit Accounts Receivable
+            $journalService->recordEntry(
+                $expense,
+                $balanceService->getAccountsReceivableId(),
+                0,
+                $amount, // Credit AR
+                "Claim Expense #$evid",
+                $entryDate,
+                $customer
+            );
+
+            // 7. Update Customer Ledger
+            $ledger = CustomerLedger::where('customer_id', $customer->id)->latest()->first();
+            if ($ledger) {
+                $ledger->previous_balance = $ledger->closing_balance;
+                $ledger->closing_balance  = $ledger->closing_balance - $amount;
+                $ledger->description      = 'Customer Claim ' . $evid;
+                $ledger->save();
+            } else {
+                CustomerLedger::create([
+                    'customer_id'      => $customer->id,
+                    'admin_or_user_id' => auth()->id(),
+                    'previous_balance' => 0,
+                    'opening_balance'  => 0,
+                    'closing_balance'  => -$amount,
+                    'description'      => 'Customer Claim ' . $evid,
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('all_claim_vouchers')->with('success', 'Claim payment updated successfully!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', $e->getMessage());
+        }
+    }
     public function all_expense_vochers()
     {
         $receipts = \App\Models\ExpenseVoucher::orderBy('id', 'DESC')->get();

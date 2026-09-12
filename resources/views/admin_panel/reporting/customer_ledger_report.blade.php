@@ -122,13 +122,53 @@
 
     @media print {
         body { background: #ffffff !important; font-size: 11px; }
-        .no-print, header, .sidebar, .navbar, footer { display: none !important; }
+        .no-print, header, .sidebar, .navbar, footer, .rt_nav_header, .page-navigation { display: none !important; }
         .sale-report-container { padding: 0 !important; background: #fff !important; }
         .card { border: 1px solid #dee2e6 !important; box-shadow: none !important; margin-bottom: 10px !important; }
+        .print-only { display: block !important; }
+        .sale-table-wrap { height: auto !important; max-height: none !important; overflow: visible !important; border: none !important; }
+        .report-table thead th { position: static !important; }
+        /* Force desktop table to show on print, hide mobile cards */
+        .print-table { display: block !important; }
+        .print-hide { display: none !important; }
+    }
+    @media screen {
+        .print-only { display: none !important; }
     }
 </style>
 
+@php
+    $companyNameVal = \DB::table('settings')->where('key', 'company_name')->value('value') ?: 'WHITE DIAMOND (PACKAGES PRIVATE LIMITED)';
+    $companyAddress = \DB::table('settings')->where('key', 'company_address')->value('value');
+    $companyPhone = \DB::table('settings')->where('key', 'company_phone')->value('value');
+    $companyEmail = \DB::table('settings')->where('key', 'company_email')->value('value');
+    $companyWebsite = \DB::table('settings')->where('key', 'website_link')->value('value');
+    $companyLogo = \DB::table('settings')->where('key', 'company_logo')->value('value');
+@endphp
+
 <div class="sale-report-container">
+
+    {{-- PRINT ONLY HEADER --}}
+    <div class="print-only mb-3" id="printHeaderArea">
+        <div class="text-center mb-3">
+            @if(!empty($companyLogo))
+                <div class="mb-2">
+                    <img src="{{ asset($companyLogo) }}" alt="Company Logo" style="max-height: 80px; max-width: 250px; object-fit: contain;">
+                </div>
+            @endif
+            <h2 class="mb-1" style="font-weight: 900; text-transform: uppercase; color: #000; letter-spacing: 1px;">{{ $companyNameVal }}</h2>
+            <div style="font-size: 13px; color: #222; font-weight: 500;">
+                @if(!empty($companyAddress)) {!! nl2br(e($companyAddress)) !!} <br> @endif
+                @if(!empty($companyPhone)) <strong>Tel:</strong> {{ $companyPhone }} @endif
+                @if(!empty($companyEmail)) <strong>| Email:</strong> {{ $companyEmail }} @endif
+                @if(!empty($companyWebsite)) <strong>| Web:</strong> {{ $companyWebsite }} @endif
+            </div>
+            <h4 class="mt-2" style="letter-spacing: 1.5px; font-weight: 900; color: #000; text-transform: uppercase;">CUSTOMER LEDGER</h4>
+        </div>
+        <div id="printCustomerInfoArea" style="font-size: 12px; margin-bottom: 15px; color: #000;">
+            <!-- Rendered by JS -->
+        </div>
+    </div>
 
     {{-- DESKTOP FILTER HEADER CARD (d-none d-md-block Standard Pattern) --}}
     <div class="card border-0 shadow-sm mb-2 no-print d-none d-md-block" style="border-radius: 10px;">
@@ -292,7 +332,7 @@
     </div>
 
     {{-- DESKTOP SUMMARY METRIC PILL BAR (d-none d-md-block) --}}
-    <div class="card border-0 shadow-sm mb-2 d-none d-md-block" style="border-radius: 10px; background: #ffffff;">
+    <div class="card border-0 shadow-sm mb-2 d-none d-md-block no-print" style="border-radius: 10px; background: #ffffff;">
         <div class="card-body p-2">
             <div class="summary-pill-bar">
                 
@@ -357,13 +397,13 @@
     <div id="ledgerBox" style="display:none;">
         
         {{-- Report Sub-Header --}}
-        <div class="card border-0 shadow-sm mb-2 rounded-3 bg-white">
+        <div class="card border-0 shadow-sm mb-2 rounded-3 bg-white no-print">
             <div class="card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-2" id="ledgerHeader">
             </div>
         </div>
 
         {{-- DESKTOP TABLE VIEW (d-none d-md-block) --}}
-        <div class="card border-0 shadow-sm mb-3 rounded-3 bg-white d-none d-md-block">
+        <div class="card border-0 shadow-sm mb-3 rounded-3 bg-white d-none d-md-block print-table">
             <div class="card-body p-0">
                 <div class="sale-table-wrap">
                     <table class="table table-bordered table-hover align-middle mb-0 report-table">
@@ -387,7 +427,7 @@
         </div>
 
         {{-- MOBILE CARDS CONTAINER (d-md-none) --}}
-        <div class="d-md-none" id="ledgerMobileContainer">
+        <div class="d-md-none print-hide" id="ledgerMobileContainer">
         </div>
 
     </div>
@@ -577,6 +617,31 @@
                              <span class="badge bg-primary text-white p-2 shadow-sm font-monospace">Customer Ledger</span>
                         </div>
                     `);
+
+                    // Build Print Header Info
+                    let cInfo = res.customer;
+                    let printInfoHtml = `
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; color: #000;">
+                            <tr>
+                                <td style="width: 60%; vertical-align: top; text-align: left;">
+                                    <div class="mb-1"><strong style="font-weight: 900;">Account No :</strong> ${cInfo.id || '-'}</div>
+                                    <div class="mb-1" style="font-size: 15px;"><strong style="font-weight: 900; text-transform: uppercase;">${cInfo.customer_name || 'All Customers'}</strong></div>
+                                    ${cInfo.address ? `<div class="mb-1">${cInfo.address}</div>` : ''}
+                                    <div class="mb-1">
+                                        ${cInfo.mobile ? `<strong style="font-weight: 900;">Tel:</strong> ${cInfo.mobile}` : ''}
+                                        ${cInfo.mobile && cInfo.email_address ? ' | ' : ''}
+                                        ${cInfo.email_address ? `<strong style="font-weight: 900;">Email:</strong> ${cInfo.email_address}` : ''}
+                                    </div>
+                                </td>
+                                <td style="width: 40%; vertical-align: bottom; text-align: right;">
+                                    <div class="mb-1"><strong style="font-weight: 900;">Date :</strong> ${start == '2000-01-01' ? 'All' : (displayStart + ' to ' + displayEnd)}</div>
+                                    <div class="mb-1"><strong style="font-weight: 900;">Currency :</strong> PKR</div>
+                                    <div class="mb-1" style="font-size: 14px;"><strong style="font-weight: 900;">Total Due :</strong> PKR ${parseFloat(res.closing_balance).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                </td>
+                            </tr>
+                        </table>
+                    `;
+                    $("#printCustomerInfoArea").html(printInfoHtml);
 
                     let totalDebit = 0;
                     let totalCredit = 0;

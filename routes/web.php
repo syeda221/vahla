@@ -441,8 +441,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/expenseprint/{id}', [VoucherController::class, 'expenseprint'])->name('expenseprint');
 
     // Claim Payment
+    Route::get('/all-claim-vouchers', [VoucherController::class, 'allClaimVouchers'])->name('all_claim_vouchers');
     Route::get('/claim-payment', [VoucherController::class, 'claim_payment'])->name('claim_payment');
     Route::post('/claim-payment/store', [VoucherController::class, 'storeClaimPayment'])->name('claim_payment.store');
+    Route::get('/claim-payment/{id}/edit', [VoucherController::class, 'editClaimPayment'])->name('claim_payment.edit');
+    Route::post('/claim-payment/{id}/update', [VoucherController::class, 'updateClaimPayment'])->name('claim_payment.update');
 
     // AJAX helpers for vouchers
     Route::get('/get-accounts-by-head/{id}', [VoucherController::class, 'getAccountsByHead']);

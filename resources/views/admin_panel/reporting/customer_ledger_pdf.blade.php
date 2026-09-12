@@ -28,14 +28,6 @@
             margin: 0;
             padding: 0;
         }
-        .urdu-notice {
-            font-size: 11px;
-            margin: 4px 0 6px 0;
-            direction: rtl;
-            unicode-bidi: embed;
-            color: #111111;
-            font-style: italic;
-        }
         .report-title {
             font-size: 16px;
             font-weight: 800;
@@ -113,20 +105,28 @@
 <body>
 
     {{-- Company & Statement Header --}}
+    @php
+        $companyNameVal = \DB::table('settings')->where('key', 'company_name')->value('value') ?: 'WHITE DIAMOND (PACKAGES PRIVATE LIMITED)';
+        $companyAddress = \DB::table('settings')->where('key', 'company_address')->value('value');
+        $companyPhone = \DB::table('settings')->where('key', 'company_phone')->value('value');
+        $companyEmail = \DB::table('settings')->where('key', 'company_email')->value('value');
+        $companyWebsite = \DB::table('settings')->where('key', 'website_link')->value('value');
+        $companyLogo = \DB::table('settings')->where('key', 'company_logo')->value('value');
+    @endphp
     <div class="header-container">
-        <div class="company-name">{{ $companyName ?? 'SM NETWORKING' }}</div>
-        @php
-            $urduNoticePath = public_path('assets/images/urdu_statement_notice.png');
-            $urduNoticeBase64 = file_exists($urduNoticePath) ? base64_encode(file_get_contents($urduNoticePath)) : '';
-        @endphp
-        @if(!empty($urduNoticeBase64))
-            <div style="text-align: center; margin: 3px 0 5px 0;">
-                <img src="data:image/png;base64,{{ $urduNoticeBase64 }}" style="height: 18px; max-width: 420px; display: inline-block;" alt="Notice" />
+        @if(!empty($companyLogo) && file_exists(public_path($companyLogo)))
+            <div style="margin-bottom: 10px;">
+                <img src="{{ public_path($companyLogo) }}" alt="Company Logo" style="max-height: 80px; max-width: 250px; object-fit: contain;">
             </div>
-        @else
-            <div class="urdu-notice">صرف کمپنی کے بینک کھاتوں میں ادائیگی کریں۔ کمپنی کسی بھی سیلز پرسن کو دی گئی نقد رقم کے لیے ذمہ دار نہیں ہوگی</div>
         @endif
-        <div class="report-title">Customer Statement</div>
+        <div class="company-name" style="color: #000;">{{ $companyNameVal }}</div>
+        <div style="font-size: 12px; margin-top: 5px; color: #222; font-weight: bold;">
+            @if(!empty($companyAddress)) {!! nl2br(e($companyAddress)) !!} <br> @endif
+            @if(!empty($companyPhone)) <strong>Tel:</strong> {{ $companyPhone }} @endif
+            @if(!empty($companyEmail)) <strong>| Email:</strong> {{ $companyEmail }} @endif
+            @if(!empty($companyWebsite)) <strong>| Web:</strong> {{ $companyWebsite }} @endif
+        </div>
+        <div class="report-title" style="color: #000;">CUSTOMER LEDGER</div>
     </div>
 
     {{-- Meta Information Box --}}
@@ -134,12 +134,16 @@
         <tr>
             <td class="info-left">
                 <div class="info-line"><strong>Account No :</strong> {{ $customer->id ?? '-' }}</div>
-                <div class="info-line"><strong>{{ $customer->customer_name ?? 'All Customers' }}</strong></div>
+                <div class="info-line" style="font-size: 13px;"><strong>{{ $customer->customer_name ?? 'All Customers' }}</strong></div>
                 @if(!empty($customer->address))
                     <div class="info-line">{{ $customer->address }}</div>
                 @endif
-                @if(!empty($customer->city) || !empty($customer->phone))
-                    <div class="info-line">{{ $customer->city ?? '' }} {{ !empty($customer->phone) ? ' | Tel: ' . $customer->phone : '' }}</div>
+                @if(!empty($customer->mobile) || !empty($customer->email_address))
+                    <div class="info-line">
+                        @if(!empty($customer->mobile)) <strong>Tel:</strong> {{ $customer->mobile }} @endif
+                        @if(!empty($customer->mobile) && !empty($customer->email_address)) | @endif
+                        @if(!empty($customer->email_address)) <strong>Email:</strong> {{ $customer->email_address }} @endif
+                    </div>
                 @endif
             </td>
             <td class="info-right">

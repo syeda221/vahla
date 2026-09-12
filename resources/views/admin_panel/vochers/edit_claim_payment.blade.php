@@ -76,12 +76,12 @@
             color: #16a34a;
         }
         .section-bar {
-            background: #f1f5f9;
-            border-left: 4px solid #3b82f6;
+            background: #fefce8;
+            border-left: 4px solid #eab308;
             padding: 8px 16px;
             font-size: 0.85rem;
             font-weight: 700;
-            color: #334155;
+            color: #713f12;
             text-transform: uppercase;
             margin-bottom: 24px;
             border-radius: 0 8px 8px 0;
@@ -106,8 +106,8 @@
             color: #0f172a;
             border-color: #94a3b8;
         }
-        .btn-custom-primary {
-            background: #2563eb;
+        .btn-custom-warning {
+            background: #eab308;
             color: white;
             border: none;
             font-weight: 600;
@@ -117,13 +117,13 @@
             display: inline-flex;
             align-items: center;
             transition: all 0.2s;
-            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+            box-shadow: 0 2px 4px rgba(234, 179, 8, 0.2);
         }
-        .btn-custom-primary:hover {
-            background: #1d4ed8;
+        .btn-custom-warning:hover {
+            background: #ca8a04;
             color: white;
             transform: translateY(-1px);
-            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.25);
+            box-shadow: 0 4px 6px rgba(234, 179, 8, 0.25);
         }
         
         /* Select2 custom styling */
@@ -164,29 +164,29 @@
                     </div>
                 @endif
 
-                <form action="{{ route('claim_payment.store') }}" method="POST" id="claimPaymentForm">
+                <form action="{{ route('claim_payment.update', $voucher->id) }}" method="POST" id="claimPaymentForm">
                     @csrf
-
+                    
                     <div class="claim-card">
                         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-3 border-bottom gap-3">
                             <div class="claim-header-title">
-                                <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-3 d-inline-flex">
-                                    <i class="bi bi-receipt-cutoff"></i>
+                                <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-3 d-inline-flex">
+                                    <i class="bi bi-pencil-square"></i>
                                 </div>
-                                Create Claim Payment
+                                Edit Claim Payment <span class="text-muted fs-6 ms-2">({{ $voucher->evid }})</span>
                             </div>
                             <div class="d-flex align-items-center gap-2">
                                 <a href="{{ route('all_claim_vouchers') }}" class="btn-custom-outline text-decoration-none">
                                     <i class="bi bi-list-ul me-2"></i> All Claim Vouchers
                                 </a>
-                                <button type="submit" id="saveBtn" class="btn-custom-primary">
-                                    <i class="bi bi-check2 me-2"></i> Save Payment
+                                <button type="submit" id="saveBtn" class="btn-custom-warning">
+                                    <i class="bi bi-check2 me-2"></i> Update Payment
                                 </button>
                             </div>
                         </div>
 
                         <div class="section-bar">
-                            <i class="bi bi-person-lines-fill text-primary"></i>
+                            <i class="bi bi-person-lines-fill text-warning"></i>
                             Customer &amp; Claim Details
                         </div>
 
@@ -194,25 +194,29 @@
                             <div class="col-12 col-md-5 col-lg-5">
                                 <label class="claim-label">Customer <span class="text-danger">*</span></label>
                                 <select name="customer_id" id="customerId" class="claim-input" required>
-                                    <option value="" disabled selected>Search by Name / Code / Mobile...</option>
+                                    @if($customer)
+                                        <option value="{{ $customer->id }}" selected>{{ $customer->customer_name }} - {{ $customer->mobile }}</option>
+                                    @else
+                                        <option value="" disabled selected>Search by Name / Code / Mobile...</option>
+                                    @endif
                                 </select>
                             </div>
                             <div class="col-6 col-md-3 col-lg-2">
                                 <label class="claim-label">Date <span class="text-danger">*</span></label>
-                                <input type="date" name="date" class="claim-input" value="{{ now()->toDateString() }}" required>
+                                <input type="date" name="date" class="claim-input" value="{{ $voucher->entry_date }}" required>
                             </div>
                             <div class="col-6 col-md-4 col-lg-2">
                                 <label class="claim-label">Claim Amount <span class="text-danger">*</span></label>
                                 <div class="d-flex align-items-stretch" style="height: 42px;">
                                     <span class="bg-light border text-muted d-flex align-items-center px-3" style="border-radius: 8px 0 0 8px; border-color: #cbd5e1 !important; border-right: none !important; font-size: 0.95rem;">Rs</span>
-                                    <input type="number" name="amount" id="claimAmount" step="0.01" min="0.01" class="claim-input fw-bold m-0" placeholder="0.00" style="border-radius: 0 8px 8px 0; border-left: none !important; height: 100%; flex: 1;" required>
+                                    <input type="number" name="amount" id="claimAmount" step="0.01" min="0.01" value="{{ $amount }}" class="claim-input fw-bold m-0" placeholder="0.00" style="border-radius: 0 8px 8px 0; border-left: none !important; height: 100%; flex: 1;" required>
                                 </div>
                             </div>
                             <div class="col-12 col-md-12 col-lg-3 mt-4 mt-lg-0">
                                 <label class="claim-label">Current Balance</label>
-                                <div id="balanceDisplay" class="balance-badge">
+                                <div id="balanceDisplay" class="balance-badge {{ ($customer->closing_balance ?? 0) >= 0 ? 'balance-dr' : 'balance-cr' }}">
                                     <span class="text-muted fw-normal"><i class="bi bi-wallet2 me-1"></i> Balance</span>
-                                    <span>0.00</span>
+                                    <span>{{ number_format(abs($customer->closing_balance ?? 0), 2) }} {{ ($customer->closing_balance ?? 0) >= 0 ? 'Dr' : 'Cr' }}</span>
                                 </div>
                             </div>
                         </div>
@@ -220,18 +224,18 @@
                         <div class="row g-4 mt-2">
                             <div class="col-12 col-md-5">
                                 <label class="claim-label">Reference No</label>
-                                <input type="text" name="reference_no" class="claim-input" placeholder="e.g. Chq-1029 / Ref-991">
+                                <input type="text" name="reference_no" class="claim-input" value="{{ json_decode($voucher->reference_no, true)[0] ?? $voucher->reference_no }}" placeholder="e.g. Chq-1029 / Ref-991">
                             </div>
                             <div class="col-12 col-md-7">
                                 <label class="claim-label">Description</label>
-                                <input type="text" name="description" id="claimDescription" class="claim-input" placeholder="Explain the reason for this claim...">
+                                <input type="text" name="description" id="claimDescription" class="claim-input" placeholder="Explain the reason for this claim..." value="{{ $description }}">
                             </div>
                         </div>
 
-                        <div class="alert mt-4 mb-0 border-0 d-flex align-items-center" style="background-color: #f8fafc; color: #475569; border-radius: 8px;">
-                            <i class="bi bi-info-circle text-primary fs-5 me-3"></i>
+                        <div class="alert mt-4 mb-0 border-0 d-flex align-items-center" style="background-color: #fffbeb; color: #92400e; border-radius: 8px;">
+                            <i class="bi bi-info-circle text-warning fs-5 me-3"></i>
                             <div class="small">
-                                Saving this form will automatically generate an <strong>Expense Voucher</strong> and adjust the amount in the customer's <strong>ledger</strong>.
+                                Update karne par purani ledger aur journal entries reverse ho kar <strong>nayi entries</strong> automatically record ki jayengi.
                             </div>
                         </div>
                     </div>
@@ -283,107 +287,39 @@
                     const balFormatted = Math.abs(bal).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2});
                     const balType = bal >= 0 ? 'Dr' : 'Cr';
                     return $(`<div class="d-flex justify-content-between align-items-center py-1">
-                        <div>
-                            <div class="fw-bold text-dark">${name}</div>
-                            <div class="d-flex gap-2 align-items-center">
-                                ${code ? '<small class="text-primary fw-semibold">' + code + '</small>' : ''}
-                                ${p.mobile ? '<small class="text-muted"><i class="bi bi-telephone me-1"></i>' + p.mobile + '</small>' : ''}
-                            </div>
-                        </div>
-                        <div class="text-end ms-2">
-                            <span class="badge ${bal >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'} border px-2 py-1" style="font-size: 0.75rem;">
-                                Bal: ${balFormatted} ${balType}
-                            </span>
-                        </div>
-                    </div>`);
+                                <div><div class="fw-bold text-dark" style="font-size:0.85rem">${name}</div><div class="text-muted" style="font-size:0.75rem">${code}</div></div>
+                                <div class="text-end"><div class="fw-bold ${bal >= 0 ? 'text-danger' : 'text-success'}" style="font-size:0.85rem">${balFormatted} ${balType}</div></div>
+                              </div>`);
                 },
                 templateSelection: function(item) {
-                    if (!item.party) return item.text;
-                    const p = item.party;
-                    return (p.customer_name || item.text) + ' (Bal: ' + Math.abs(p.closing_balance || 0) + ' ' + (p.closing_balance >= 0 ? 'Dr' : 'Cr') + ')';
+                    if (!item.id) return item.text;
+                    if (item.party) {
+                        return item.party.customer_name || item.text;
+                    }
+                    return item.text;
                 }
             });
         }
+
         initCustomerSelect2();
 
-        function updateBalance(bal) {
-            let $badge = $('#balanceDisplay');
-            let formatted = Math.abs(bal).toFixed(2);
-            if (bal >= 0) {
-                $badge.removeClass('balance-cr').addClass('balance-dr');
-                $badge.html(formatted + ' <small>Dr</small>');
-            } else {
-                $badge.removeClass('balance-dr').addClass('balance-cr');
-                $badge.html(formatted + ' <small>Cr</small>');
-            }
-        }
-
         $('#customerId').on('select2:select', function(e) {
-            let item = e.params.data.party || e.params.data;
-            if (!item) return;
-            let bal = parseFloat(item.closing_balance) || 0;
-            updateBalance(bal);
-            let partyName = item.customer_name || '';
-            if (!$.trim($('#claimDescription').val()) && partyName) {
-                $('#claimDescription').val('Customer Claim - ' + partyName);
+            const data = e.params.data;
+            if (data.party) {
+                const bal = parseFloat(data.party.closing_balance) || 0;
+                const balFormatted = Math.abs(bal).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                const isDr = bal >= 0;
+                const $balDisplay = $('#balanceDisplay');
+                
+                $balDisplay.removeClass('balance-dr balance-cr')
+                           .addClass(isDr ? 'balance-dr' : 'balance-cr')
+                           .text(`${balFormatted} ${isDr ? 'Dr' : 'Cr'}`);
             }
         });
-
-        $('#customerId').on('select2:clear', function() {
-            updateBalance(0);
-        });
-
+        
         $('#claimPaymentForm').on('submit', function(e) {
-            e.preventDefault();
-            let form = $(this);
-
-            let customerId = $('#customerId').val();
-            let amount = parseFloat($('#claimAmount').val());
-
-            if (!customerId) {
-                Swal.fire('Customer Required', 'Please select a customer.', 'warning');
-                return;
-            }
-            if (!amount || amount <= 0) {
-                Swal.fire('Invalid Amount', 'Please enter a valid claim amount.', 'warning');
-                return;
-            }
-
-            $('#saveBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Processing...');
-
-            $.ajax({
-                url: '{{ route("claim_payment.store") }}',
-                method: 'POST',
-                data: form.serialize(),
-                dataType: 'json',
-                success: function(res) {
-                    $('#saveBtn').prop('disabled', false).html('<i class="bi bi-check2 me-1"></i> Save Claim Payment');
-                    if (res.success) {
-                        Swal.fire({
-                            title: 'Success!',
-                            text: res.message,
-                            icon: 'success',
-                            showCancelButton: true,
-                            confirmButtonText: 'View Expense Voucher',
-                            cancelButtonText: 'New Claim',
-                            confirmButtonColor: '#f59e0b'
-                        }).then((result) => {
-                            if (result.isConfirmed && res.print_url) {
-                                window.open(res.print_url, '_blank');
-                            } else {
-                                form[0].reset();
-                                $('#customerId').val(null).trigger('change');
-                                updateBalance(0);
-                            }
-                        });
-                    }
-                },
-                error: function(xhr) {
-                    $('#saveBtn').prop('disabled', false).html('<i class="bi bi-check2 me-1"></i> Save Claim Payment');
-                    let msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Something went wrong.';
-                    Swal.fire('Error', msg, 'error');
-                }
-            });
+            const btn = $('#saveBtn');
+            btn.html('<i class="spinner-border spinner-border-sm me-1"></i> Updating...').prop('disabled', true);
         });
     });
 </script>
