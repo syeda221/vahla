@@ -12,10 +12,7 @@
                 <div class="col-sm-6 text-right">
                     <a href="{{ route('product') }}" class="btn btn-outline-secondary btn-sm"><i class="las la-arrow-left"></i> Cancel</a>
                     @if(count($payload['products']) > 0)
-                    <form action="{{ route('products.import.confirm') }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-success btn-sm"><i class="las la-check"></i> Confirm & Import</button>
-                    </form>
+                    <button type="button" id="btnConfirmImport" class="btn btn-success btn-sm"><i class="las la-check"></i> Confirm & Import</button>
                     @endif
                 </div>
             </div>
@@ -25,7 +22,17 @@
     <div class="content">
         <div class="container-fluid">
             
-            <div class="row">
+            <div id="importProgressContainer" class="card shadow-sm border-0 mb-3" style="display: none;">
+                <div class="card-body">
+                    <h5 class="fw-bold text-success mb-3"><i class="las la-spinner la-spin"></i> Importing Products... Please don't close this page.</h5>
+                    <div class="progress" style="height: 25px;">
+                        <div id="importProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
+                    <div class="mt-2 text-muted text-center" id="importProgressText">Processing 0 out of X</div>
+                </div>
+            </div>
+
+            <div class="row" id="statsRow">
                 <div class="col-md-3 col-sm-6 col-12">
                     <div class="info-box shadow-sm">
                         <span class="info-box-icon bg-success"><i class="las la-plus"></i></span>
@@ -102,7 +109,11 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($payload['products'] as $ref => $pData)
+                            @php
+                                $previewProducts = array_slice($payload['products'], 0, 50, true);
+                                $totalProducts = count($payload['products']);
+                            @endphp
+                            @forelse($previewProducts as $ref => $pData)
                                 @php
                                     $exists = App\Models\Product::where('item_code', $ref)->exists();
                                 @endphp
@@ -149,6 +160,13 @@
                                     <td colspan="3" class="text-center py-4">No valid data found to import.</td>
                                 </tr>
                             @endforelse
+                            @if($totalProducts > 50)
+                                <tr>
+                                    <td colspan="3" class="text-center py-3 bg-light text-muted">
+                                        <em>... and {{ $totalProducts - 50 }} more products not shown in preview ...</em>
+                                    </td>
+                                </tr>
+                            @endif
                         </tbody>
                     </table>
                 </div>
@@ -157,4 +175,60 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('js')
+<script>
+$(document).ready(function() {
+    $('#btnConfirmImport').click(function(e) {
+        e.preventDefault();
+        let btn = $(this);
+        btn.prop('disabled', true).html('<i class="las la-spinner la-spin"></i> Starting Import...');
+        $('#importProgressContainer').show();
+        $('#statsRow, .alert, .card.shadow-sm').hide(); // Hide warnings/stats/table
+        
+        processImportChunk(0);
+    });
+    
+    function processImportChunk(offset) {
+        $.ajax({
+            url: "{{ route('products.import.confirm') }}",
+            type: "POST",
+            data: {
+                _token: "{{ csrf_token() }}",
+                offset: offset,
+                chunk_size: 250
+            },
+            success: function(res) {
+                if (res.status === 'success') {
+                    // Import is complete
+                    $('#importProgressBar').css('width', '100%').text('100%');
+                    $('#importProgressText').text('Import complete! Redirecting...');
+                    $('#btnConfirmImport').html('<i class="las la-check"></i> Complete!');
+                    window.location.href = "{{ route('product') }}";
+                } else if (res.status === 'continue') {
+                    // Update progress bar
+                    let pct = Math.round((res.processed / res.total) * 100);
+                    $('#importProgressBar').css('width', pct + '%').text(pct + '%');
+                    $('#importProgressText').text('Processed ' + res.processed + ' out of ' + res.total + ' products. Please wait...');
+                    $('#btnConfirmImport').html('<i class="las la-spinner la-spin"></i> ' + pct + '% (' + res.processed + '/' + res.total + ')');
+                    
+                    // Call next chunk
+                    processImportChunk(res.next_offset);
+                } else {
+                    alert('Import failed: ' + (res.message || 'Unknown error'));
+                    $('#btnConfirmImport').prop('disabled', false).html('<i class="las la-check"></i> Retry Import');
+                    $('#importProgressContainer').hide();
+                }
+            },
+            error: function(err) {
+                console.error(err);
+                alert('A network error occurred during import. Check console for details.');
+                $('#btnConfirmImport').prop('disabled', false).html('<i class="las la-check"></i> Retry Import');
+                $('#importProgressContainer').hide();
+            }
+        });
+    }
+});
+</script>
 @endsection

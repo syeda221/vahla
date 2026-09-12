@@ -210,6 +210,8 @@ class ProductImportExportController extends Controller
     // ──────────────────────────────────────────────────────────
     public function importValidate(Request $request)
     {
+        ini_set('memory_limit', '-1');
+        set_time_limit(0);
         $request->validate([
             'csv_file' => 'required|file|mimes:csv,txt|max:5120',
             'import_mode' => 'required|in:create,update_only',
@@ -494,11 +496,14 @@ class ProductImportExportController extends Controller
             $validPayload[$ref] = $pData;
         }
 
+        $payloadFile = 'temp_import_' . Auth::id() . '.json';
+        file_put_contents(storage_path('app/' . $payloadFile), json_encode($validPayload));
+
         // Store payload in session for confirmation
         Session::put('import_payload', [
             'mode' => $mode,
             'auto_create' => $autoCreate,
-            'products' => $validPayload,
+            'products_file' => $payloadFile,
             'master_data' => $masterDataToCreate,
             'errors' => $errors,
             'preview_stats' => [
@@ -524,22 +529,58 @@ class ProductImportExportController extends Controller
         }
         
         $payload = Session::get('import_payload');
+        $payload['products'] = [];
+        if (isset($payload['products_file'])) {
+            $path = storage_path('app/' . $payload['products_file']);
+            if (file_exists($path)) {
+                $payload['products'] = json_decode(file_get_contents($path), true);
+            }
+        }
         return view('admin_panel.product.import_preview', compact('payload'));
     }
     
     // ──────────────────────────────────────────────────────────
     //  IMPORT STEP 3: CONFIRM & IMPORT
     // ──────────────────────────────────────────────────────────
-    public function importConfirm()
+    public function importConfirm(Request $request)
     {
+        ini_set('memory_limit', '-1');
+        set_time_limit(0);
         if (!Session::has('import_payload')) {
+            if ($request->ajax()) {
+                return response()->json(['status' => 'error', 'message' => 'Import session expired.']);
+            }
             return redirect()->route('product')->with('error', 'Import session expired.');
         }
 
         $payload = Session::get('import_payload');
-        $productsToProcess = $payload['products'];
+        $productsToProcess = [];
+        if (isset($payload['products_file'])) {
+            $path = storage_path('app/' . $payload['products_file']);
+            if (file_exists($path)) {
+                $productsToProcess = json_decode(file_get_contents($path), true);
+            }
+        }
         $autoCreate = $payload['auto_create'];
         
+        $offset = (int) $request->input('offset', 0);
+        $chunkSize = (int) $request->input('chunk_size', 0);
+        $totalItems = count($productsToProcess);
+
+        if ($chunkSize > 0) {
+            $chunk = array_slice($productsToProcess, $offset, $chunkSize, true);
+        } else {
+            $chunk = $productsToProcess;
+        }
+
+        if (empty($chunk) && $request->ajax()) {
+            Session::forget('import_payload');
+            if (isset($path) && file_exists($path)) {
+                @unlink($path);
+            }
+            return response()->json(['status' => 'success']);
+        }
+
         $createdProducts = 0;
         $updatedProducts = 0;
         $createdVariants = 0;
@@ -547,12 +588,12 @@ class ProductImportExportController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. Auto Create Master Data
+            // 1. Auto Create Master Data (Only on first chunk to save time)
             $catMap = Category::pluck('id', 'name')->mapWithKeys(function ($item, $key) { return [strtolower($key) => $item]; })->toArray();
             $brandMap = Brand::pluck('id', 'name')->mapWithKeys(function ($item, $key) { return [strtolower($key) => $item]; })->toArray();
             $subCatMap = Subcategory::pluck('id', 'name')->mapWithKeys(function ($item, $key) { return [strtolower($key) => $item]; })->toArray();
             
-            if ($autoCreate) {
+            if ($autoCreate && $offset === 0) {
                 foreach ($payload['master_data']['categories'] as $catName) {
                     $key = strtolower($catName);
                     if (!isset($catMap[$key])) {
@@ -569,8 +610,231 @@ class ProductImportExportController extends Controller
                 }
             }
 
-            // 2. Process Products
-            foreach ($productsToProcess as $ref => $pData) {
+            // =========================================================================
+            // NEW OPTIMIZED LOGIC (N+1 Query Avoidance & Preloading)
+            // =========================================================================
+            $chunkItemCodes = array_keys($chunk);
+            $existingProducts = Product::whereIn('item_code', $chunkItemCodes)->get()->keyBy('item_code');
+            $existingWarehouseStocks = WarehouseStock::where('warehouse_id', 1)
+                ->whereIn('product_id', $existingProducts->pluck('id')->toArray())
+                ->get()
+                ->keyBy('product_id');
+
+            $lastProduct = Product::orderBy('id', 'desc')->first();
+            $nextProductId = $lastProduct ? $lastProduct->id + 1 : 1;
+
+            foreach ($chunk as $ref => $pData) {
+                $product = $existingProducts->get($ref);
+                
+                $cId = isset($catMap[strtolower($pData['category'])]) ? $catMap[strtolower($pData['category'])] : null;
+                $bId = isset($brandMap[strtolower($pData['brand'])]) ? $brandMap[strtolower($pData['brand'])] : null;
+                $sId = isset($subCatMap[strtolower($pData['sub_category'])]) ? $subCatMap[strtolower($pData['sub_category'])] : null;
+                
+                $finalVariants = [];
+                $existingTotalStock = 0;
+                
+                if ($product) {
+                    // Update Product
+                    $existingVariants = [];
+                    if (!empty($product->color)) {
+                        $parsed = is_string($product->color) ? json_decode($product->color, true) : $product->color;
+                        if (is_array($parsed)) $existingVariants = $parsed;
+                    }
+                    
+                    if ($payload['mode'] === 'update_only') {
+                        $finalVariants = []; 
+                    } else {
+                        $finalVariants = $existingVariants; 
+                    }
+                    
+                    foreach ($pData['variants'] as $newV) {
+                        $foundIdx = -1;
+                        $oldBarcode = '';
+                        
+                        foreach ($finalVariants as $idx => $eV) {
+                            if (strcasecmp($eV['name'] ?? '', $newV['name']) === 0 && 
+                                strcasecmp($eV['size'] ?? '', $newV['size']) === 0 && 
+                                strcasecmp($eV['color'] ?? '', $newV['color']) === 0) {
+                                $foundIdx = $idx;
+                                $oldBarcode = $eV['barcode'] ?? '';
+                                break;
+                            }
+                        }
+                        
+                        $vArr = [
+                            'name'             => $newV['name'],
+                            'size'             => $newV['size'],
+                            'color'            => $newV['color'],
+                            'unit'             => $newV['unit'] ?? ($pData['size_mode'] === 'by_kg' ? 'Kg' : 'Pcs'),
+                            'conv_factor'      => (float)($newV['conv_factor'] ?? 1),
+                            'weight_per_piece' => (float)($newV['weight_per_piece'] ?? 0),
+                            'stock'            => $newV['stock'],
+                            'sale_price'       => $newV['sale_price'],
+                            'wholesale_price'  => $newV['wholesale_price'] ?? 0,
+                            'purch_price'      => $newV['purch_price'],
+                            'barcode'          => $newV['barcode'] ?: $oldBarcode,
+                            'is_base_variant'  => (int)($newV['is_base_variant'] ?? 0),
+                            'alert'            => (float)($newV['alert'] ?? 0),
+                        ];
+                        
+                        if ($foundIdx >= 0) {
+                            $finalVariants[$foundIdx] = $vArr;
+                            $updatedVariants++;
+                        } else {
+                            $finalVariants[] = $vArr;
+                            $createdVariants++;
+                        }
+                    }
+                    
+                    $stockTotal = 0;
+                    foreach ($finalVariants as $v) {
+                        $stk = (float) ($v['stock'] ?? 0);
+                        $f = (float) ($v['conv_factor'] ?? 1);
+                        $u = strtolower($v['unit'] ?? '');
+                        if (($pData['size_mode'] === 'by_kg' || $pData['size_mode'] === 'by_gm') && ($u === 'pcs' || $u === 'pc') && $f > 0) {
+                            $stockTotal += ($stk * $f);
+                        } elseif ($u === 'gm' || $u === 'g') {
+                            $stockTotal += ($stk / 1000.0);
+                        } else {
+                            $stockTotal += $stk;
+                        }
+                    }
+                    
+                    $product->update([
+                        'item_name' => $pData['name'],
+                        'category_id' => $cId,
+                        'sub_category_id' => $sId,
+                        'brand_id' => $bId,
+                        'size_mode' => $pData['size_mode'],
+                        'pieces_per_box' => $pData['pcs_per_carton'],
+                        'sale_discount_percent' => $pData['sale_discount'],
+                        'purchase_discount_percent' => $pData['purch_discount'],
+                        'sale_price_per_piece' => $finalVariants[0]['sale_price'] ?? 0,
+                        'wholesale_price' => $finalVariants[0]['wholesale_price'] ?? 0,
+                        'purchase_price_per_piece' => $finalVariants[0]['purch_price'] ?? 0,
+                        'color' => json_encode($finalVariants),
+                        'is_active' => $pData['is_active'],
+                    ]);
+                    
+                    $ws = $existingWarehouseStocks->get($product->id);
+                    if (!$ws) {
+                        $ws = new WarehouseStock([
+                            'warehouse_id' => 1,
+                            'product_id' => $product->id
+                        ]);
+                    }
+
+                    $diff = $stockTotal - ($ws->total_pieces ?? 0);
+                    $ws->total_pieces = $stockTotal;
+                    $ws->quantity = floor($stockTotal / max(1, $pData['pcs_per_carton']));
+                    $ws->remarks = 'Updated via Bulk Import';
+                    $ws->save();
+                    
+                    if ($diff != 0) {
+                        StockMovement::create([
+                            'product_id' => $product->id,
+                            'type'       => 'adjustment',
+                            'qty'        => $diff,
+                            'ref_type'   => 'IMPORT',
+                            'note'       => 'Stock adjusted via CSV import',
+                        ]);
+                    }
+                    
+                    $updatedProducts++;
+                    
+                } else {
+                    // Create New Product
+                    foreach ($pData['variants'] as $newV) {
+                        $finalVariants[] = [
+                            'name'             => $newV['name'],
+                            'size'             => $newV['size'],
+                            'color'            => $newV['color'],
+                            'unit'             => $newV['unit'] ?? ($pData['size_mode'] === 'by_kg' ? 'Kg' : 'Pcs'),
+                            'conv_factor'      => (float)($newV['conv_factor'] ?? 1),
+                            'weight_per_piece' => (float)($newV['weight_per_piece'] ?? 0),
+                            'stock'            => $newV['stock'],
+                            'sale_price'       => $newV['sale_price'],
+                            'wholesale_price'  => $newV['wholesale_price'] ?? 0,
+                            'purch_price'      => $newV['purch_price'],
+                            'barcode'          => $newV['barcode'],
+                            'is_base_variant'  => (int)($newV['is_base_variant'] ?? 0),
+                            'alert'            => (float)($newV['alert'] ?? 0),
+                        ];
+                        $createdVariants++;
+                    }
+                    
+                    $stockTotal = 0;
+                    foreach ($finalVariants as $v) {
+                        $stk = (float) ($v['stock'] ?? 0);
+                        $f = (float) ($v['conv_factor'] ?? 1);
+                        $u = strtolower($v['unit'] ?? '');
+                        if (($pData['size_mode'] === 'by_kg' || $pData['size_mode'] === 'by_gm') && ($u === 'pcs' || $u === 'pc') && $f > 0) {
+                            $stockTotal += ($stk * $f);
+                        } elseif ($u === 'gm' || $u === 'g') {
+                            $stockTotal += ($stk / 1000.0);
+                        } else {
+                            $stockTotal += $stk;
+                        }
+                    }
+                    
+                    $actualRef = 'ITEM-'.str_pad($nextProductId, 4, '0', STR_PAD_LEFT);
+                    $nextProductId++;
+                    
+                    $product = Product::create([
+                        'creater_id' => Auth::id(),
+                        'item_code' => $actualRef,
+                        'item_name' => $pData['name'],
+                        'category_id' => $cId,
+                        'sub_category_id' => $sId,
+                        'brand_id' => $bId,
+                        'size_mode' => $pData['size_mode'],
+                        'pieces_per_box' => $pData['pcs_per_carton'],
+                        'sale_discount_percent' => $pData['sale_discount'],
+                        'purchase_discount_percent' => $pData['purch_discount'],
+                        'sale_price_per_piece' => $finalVariants[0]['sale_price'] ?? 0,
+                        'wholesale_price' => $finalVariants[0]['wholesale_price'] ?? 0,
+                        'purchase_price_per_piece' => $finalVariants[0]['purch_price'] ?? 0,
+                        'color' => json_encode($finalVariants),
+                        'is_active' => $pData['is_active'],
+                        'is_part' => 0,
+                        'is_assembled' => 0,
+                        'barcode_path' => rand(100000000000, 999999999999), 
+                        'total_m2' => 0,
+                        'price_per_m2' => 0,
+                        'purchase_price_per_m2' => 0,
+                        'pieces_per_m2' => 0,
+                        'height' => 0,
+                        'width' => 0,
+                    ]);
+                    
+                    WarehouseStock::create([
+                        'warehouse_id' => 1,
+                        'product_id'   => $product->id,
+                        'quantity'     => floor($stockTotal / max(1, $pData['pcs_per_carton'])),
+                        'total_pieces' => $stockTotal,
+                        'remarks'      => 'Initial Stock via Import',
+                    ]);
+                    
+                    if ($stockTotal > 0) {
+                        StockMovement::create([
+                            'product_id' => $product->id,
+                            'type'       => 'adjustment',
+                            'qty'        => $stockTotal,
+                            'ref_type'   => 'IMPORT',
+                            'note'       => 'Initial Stock via CSV import',
+                        ]);
+                    }
+                    
+                    $createdProducts++;
+                }
+            }
+            // =========================================================================
+
+            /*
+            // =========================================================================
+            // OLD SLOW LOGIC (Commented out for rollback purposes if needed)
+            // =========================================================================
+            foreach ($chunk as $ref => $pData) {
                 $product = Product::where('item_code', $ref)->first();
                 
                 $cId = isset($catMap[strtolower($pData['category'])]) ? $catMap[strtolower($pData['category'])] : null;
@@ -774,14 +1038,34 @@ class ProductImportExportController extends Controller
                     $createdProducts++;
                 }
             }
+            */
 
             DB::commit();
-            Session::forget('import_payload');
             
-            return redirect()->route('product')->with('success', "Import completed successfully. {$createdProducts} products created, {$updatedProducts} products updated. {$createdVariants} variants created, {$updatedVariants} variants updated.");
+            if ($request->ajax()) {
+                return response()->json([
+                    'status' => 'continue',
+                    'processed' => $offset + count($chunk),
+                    'total' => $totalItems,
+                    'next_offset' => $offset + count($chunk)
+                ]);
+            }
+            
+            Session::forget('import_payload');
+            if (isset($path) && file_exists($path)) {
+                @unlink($path);
+            }
+            
+            return redirect()->route('product')->with('success', "Import completed successfully.");
             
         } catch (\Exception $e) {
             DB::rollBack();
+            if ($request->ajax()) {
+                return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            if (isset($path) && file_exists($path)) {
+                @unlink($path);
+            }
             return redirect()->route('product')->with('error', 'Import failed: ' . $e->getMessage());
         }
     }
