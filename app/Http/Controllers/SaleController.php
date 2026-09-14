@@ -1887,30 +1887,31 @@ class SaleController extends Controller
             $productMode = $item->product->size_mode ?? '';
             $qtyPieces = (float)$item->total_pieces;
 
-            if ($productMode === 'by_kg' || $productMode === 'by_gm') {
-                $factor = 1.0;
-                $unit = '';
+            $factor = 1.0;
+            $unit = '';
 
-                if (!empty($item->color)) {
-                    try {
-                        $itemColor = $item->color;
-                        $b64Decoded = base64_decode($itemColor, true);
-                        $variantData = $b64Decoded !== false ? json_decode($b64Decoded, true) : null;
-                        if (!is_array($variantData)) {
-                            $variantData = is_string($itemColor) ? json_decode($itemColor, true) : $itemColor;
+            if (!empty($item->color)) {
+                try {
+                    $itemColor = $item->color;
+                    $b64Decoded = base64_decode($itemColor, true);
+                    $variantData = $b64Decoded !== false ? json_decode($b64Decoded, true) : null;
+                    if (!is_array($variantData)) {
+                        $variantData = is_string($itemColor) ? json_decode($itemColor, true) : $itemColor;
+                    }
+                    if (is_array($variantData)) {
+                        if (isset($variantData['conv_factor']) && (float)$variantData['conv_factor'] > 0) {
+                            $factor = (float)$variantData['conv_factor'];
+                        } elseif (isset($variantData['weight_per_piece']) && (float)$variantData['weight_per_piece'] > 0) {
+                            $factor = (float)$variantData['weight_per_piece'] / 1000.0;
                         }
-                        if (is_array($variantData)) {
-                            if (isset($variantData['conv_factor']) && (float)$variantData['conv_factor'] > 0) {
-                                $factor = (float)$variantData['conv_factor'];
-                            } elseif (isset($variantData['weight_per_piece']) && (float)$variantData['weight_per_piece'] > 0) {
-                                $factor = (float)$variantData['weight_per_piece'] / 1000.0;
-                            }
-                            if (isset($variantData['unit'])) {
-                                $unit = strtolower($variantData['unit']);
-                            }
+                        if (isset($variantData['unit'])) {
+                            $unit = strtolower(trim($variantData['unit']));
                         }
-                    } catch (\Exception $e) {}
-                }
+                    }
+                } catch (\Exception $e) {}
+            }
+
+            if ($productMode === 'by_kg' || $productMode === 'by_gm') {
 
                 if ($unit === 'gm' || $unit === 'g') {
                     $qtyPieces = ((float)$item->qty) / 1000.0;
@@ -1918,6 +1919,20 @@ class SaleController extends Controller
                     $qtyPieces = ((float)$item->qty) * $factor;
                 } else {
                     $qtyPieces = (float)$item->qty > 0 ? (float)$item->qty : (float)$item->total_pieces;
+                }
+            } else {
+                // Ensure we respect the unit toggle for by_pieces and by_cartons products as well
+                if ($unit === 'pcs' || $unit === 'piece' || $unit === 'pieces') {
+                    $qtyPieces = (float)$item->qty;
+                } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'cbn' || $unit === 'box') {
+                    $ppb = (float)($item->product->pieces_per_box ?? 1);
+                    if (isset($factor) && $factor > 0 && $factor != 1.0) {
+                        $ppb = $factor;
+                    }
+                    if ($ppb <= 0) $ppb = 1;
+                    $qtyPieces = ((float)$item->qty) * $ppb;
+                } else {
+                    $qtyPieces = (float)$item->total_pieces > 0 ? (float)$item->total_pieces : (float)$item->qty;
                 }
             }
 
@@ -2062,6 +2077,7 @@ class SaleController extends Controller
             ->join('sales as s', 's.id', '=', 'si.sale_id')
             ->where('si.product_id', $product->id)
             ->whereIn('s.sale_status', ['posted', 'returned'])
+            ->where('s.id', '!=', $item->sale_id) // Exclude current sale to avoid double deduction
             ->select('si.total_pieces', 'si.color')
             ->get();
         foreach ($salesList as $sItem) {
@@ -2447,6 +2463,9 @@ class SaleController extends Controller
             return redirect()->back()->with('error', 'Only booked or quotation sales can be confirmed.');
         }
 
+        $originalStatus = $sale->sale_status;
+        $typeLabel = $originalStatus === 'quotation' ? 'Quotation' : 'Booking';
+
         DB::beginTransaction();
         try {
             // Update status to posted (which is the system-wide confirmed status)
@@ -2480,11 +2499,11 @@ class SaleController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Booking confirmed and converted to sale successfully.');
+            return redirect()->back()->with('success', $typeLabel . ' confirmed and converted to sale successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Booking Confirmation Error: '.$e->getMessage());
-            return redirect()->back()->with('error', 'Failed to confirm booking: '.$e->getMessage());
+            \Log::error($typeLabel . ' Confirmation Error: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Failed to confirm ' . strtolower($typeLabel) . ': '.$e->getMessage());
         }
     }
 
