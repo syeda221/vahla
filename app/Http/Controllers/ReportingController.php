@@ -2045,6 +2045,133 @@ class ReportingController extends Controller
         ]);
     }
 
+    public function agent_ledger_report()
+    {
+        $agents = DB::table('agents')->select('id', 'name')->orderBy('name')->get();
+
+        return view('admin_panel.reporting.agent_ledger_report', compact('agents'));
+    }
+
+    public function fetch_agent_ledger(Request $request)
+    {
+        $agentId = $request->agent_id;
+        $start = $request->start_date ?: '2000-01-01';
+        $end = $request->end_date ?: date('Y-m-d');
+
+        // All agents
+        if (! $agentId || $agentId === 'all') {
+            $agents = DB::table('agents')->select('id', 'name')->orderBy('name')->get();
+
+            $allTransactions = [];
+            $totalOpening = 0;
+
+            foreach ($agents as $agent) {
+                $ledgerData = $this->buildAgentLedger($agent->id, $start, $end);
+
+                $totalOpening += $ledgerData['opening_balance'];
+
+                foreach ($ledgerData['transactions'] as $row) {
+                    $row['agent_name'] = $ledgerData['name'];
+                    $allTransactions[] = $row;
+                }
+            }
+
+            // Sort by date then by id
+            usort($allTransactions, function ($a, $b) {
+                return [$a['sort_date'], $a['id']] <=> [$b['sort_date'], $b['id']];
+            });
+
+            // Recalculate running balance across all agents
+            $running = $totalOpening;
+            foreach ($allTransactions as &$t) {
+                $running += ($t['credit'] - $t['debit']);
+                $t['balance'] = $running;
+                $t['sort_date'] = null;
+                $t['id'] = null;
+            }
+
+            return response()->json([
+                'agent' => (object) ['name' => 'All Agents'],
+                'opening_balance' => $totalOpening,
+                'closing_balance' => $running,
+                'transactions' => $allTransactions,
+                'report_period' => "$start to $end",
+            ]);
+        }
+
+        // Single agent
+        $agent = DB::table('agents')->where('id', $agentId)->first();
+        if (! $agent) {
+            return response()->json(['error' => 'Agent not found'], 400);
+        }
+
+        $ledgerData = $this->buildAgentLedger($agentId, $start, $end);
+
+        return response()->json([
+            'agent' => $agent,
+            'opening_balance' => $ledgerData['opening_balance'],
+            'closing_balance' => $ledgerData['closing_balance'],
+            'transactions' => $ledgerData['transactions'],
+            'report_period' => "$start to $end",
+        ]);
+    }
+
+    private function buildAgentLedger($agentId, $start, $end)
+    {
+        $agent = DB::table('agents')->where('id', $agentId)->first();
+
+        // Opening balance = balance of the last ledger entry before the start date.
+        $openingEntry = DB::table('agent_ledgers')
+            ->where('agent_id', $agentId)
+            ->where('date', '<', $start)
+            ->orderByDesc('id')
+            ->first();
+
+        $openingBalance = $openingEntry ? (float) $openingEntry->balance : 0;
+
+        $entries = DB::table('agent_ledgers')
+            ->where('agent_id', $agentId)
+            ->whereBetween('date', [$start, $end])
+            ->orderBy('id')
+            ->get();
+
+        $transactions = [];
+        $running = $openingBalance;
+
+        foreach ($entries as $e) {
+            $commission = (float) $e->commission_amount;
+            $payment = (float) $e->payment_amount;
+            $running += ($commission - $payment);
+
+            if ($commission > 0) {
+                $description = $e->remarks ?: ('Commission against Sale ' . $e->sale_invoice_no);
+            } elseif ($payment > 0) {
+                $description = $e->remarks ?: 'Commission Payment';
+            } else {
+                $description = $e->remarks ?: '-';
+            }
+
+            $transactions[] = [
+                'sort_date' => $e->date,
+                'id' => $e->id,
+                'date' => \Carbon\Carbon::parse($e->date)->format('d-M-Y'),
+                'invoice' => $e->sale_invoice_no ?: ($commission > 0 ? 'COMM' : 'PAY'),
+                'description' => $description,
+                'reference' => $e->reference ?: '-',
+                'debit' => $payment,   // payment reduces what we owe the agent (Dr)
+                'credit' => $commission, // commission increases the payable (Cr)
+                'balance' => $running,
+            ];
+        }
+
+        return [
+            'name' => $agent->name ?? 'Unknown',
+            'opening_balance' => $openingBalance,
+            'closing_balance' => $running,
+            'transactions' => $transactions,
+        ];
+    }
+
     public function balance_sheet_report()
     {
         return view('admin_panel.reporting.balance_sheet');

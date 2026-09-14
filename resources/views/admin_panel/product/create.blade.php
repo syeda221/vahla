@@ -635,7 +635,7 @@
                                             <table class="table table-bordered table-sm align-middle mb-1" id="variantsTable">
                                                 <thead class="table-light">
                                                     <tr>
-                                                        <th class="text-uppercase text-muted p-1" style="min-width: 140px; font-size: 10px;">Variant Name</th>
+                                                        <th class="text-uppercase text-muted p-1" style="min-width: 140px; font-size: 10px;">Attribute Name</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Size</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Color</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Unit</th>

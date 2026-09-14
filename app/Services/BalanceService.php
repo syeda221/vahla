@@ -774,6 +774,64 @@ class BalanceService
     }
 
     /**
+     * Get Agent Commission Expense account ID (Expense - Debit nature).
+     * Auto-creates if missing.
+     */
+    public function getCommissionExpenseId(): int
+    {
+        $account = Account::where('title', 'like', '%Agent Commission%')
+            ->orWhere('account_code', 'COMM_EXP')
+            ->where(function ($q) {
+                $q->where('title', 'like', '%Expense%')
+                    ->orWhere('title', 'like', '%Commission Expense%');
+            })
+            ->first();
+
+        if (! $account) {
+            \Log::info('BalanceService: Agent Commission Expense missing, creating it.');
+            $account = Account::create([
+                'title' => 'Agent Commission Expense',
+                'account_code' => 'COMM_EXP',
+                'type' => 'Debit',
+                'head_id' => null,
+                'opening_balance' => 0,
+                'current_balance' => 0,
+                'status' => 1,
+                'is_active' => 1,
+            ]);
+        }
+
+        return $account->id;
+    }
+
+    /**
+     * Get Commission Payable account ID (Liability - Credit nature).
+     * Auto-creates if missing.
+     */
+    public function getCommissionPayableId(): int
+    {
+        $account = Account::where('title', 'like', '%Commission Payable%')
+            ->orWhere('account_code', 'COMM_PAY')
+            ->first();
+
+        if (! $account) {
+            \Log::info('BalanceService: Commission Payable missing, creating it.');
+            $account = Account::create([
+                'title' => 'Commission Payable',
+                'account_code' => 'COMM_PAY',
+                'type' => 'Credit',
+                'head_id' => null,
+                'opening_balance' => 0,
+                'current_balance' => 0,
+                'status' => 1,
+                'is_active' => 1,
+            ]);
+        }
+
+        return $account->id;
+    }
+
+    /**
      * Format balance with Dr/Cr indicator
      */
     public static function formatBalance(float $balance): string

@@ -10,12 +10,19 @@ class Sale extends Model
     protected $fillable = [
         'customer_id', 'reference', 'total_amount_Words', 'total_bill_amount',
         'total_extradiscount', 'total_net', 'cash', 'card', 'change', 'change_account_id',
-        'total_items', 'discount_type', 'sale_status', 'invoice_no', 'is_booking'
+        'total_items', 'discount_type', 'sale_status', 'invoice_no', 'is_booking',
+        'agent_id', 'commission_type', 'commission_value', 'commission_amount',
+        'commission_paid', 'commission_expense_voucher_id'
     ];
 
     public function customer_relation()
     {
         return $this->belongsTo(Customer::class, 'customer_id', 'id');
+    }
+
+    public function agent()
+    {
+        return $this->belongsTo(Agent::class, 'agent_id', 'id');
     }
 
     public function change_account()

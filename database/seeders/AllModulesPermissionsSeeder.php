@@ -71,6 +71,7 @@ class AllModulesPermissionsSeeder extends Seeder
             'branches',
             'zones',
             'sales.officers',
+            'agents',
             'narrations',
             'executive.report',
             'package.types',

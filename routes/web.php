@@ -2,6 +2,7 @@
 <?php
 
 use App\Http\Controllers\AccountsHeadController;
+use App\Http\Controllers\AgentController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CategoryController;
@@ -280,6 +281,18 @@ Route::middleware('auth')->group(function () {
     Route::get('sales-officers/edit/{id}', [SalesOfficerController::class, 'edit'])->middleware('permission:sales.officers.edit')->name('sales.officer.edit');
     Route::delete('sales-officers/{id}', [SalesOfficerController::class, 'destroy'])->middleware('permission:sales.officers.delete')->name('sales-officer.delete');
 
+    // Agents & Commission
+    Route::get('/agents', [AgentController::class, 'index'])->middleware('permission:agents.view')->name('agents.index');
+    Route::post('/agents/store', [AgentController::class, 'store'])->middleware('permission:agents.create|agents.edit')->name('agents.store');
+    Route::get('/agents/edit/{id}', [AgentController::class, 'edit'])->middleware('permission:agents.edit')->name('agents.edit');
+    Route::post('/agents/quick-store', [AgentController::class, 'quickStore'])->middleware('permission:agents.create|agents.edit|sales.create')->name('agents.quick_store');
+    Route::get('/agents/json', [AgentController::class, 'getAgentsJson'])->middleware('permission:sales.create')->name('agents.json');
+    Route::post('/agents/toggle-status/{id}', [AgentController::class, 'toggleStatus'])->middleware('permission:agents.edit')->name('agents.toggle_status');
+    Route::delete('/agents/{id}', [AgentController::class, 'destroy'])->middleware('permission:agents.delete')->name('agents.destroy');
+    Route::get('/agents/{id}/ledger', [AgentController::class, 'ledger'])->middleware('permission:agents.view')->name('agents.ledger');
+    Route::post('/agents/{id}/pay-commission', [AgentController::class, 'payCommission'])->middleware('permission:agents.create')->name('agents.pay_commission');
+    Route::get('/agents/{id}/balance', [AgentController::class, 'getBalance'])->middleware('permission:agents.view')->name('agents.balance');
+
     // products
 
     route::get('/Purchase', [PurchaseController::class, 'index'])->middleware('permission:purchases.view')->name('Purchase.home');
@@ -493,6 +506,9 @@ Route::middleware('auth')->group(function () {
 
     Route::get('report/vendor/ledger', [ReportingController::class, 'vendor_ledger_report'])->middleware('permission:vendor.ledger.view')->name('report.vendor.ledger');
     Route::get('report/vendor-ledger/fetch', [ReportingController::class, 'fetch_vendor_ledger'])->middleware('permission:vendor.ledger.view')->name('report.vendor.ledger.fetch');
+
+    Route::get('report/agent-ledger', [ReportingController::class, 'agent_ledger_report'])->middleware('permission:agents.view')->name('report.agent.ledger');
+    Route::get('report/agent-ledger/fetch', [ReportingController::class, 'fetch_agent_ledger'])->middleware('permission:agents.view')->name('report.agent.ledger.fetch');
 
     Route::get('reports/onhand', [ReportingController::class, 'onhand'])->middleware('permission:inventory.onhand.view')->name('reports.onhand');
 

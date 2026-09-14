@@ -68,6 +68,7 @@ class ModulesTableSeeder extends Seeder
             'branches',
             'zones',
             'sales.officers',
+            'agents',
             'narrations',
             'package.types',
             // HR Modules

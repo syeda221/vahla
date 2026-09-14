@@ -188,6 +188,32 @@
             border-color: var(--pos-border-focus) !important;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
         }
+        #agentSelect + .select2-container--default .select2-selection--single {
+            height: 32px !important;
+            min-height: 32px !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            border: 1px solid var(--pos-border) !important;
+            border-radius: 6px !important;
+            background-color: #ffffff !important;
+        }
+        #agentSelect + .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 30px !important;
+            padding-left: 8px !important;
+            font-size: 0.8rem !important;
+            color: var(--pos-text-main) !important;
+            font-weight: 500 !important;
+        }
+        #agentSelect + .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 30px !important;
+            top: 0 !important;
+            right: 4px !important;
+        }
+        #agentSelect + .select2-container--default.select2-container--focus .select2-selection--single {
+            border-color: var(--pos-border-focus) !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+        }
 
         /* Transaction Grid / Table */
         .table-responsive {
@@ -578,7 +604,7 @@
                 <div class="top-info-card mb-3">
                     <div class="row g-2 align-items-end w-100 m-0">
                         <!-- Invoice No with Prefix Dropdown & Refresh -->
-                        <div class="col-sm-6 col-md-3 col-lg-2">
+                        <div class="col-sm-6 col-md-4 col-lg-2">
                             <label class="meta-label"><i class="fas fa-receipt text-primary"></i> Invoice No.</label>
                             <div class="input-group input-group-sm invoice-group">
                                 <button class="btn btn-prefix dropdown-toggle d-flex align-items-center gap-1" 
@@ -625,21 +651,37 @@
                         </div>
 
                         <!-- Date -->
-                        <div class="col-sm-6 col-md-2 col-lg-2">
+                        <div class="col-sm-6 col-md-3 col-lg-2">
                             <label class="meta-label"><i class="far fa-calendar-alt text-primary"></i> Date</label>
                             <input type="text" name="sale_date" class="form-control datepicker-custom text-center fw-bold" id="displayDateInput" value="{{ date('Y-m-d') }}">
                         </div>
 
                         <!-- Cr. Days -->
-                        <div class="col-sm-6 col-md-1 col-lg-1">
+                        <div class="col-sm-6 col-md-2 col-lg-1">
                             <label class="meta-label"><i class="fas fa-clock text-muted"></i> Cr. Days</label>
                             <input type="number" class="form-control text-center fw-bold" name="credit_days" placeholder="0" min="0" value="{{ $sale->credit_days ?? '0' }}">
                         </div>
 
                         <!-- Remarks -->
-                        <div class="col-sm-6 col-md-2 col-lg-2">
+                        <div class="col-sm-6 col-md-3 col-lg-2">
                             <label class="meta-label"><i class="far fa-comment-dots text-muted"></i> Remarks</label>
                             <input type="text" class="form-control" name="reference" id="remarks" placeholder="Notes / Ref...">
+                        </div>
+
+                        <!-- Agent -->
+                        <div class="col-sm-6 col-md-4 col-lg-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="meta-label mb-0"><i class="fas fa-handshake text-primary"></i> Agent</label>
+                                <button type="button" id="btnOpenAddAgentModal" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill fw-bold" title="Quick Add Agent" style="font-size: 0.7rem; height: 20px; line-height: 1;">
+                                    <i class="fas fa-user-plus"></i> Quick
+                                </button>
+                            </div>
+                            <select class="form-select" id="agentSelect" name="agent_id" style="width:100%">
+                                <option value="">-- No Agent --</option>
+                                @foreach ($agents as $agent)
+                                    <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
 
                         <!-- Customer Type (Hidden) -->
@@ -651,7 +693,7 @@
                         </div>
 
                         <!-- Customer & Walk-in Toggle -->
-                        <div class="col-sm-6 col-md-4 col-lg-3">
+                        <div class="col-sm-6 col-md-8 col-lg-3">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="meta-label mb-0"><i class="fas fa-user text-primary"></i> Customer</label>
                                 <div class="btn-group" role="group" id="partyTypeToggle">
@@ -674,7 +716,7 @@
                         </div>
 
                         <!-- Sub-Customer Selection (Shown if parent has sub-customers) -->
-                        <div class="col-sm-6 col-md-2 col-lg-2 d-none" id="subCustomerCol">
+                        <div class="col-sm-6 col-md-6 col-lg-2 d-none" id="subCustomerCol">
                             <label class="meta-label mb-1 text-primary"><i class="fas fa-code-branch text-primary"></i> Sub-Customer</label>
                             <select class="form-select" id="subCustomerSelect" name="sub_customer_id" style="width:100%">
                                 <option value="">-- Main Customer --</option>
@@ -682,7 +724,7 @@
                         </div>
 
                         <!-- Save Sale Button -->
-                        <div class="col-sm-12 col-md-12 col-lg-1 d-flex align-items-end">
+                        <div class="col-12 d-flex align-items-end">
                             <input type="hidden" name="is_walkin" id="is_walkin" value="0">
                             <input type="hidden" name="actual_customer_id" id="actualCustomerId" value="">
                             {{-- <button type="button" class="btn btn-top-save w-100 fw-bold d-flex align-items-center justify-content-center gap-1" id="btnHeaderSaveSale" style="font-size: 0.75rem;">
@@ -871,6 +913,22 @@
                                 <div class="summary-row">
                                     <span class="fw-bold text-dark">Net Total</span>
                                     <span class="summary-val-net" id="tSub">0.00</span>
+                                </div>
+                                <div class="summary-row" id="commissionInputRow">
+                                    <span class="text-muted d-flex align-items-center gap-2">
+                                        <i class="fas fa-handshake text-success"></i> Commission
+                                        <span class="btn-group btn-group-sm" role="group" id="commissionTypeToggle">
+                                            <input type="radio" class="btn-check" name="commission_type" id="commTypePercent" value="percent" checked>
+                                            <label class="btn btn-outline-primary px-2 py-0 fw-bold" for="commTypePercent" style="font-size:0.65rem;">%</label>
+                                            <input type="radio" class="btn-check" name="commission_type" id="commTypeFixed" value="fixed">
+                                            <label class="btn btn-outline-primary px-2 py-0 fw-bold" for="commTypeFixed" style="font-size:0.65rem;">Rs</label>
+                                        </span>
+                                    </span>
+                                    <input type="number" step="0.01" min="0" id="commissionValue" name="commission_value" class="form-control form-control-sm text-end fw-bold" style="width: 90px; height: 26px; font-size: 0.75rem;" placeholder="0.00" disabled>
+                                </div>
+                                <div class="summary-row" id="commissionDisplayRow">
+                                    <span class="text-muted" style="font-size:0.75rem;"><i class="fas fa-handshake text-success me-1"></i>Agent Commission</span>
+                                    <span class="fw-bold text-success text-end" id="tCommission">0.00</span>
                                 </div>
                                 <div class="summary-row">
                                     <span class="text-muted">Total Paid</span>
@@ -1064,6 +1122,43 @@
         </div>
     </div>
 
+    <!-- Quick Add Agent Modal -->
+    <div class="modal fade" id="addAgentModal" tabindex="-1" aria-labelledby="addAgentModalLabel" aria-hidden="true" style="z-index: 1065;">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-success text-white py-2">
+                    <h5 class="modal-title fw-bold text-white mb-0" id="addAgentModalLabel" style="font-size: 1rem;">
+                        <i class="fas fa-handshake me-2"></i>Quick Add Agent
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="ajaxAddAgentForm" autocomplete="off">
+                        @csrf
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Agent Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="name" id="newAgentName" required placeholder="e.g. Muhammad Riaz">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Contact Number <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="contact_number" id="newAgentContact" required placeholder="0300-1234567">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Address <small class="text-muted fw-normal">(optional)</small></label>
+                            <input type="text" class="form-control" name="address" id="newAgentAddress" placeholder="City / Area">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success btn-sm fw-bold" id="btnSaveAjaxAgent">
+                        <i class="fas fa-save me-1"></i> Save Agent
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- ===== QUICK ADD PRODUCT MODAL ===== --}}
 <!-- <div class="modal fade" id="quickAddProductModal" tabindex="-1" aria-labelledby="quickAddProductModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -1163,6 +1258,90 @@
             }
             updateGrandTotals();
             refreshPostedState();
+
+            // ============================================================
+            // AGENT & COMMISSION
+            // ============================================================
+            $('#agentSelect').select2({
+                placeholder: '-- No Agent --',
+                allowClear: true,
+                width: '100%'
+            });
+
+            function updateCommissionPreview() {
+                const agentId = $('#agentSelect').val();
+                if (!agentId) {
+                    $('#commissionValue').prop('disabled', true);
+                    $('input[name="commission_type"]').prop('disabled', true);
+                    $('#tCommission').text('0.00');
+                    return;
+                }
+                $('#commissionValue').prop('disabled', false);
+                $('input[name="commission_type"]').prop('disabled', false);
+                const base = toNum($('#walkinNetTotal').text());
+                const type = $('input[name="commission_type"]:checked').val() || 'percent';
+                const value = toNum($('#commissionValue').val());
+                let amt = type === 'percent' ? (base * value / 100) : value;
+                amt = Math.max(0, amt);
+                $('#tCommission').text(amt.toFixed(2));
+            }
+
+            $(document).on('change', '#agentSelect', updateCommissionPreview);
+            $(document).on('input', '#commissionValue', updateCommissionPreview);
+            $(document).on('change', 'input[name="commission_type"]', updateCommissionPreview);
+
+            // Extend updateGrandTotals so the live preview stays in sync with items/discounts
+            const _origUpdateGrandTotals = window.updateGrandTotals;
+            window.updateGrandTotals = function() {
+                _origUpdateGrandTotals();
+                if (typeof updateCommissionPreview === 'function') updateCommissionPreview();
+            };
+
+            function openBsModal(modalId) {
+                if (typeof $('#' + modalId).modal === 'function') {
+                    $('#' + modalId).modal('show');
+                } else {
+                    let m = bootstrap.Modal.getOrCreateInstance(document.getElementById(modalId));
+                    m.show();
+                }
+            }
+
+            function closeBsModal(modalId) {
+                if (typeof $('#' + modalId).modal === 'function') {
+                    $('#' + modalId).modal('hide');
+                } else {
+                    let m = bootstrap.Modal.getInstance(document.getElementById(modalId));
+                    if (m) m.hide();
+                }
+            }
+
+            // Quick Add Agent
+            $('#btnOpenAddAgentModal').on('click', function() {
+                $('#ajaxAddAgentForm')[0].reset();
+                openBsModal('addAgentModal');
+            });
+
+            $('#btnSaveAjaxAgent').on('click', function() {
+                const formData = $('#ajaxAddAgentForm').serialize();
+                $('#btnSaveAjaxAgent').prop('disabled', true);
+                $.post('{{ route('agents.quick_store') }}', formData)
+                    .done(function(res) {
+                        closeBsModal('addAgentModal');
+                        const opts = '<option value=""></option>' + res.agents.map(function(a) {
+                            return `<option value="${a.id}">${a.name}</option>`;
+                        }).join('');
+                        $('#agentSelect').html(opts).val(res.agent.id).trigger('change');
+                        updateCommissionPreview();
+                        showAlert('success', 'Agent added successfully');
+                    })
+                    .fail(function(xhr) {
+                        const msg = xhr.responseJSON?.message || 'Failed to add agent';
+                        showAlert('error', msg);
+                    })
+                    .always(function() {
+                        $('#btnSaveAjaxAgent').prop('disabled', false);
+                    });
+            });
 
             // --- Check if URL is for Booking Flow ---
             const urlParams = new URLSearchParams(window.location.search);
@@ -1314,11 +1493,6 @@
                 $('#ci_range_bal').text(range.toFixed(2));
                 $('#customerInfoCard').removeClass('d-none');
 
-                // Auto-fill Sales Officer if customer has one
-                if (d.sales_officer_id) {
-                    $('#salesOfficerSelect').val(d.sales_officer_id);
-                }
-
                 if (typeof updateGrandTotals === 'function') updateGrandTotals();
             }
 
@@ -1338,7 +1512,6 @@
                 $('#ci_code, #ci_name, #ci_mobile, #ci_address').text('—');
                 $('#ci_prev_bal, #ci_range_bal').text('0.00');
                 $('#customerInfoCard').addClass('d-none');
-                $('#salesOfficerSelect').val('');
             }
 
             $('#clearCustomerData').on('click', function() {

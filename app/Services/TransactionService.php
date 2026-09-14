@@ -154,6 +154,16 @@ class TransactionService
 
             \Log::info("TransactionService: V2 Receipt Created: {$voucher->voucher_no} for net amount $netPaid (Received: $totalReceived, Change: $changeAmount)");
 
+            // 8. AGENT COMMISSION: If the sale is now fully settled, recognise the
+            // commission expense voucher for the linked agent (guarded against duplicates).
+            try {
+                if ($sale->agent_id && (float) $sale->commission_amount > 0) {
+                    app(\App\Services\CommissionService::class)->checkAndProcessCommissionOnPayment($sale);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Commission check after receipt failed: '.$e->getMessage());
+            }
+
             return $voucher->voucher_no;
 
         } catch (\Exception $e) {

@@ -140,9 +140,11 @@ class SaleController extends Controller
             ->orderBy('title')
             ->get();
 
+        $agents = \App\Models\Agent::where('status', 'active')->orderBy('name')->get();
+
         return view('admin_panel.sale.add_sale222', compact(
             'warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 
-            'recentProducts', 'allSeries', 'activePrefix'
+            'recentProducts', 'allSeries', 'activePrefix', 'agents'
         ));
     }
 
@@ -972,11 +974,13 @@ class SaleController extends Controller
             ->orderBy('title')
             ->get();
 
+        $agents = \App\Models\Agent::where('status', 'active')->orderBy('name')->get();
+
         // 3. Reuse nextInvoiceNumber var for current invoice no (view expects this variable name)
         $nextInvoiceNumber = $sale->invoice_no;
 
         // 4. Return the Edit Sale View
-        return view('admin_panel.sale.edit_sale', compact('warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allSeries', 'activePrefix'));
+        return view('admin_panel.sale.edit_sale', compact('warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allSeries', 'activePrefix', 'agents'));
     }
 
     public function updatesale(Request $request, $id)
@@ -1100,6 +1104,12 @@ class SaleController extends Controller
             $sale->reference = $request->reference;
             $sale->total_amount_Words = $request->total_amount_Words; // Consider auto-generating this too?
             $sale->sale_status = $status;
+
+            // Agent & Commission (values finalized after totals are calculated below)
+            $sale->agent_id = $request->filled('agent_id') ? $request->agent_id : null;
+            $sale->commission_type = $request->filled('commission_type') ? $request->commission_type : null;
+            $sale->commission_value = $request->filled('commission_value') ? (float) $request->commission_value : null;
+            $sale->commission_amount = 0;
 
             // Credit Days & Due Date (Optional)
             if ($request->filled('credit_days') && $request->credit_days > 0) {
@@ -1416,6 +1426,16 @@ class SaleController extends Controller
             $sale->total_extradiscount = $request->total_extra_cost ?? 0;
             $sale->total_net = $total_bill - $sale->total_extradiscount;
             $sale->total_items = $total_items;
+
+            // Finalize commission amount now that total_net is known
+            if ($sale->agent_id && (float) ($sale->commission_value ?? 0) > 0) {
+                if ($sale->commission_type === 'percent') {
+                    $sale->commission_amount = round((float) $sale->total_net * $sale->commission_value / 100, 2);
+                } else {
+                    // 'fixed' means PKR amount
+                    $sale->commission_amount = round((float) $sale->commission_value, 2);
+                }
+            }
 
             $sale->cash = $request->cash ?? 0;
             $sale->change = ($sale->cash - $sale->total_net);
@@ -1820,6 +1840,17 @@ class SaleController extends Controller
                 }
             }
 
+            // 5. AGENT COMMISSION PROCESSING
+            // Creates the commission payable ledger entry and, if the sale is fully
+            // paid, recognises the commission expense automatically.
+            try {
+                if ($sale->agent_id && (float) $sale->commission_amount > 0) {
+                    app(\App\Services\CommissionService::class)->processSaleCommission($sale);
+                }
+            } catch (\Exception $e) {
+                \Log::error('Agent Commission Processing Error: '.$e->getMessage());
+            }
+
             // If AJAX/JSON response needed
             if ($request->ajax() || $request->wantsJson()) {
                 $receiptUrl = route('sales.receipt', $sale->id) . '?from=pos';
@@ -2214,6 +2245,13 @@ class SaleController extends Controller
                 $cust->previous_balance -= $totalNetImpact;
                 $cust->save();
             }
+        }
+
+        // 4. Reverse Agent Commission ledger & expense voucher entries
+        try {
+            app(\App\Services\CommissionService::class)->reverseCommissionEntries($sale);
+        } catch (\Exception $e) {
+            \Log::error('Rollback Commission Error: '.$e->getMessage());
         }
     }
 

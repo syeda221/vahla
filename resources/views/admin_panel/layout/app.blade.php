@@ -822,7 +822,7 @@
                             @canany(['products.view', 'discount.products.view', 'categories.view', 'subcategories.view',
                                 'brands.view', 'units.view', 'vendors.view', 'purchases.view', 'purchase_pos.create',
                                 'warehouse.view', 'warehouse.stock.view', 'stock.transfer.view', 'stock.adjust.view', 'stock.adjust.create',
-                                'sales.view', 'sales.create', 'customers.view', 'zones.view', 'sales.officers.view', 'receipts.voucher.view'])
+                                'sales.view', 'sales.create', 'customers.view', 'zones.view', 'agents.view'])
                                 <a href="#" class="nav-link">
                                      <i class="menu_icon fas fa-cogs"></i>
                                      <span class="menu-title">Management</span>
@@ -917,8 +917,8 @@
                                             </div>
                                         @endcanany
                                         <!-- Customers & Sales -->
-                                        @canany(['sales.view', 'sales.create', 'customers.view', 'sales.officers.view',
-                                            'receipts.voucher.view', 'zones.view'])
+                                        @canany(['sales.view', 'sales.create', 'customers.view', 'agents.view',
+                                            'zones.view'])
                                             <div class="col-group col-md-3">
                                                 <p class="category-heading">Sales & Customers</p>
                                                 <ul class="submenu-item">
@@ -936,22 +936,13 @@
                                                         <li><a href="{{ route('customers.ledger') }}"><i class="fas fa-book-open"></i>
                                                                 Customer Ledger</a></li>
                                                     @endcan
-                                                    @can('customer_types.view')
-                                                        <li><a href="{{ route('customer-types.index') }}"><i class="fas fa-tags"></i>
-                                                                Customer Types</a></li>
-                                                    @endcan
                                                     @can('zones.view')
                                                         <li><a href="{{ url('zone') }}"><i class="fas fa-map-marker-alt"></i>
                                                                 Zone</a></li>
                                                     @endcan
-                                                    @can('sales.officers.view')
-                                                        <li><a href="{{ url('sales-officers') }}"><i class="fas fa-user-tie"></i>
-                                                                Sales Officer</a></li>
-                                                    @endcan
-                                                    @can('receipts.voucher.view')
-                                                        <li><a href="{{ route('all_recepit_vochers') }}"><i
-                                                                    class="fas fa-file-invoice-dollar"></i>
-                                                                Receipt Vouchers</a></li>
+                                                    @can('agents.view')
+                                                        <li><a href="{{ route('agents.index') }}"><i class="fas fa-handshake"></i>
+                                                                Agents</a></li>
                                                     @endcan
                                                 </ul>
                                             </div>
@@ -1014,7 +1005,7 @@
                         <li class="nav-item">
                             @canany(['item.stock.report.view', 'purchase.report.view', 'sale.report.view',
                                 'customer.ledger.view', 'vendor.ledger.view', 'inventory.onhand.view', 'profit.loss.report.view',
-                                'recovery.report.view', 'payable.report.view', 'parties.balance.report.view', 'aging.report.view', 'balance.sheet.report.view', 'executive.report.view'])
+                                'recovery.report.view', 'payable.report.view', 'parties.balance.report.view', 'aging.report.view', 'balance.sheet.report.view', 'executive.report.view', 'agents.view'])
                                 <a href="#" class="nav-link">
                                     <i class="menu_icon fas fa-clipboard-list"></i>
                                     <span class="menu-title">Reports</span>
@@ -1047,6 +1038,11 @@
                                         @can('vendor.ledger.view')
                                             <li><a href="{{ route('report.vendor.ledger') }}"><i
                                                         class="fa-solid fa-truck"></i> Vendor Ledger</a></li>
+                                        @endcan
+
+                                        @can('agents.view')
+                                            <li><a href="{{ route('report.agent.ledger') }}"><i
+                                                        class="fa-solid fa-user-tie"></i> Agent Ledger</a></li>
                                         @endcan
 
 
