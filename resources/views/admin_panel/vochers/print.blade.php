@@ -202,7 +202,7 @@
             <div>Ph: {{ \App\Models\Setting::get('company_phone', '0327-9226901') }}</div>
         </div>
 
-        <div class="receipt-title">RECEIPT VOUCHER</div>
+        <div class="receipt-title">{{ $voucherTitle ?? 'RECEIPT VOUCHER' }}</div>
         <div class="divider"></div>
 
         <!-- Meta Info -->

@@ -370,7 +370,7 @@
         </div>
 
         {{-- Voucher Type Toggle Cards (3 Main Vouchers) --}}
-        <div class="voucher-types" id="voucherTypeSelector">
+        <div class="voucher-types" style="grid-template-columns: repeat(4, 1fr);" id="voucherTypeSelector">
             <div class="voucher-type-btn active" data-type="expense">
                 <i class="fas fa-file-invoice-dollar v-icon"></i>
                 <span class="v-label">Expense</span>
@@ -382,6 +382,10 @@
             <div class="voucher-type-btn" data-type="payment_out">
                 <i class="fas fa-arrow-up v-icon"></i>
                 <span class="v-label">Payment Out</span>
+            </div>
+            <div class="voucher-type-btn" data-type="party_to_party">
+                <i class="fas fa-exchange-alt v-icon"></i>
+                <span class="v-label">Party to Party</span>
             </div>
         </div>
 
@@ -651,6 +655,115 @@
             </div>
 
         </div>{{-- /voucher-form-card --}}
+
+        {{-- ==================== 4. PARTY TO PARTY ==================== --}}
+        <div class="voucher-form-section" id="form-party_to_party" style="background:#fff; border:1px solid #d1d5db; border-radius:12px; padding:26px 30px; box-shadow:0 1px 3px rgba(0,0,0,0.08); margin-top:20px; display:none;">
+            <div class="card-title mb-4 pb-2" style="border-bottom:1px solid #d1d5db; font-weight:700; font-size:18px;">
+                <i class="fas fa-exchange-alt text-primary"></i> Party to Party Transfer
+            </div>
+            <form class="voucher-form" data-action="{{ route('store_party_to_party') }}" method="POST" novalidate>
+                @csrf
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <label class="form-label">Transfer Date <span class="text-danger">*</span></label>
+                        <input type="date" name="entry_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Voucher ID</label>
+                        <input type="text" class="form-control" value="TVID-Auto" readonly>
+                    </div>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    {{-- Source Party --}}
+                    <div class="col-md-6">
+                        <div class="p-4" style="border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; border-left:4px solid #dc2626;">
+                            <div class="fw-bold text-danger mb-3" style="font-size:14px;"><i class="fas fa-minus-circle"></i> Source Party (Deduct From)</div>
+                            <div class="mb-3">
+                                <label class="form-label">Party Type <span class="text-danger">*</span></label>
+                                <div class="d-flex gap-4">
+                                    <div><input type="radio" name="source_type" id="src_customer" value="customer" class="p2p-src-type" checked> <label for="src_customer">Customer</label></div>
+                                    <div><input type="radio" name="source_type" id="src_vendor" value="vendor" class="p2p-src-type"> <label for="src_vendor">Vendor</label></div>
+                                </div>
+                            </div>
+                            <div class="mb-3" id="src_customer_wrapper">
+                                <label class="form-label">Select Source Customer <span class="text-danger">*</span></label>
+                                <select name="source_id_cust" id="src_customer_select" class="form-select select2-customer">
+                                    <option value="">Search customer...</option>
+                                    @foreach($customers as $c)
+                                    <option value="{{ $c->id }}" data-bal="{{ $c->closing_balance ?? 0 }}">{{ $c->customer_name }} @if(!empty($c->mobile)) ({{ $c->mobile }}) @endif</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mb-3" id="src_vendor_wrapper" style="display:none;">
+                                <label class="form-label">Select Source Vendor <span class="text-danger">*</span></label>
+                                <select name="source_id_vend" id="src_vendor_select" class="form-select select2-vendor" disabled>
+                                    <option value="">Search vendor...</option>
+                                    @foreach($vendors as $v)
+                                    <option value="{{ $v->id }}" data-bal="{{ $v->closing_balance ?? 0 }}">{{ $v->name }} @if(!empty($v->phone)) ({{ $v->phone }}) @endif</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mt-2" style="font-size:13px; font-weight:600; background:#e2e8f0; padding:6px 12px; border-radius:6px; width:fit-content; display:none;" id="src_balance_container">
+                                Current Balance: Rs. <span id="src_balance_display" class="text-danger">0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Destination Party --}}
+                    <div class="col-md-6">
+                        <div class="p-4" style="border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; border-left:4px solid #2563eb;">
+                            <div class="fw-bold text-primary mb-3" style="font-size:14px;"><i class="fas fa-plus-circle"></i> Destination Party (Transfer To)</div>
+                            <div class="mb-3">
+                                <label class="form-label">Party Type <span class="text-danger">*</span></label>
+                                <div class="d-flex gap-4">
+                                    <div><input type="radio" name="dest_type" id="dst_vendor" value="vendor" class="p2p-dst-type" checked> <label for="dst_vendor">Vendor</label></div>
+                                    <div><input type="radio" name="dest_type" id="dst_customer" value="customer" class="p2p-dst-type"> <label for="dst_customer">Customer</label></div>
+                                </div>
+                            </div>
+                            <div class="mb-3" id="dst_vendor_wrapper">
+                                <label class="form-label">Select Dest Vendor <span class="text-danger">*</span></label>
+                                <select name="dest_id_vend" id="dst_vendor_select" class="form-select select2-vendor">
+                                    <option value="">Search vendor...</option>
+                                    @foreach($vendors as $v)
+                                    <option value="{{ $v->id }}" data-bal="{{ $v->closing_balance ?? 0 }}">{{ $v->name }} @if(!empty($v->phone)) ({{ $v->phone }}) @endif</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mb-3" id="dst_customer_wrapper" style="display:none;">
+                                <label class="form-label">Select Dest Customer <span class="text-danger">*</span></label>
+                                <select name="dest_id_cust" id="dst_customer_select" class="form-select select2-customer" disabled>
+                                    <option value="">Search customer...</option>
+                                    @foreach($customers as $c)
+                                    <option value="{{ $c->id }}" data-bal="{{ $c->closing_balance ?? 0 }}">{{ $c->customer_name }} @if(!empty($c->mobile)) ({{ $c->mobile }}) @endif</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mt-2" style="font-size:13px; font-weight:600; background:#e2e8f0; padding:6px 12px; border-radius:6px; width:fit-content; display:none;" id="dst_balance_container">
+                                Current Balance: Rs. <span id="dst_balance_display" class="text-primary">0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <label class="form-label">Amount <span class="text-danger">*</span></label>
+                        <input type="number" name="amount" class="form-control" step="0.01" min="0.01" required placeholder="Enter amount">
+                    </div>
+                    <div class="col-md-9">
+                        <label class="form-label">Remarks</label>
+                        <input type="text" name="remarks" class="form-control" placeholder="Any additional notes...">
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end mt-2">
+                    <button type="submit" class="btn btn-primary" style="padding:10px 24px; font-weight:600; border-radius:8px;">
+                        <i class="fas fa-check-circle me-1"></i> Process Transfer
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -701,7 +814,8 @@
         const formTitles = {
             expense:          '<i class="fas fa-file-invoice-dollar text-primary"></i> <span>Expense Voucher</span>',
             payment_in:       '<i class="fas fa-arrow-down text-primary"></i> <span>Payment In Voucher</span>',
-            payment_out:      '<i class="fas fa-arrow-up text-danger"></i> <span>Payment Out Voucher</span>'
+            payment_out:      '<i class="fas fa-arrow-up text-danger"></i> <span>Payment Out Voucher</span>',
+            party_to_party:   '<i class="fas fa-exchange-alt text-primary"></i> <span>Party to Party Transfer</span>'
         };
 
         // ============== VOUCHER TYPE TOGGLE ==============
@@ -856,6 +970,85 @@
                     $btn.prop('disabled', false).html('<i class="fas fa-check me-1"></i> Save Category');
                 }
             });
+        });
+
+        // ============== PARTY TO PARTY: SOURCE TOGGLE ==============
+        $(document).on('change', '.p2p-src-type', function() {
+            var val = $(this).val();
+            if (val === 'vendor') {
+                $('#src_customer_wrapper').hide();
+                $('#src_customer_select').prop('disabled', true);
+                $('#src_vendor_wrapper').show();
+                $('#src_vendor_select').prop('disabled', false);
+            } else {
+                $('#src_vendor_wrapper').hide();
+                $('#src_vendor_select').prop('disabled', true);
+                $('#src_customer_wrapper').show();
+                $('#src_customer_select').prop('disabled', false);
+            }
+        });
+
+        // ============== PARTY TO PARTY: DEST TOGGLE ==============
+        $(document).on('change', '.p2p-dst-type', function() {
+            var val = $(this).val();
+            if (val === 'vendor') {
+                $('#dst_customer_wrapper').hide();
+                $('#dst_customer_select').prop('disabled', true);
+                $('#dst_vendor_wrapper').show();
+                $('#dst_vendor_select').prop('disabled', false);
+            } else {
+                $('#dst_vendor_wrapper').hide();
+                $('#dst_vendor_select').prop('disabled', true);
+                $('#dst_customer_wrapper').show();
+                $('#dst_customer_select').prop('disabled', false);
+            }
+        });
+
+        // ============== PARTY TO PARTY: BALANCE DISPLAY ==============
+        function updateP2PBalance(selectElem, displayId, containerId, partyType) {
+            var id = $(selectElem).val();
+            if(id) {
+                $.ajax({
+                    url: '{{ route("vouchers.get_party_balance") }}',
+                    method: 'GET',
+                    data: { type: partyType, id: id },
+                    success: function(res) {
+                        var bal = res.balance || 0;
+                        var formatted = Number(bal).toLocaleString('en-US', {minimumFractionDigits: 2});
+                        $('#' + displayId).text(formatted);
+                        $('#' + containerId).show();
+                    }
+                });
+            } else {
+                $('#' + containerId).hide();
+            }
+        }
+
+        $(document).on('change', '#src_customer_select', function() {
+            if(!$(this).is(':disabled')) updateP2PBalance(this, 'src_balance_display', 'src_balance_container', 'customer');
+        });
+        $(document).on('change', '#src_vendor_select', function() {
+            if(!$(this).is(':disabled')) updateP2PBalance(this, 'src_balance_display', 'src_balance_container', 'vendor');
+        });
+
+        $(document).on('change', '#dst_customer_select', function() {
+            if(!$(this).is(':disabled')) updateP2PBalance(this, 'dst_balance_display', 'dst_balance_container', 'customer');
+        });
+        $(document).on('change', '#dst_vendor_select', function() {
+            if(!$(this).is(':disabled')) updateP2PBalance(this, 'dst_balance_display', 'dst_balance_container', 'vendor');
+        });
+
+        // Also trigger balance update when party type radio is changed
+        $(document).on('change', '.p2p-src-type', function() {
+            var val = $(this).val();
+            if(val === 'vendor') { updateP2PBalance('#src_vendor_select', 'src_balance_display', 'src_balance_container', 'vendor'); }
+            else { updateP2PBalance('#src_customer_select', 'src_balance_display', 'src_balance_container', 'customer'); }
+        });
+
+        $(document).on('change', '.p2p-dst-type', function() {
+            var val = $(this).val();
+            if(val === 'vendor') { updateP2PBalance('#dst_vendor_select', 'dst_balance_display', 'dst_balance_container', 'vendor'); }
+            else { updateP2PBalance('#dst_customer_select', 'dst_balance_display', 'dst_balance_container', 'customer'); }
         });
 
         // ============== FORM SUBMISSION (AJAX) ==============

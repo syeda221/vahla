@@ -296,7 +296,8 @@ class VoucherController extends Controller
                 $previousBalance = 0;
             }
 
-            return view('admin_panel.vochers.print', compact('voucher', 'rows', 'party', 'previousBalance'));
+            $voucherTitle = ($voucher->source === 'payment_out' || isset($voucher->pvid) || str_contains($voucher->rvid ?? '', 'PV-')) ? 'PAYMENT VOUCHER' : (($voucher->source === 'expense' || isset($voucher->evid) || str_contains($voucher->rvid ?? '', 'EV-')) ? 'EXPENSE VOUCHER' : 'RECEIPT VOUCHER');
+        return view('admin_panel.vochers.print', compact('voucher', 'rows', 'party', 'previousBalance', 'voucherTitle'));
         }
 
         // 2. Fallback to V1 Legacy (Original Code)
@@ -370,7 +371,8 @@ class VoucherController extends Controller
                 ->first();
         }
 
-        return view('admin_panel.vochers.print', compact('voucher', 'rows', 'party', 'previousBalance'));
+        $voucherTitle = ($voucher->source === 'payment_out' || isset($voucher->pvid) || str_contains($voucher->rvid ?? '', 'PV-')) ? 'PAYMENT VOUCHER' : (($voucher->source === 'expense' || isset($voucher->evid) || str_contains($voucher->rvid ?? '', 'EV-')) ? 'EXPENSE VOUCHER' : 'RECEIPT VOUCHER');
+        return view('admin_panel.vochers.print', compact('voucher', 'rows', 'party', 'previousBalance', 'voucherTitle'));
     }
 
     public function getAccountsByHead($headId)
@@ -2010,6 +2012,54 @@ class VoucherController extends Controller
             }
         }
 
+        // 4. Journal Vouchers (Party to Party)
+        if ($type === 'all' || $type === 'journal') {
+            $jvQuery = \App\Models\VoucherMaster::with('details')->where('voucher_type', 'journal');
+
+            if ($fromDate) {
+                $jvQuery->whereDate('date', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $jvQuery->whereDate('date', '<=', $toDate);
+            }
+            
+            $journalList = $jvQuery->orderBy('id', 'desc')->get();
+
+            foreach ($journalList as $jv) {
+                $sourceName = '?';
+                $destName = '?';
+
+                // Try to extract from details narration
+                foreach ($jv->details as $d) {
+                    if (str_contains($d->narration, 'Transfer in from')) {
+                        $sourceName = trim(str_replace('Transfer in from', '', $d->narration));
+                    }
+                    if (str_contains($d->narration, 'Transfer out to')) {
+                        $destName = trim(str_replace('Transfer out to', '', $d->narration));
+                    }
+                }
+                
+                $partyName = ($sourceName !== '?' && $destName !== '?') ? "$sourceName ➔ $destName" : 'Multiple Parties';
+
+                $records->push([
+                    'id' => $jv->id,
+                    'voucher_no' => $jv->voucher_no ?: 'JV-' . $jv->id,
+                    'type_label' => 'Party Transfer',
+                    'source' => 'journal',
+                    'date' => $jv->date ? date('Y-m-d', strtotime($jv->date)) : '-',
+                    'party_name' => $partyName,
+                    'party_type_label' => 'Transfer',
+                    'detail' => 'Journal Transfer',
+                    'amount' => (float)$jv->total_amount,
+                    'remarks' => $jv->remarks ?: '-',
+                    'print_url' => route('journalprint', $jv->id),
+                    'delete_url' => null,
+                    'delete_method' => 'DELETE',
+                    'created_at' => $jv->created_at ?? $jv->date,
+                ]);
+            }
+        }
+
         // Global search filtering
         if (!empty($searchValue)) {
             $records = $records->filter(function($item) use ($searchValue) {
@@ -2056,6 +2106,219 @@ class VoucherController extends Controller
                 'total_payment_out' => $totalPaymentOut,
             ]
         ]);
+    }
+
+    public function store_party_to_party(Request $request)
+    {
+        $request->merge([
+            'source_id' => $request->source_type === 'vendor' ? $request->source_id_vend : $request->source_id_cust,
+            'dest_id' => $request->dest_type === 'vendor' ? $request->dest_id_vend : $request->dest_id_cust,
+        ]);
+
+        $request->validate([
+            'entry_date' => 'required|date',
+            'source_type' => 'required',
+            'source_id' => 'required',
+            'dest_type' => 'required',
+            'dest_id' => 'required',
+            'amount' => 'required|numeric|min:0.01'
+        ]);
+
+        \DB::beginTransaction();
+        try {
+            $amount = (float) $request->amount;
+            $balanceService = app(\App\Services\BalanceService::class);
+            
+            // Map Source
+            $sourceAccountId = null;
+            $sourceParty = null;
+            if ($request->source_type === 'vendor') {
+                $sourceAccountId = $balanceService->getAccountsPayableId();
+                $sourceParty = \App\Models\Vendor::find($request->source_id);
+            } else {
+                $sourceAccountId = $balanceService->getAccountsReceivableId();
+                $sourceParty = \App\Models\Customer::find($request->source_id);
+            }
+
+            // Map Dest
+            $destAccountId = null;
+            $destParty = null;
+            if ($request->dest_type === 'vendor') {
+                $destAccountId = $balanceService->getAccountsPayableId();
+                $destParty = \App\Models\Vendor::find($request->dest_id);
+            } else {
+                $destAccountId = $balanceService->getAccountsReceivableId();
+                $destParty = \App\Models\Customer::find($request->dest_id);
+            }
+
+            if (!$sourceParty || !$destParty) {
+                return response()->json(['error' => 'Invalid source or destination party selected.'], 400);
+            }
+
+            // Generate Voucher No
+            $year = date('Y');
+            $last = \App\Models\VoucherMaster::where('voucher_type', 'journal')
+                ->where('voucher_no', 'like', "JV-$year-%")
+                ->orderBy('id', 'desc')->first();
+            $index = $last ? (int) substr($last->voucher_no, -4) + 1 : 1;
+            $voucherNo = sprintf("JV-%s-%04d", $year, $index);
+
+            $sourceName = $sourceParty->name ?? $sourceParty->customer_name ?? 'Unknown';
+            $destName = $destParty->name ?? $destParty->customer_name ?? 'Unknown';
+            $transferDesc = "Transfer: " . $sourceName . " -> " . $destName;
+
+            // 1. Create Header (VoucherMaster)
+            $voucher = \App\Models\VoucherMaster::create([
+                'voucher_type' => 'journal',
+                'voucher_no'   => $voucherNo,
+                'date'         => $request->entry_date,
+                'status'       => \App\Models\VoucherMaster::STATUS_POSTED,
+                'party_type'   => null,
+                'party_id'     => null,
+                'remarks'      => $request->remarks ?: $transferDesc,
+                'created_by'   => auth()->id(),
+                'fiscal_year'  => date('Y'),
+                'total_amount' => $amount
+            ]);
+
+            // 2. Determine Dr/Cr mapping
+            // To ensure the journal ALWAYS balances (Total Dr = Total Cr), while respecting user intentions:
+            $sourceDebit = 0; $sourceCredit = 0;
+            $destDebit = 0; $destCredit = 0;
+
+            if ($request->source_type === 'customer' && $request->dest_type === 'customer') {
+                // Cust to Cust: Source decreases (Cr), Dest increases (Dr)
+                $sourceCredit = $amount;
+                $destDebit = $amount;
+            } 
+            elseif ($request->source_type === 'vendor' && $request->dest_type === 'vendor') {
+                // Vend to Vend: Source decreases (Dr), Dest increases (Cr)
+                $sourceDebit = $amount;
+                $destCredit = $amount;
+            } 
+            elseif ($request->source_type === 'customer' && $request->dest_type === 'vendor') {
+                // Cust to Vend: Customer decreases (Cr), Vendor decreases (Dr) -> Perfect Offset
+                $sourceCredit = $amount;
+                $destDebit = $amount;
+            } 
+            elseif ($request->source_type === 'vendor' && $request->dest_type === 'customer') {
+                // Vend to Cust: Vendor increases (Cr), Customer increases (Dr)
+                $sourceCredit = $amount;
+                $destDebit = $amount;
+            }
+
+            $journalService = app(\App\Services\JournalEntryService::class);
+
+            // Dest Entry
+            \App\Models\VoucherDetail::create([
+                'voucher_master_id' => $voucher->id,
+                'account_id' => $destAccountId,
+                'debit' => $destDebit,
+                'credit' => $destCredit,
+                'narration' => "Transfer in from " . ($sourceParty->name ?? $sourceParty->customer_name)
+            ]);
+            $journalService->recordEntry(
+                $voucher, 
+                $destAccountId, 
+                $destDebit, 
+                $destCredit, 
+                "Transfer in from " . ($sourceParty->name ?? $sourceParty->customer_name), 
+                $request->entry_date, 
+                $destParty
+            );
+
+            // Source Entry
+            \App\Models\VoucherDetail::create([
+                'voucher_master_id' => $voucher->id,
+                'account_id' => $sourceAccountId,
+                'debit' => $sourceDebit,
+                'credit' => $sourceCredit,
+                'narration' => "Transfer out to " . ($destParty->name ?? $destParty->customer_name)
+            ]);
+            $journalService->recordEntry(
+                $voucher, 
+                $sourceAccountId, 
+                $sourceDebit, 
+                $sourceCredit, 
+                "Transfer out to " . ($destParty->name ?? $destParty->customer_name), 
+                $request->entry_date, 
+                $sourceParty
+            );
+
+            \DB::commit();
+            return response()->json([
+                'success' => "Party to Party Transfer (JV) created successfully: $voucherNo",
+                'message' => "Transfer of $amount has been recorded.",
+                'voucher_id' => $voucher->id
+            ]);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error("Party to Party Transfer Error: " . $e->getMessage());
+            return response()->json(['error' => 'Failed to create transfer: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getPartyBalance(Request $request)
+    {
+        $type = $request->type;
+        $id = $request->id;
+        $balance = 0;
+        
+        $balanceService = app(\App\Services\BalanceService::class);
+        if ($type === 'customer') {
+            $balance = $balanceService->getCustomerBalance($id);
+        } elseif ($type === 'vendor') {
+            $balance = $balanceService->getVendorBalance($id);
+        } elseif ($type === 'account') {
+            $account = \App\Models\Account::find($id);
+            if ($account) {
+                $balance = $account->current_balance ?? 0;
+            }
+        }
+        
+        return response()->json(['balance' => $balance]);
+    }
+
+    public function journalprint($id)
+    {
+        \Log::info('Print Journal Voucher Requested. ID: '.$id);
+        $voucherV2 = \App\Models\VoucherMaster::with(['details.account'])->findOrFail($id);
+
+        $voucher = (object) [
+            'rvid' => $voucherV2->voucher_no,
+            'receipt_date' => $voucherV2->date ? $voucherV2->date->format('Y-m-d') : now()->format('Y-m-d'),
+            'total_amount' => $voucherV2->total_amount,
+            'remarks' => $voucherV2->remarks,
+            'type' => 'unknown',
+        ];
+
+        $rows = [];
+        foreach ($voucherV2->details as $detail) {
+            $accTitle  = $detail->account->title ?? '-';
+            $accCode   = $detail->account->account_code ?? '-';
+            $headName  = $detail->account->accountHead->name ?? '-';
+            
+            $dr = (float) $detail->debit;
+            $cr = (float) $detail->credit;
+            $amt = $dr > 0 ? $dr : $cr;
+            $drCrLabel = $dr > 0 ? ' (Dr)' : ' (Cr)';
+
+            $rows[] = [
+                'narration'    => $detail->narration,
+                'reference'    => '-',
+                'account_head' => $headName,
+                'account_name' => $accTitle . $drCrLabel,
+                'account_code' => $accCode,
+                'amount'       => $amt,
+            ];
+        }
+
+        $party = null;
+        $previousBalance = 0;
+        $voucherTitle = 'JOURNAL VOUCHER';
+
+        return view('admin_panel.vochers.print', compact('voucher', 'rows', 'party', 'previousBalance', 'voucherTitle'));
     }
 }
 

@@ -414,6 +414,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/narrations', [NarrationController::class, 'store'])->name('narrations.store')->middleware('permission:narrations.create');
     Route::delete('/narrations/{narration}', [NarrationController::class, 'destroy'])->name('narrations.destroy')->middleware('permission:narrations.delete');
     Route::get('/vouchers/create', [VoucherController::class, 'createUnified'])->middleware('permission:vouchers.create')->name('vouchers.create');
+    Route::post('/vouchers/store-party-to-party', [VoucherController::class, 'store_party_to_party'])->middleware('permission:vouchers.create')->name('store_party_to_party');
+    Route::get('/vouchers/get-party-balance', [VoucherController::class, 'getPartyBalance'])->name('vouchers.get_party_balance');
     Route::get('vouchers/{type}', [VoucherController::class, 'index'])->middleware('permission:vouchers.view|all.vouchers.view')->name('vouchers.index');
     Route::post('vouchers/store', [VoucherController::class, 'store'])->middleware('permission:vouchers.create')->name('vouchers.store');
     Route::get('/view_all', [AccountsHeadController::class, 'index'])->name('view_all');
@@ -429,6 +431,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/store_rec_vochers', [VoucherController::class, 'store_rec_vochers'])->name('store_rec_vochers');
     Route::delete('/recepit_vochers/{id}', [VoucherController::class, 'destroyReceiptVoucher'])->name('receipt_vouchers.destroy');
     Route::get('/print/{id}', [VoucherController::class, 'print'])->name('print');
+    Route::get('/journalprint/{id}', [VoucherController::class, 'journalprint'])->name('journalprint');
 
     Route::get('/all_Payment_vochers', [VoucherController::class, 'all_Payment_vochers'])->name('all_Payment_vochers');
     Route::get('/Payment_vochers', [VoucherController::class, 'Payment_vochers'])->name('Payment_vochers');
