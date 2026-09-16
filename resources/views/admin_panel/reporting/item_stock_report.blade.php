@@ -210,7 +210,10 @@
             {{-- Buttons --}}
             <div class="col-md-2 text-end d-flex gap-2">
                 <button type="button" id="btnSearch" class="btn btn-primary btn-sm flex-fill fw-bold" style="height:38px; border-radius:8px;">
-                    <i class="fas fa-search me-1"></i> Apply Filter
+                    <i class="fas fa-search me-1"></i> Apply
+                </button>
+                <button type="button" id="btnResetFilters" class="btn btn-danger btn-sm fw-bold" style="height:38px; border-radius:8px;" title="Reset Filters">
+                    <i class="fas fa-times"></i>
                 </button>
                 <button type="button" id="btnExportCsv" class="btn btn-outline-secondary btn-sm fw-bold" style="height:38px; border-radius:8px;">
                     <i class="fas fa-file-excel me-1"></i> Export
@@ -392,17 +395,77 @@ $(document).ready(function() {
         $('#report_mode').val($(this).data('mode'));
         fetchStockReport();
     });
-
     let currentPage = 1;
+
+    // Apply saved filters from localStorage if they exist
+    const savedFilters = JSON.parse(localStorage.getItem('itemStockFilters')) || {};
+    
+    if (savedFilters.category_id) $('#category_id').val(savedFilters.category_id);
+    if (savedFilters.warehouse_id) $('#warehouse_id').val(savedFilters.warehouse_id);
+    if (savedFilters.unit_type) $('#unit_type').val(savedFilters.unit_type);
+    if (savedFilters.report_mode) {
+        $('#report_mode').val(savedFilters.report_mode);
+        $('.mode-pill').removeClass('active');
+        $(`.mode-pill[data-mode="${savedFilters.report_mode}"]`).addClass('active');
+    }
+    
+    // For Select2 Product ID we have to dynamically add the option
+    if (savedFilters.product_id && savedFilters.product_id !== 'all') {
+        let newOption = new Option(savedFilters.product_text || 'Selected Product', savedFilters.product_id, true, true);
+        $('#product_id').append(newOption).trigger('change');
+        
+        // Wait briefly for the variants AJAX to load, then select the variant if exists
+        if (savedFilters.variant_key && savedFilters.variant_key !== 'all') {
+            setTimeout(() => {
+                $('#variant_key').val(savedFilters.variant_key).trigger('change.select2');
+            }, 800); // 800ms to allow variants to load
+        }
+    }
 
     // Search Click
     $('#btnSearch').on('click', function () {
+        currentPage = 1;
+        
+        // Save filters to localStorage
+        const filtersToSave = {
+            category_id: $('#category_id').val(),
+            warehouse_id: $('#warehouse_id').val(),
+            unit_type: $('#unit_type').val(),
+            report_mode: $('#report_mode').val(),
+            product_id: $('#product_id').val(),
+            product_text: $('#product_id').val() !== 'all' ? $('#product_id option:selected').text() : '',
+            variant_key: $('#variant_key').val()
+        };
+        localStorage.setItem('itemStockFilters', JSON.stringify(filtersToSave));
+
+        fetchStockReport();
+    });
+
+    // Reset Filters Click
+    $('#btnResetFilters').on('click', function () {
+        localStorage.removeItem('itemStockFilters');
+        $('#category_id').val('all');
+        $('#warehouse_id').val('all');
+        $('#unit_type').val('all');
+        $('#product_id').val('all').trigger('change');
+        $('#variant_key').val('all').trigger('change');
+        $('#report_mode').val('summary');
+        $('.mode-pill').removeClass('active');
+        $('.mode-pill[data-mode="summary"]').addClass('active');
+        
         currentPage = 1;
         fetchStockReport();
     });
 
     // Initial Load
-    fetchStockReport();
+    setTimeout(() => {
+        if (!savedFilters.product_id || savedFilters.product_id === 'all') {
+            fetchStockReport();
+        } else {
+            // If we have a saved product, we wait for variants to load before fetching report
+            setTimeout(fetchStockReport, 900);
+        }
+    }, 100);
 
     function fetchStockReport() {
         $('#loader').show();

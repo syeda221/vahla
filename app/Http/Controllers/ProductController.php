@@ -436,6 +436,17 @@ class ProductController extends Controller
     // ===== List page =====
     public function product(Request $request)
     {
+        if ($request->has('reset')) {
+            $request->session()->forget('product_filters');
+            return redirect()->route('product');
+        }
+
+        if (count($request->only(['search', 'category_id', 'brand_id', 'status'])) > 0) {
+            $request->session()->put('product_filters', $request->only(['search', 'category_id', 'brand_id', 'status']));
+        } elseif ($request->session()->has('product_filters')) {
+            return redirect()->route('product', array_merge($request->session()->get('product_filters'), $request->only('page')));
+        }
+
         $query = Product::with([
             'category_relation',
             'sub_category_relation',

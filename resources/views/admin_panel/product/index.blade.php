@@ -572,7 +572,7 @@
                             <button type="submit" class="btn-erp-filter">
                                 <i class="fas fa-search"></i> Apply Filters
                             </button>
-                            <a href="{{ route('product') }}" class="btn-erp-clear">
+                            <a href="{{ route('product', ['reset' => 1]) }}" class="btn-erp-clear">
                                 <i class="fas fa-times"></i> Clear
                             </a>
                         </div>

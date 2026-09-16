@@ -815,6 +815,85 @@ class PurchaseController extends Controller
                     'width' => $widths[$i] ?? null,
                 ]);
 
+                // --- Automatically Update Product Purchase Price ---
+                try {
+                    $prod = Product::find($pid);
+                    if ($prod) {
+                        $updateData = [];
+                        if ($curSizeMode === 'by_size') {
+                            $updateData['purchase_price_per_m2'] = $price;
+                        } elseif ($isCarton) {
+                            $updateData['purchase_price_per_box'] = $price;
+                            if ($curPPB > 0) {
+                                $updateData['purchase_price_per_piece'] = $price / $curPPB;
+                            }
+                        } else {
+                            $updateData['purchase_price_per_piece'] = $price;
+                            if ($curPPB > 0) {
+                                $updateData['purchase_price_per_box'] = $price * $curPPB;
+                            }
+                        }
+                        
+                        if ($discPercent > 0) {
+                            $updateData['purchase_discount_percent'] = $discPercent;
+                        }
+
+                        // --- Also update JSON variants if they exist ---
+                        $purchasedVariant = $request->color[$i] ?? null;
+                        if (!empty($prod->color)) {
+                            $rawProductVariants = $prod->color;
+                            $b64 = base64_decode($rawProductVariants, true);
+                            if ($b64 !== false && (str_starts_with(trim($b64), '[') || str_starts_with(trim($b64), '{'))) {
+                                $rawProductVariants = $b64;
+                            }
+                            $decodedProdVariants = json_decode($rawProductVariants, true);
+                            if (is_string($decodedProdVariants)) {
+                                $decodedProdVariants = json_decode($decodedProdVariants, true);
+                            }
+                            
+                            $searchName = null; $searchColor = null; $searchSize = null;
+                            if ($purchasedVariant) {
+                                $pv = base64_decode($purchasedVariant, true);
+                                if ($pv !== false && (str_starts_with(trim($pv), '[') || str_starts_with(trim($pv), '{'))) {
+                                    $purchasedVariant = $pv;
+                                }
+                                $decPV = json_decode($purchasedVariant, true);
+                                if (is_string($decPV)) $decPV = json_decode($decPV, true);
+                                if (is_array($decPV)) {
+                                    $searchName = $decPV['name'] ?? null;
+                                    $searchColor = $decPV['color'] ?? null;
+                                    $searchSize = $decPV['size'] ?? null;
+                                }
+                            }
+
+                            if (is_array($decodedProdVariants)) {
+                                $variantsModified = false;
+                                foreach ($decodedProdVariants as &$v) {
+                                    $match = false;
+                                    if ($searchName && isset($v['name']) && $v['name'] == $searchName) { $match = true; }
+                                    elseif ($searchColor && isset($v['color']) && $v['color'] == $searchColor && isset($v['size']) && $v['size'] == $searchSize) { $match = true; }
+                                    elseif (!$searchName && !$searchColor) { $match = true; } // Update all if no specific variant identified
+                                    
+                                    if ($match) {
+                                        $v['purch_price'] = $price;
+                                        $variantsModified = true;
+                                    }
+                                }
+                                if ($variantsModified) {
+                                    $updateData['color'] = json_encode($decodedProdVariants);
+                                }
+                            }
+                        }
+
+                        if (!empty($updateData)) {
+                            $prod->update($updateData);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Failed to update product purchase price: " . $e->getMessage());
+                }
+                // ---------------------------------------------------
+
                 $subtotal += $lineTotal;
             }
 
@@ -1498,6 +1577,85 @@ class PurchaseController extends Controller
                     'length' => $lengths[$i] ?? null,
                     'width' => $widths[$i] ?? null,
                 ]);
+
+                // --- Automatically Update Product Purchase Price ---
+                try {
+                    $prod = Product::find($pid);
+                    if ($prod) {
+                        $updateData = [];
+                        if ($curSizeMode === 'by_size') {
+                            $updateData['purchase_price_per_m2'] = $price;
+                        } elseif ($isCarton) {
+                            $updateData['purchase_price_per_box'] = $price;
+                            if ($curPPB > 0) {
+                                $updateData['purchase_price_per_piece'] = $price / $curPPB;
+                            }
+                        } else {
+                            $updateData['purchase_price_per_piece'] = $price;
+                            if ($curPPB > 0) {
+                                $updateData['purchase_price_per_box'] = $price * $curPPB;
+                            }
+                        }
+                        
+                        if ($discPercent > 0) {
+                            $updateData['purchase_discount_percent'] = $discPercent;
+                        }
+
+                        // --- Also update JSON variants if they exist ---
+                        $purchasedVariant = $colors[$i] ?? null;
+                        if (!empty($prod->color)) {
+                            $rawProductVariants = $prod->color;
+                            $b64 = base64_decode($rawProductVariants, true);
+                            if ($b64 !== false && (str_starts_with(trim($b64), '[') || str_starts_with(trim($b64), '{'))) {
+                                $rawProductVariants = $b64;
+                            }
+                            $decodedProdVariants = json_decode($rawProductVariants, true);
+                            if (is_string($decodedProdVariants)) {
+                                $decodedProdVariants = json_decode($decodedProdVariants, true);
+                            }
+                            
+                            $searchName = null; $searchColor = null; $searchSize = null;
+                            if ($purchasedVariant) {
+                                $pv = base64_decode($purchasedVariant, true);
+                                if ($pv !== false && (str_starts_with(trim($pv), '[') || str_starts_with(trim($pv), '{'))) {
+                                    $purchasedVariant = $pv;
+                                }
+                                $decPV = json_decode($purchasedVariant, true);
+                                if (is_string($decPV)) $decPV = json_decode($decPV, true);
+                                if (is_array($decPV)) {
+                                    $searchName = $decPV['name'] ?? null;
+                                    $searchColor = $decPV['color'] ?? null;
+                                    $searchSize = $decPV['size'] ?? null;
+                                }
+                            }
+
+                            if (is_array($decodedProdVariants)) {
+                                $variantsModified = false;
+                                foreach ($decodedProdVariants as &$v) {
+                                    $match = false;
+                                    if ($searchName && isset($v['name']) && $v['name'] == $searchName) { $match = true; }
+                                    elseif ($searchColor && isset($v['color']) && $v['color'] == $searchColor && isset($v['size']) && $v['size'] == $searchSize) { $match = true; }
+                                    elseif (!$searchName && !$searchColor) { $match = true; } // Update all if no specific variant identified
+                                    
+                                    if ($match) {
+                                        $v['purch_price'] = $price;
+                                        $variantsModified = true;
+                                    }
+                                }
+                                if ($variantsModified) {
+                                    $updateData['color'] = json_encode($decodedProdVariants);
+                                }
+                            }
+                        }
+
+                        if (!empty($updateData)) {
+                            $prod->update($updateData);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Failed to update product purchase price on edit: " . $e->getMessage());
+                }
+                // ---------------------------------------------------
 
                 $subtotal += $lineTotal;
                 $newMap[$pid] = ($newMap[$pid] ?? 0) + $baseQty;
