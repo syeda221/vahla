@@ -145,6 +145,9 @@
 
                     {{-- Last Buttons with X-Axis Gap --}}
                     <div class="d-flex align-items-center ms-auto" style="gap: 10px !important;">
+                        <a href="#" id="btnCombinedLedger" class="btn btn-warning btn-sm px-3 fw-bold d-none align-items-center" style="height: 32px; border-radius: 6px; font-size: .78rem; margin-right: 8px !important;">
+                            <i class="fas fa-link me-1"></i> Combined
+                        </a>
                         <button type="button" class="btn btn-primary btn-sm px-3 fw-bold d-inline-flex align-items-center btnSearchTrigger" style="height: 32px; border-radius: 6px; font-size: .78rem; margin-right: 8px !important;">
                             <i class="fas fa-filter me-1"></i> Generate
                         </button>
@@ -171,9 +174,9 @@
                     <div class="col-md-5">
                         <label for="customer_id_desk" class="sale-filter-label mb-1">Customer:</label>
                         <select name="customer_id" id="customer_id_desk" class="form-select form-select-sm select2 customerSelect">
-                            <option value="all" data-zone="">-- All Customers --</option>
+                            <option value="all" data-zone="" data-linked-vendor="">-- All Customers --</option>
                             @foreach ($customers as $c)
-                                <option value="{{ $c->id }}" data-zone="{{ $c->zone }}">{{ $c->customer_name }}</option>
+                                <option value="{{ $c->id }}" data-zone="{{ $c->zone }}" data-linked-vendor="{{ $c->linked_vendor_id ?? '' }}">{{ $c->customer_name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -398,7 +401,22 @@
                 });
                 $('.customerSelect').val('all').trigger('change.select2');
             });
-            $('.customerSelect').on('change', function() { $('.customerSelect').val($(this).val()); });
+            $('.customerSelect').on('change', function() { 
+                $('.customerSelect').val($(this).val()); 
+                
+                // Toggle Combined Ledger Button
+                let selectedOption = $(this).find('option:selected');
+                let linkedVendor = selectedOption.attr('data-linked-vendor');
+                if (linkedVendor && linkedVendor.trim() !== '') {
+                    $('#btnCombinedLedger').removeClass('d-none').addClass('d-inline-flex');
+                    let customerId = $(this).val();
+                    let routeUrl = "{{ route('customers.combined_ledger') }}?customer_id=" + customerId;
+                    $('#btnCombinedLedger').attr('href', routeUrl);
+                } else {
+                    $('#btnCombinedLedger').removeClass('d-inline-flex').addClass('d-none');
+                    $('#btnCombinedLedger').attr('href', '#');
+                }
+            });
             $('.quickFilterSelect').on('change', function() {
                 let val = $(this).val();
                 $('.quickFilterSelect').val(val);

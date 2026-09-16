@@ -29,13 +29,13 @@
                 <!-- Page Header -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h4 class="mb-1 text-primary"><i class="bi bi-people"></i> Customer Ledger (Statement)</h4>
-                        <p class="text-muted mb-0">Track all customer transactions, invoices, and receipts.</p>
+                        <h4 class="mb-1 text-primary"><i class="bi bi-link-45deg"></i> Combined Ledger (Customer + Vendor)</h4>
+                        <p class="text-muted mb-0">Track net balance across both customer and vendor roles.</p>
                     </div>
                     <div class="d-flex gap-2">
-                        @if(isset($selectedCustomer) && $selectedCustomer->linked_vendor_id)
-                            <a href="{{ route('customers.combined_ledger', ['customer_id' => $selectedCustomer->id]) }}" class="btn btn-warning shadow-sm"><i class="bi bi-link-45deg"></i>
-                                View Combined Ledger</a>
+                        @if(isset($customer) && $customer->id)
+                            <a href="{{ route('customers.ledger', ['customer_id' => $customer->id]) }}" class="btn btn-outline-primary"><i class="bi bi-person"></i>
+                                Back to Customer Ledger</a>
                         @endif
                         <a href="{{ route('view_all') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i>
                             Back to Accounts</a>
@@ -46,13 +46,13 @@
                     <div class="card-body">
 
                         <!-- Filters -->
-                        <form method="GET" action="{{ route('customers.ledger') }}"
+                        <form method="GET" action="{{ route('customers.combined_ledger') }}"
                             class="row g-3 mb-4 p-3 bg-light rounded border">
                             <div class="col-md-4">
-                                <label class="form-label fw-bold">Select Customer</label>
+                                <label class="form-label fw-bold">Select Dual-Role Customer</label>
                                 <select name="customer_id" class="form-control select2">
-                                    <option value="">-- All Customers --</option>
-                                    @foreach ($customers as $cust)
+                                    <option value="">-- Select Customer --</option>
+                                    @foreach ($dualCustomers as $cust)
                                         <option value="{{ $cust->id }}"
                                             {{ request('customer_id') == $cust->id ? 'selected' : '' }}>
                                             {{ $cust->customer_name }}
@@ -73,7 +73,7 @@
                                 <div class="d-flex w-100 gap-2">
                                     <button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter"></i>
                                         Filter</button>
-                                    <a href="{{ route('customers.ledger') }}" class="btn btn-outline-secondary"><i
+                                    <a href="{{ route('customers.combined_ledger') }}" class="btn btn-outline-secondary"><i
                                             class="bi bi-arrow-clockwise"></i></a>
                                 </div>
                             </div>
@@ -107,7 +107,7 @@
                                 <div class="card border-0 shadow-sm rounded-4 h-100 bg-light">
                                     <div class="card-body p-4">
                                         <h6 class="text-secondary text-uppercase small fw-bold mb-2">Total Transactions</h6>
-                                        <h3 class="fw-bold text-dark mb-0">{{ $CustomerLedgers->count() }}</h3>
+                                        <h3 class="fw-bold text-dark mb-0">{{ count($combinedLedger) }}</h3>
                                         <p class="small text-muted mb-0 mt-1">In selected period</p>
                                     </div>
                                 </div>
@@ -117,34 +117,49 @@
 
                         <!-- Ledger Table -->
                         <div class="table-responsive">
-                            <table class="table table-bordered table-striped table-hover table-ledger" id="ledger-table">
+                            <table class="table table-bordered table-hover align-middle table-ledger" id="zero_config">
                                 <thead>
                                     <tr>
-                                        <th width="5%">#</th>
-                                        <th width="12%">Date</th>
-                                        <th width="18%">Customer</th>
-                                        <th width="30%">Description / Particulars</th>
-                                        <th width="10%" class="text-end">Debit (Dr)</th>
-                                        <th width="10%" class="text-end">Credit (Cr)</th>
-                                        <th width="15%" class="text-end">Balance</th>
+                                        <th style="width: 10%">Date</th>
+                                        <th style="width: 10%">Source</th>
+                                        <th style="width: 35%">Description</th>
+                                        <th style="width: 15%" class="text-end">Debit (+)</th>
+                                        <th style="width: 15%" class="text-end">Credit (-)</th>
+                                        <th style="width: 15%" class="text-end">Net Balance</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @forelse ($CustomerLedgers as $key => $ledger)
+                                    <!-- Opening Balance Row -->
+                                    <tr class="table-light">
+                                        <td><strong>{{ \Carbon\Carbon::parse(request('from_date', '2000-01-01'))->format('d/m/Y') }}</strong></td>
+                                        <td></td>
+                                        <td><strong>Opening Balance</strong></td>
+                                        <td class="text-end"></td>
+                                        <td class="text-end"></td>
+                                        <td class="text-end fw-bold {{ ($openingBalance ?? $opening_balance ?? 0) > 0 ? 'text-success' : (($openingBalance ?? $opening_balance ?? 0) < 0 ? 'text-danger' : '') }}">
+                                            {{ number_format(abs($openingBalance ?? $opening_balance ?? 0), 2) }} {{ ($openingBalance ?? $opening_balance ?? 0) >= 0 ? 'Dr' : 'Cr' }}
+                                        </td>
+                                    </tr>
+                                    
+                                    @php
+                                        $runningBalance = $openingBalance ?? $opening_balance ?? 0;
+                                    @endphp
+
+                                    @forelse ($combinedLedger as $row)
                                         @php
-                                            // Ledger object now has explicit debit/credit from Controller/BalanceService
-                                            $debit = $ledger->debit ?? 0;
-                                            $credit = $ledger->credit ?? 0;
-                                            $balance = $ledger->closing_balance;
+                                            $debit = $row->debit ?? 0;
+                                            $credit = $row->credit ?? 0;
+                                            $balance = $row->running_balance ?? 0;
                                             $suffix = $balance >= 0 ? 'Dr' : 'Cr';
                                         @endphp
                                         <tr>
-                                            <td>{{ $loop->iteration }}</td>
-                                            <td>{{ $ledger->created_at->format('d/m/Y') }}</td>
-                                            <td class="fw-bold">{{ $ledger->customer->customer_name ?? 'N/A' }}</td>
+                                            <td>{{ \Carbon\Carbon::parse($row->date)->format('d/m/Y') }}</td>
                                             <td>
-                                                {{ $ledger->description }}
+                                                <span class="badge {{ $row->source_type == 'Customer' ? 'bg-primary' : 'bg-info' }}">
+                                                    {{ $row->source_type }}
+                                                </span>
                                             </td>
+                                            <td>{{ $row->description }}</td>
                                             <td class="text-end text-success">
                                                 {{ $debit > 0 ? number_format($debit, 2) : '-' }}
                                             </td>
@@ -158,7 +173,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="7" class="text-center text-muted py-4">
+                                            <td colspan="6" class="text-center text-muted py-4">
                                                 <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
                                                 No transactions found in this period.
                                             </td>

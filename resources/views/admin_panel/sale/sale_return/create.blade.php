@@ -798,7 +798,7 @@
                 
                 if (isWeightPieces || isWeightGm) {
                     totalPieces = num(val);
-                } else if (ppb > 0) {
+                } else if (ppb > 1) {
                     totalPieces = (boxes * ppb) + pieces;
                 } else {
                     totalPieces = boxes; // If no box size, inputs are pieces

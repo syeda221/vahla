@@ -141,6 +141,19 @@ class CustomerController extends Controller
         // Customer create
         $customer = Customer::create($data);
 
+        // Auto-create Vendor if requested
+        if ($request->has('also_create_vendor') && $request->also_create_vendor) {
+            $vendor = \App\Models\Vendor::create([
+                'name'    => $customer->customer_name,
+                'email'   => $customer->email_address,
+                'phone'   => $customer->mobile,
+                'address' => $customer->address,
+                'opening_balance' => 0, // vendor specific balance 0 by default
+            ]);
+            $customer->linked_vendor_id = $vendor->id;
+            $customer->save();
+        }
+
         // Ledger & Journal entry agar opening balance dia gaya ho
         $opening = (float) ($data['opening_balance'] ?? 0);
         $this->syncOpeningBalance($customer, $opening);
@@ -171,6 +184,19 @@ class CustomerController extends Controller
         $data = $request->except('_token');
 
         $customer->update($data);
+
+        // Process "Also create as Vendor" if requested and not already linked
+        if ($request->has('also_create_vendor') && !$customer->linked_vendor_id) {
+            $vendor = \App\Models\Vendor::create([
+                'name' => $customer->customer_name,
+                'email' => $customer->email ?? null,
+                'phone' => $customer->mobile ?? null,
+                'address' => $customer->address ?? null,
+                'opening_balance' => 0
+            ]);
+            $customer->linked_vendor_id = $vendor->id;
+            $customer->save();
+        }
 
         // Sync opening balance in JournalEntry & CustomerLedger
         $opening = (float) ($request->opening_balance ?? 0);
@@ -338,6 +364,7 @@ class CustomerController extends Controller
                 'customers' => $customers,
                 'opening_balance' => $openingBalance,
                 'closing_balance' => $closingBalance,
+                'selectedCustomer' => $request->filled('customer_id') ? Customer::find($request->customer_id) : null,
             ]);
             
         } else {

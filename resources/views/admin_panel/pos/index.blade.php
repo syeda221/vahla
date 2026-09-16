@@ -2111,7 +2111,8 @@
                     }
 
                     res.items.forEach(item => {
-                        let desc = `${item.product_name} ${item.size !== '-' ? '(' + item.size + ' | ' + item.color + ')' : ''}`;
+                        let skuPart = item.sku ? `[${item.sku}] ` : '';
+                        let desc = `${skuPart}${item.product_name} ${item.size !== '-' ? '(' + item.size + ' | ' + item.color + ')' : ''}`;
                         $tbody.append(`
                             <tr data-sale-item-id="${item.id}" data-is-manual="${item.is_manual}" data-product-id="${item.product_id || ''}" data-name="${item.product_name}" data-variant-data="${item.variant_data}" data-net-unit-price="${item.net_unit_price}" data-max-returnable="${item.max_returnable}" data-original-sale-id="${res.sale_id}">
                                 <td class="ps-3 fw-bold" style="font-size: 13px;">${desc}</td>

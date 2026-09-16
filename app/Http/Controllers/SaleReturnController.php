@@ -81,6 +81,7 @@ class SaleReturnController extends Controller
             // Add product details
             $item->item_name = $product->product_name ?? $product->item_name ?? 'Unknown';
             $item->item_code = $product->product_code ?? $product->item_code ?? '';
+
             
             // Fix brand - get name from relationship
             if ($product->brand && is_object($product->brand)) {
@@ -114,6 +115,27 @@ class SaleReturnController extends Controller
                     if (!$liveVariant && count($prodVariants) === 1) {
                         $liveVariant = $prodVariants[0];
                     }
+                }
+            }
+
+            // Update item_code and item_name with variant info if available
+            if ($liveVariant && !empty($liveVariant['barcode'])) {
+                $item->item_code = $liveVariant['barcode'];
+            } elseif (!empty($variant['barcode'])) {
+                $item->item_code = $variant['barcode'];
+            }
+            
+            if ($liveVariant && !empty($liveVariant['name']) && strcasecmp(trim($liveVariant['name']), $item->item_name) !== 0) {
+                if (stripos(trim($liveVariant['name']), $item->item_name) !== false) {
+                    $item->item_name = trim($liveVariant['name']);
+                } else {
+                    $item->item_name = $item->item_name . ' — ' . trim($liveVariant['name']);
+                }
+            } elseif (!empty($variant['name']) && strcasecmp(trim($variant['name']), $item->item_name) !== 0) {
+                if (stripos(trim($variant['name']), $item->item_name) !== false) {
+                    $item->item_name = trim($variant['name']);
+                } else {
+                    $item->item_name = $item->item_name . ' — ' . trim($variant['name']);
                 }
             }
 

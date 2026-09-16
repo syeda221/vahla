@@ -37,6 +37,23 @@ class VendorController extends Controller
             $this->syncOpeningBalance($vendor, $newOpening);
         }
 
+        // Handle "Also create as Customer"
+        if ($request->has('also_create_customer')) {
+            $existing = \App\Models\Customer::where('linked_vendor_id', $vendor->id)->first();
+            if (!$existing) {
+                $custIdStr = 'CUST-'.str_pad(\App\Models\Customer::max('id') + 1, 4, '0', STR_PAD_LEFT);
+                \App\Models\Customer::create([
+                    'customer_id' => $custIdStr,
+                    'customer_type' => 'Main Customer',
+                    'customer_name' => $vendor->name,
+                    'mobile' => $vendor->phone ?? null,
+                    'address' => $vendor->address ?? null,
+                    'opening_balance' => 0, // Keep separate opening balance, otherwise we'd need to sync it too
+                    'linked_vendor_id' => $vendor->id
+                ]);
+            }
+        }
+
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,

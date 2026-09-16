@@ -1703,7 +1703,7 @@ class ReportingController extends Controller
 
     public function customer_ledger_report()
     {
-        $customers = DB::table('customers')->select('id', 'customer_name', 'zone')->get();
+        $customers = DB::table('customers')->select('id', 'customer_name', 'zone', 'linked_vendor_id')->get();
         $zones = \App\Models\Zone::orderBy('zone')->get();
 
         return view('admin_panel.reporting.customer_ledger_report', compact('customers', 'zones'));
@@ -1896,7 +1896,10 @@ class ReportingController extends Controller
 
     public function vendor_ledger_report()
     {
-        $vendors = DB::table('vendors')->select('id', 'name')->orderBy('name')->get();
+        $vendors = DB::table('vendors')
+            ->select('id', 'name', DB::raw('(SELECT id FROM customers WHERE linked_vendor_id = vendors.id LIMIT 1) as linked_customer_id'))
+            ->orderBy('name')
+            ->get();
 
         return view('admin_panel.reporting.vendor_ledger_report', compact('vendors'));
     }

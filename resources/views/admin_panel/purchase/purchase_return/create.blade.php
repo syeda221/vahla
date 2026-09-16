@@ -810,8 +810,15 @@
                 // If I have 12 pieces/box and write 0.12, that is 12 pieces => 1 box.
                 // Let's just sum it up.
 
+                const sizeMode = $row.find('.size-mode').val();
+                const unit = $row.find('input[name="unit[]"]').val() || 'pc';
+                const isWeightPieces = ['by_kg', 'by_gm'].includes(sizeMode) && ['pcs', 'pc', 'piece', 'pieces'].includes(unit.toLowerCase());
+                const isWeightGm = ['by_kg', 'by_gm'].includes(sizeMode) && unit.toLowerCase() === 'gm';
+
                 let totalPieces = 0;
-                if (ppb > 0) {
+                if (isWeightPieces || isWeightGm) {
+                    totalPieces = num(val);
+                } else if (ppb > 1) {
                     totalPieces = (boxes * ppb) + pieces;
                 } else {
                     totalPieces = boxes; // If no box size, inputs are pieces

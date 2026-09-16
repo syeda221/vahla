@@ -155,6 +155,48 @@
         }
 
         .btn-modern-secondary:hover { background: #e2e8f0; }
+
+        /* Toggle Switch Styling */
+        .modern-switch-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            height: 38px;
+        }
+        .modern-switch-wrap:hover {
+            background: rgba(79, 70, 229, 0.05);
+            border-color: rgba(79, 70, 229, 0.2);
+        }
+        .modern-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            margin: 0;
+        }
+        .modern-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1; transition: .4s; border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+            background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:focus + .slider { box-shadow: 0 0 1px var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(20px); }
+        .switch-label-text {
+            color: var(--text-dark); font-weight: 600; font-size: 0.95rem; user-select: none;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .switch-label-text i { color: var(--primary-color); }
     </style>
 
     <div class="main-content">
@@ -198,10 +240,28 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="input-group-modern" style="grid-column: span 3;">
+                        <div class="input-group-modern" style="grid-column: span 4;">
                             <label class="modern-label">Full Name <span class="text-danger">*</span></label>
                             <input type="text" class="modern-control" name="customer_name" required
                                 value="{{ $customer->customer_name }}" placeholder="Customer Name">
+                        </div>
+                        <div class="input-group-modern" style="grid-column: span 2; display: flex; flex-direction: column; justify-content: flex-end; margin-bottom: 2px;">
+                            <label class="modern-label" style="visibility: hidden;">Vendor</label>
+                            @if($customer->linked_vendor_id)
+                                <div style="display:flex; align-items:center; height:38px; color:var(--primary-color); font-weight:bold; gap:8px;">
+                                    <i class="fa fa-truck"></i> Linked to Vendor
+                                </div>
+                            @else
+                                <label class="modern-switch-wrap mb-0" for="also_create_vendor">
+                                    <label class="modern-switch">
+                                        <input type="checkbox" name="also_create_vendor" id="also_create_vendor" value="1">
+                                        <span class="slider"></span>
+                                    </label>
+                                    <div class="switch-label-text">
+                                        <i class="fa fa-truck"></i> Create Vendor
+                                    </div>
+                                </label>
+                            @endif
                         </div>
                         <div class="input-group-modern" style="grid-column: span 2;">
                             <label class="modern-label">Mobile</label>

@@ -7,6 +7,7 @@ use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CombinedLedgerController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\DiscountController;
 use App\Http\Controllers\HomeController;
@@ -207,6 +208,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/customers/inactive/{id}', [CustomerController::class, 'markInactive'])->name('customers.markInactive');
     Route::get('customers/toggle-status/{id}', [CustomerController::class, 'toggleStatus'])->name('customers.toggleStatus');
     Route::get('/customers/ledger', [CustomerController::class, 'customer_ledger'])->name('customers.ledger');
+    Route::get('/customers/combined-ledger', [CombinedLedgerController::class, 'index'])->name('customers.combined_ledger');
     Route::get('/customer/payments', [CustomerController::class, 'customer_payments'])->name('customer.payments');
     Route::post('/customer/payments', [CustomerController::class, 'store_customer_payment'])->name('customer.payments.store');
     Route::post('/customers/snooze-reminder/{id}', [CustomerController::class, 'snoozeReminder'])->name('customers.snoozeReminder');

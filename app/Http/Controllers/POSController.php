@@ -526,12 +526,17 @@ class POSController extends Controller
             $netTotal = max(0, $lineTotal - $discountShare);
             $netUnitPrice = $item->total_pieces > 0 ? ($netTotal / $item->total_pieces) : 0;
 
+            $sku = $item->product->item_code ?? '';
+            if (!empty($variant['barcode'])) {
+                $sku = $variant['barcode'];
+            }
+
             $items[] = [
                 'id' => $item->id,
                 'product_id' => $item->product_id,
                 'is_manual' => $item->is_manual ? 1 : 0,
                 'product_name' => $item->product_name,
-                'sku' => $item->product->item_code ?? '',
+                'sku' => $sku,
                 'size' => $variant['size'] ?? ($variant['size_val'] ?? '-'),
                 'color' => $variant['color'] ?? ($variant['color_val'] ?? '-'),
                 'variant_data' => $item->color,

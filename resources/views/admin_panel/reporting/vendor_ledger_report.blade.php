@@ -145,6 +145,9 @@
 
                     {{-- Last Buttons with X-Axis Gap --}}
                     <div class="d-flex align-items-center ms-auto" style="gap: 10px !important;">
+                        <a href="#" id="btnCombinedLedger" class="btn btn-warning btn-sm px-3 fw-bold d-none align-items-center" style="height: 32px; border-radius: 6px; font-size: .78rem; margin-right: 8px !important;">
+                            <i class="fas fa-link me-1"></i> Combined
+                        </a>
                         <button type="button" class="btn btn-primary btn-sm px-3 fw-bold d-inline-flex align-items-center btnSearchTrigger" style="height: 32px; border-radius: 6px; font-size: .78rem; margin-right: 8px !important;">
                             <i class="fas fa-filter me-1"></i> Generate
                         </button>
@@ -162,9 +165,9 @@
                     <div class="col-md-7">
                         <label for="vendor_id_desk" class="sale-filter-label mb-1">Vendor:</label>
                         <select name="vendor_id" id="vendor_id_desk" class="form-select form-select-sm select2 vendorSelect">
-                            <option value="all">-- All Vendors --</option>
+                            <option value="all" data-linked-customer="">-- All Vendors --</option>
                             @foreach ($vendors as $v)
-                                <option value="{{ $v->id }}">{{ $v->name }}</option>
+                                <option value="{{ $v->id }}" data-linked-customer="{{ $v->linked_customer_id ?? '' }}">{{ $v->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -363,7 +366,22 @@
             // Sync Inputs between Desktop & Mobile
             $('.startDateInput').on('change', function() { $('.startDateInput').val($(this).val()); });
             $('.endDateInput').on('change', function() { $('.endDateInput').val($(this).val()); });
-            $('.vendorSelect').on('change', function() { $('.vendorSelect').val($(this).val()); });
+            $('.vendorSelect').on('change', function() { 
+                $('.vendorSelect').val($(this).val()); 
+                
+                // Toggle Combined Ledger Button
+                let selectedOption = $(this).find('option:selected');
+                let linkedCustomer = selectedOption.attr('data-linked-customer');
+                if (linkedCustomer && linkedCustomer.trim() !== '') {
+                    $('#btnCombinedLedger').removeClass('d-none').addClass('d-inline-flex');
+                    // The combined ledger route takes customer_id, so we pass the linked customer's ID
+                    let routeUrl = "{{ route('customers.combined_ledger') }}?customer_id=" + linkedCustomer;
+                    $('#btnCombinedLedger').attr('href', routeUrl);
+                } else {
+                    $('#btnCombinedLedger').removeClass('d-inline-flex').addClass('d-none');
+                    $('#btnCombinedLedger').attr('href', '#');
+                }
+            });
             $('.quickFilterSelect').on('change', function() {
                 let val = $(this).val();
                 $('.quickFilterSelect').val(val);

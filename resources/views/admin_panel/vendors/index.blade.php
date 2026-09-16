@@ -173,6 +173,46 @@
         flex-shrink: 0;
     }
 
+    /* Toggle Switch Styling */
+    .modern-switch-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .modern-switch-wrap:hover {
+        background: rgba(79, 70, 229, 0.05);
+        border-color: rgba(79, 70, 229, 0.2);
+    }
+    .modern-switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+        margin: 0;
+    }
+    .modern-switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+        position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #cbd5e1; transition: .4s; border-radius: 34px;
+    }
+    .slider:before {
+        position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+        background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    input:checked + .slider { background-color: #4f46e5; }
+    input:focus + .slider { box-shadow: 0 0 1px #4f46e5; }
+    input:checked + .slider:before { transform: translateX(20px); }
+    .switch-label-text {
+        color: #0f172a; font-weight: 600; font-size: 0.88rem; user-select: none;
+        display: flex; align-items: center; gap: 8px;
+    }
+
     /* Mobile Cards View */
     .mobile-vendor-cards {
         display: none;
@@ -348,6 +388,7 @@
                             <input type="hidden" class="v-phone" value="{{ $v->phone }}">
                             <input type="hidden" class="v-balance" value="{{ $v->opening_balance }}">
                             <input type="hidden" class="v-address" value="{{ $v->address }}">
+                            <input type="hidden" class="v-linked" value="{{ DB::table('customers')->where('linked_vendor_id', $v->id)->exists() ? 1 : 0 }}">
                         </tr>
                     @endforeach
                 </tbody>
@@ -396,6 +437,7 @@
                     <input type="hidden" class="v-phone" value="{{ $v->phone }}">
                     <input type="hidden" class="v-balance" value="{{ $v->opening_balance }}">
                     <input type="hidden" class="v-address" value="{{ $v->address }}">
+                    <input type="hidden" class="v-linked" value="{{ DB::table('customers')->where('linked_vendor_id', $v->id)->exists() ? 1 : 0 }}">
                 </div>
             @endforeach
         </div>
@@ -436,6 +478,22 @@
                     <div class="mb-2">
                         <label for="vaddress" class="form-label fw-semibold text-dark small">Full Address</label>
                         <textarea class="form-control px-3 py-2" name="address" id="vaddress" placeholder="Enter address details..." style="border-radius: 10px; border: 1.5px solid #cbd5e1; height: 90px;"></textarea>
+                    </div>
+
+                    <div class="mt-3" id="vendorCustomerLinkContainer">
+                        <label class="modern-switch-wrap mb-0" for="also_create_customer" id="vendorAsCustomerToggle">
+                            <label class="modern-switch">
+                                <input type="checkbox" name="also_create_customer" id="also_create_customer" value="1">
+                                <span class="slider"></span>
+                            </label>
+                            <div class="switch-label-text">
+                                <i class="fa fa-user text-primary"></i> Also create as Customer
+                            </div>
+                        </label>
+
+                        <div id="vendorAlreadyLinked" class="d-none align-items-center gap-2 p-2 rounded" style="background: #eef2ff; color: #4f46e5; font-weight: 600; font-size: 0.88rem; width: fit-content; border: 1px solid #c7d2fe;">
+                            <i class="fa fa-user-check"></i> Linked to Customer
+                        </div>
                     </div>
                 </div>
 
@@ -478,6 +536,12 @@
             $('#vendor_id').val('');
             $('#modalTitle').html('<i class="fas fa-truck text-primary me-2"></i>New Vendor');
             $('#opening_balance').prop('readonly', false);
+            
+            // Show switch for new vendor
+            $('#vendorAsCustomerToggle').removeClass('d-none').addClass('d-inline-flex');
+            $('#vendorAlreadyLinked').removeClass('d-flex').addClass('d-none');
+            $('#also_create_customer').prop('checked', false);
+
             $('#vendorModal').modal('show');
         });
 
@@ -490,12 +554,23 @@
             const phone = $container.find('.v-phone').val();
             const balance = $container.find('.v-balance').val();
             const address = $container.find('.v-address').val();
+            const linked = $container.find('.v-linked').val() == "1";
 
             $('#vendor_id').val(id);
             $('#vname').val(name);
             $('#vphone').val(phone);
             $('#opening_balance').val(balance).prop('readonly', false);
             $('#vaddress').val(address);
+
+            // Handle switch visibility based on linked status
+            if (linked) {
+                $('#vendorAsCustomerToggle').removeClass('d-inline-flex').addClass('d-none');
+                $('#vendorAlreadyLinked').removeClass('d-none').addClass('d-flex');
+            } else {
+                $('#vendorAsCustomerToggle').removeClass('d-none').addClass('d-inline-flex');
+                $('#vendorAlreadyLinked').removeClass('d-flex').addClass('d-none');
+                $('#also_create_customer').prop('checked', false);
+            }
 
             $('#modalTitle').html('<i class="fas fa-edit text-primary me-2"></i>Edit Vendor');
             $('#vendorModal').modal('show');

@@ -1876,6 +1876,8 @@ class PurchaseController extends Controller
             $variantDetails = [];
             $vPpb = null;
 
+            $itemCode = optional($item->product)->item_code ?? '';
+
             if (!empty($item->color)) {
                 $decoded = base64_decode($item->color, true);
                 $vData = ($decoded !== false) ? json_decode($decoded, true) : null;
@@ -1886,6 +1888,10 @@ class PurchaseController extends Controller
                     $vName = trim($vData['name'] ?? ($vData['variant_name'] ?? ''));
                     $vColorName = trim($vData['color'] ?? '');
                     $vSizeName = trim($vData['size'] ?? '');
+
+                    if (!empty($vData['barcode'])) {
+                        $itemCode = $vData['barcode'];
+                    }
 
                     if ($vName !== '' && strcasecmp($vName, $baseProductName) !== 0) {
                         $variantNameDisplay = $vName;
@@ -1907,6 +1913,7 @@ class PurchaseController extends Controller
                     $variantDetails[] = trim($item->color);
                 }
             }
+
 
             if ($variantNameDisplay !== '') {
                 if (stripos($variantNameDisplay, $baseProductName) !== false) {
@@ -1972,7 +1979,7 @@ class PurchaseController extends Controller
                 'product_id' => $item->product_id,
                 'item_name' => $itemName,
                 'brand' => optional(optional($item->product)->brand)->name ?? '',
-                'item_code' => optional($item->product)->item_code ?? '',
+                'item_code' => $itemCode,
                 'pieces_per_box' => $ppb,
                 'size_mode' => $sizeMode,
                 'pieces_per_m2' => $item->pieces_per_m2 ?? optional($item->product)->pieces_per_m2 ?? 0,
