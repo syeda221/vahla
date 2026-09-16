@@ -518,6 +518,66 @@ class ProductController extends Controller
         $product->setAttribute('calculated_boxes_quantity', $boxes);
         $product->setAttribute('calculated_loose_pieces', $loose);
 
+        // Calculate secondary variant stocks dynamically based on base variant
+        if (!empty($product->color)) {
+            $raw = $product->color;
+            if (is_string($raw)) {
+                $b64 = base64_decode($raw, true);
+                if ($b64 !== false && (str_starts_with(trim($b64), '[') || str_starts_with(trim($b64), '{'))) {
+                    $raw = $b64;
+                }
+                $decoded = json_decode($raw, true);
+                if (is_string($decoded)) {
+                    $decoded = json_decode($decoded, true) ?? $decoded;
+                }
+            } else {
+                $decoded = $raw;
+            }
+
+            if (is_array($decoded)) {
+                $variants = isset($decoded['name']) ? [$decoded] : array_values($decoded);
+                
+                $baseVariant = null;
+                foreach ($variants as $v) {
+                    if (!empty($v['is_base_variant'])) {
+                        $baseVariant = $v;
+                        break;
+                    }
+                }
+                if (!$baseVariant && isset($variants[0])) {
+                    $baseVariant = $variants[0];
+                }
+
+                if ($baseVariant) {
+                    $baseStock = (float)($baseVariant['stock'] ?? $baseVariant['variant_stock'] ?? 0);
+                    $baseSale = (float)($baseVariant['sale_price'] ?? $baseVariant['variant_sale_price'] ?? 0);
+                    $basePurch = (float)($baseVariant['purch_price'] ?? $baseVariant['purchase_price'] ?? $baseVariant['variant_purchase_price'] ?? 0);
+
+                    foreach ($variants as &$v) {
+                        if (empty($v['is_base_variant'])) {
+                            $cf = (float)($v['conv_factor'] ?? 1);
+                            if ($cf > 0) {
+                                // For weight/ton/gm, factor is weight per piece. So Pcs = Base Stock / factor
+                                if (in_array($product->size_mode, ['by_kg', 'by_gm', 'by_ton'])) {
+                                    $vStock = (float)($v['stock'] ?? 0);
+                                    if ($vStock == 0 && $baseStock > 0) {
+                                        $v['stock'] = round($baseStock / $cf);
+                                    }
+                                    if (empty($v['sale_price']) && $baseSale > 0) {
+                                        $v['sale_price'] = round($baseSale * $cf, 4);
+                                    }
+                                    if (empty($v['purch_price']) && $basePurch > 0) {
+                                        $v['purch_price'] = round($basePurch * $cf, 4);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    $product->color = json_encode($variants);
+                }
+            }
+        }
+
         return response()->json($product);
     }
 

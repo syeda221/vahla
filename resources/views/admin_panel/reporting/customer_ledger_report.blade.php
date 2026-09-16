@@ -449,6 +449,25 @@
                 loadLedger();
             });
 
+            // Session Storage for Sticky Filters
+            const storageKey = 'customerLedgerReportFilters';
+            let isReset = window.location.search.includes('reset=1');
+            
+            if (isReset) {
+                sessionStorage.removeItem(storageKey);
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else {
+                let savedStr = sessionStorage.getItem(storageKey);
+                if (savedStr) {
+                    let saved = JSON.parse(savedStr);
+                    if (saved.zone_id) $(".zoneSelect").val(saved.zone_id).trigger('change');
+                    if (saved.customer_id) $(".customerSelect").val(saved.customer_id).trigger('change');
+                    if (saved.start_date) $(".startDateInput").val(saved.start_date);
+                    if (saved.end_date) $(".endDateInput").val(saved.end_date);
+                    if (saved.quick_filter) $(".quickFilterSelect").val(saved.quick_filter);
+                }
+            }
+
             // Auto-load ledger on page load
             loadLedger();
 
@@ -457,12 +476,7 @@
             });
 
             $('.btnResetTrigger').on('click', function() {
-                $('.startDateInput').val('2000-01-01');
-                $('.endDateInput').val('{{ date("Y-m-d") }}');
-                $('.zoneSelect').val('').trigger('change');
-                $('.customerSelect').val('all').trigger('change');
-                $('.quickFilterSelect').val('custom');
-                loadLedger();
+                window.location.href = window.location.pathname + '?reset=1';
             });
 
             $('.btnPrintReport').on('click', () => window.print());
@@ -472,6 +486,16 @@
                 let cid = $(".customerSelect").val();
                 let start = $(".startDateInput").val() || '2000-01-01';
                 let end = $(".endDateInput").val() || '{{ date("Y-m-d") }}';
+                let quick = $(".quickFilterSelect").val() || 'custom';
+
+                // Save to session storage
+                sessionStorage.setItem(storageKey, JSON.stringify({
+                    zone_id: zid,
+                    customer_id: cid,
+                    start_date: start,
+                    end_date: end,
+                    quick_filter: quick
+                }));
 
                 $("#loader").show();
                 $("#ledgerBox").hide();

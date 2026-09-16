@@ -290,7 +290,7 @@
                     <button type="submit" class="btn btn-primary btn-filter-main">
                         <i class="fas fa-filter me-1"></i> Filter
                     </button>
-                    <a href="{{ route('vendor.ledger', $vendor->id) }}" class="btn btn-outline-secondary btn-filter-reset">Reset</a>
+                    <a href="{{ route('vendor.ledger', $vendor->id) }}?reset=1" class="btn btn-outline-secondary btn-filter-reset">Reset</a>
                     <button type="button" onclick="window.print()" class="btn btn-light btn-filter-print" title="Print Ledger">
                         <i class="fas fa-print"></i>
                     </button>
@@ -454,5 +454,33 @@
     </div>
 
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Sticky Filters Logic
+        let hasQueryParams = window.location.search.length > 0;
+        let isReset = window.location.search.includes('reset=1');
+        
+        // Vendor Ledger specific storage key based on URL path to isolate different vendors
+        let storageKey = 'vendor_ledger_filters_' + window.location.pathname;
+
+        if (isReset) {
+            sessionStorage.removeItem(storageKey);
+            window.location.href = window.location.pathname; // strip query params
+            return;
+        }
+
+        if (hasQueryParams) {
+            sessionStorage.setItem(storageKey, window.location.search);
+        } else {
+            let savedFilters = sessionStorage.getItem(storageKey);
+            if (savedFilters) {
+                window.location.search = savedFilters;
+            }
+        }
+    });
+</script>
+@endpush
 
 @endsection

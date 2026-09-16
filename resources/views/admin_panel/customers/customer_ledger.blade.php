@@ -73,7 +73,7 @@
                                 <div class="d-flex w-100 gap-2">
                                     <button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter"></i>
                                         Filter</button>
-                                    <a href="{{ route('customers.ledger') }}" class="btn btn-outline-secondary"><i
+                                    <a href="{{ route('customers.ledger') }}?reset=1" class="btn btn-outline-secondary"><i
                                             class="bi bi-arrow-clockwise"></i></a>
                                 </div>
                             </div>
@@ -181,6 +181,24 @@
             // Init Select2 if available
             if ($('.select2').length > 0) {
                 $('.select2').select2();
+            }
+            // Sticky Filters Logic
+            let hasQueryParams = window.location.search.length > 0;
+            let isReset = window.location.search.includes('reset=1');
+            
+            if (isReset) {
+                sessionStorage.removeItem('customer_ledger_filters');
+                window.location.href = window.location.pathname; // strip query params
+                return;
+            }
+
+            if (hasQueryParams) {
+                sessionStorage.setItem('customer_ledger_filters', window.location.search);
+            } else {
+                let savedFilters = sessionStorage.getItem('customer_ledger_filters');
+                if (savedFilters) {
+                    window.location.search = savedFilters;
+                }
             }
         });
     </script>
