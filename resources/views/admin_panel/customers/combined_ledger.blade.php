@@ -20,6 +20,34 @@
             color: #6c757d;
             font-weight: 700;
         }
+
+        /* Print Styles */
+        @media print {
+            @page { size: A4 portrait; margin: 0; }
+            body { background: #ffffff !important; font-size: 11px; color: #000; padding: 15mm 10mm !important; }
+            .no-print, header, .sidebar, .navbar, .rt_nav_header, footer, form, .page-header, .mb-4.d-flex, .row.mb-4 { display: none !important; }
+            
+            .main-content, .main-content-inner, .container-fluid { padding: 0 !important; margin: 0 !important; }
+            .card { border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; }
+            .card-body { padding: 0 !important; }
+            
+            .table-ledger { width: 100% !important; border-collapse: collapse !important; border: 1px solid #000 !important; margin-bottom: 20px !important; }
+            .table-ledger th, .table-ledger td { border: 1px solid #000 !important; padding: 6px !important; color: #000 !important; background: transparent !important; font-size: 11px !important; }
+            .table-ledger th { font-weight: bold !important; text-align: center !important; text-transform: uppercase; border-bottom: 2px solid #000 !important; }
+            
+            /* Clean up texts and badges */
+            .badge { border: none !important; color: #000 !important; padding: 0 !important; font-weight: normal !important; background: transparent !important; box-shadow: none !important; }
+            .text-primary, .text-danger, .text-success, .text-dark, .text-muted, .text-secondary { color: #000 !important; }
+            
+            /* Print Header */
+            .print-header { display: block !important; text-align: center; margin-bottom: 15px; }
+            .print-header h2 { font-weight: 900; margin: 0; font-size: 22px; text-transform: uppercase; }
+            .print-header h4 { font-weight: 800; margin: 8px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; }
+            .print-header p { margin: 2px 0; font-size: 11px; }
+            
+            /* Print Meta Info */
+            .print-meta-info { display: flex !important; justify-content: space-between; margin-bottom: 10px; font-weight: bold; font-size: 12px; }
+        }
     </style>
 
     <div class="main-content">
@@ -27,12 +55,13 @@
             <div class="container-fluid mt-4">
 
                 <!-- Page Header -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-4 no-print">
                     <div>
                         <h4 class="mb-1 text-primary"><i class="bi bi-link-45deg"></i> Combined Ledger (Customer + Vendor)</h4>
                         <p class="text-muted mb-0">Track net balance across both customer and vendor roles.</p>
                     </div>
                     <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-dark" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
                         @if(isset($customer) && $customer->id)
                             <a href="{{ route('customers.ledger', ['customer_id' => $customer->id]) }}" class="btn btn-outline-primary"><i class="bi bi-person"></i>
                                 Back to Customer Ledger</a>
@@ -114,6 +143,25 @@
                             </div>
                         </div>
                         @endif
+
+                        {{-- PRINT ONLY HEADER --}}
+                        <div class="print-header d-none d-print-block">
+                            <h2>{{ isset($customer) && $customer->id ? $customer->customer_name : 'ALL CUSTOMERS' }}</h2>
+                            <p>Hanif Garden Dry Port Road Near Soha Mall Faisalabad<br>Tel: +92 3216293333 | +92 300 7995500 | Web: vahlamanagement.com</p>
+                            <h4>COMBINED LEDGER</h4>
+                        </div>
+                        
+                        <div class="print-meta-info d-none d-print-flex">
+                            <div>
+                                Account No: - <br>
+                                <span style="text-transform: uppercase;">{{ isset($customer) && $customer->id ? $customer->customer_name : 'COMBINED LEDGER' }}</span>
+                            </div>
+                            <div class="text-end" style="text-align: right;">
+                                Date: {{ date('d-M') }}<br>
+                                Currency: PKR<br>
+                                <span>Total Due: PKR {{ isset($closing_balance) ? number_format(abs($closing_balance), 2) : '0.00' }}</span>
+                            </div>
+                        </div>
 
                         <!-- Ledger Table -->
                         <div class="table-responsive">

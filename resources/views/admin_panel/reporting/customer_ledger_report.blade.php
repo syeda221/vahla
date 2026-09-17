@@ -107,10 +107,37 @@
     }
 
     @media print {
-        body { background: #ffffff !important; font-size: 11px; }
-        .no-print, header, .sidebar, .navbar, footer { display: none !important; }
-        .sale-report-container { padding: 0 !important; background: #fff !important; }
-        .card { border: 1px solid #dee2e6 !important; box-shadow: none !important; margin-bottom: 10px !important; }
+        @page { size: A4 portrait; margin: 0; } /* Set margin to 0 to remove browser headers/footers */
+        body { background: #ffffff !important; font-size: 11px; color: #000; padding: 15mm 10mm !important; }
+        .no-print, header, .sidebar, .navbar, .rt_nav_header, footer, .sale-report-container > .card.no-print { display: none !important; }
+        .app-page-body { padding-top: 0 !important; margin-top: 0 !important; }
+        .sale-report-container { padding: 0 !important; background: #fff !important; min-height: auto !important; margin-top: 0 !important; }
+        
+        /* Force table to show, hide mobile cards */
+        .d-md-none { display: none !important; }
+        .d-md-block { display: block !important; }
+        
+        /* Table Styling for Print */
+        .sale-table-wrap { height: auto !important; max-height: none !important; overflow: visible !important; border: none !important; }
+        .report-table { width: 100% !important; border-collapse: collapse !important; border: 1px solid #000 !important; margin-bottom: 20px !important; }
+        .report-table th, .report-table td { border: 1px solid #000 !important; padding: 6px !important; color: #000 !important; background: transparent !important; }
+        .report-table thead th { position: static !important; background-color: #fff !important; color: #000 !important; border-bottom: 2px solid #000 !important; text-align: center !important; font-size: 12px !important; text-transform: uppercase; }
+        
+        /* Clean up texts and badges */
+        .badge { border: none !important; color: #000 !important; padding: 0 !important; font-weight: normal !important; background: transparent !important; box-shadow: none !important; }
+        .text-primary, .text-danger, .text-success, .text-dark, .text-muted { color: #000 !important; }
+        
+        /* Print Header */
+        .print-header { display: block !important; text-align: center; margin-bottom: 15px; }
+        .print-header h2 { font-weight: 900; margin: 0; font-size: 22px; text-transform: uppercase; }
+        .print-header h4 { font-weight: 800; margin: 8px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; }
+        .print-header p { margin: 2px 0; font-size: 11px; }
+        
+        /* Print Meta Info */
+        .print-meta-info { display: flex !important; justify-content: space-between; margin-bottom: 10px; font-weight: bold; font-size: 12px; }
+        
+        /* Hide unwanted UI elements during print */
+        #ledgerHeader, .summary-pill-bar, .card:not(.d-print-block) { display: none !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
     }
 </style>
 
@@ -339,14 +366,33 @@
 
     <div id="ledgerBox" style="display:none;">
         
-        {{-- Report Sub-Header --}}
-        <div class="card border-0 shadow-sm mb-2 rounded-3 bg-white">
+        {{-- Report Sub-Header (Screen only) --}}
+        <div class="card border-0 shadow-sm mb-2 rounded-3 bg-white no-print">
             <div class="card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-2" id="ledgerHeader">
             </div>
         </div>
 
+        {{-- PRINT ONLY HEADER --}}
+        <div class="print-header d-none d-print-block">
+            <h2 id="printCustomerNameTitle">CUSTOMER NAME</h2>
+            <p>Hanif Garden Dry Port Road Near Soha Mall Faisalabad<br>Tel: +92 3216293333 | +92 300 7995500 | Web: vahlamanagement.com</p>
+            <h4>CUSTOMER LEDGER</h4>
+        </div>
+        
+        <div class="print-meta-info d-none d-print-flex">
+            <div>
+                Account No: - <br>
+                <span id="printCustomerNameSubtitle" style="text-transform: uppercase;">ALL CUSTOMERS</span>
+            </div>
+            <div class="text-end" style="text-align: right;">
+                Date: {{ date('d-M') }}<br>
+                Currency: PKR<br>
+                <span id="printTotalDue">Total Due: PKR 0.00</span>
+            </div>
+        </div>
+
         {{-- DESKTOP TABLE VIEW (d-none d-md-block) --}}
-        <div class="card border-0 shadow-sm mb-3 rounded-3 bg-white d-none d-md-block">
+        <div class="card border-0 shadow-sm mb-3 rounded-3 bg-white d-none d-md-block d-print-block">
             <div class="card-body p-0">
                 <div class="sale-table-wrap">
                     <table class="table table-bordered table-hover align-middle mb-0 report-table">
@@ -530,6 +576,11 @@
                     // Update Top Metrics (Desktop & Mobile)
                     let formattedOpening = 'Rs ' + lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
                     $('#pillOpeningBalance, #mobPillOpeningBalance').text(formattedOpening);
+                    
+                    // Populate Print Header
+                    let custNameTitle = res.customer.customer_name === 'all' || !res.customer.customer_name ? 'ALL CUSTOMERS' : res.customer.customer_name;
+                    $("#printCustomerNameTitle").text(custNameTitle);
+                    $("#printCustomerNameSubtitle").text(custNameTitle);
 
                     // Desktop Opening Row
                     let html = `
@@ -634,6 +685,9 @@
                     $('#pillTotalDebit, #mobPillTotalDebit').text(formattedDebit);
                     $('#pillTotalCredit, #mobPillTotalCredit').text(formattedCredit);
                     $('#pillClosingBalance, #mobPillClosingBalance').text(formattedClosing);
+                    
+                    // Update print total due
+                    $('#printTotalDue').text('Total Due: PKR ' + Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                 }).fail(function() {
                     $("#loader").hide();
                     alert("Error loading report data.");
