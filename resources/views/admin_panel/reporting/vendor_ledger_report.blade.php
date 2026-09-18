@@ -107,10 +107,19 @@
     }
 
     @media print {
-        body { background: #ffffff !important; font-size: 11px; }
-        .no-print, header, .sidebar, .navbar, footer { display: none !important; }
-        .sale-report-container { padding: 0 !important; background: #fff !important; }
-        .card { border: 1px solid #dee2e6 !important; box-shadow: none !important; margin-bottom: 10px !important; }
+        body { background: #ffffff !important; font-size: 12px; color: #000; margin: 0; padding: 0; }
+        .no-print, .rt_nav_header, header, .sidebar, .navbar, footer, #ledgerFormDesk, #ledgerFormMob, .summary-pill-bar, #ledgerHeader, .sale-table-wrap, #ledgerMobileContainer, .d-md-none.no-print { display: none !important; }
+        .sale-report-container { padding: 0 !important; background: #fff !important; min-height: auto; }
+        .card { border: none !important; box-shadow: none !important; margin: 0 !important; padding: 0 !important; }
+        .print-container { display: block !important; width: 100%; }
+        
+        .print-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .print-table th { border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 8px 4px; font-weight: bold; text-align: center; }
+        .print-table td { border-bottom: 1px solid #eaeaea; padding: 6px 4px; text-align: center; }
+        .print-table tr:last-child td { border-bottom: 2px solid #000; }
+        .text-left { text-align: left !important; }
+        .text-right { text-align: right !important; }
+        .fw-bold { font-weight: bold !important; }
     }
 </style>
 
@@ -345,7 +354,47 @@
         </div>
 
         {{-- MOBILE CARDS CONTAINER (d-md-none) --}}
-        <div class="d-md-none" id="ledgerMobileContainer">
+        <div class="d-md-none no-print" id="ledgerMobileContainer">
+        </div>
+
+        {{-- PRINT ONLY CONTAINER --}}
+        <div class="d-none print-container">
+            <div style="text-align: center; margin-bottom: 15px;">
+                <h2 style="font-weight: 900; margin: 0; font-size: 20px; text-transform: uppercase;">{{ \App\Models\Setting::get('company_name', 'WHITE DIAMOND (PACKAGES PRIVATE LIMITED)') }}</h2>
+                <p style="margin: 0; font-size: 11px;">{{ \App\Models\Setting::get('company_address', 'Hanif Garden Dry Port Road Near Soha Mall Faisalabad') }}</p>
+                <p style="margin: 0; font-size: 11px;">Tel: {{ \App\Models\Setting::get('company_phone', '+92 3216293333 | +92 300 7995500') }} | Web: {{ \App\Models\Setting::get('company_website', 'whitediamondpack.com') }}</p>
+                <h5 style="font-weight: 800; margin-top: 15px; margin-bottom: 5px; text-transform: uppercase;">VENDOR LEDGER</h5>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 11px;">
+                <div style="font-weight: bold;">
+                    Account No : - <br>
+                    <span id="printVendName" style="text-transform: uppercase; font-size: 12px;">ALL VENDORS</span>
+                </div>
+                <div style="text-align: right; font-weight: bold;">
+                    Date : <span id="printDateRangeVal">All</span> <br>
+                    Currency : PKR <br>
+                    Total Due : PKR <span id="printTotalDueVal">0.00</span>
+                </div>
+            </div>
+
+            <table class="print-table">
+                <thead>
+                    <tr>
+                        <th class="text-left" style="width: 8%;">Date</th>
+                        <th class="text-left" style="width: 15%;">Details</th>
+                        <th style="width: 15%;">Bank Name</th>
+                        <th class="text-left" style="width: 20%;">Ref No.</th>
+                        <th style="width: 10%;">V No.</th>
+                        <th style="width: 7%;">Quantity</th>
+                        <th class="text-right" style="width: 8%;">Debit</th>
+                        <th class="text-right" style="width: 8%;">Credit</th>
+                        <th class="text-right" style="width: 9%;">Balance</th>
+                    </tr>
+                </thead>
+                <tbody id="printLedgerBody">
+                </tbody>
+            </table>
         </div>
 
     </div>
@@ -554,6 +603,90 @@
                     $('#pillTotalDebit, #mobPillTotalDebit').text(formattedDebit);
                     $('#pillTotalCredit, #mobPillTotalCredit').text(formattedCredit);
                     $('#pillClosingBalance, #mobPillClosingBalance').text(formattedClosing);
+
+                    // --- POPULATE PRINT LAYOUT ---
+                    $('#printVendName').text(res.vendor.name);
+                    $('#printDateRangeVal').text(displayStart + ' to ' + displayEnd);
+                    $('#printTotalDueVal').text(lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2}));
+
+                    let printHtml = `
+                        <tr>
+                            <td class="text-left fw-bold">-</td>
+                            <td class="text-left fw-bold">Opening Balance</td>
+                            <td class="text-center fw-bold">-</td>
+                            <td class="text-left fw-bold">Opening Balance (B/F)</td>
+                            <td class="text-center fw-bold">-</td>
+                            <td class="text-center fw-bold">0</td>
+                            <td class="text-right fw-bold">-</td>
+                            <td class="text-right fw-bold">-</td>
+                            <td class="text-right fw-bold">${parseFloat(res.opening_balance).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        </tr>
+                    `;
+
+                    res.transactions.forEach((t) => {
+                        let debit = t.debit && t.debit > 0 ? parseFloat(t.debit) : 0;
+                        let credit = t.credit && t.credit > 0 ? parseFloat(t.credit) : 0;
+                        let bal = parseFloat(t.balance);
+
+                        // Extract details and bank from description/ref
+                        let details = 'Journal Entry';
+                        let bankName = '';
+                        let refDesc = t.description || '';
+                        
+                        if (refDesc.toLowerCase().includes('payment') || refDesc.toLowerCase().includes('receipt')) {
+                            details = 'Payment';
+                        } else if (refDesc.toLowerCase().includes('purchase invoice')) {
+                            details = 'Purchase Invoice';
+                        } else if (refDesc.toLowerCase().includes('sale invoice')) {
+                            details = 'Sale Invoice';
+                        }
+                        
+                        // Look for A/C: bank name
+                        let acMatch = refDesc.match(/\[A\/C:\s*([^\]]+)\]/);
+                        if (acMatch) {
+                            bankName = acMatch[1].toUpperCase();
+                            refDesc = refDesc.replace(acMatch[0], '').trim();
+                        } else {
+                            if (!details.includes('Invoice')) {
+                                bankName = (t.vendor_name && t.vendor_name !== '-') ? t.vendor_name.toUpperCase() : '';
+                            }
+                        }
+                        
+                        // Format date to DD/MM/YYYY
+                        let dStr = t.date;
+                        if (t.sort_date) {
+                            let dObj = new Date(t.sort_date);
+                            if (!isNaN(dObj)) {
+                                dStr = ('0' + dObj.getDate()).slice(-2) + '/' + ('0' + (dObj.getMonth()+1)).slice(-2) + '/' + dObj.getFullYear();
+                            }
+                        }
+
+                        printHtml += `
+                            <tr>
+                                <td class="text-left">${dStr}</td>
+                                <td class="text-left">${details}</td>
+                                <td class="text-center">${bankName}</td>
+                                <td class="text-left">${refDesc}</td>
+                                <td class="text-center">${t.invoice ?? '-'}</td>
+                                <td class="text-center">0</td>
+                                <td class="text-right">${debit > 0 ? debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
+                                <td class="text-right">${credit > 0 ? credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
+                                <td class="text-right">${bal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                            </tr>
+                        `;
+                    });
+
+                    printHtml += `
+                        <tr>
+                            <td colspan="5" class="text-right fw-bold"></td>
+                            <td class="text-center fw-bold">0</td>
+                            <td class="text-right fw-bold">${totalDebit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                            <td class="text-right fw-bold">${totalCredit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                            <td class="text-right fw-bold">${lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        </tr>
+                    `;
+                    $('#printLedgerBody').html(printHtml);
+                    // -----------------------------
                 }).fail(function() {
                     $("#loader").hide();
                     alert("Error loading report data.");

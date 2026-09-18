@@ -634,6 +634,7 @@ class PurchaseController extends Controller
         try {
             $validated = $request->validate([
                 'invoice_no' => 'nullable|string',
+                'purchase_order_no' => 'nullable|string|max:255',
                 'vendor_id' => 'required|exists:vendors,id',
                 'purchase_date' => 'nullable|date',
                 'branch_id' => 'nullable|exists:branches,id',
@@ -683,6 +684,7 @@ class PurchaseController extends Controller
                 'vendor_id' => $validated['vendor_id'] ?? null,
                 'purchase_date' => $validated['purchase_date'] ?? now(),
                 'invoice_no' => $validated['invoice_no'] ?? $nextInvoice,
+                'purchase_order_no' => $validated['purchase_order_no'] ?? null,
                 'note' => $validated['note'] ?? null,
                 'subtotal' => 0,
                 'discount' => 0,
@@ -1277,6 +1279,7 @@ class PurchaseController extends Controller
     {
         $validated = $request->validate([
             'invoice_no' => 'nullable|string',
+            'purchase_order_no' => 'nullable|string|max:255',
             'vendor_id' => 'nullable|exists:vendors,id',
             'purchase_date' => 'nullable|date',
             'branch_id' => 'nullable|exists:branches,id',
@@ -1479,6 +1482,7 @@ class PurchaseController extends Controller
                 'warehouse_id' => $warehouseId,
                 'purchase_date' => $validated['purchase_date'] ?? $purchase->purchase_date,
                 'invoice_no' => $validated['invoice_no'] ?? $purchase->invoice_no,
+                'purchase_order_no' => $validated['purchase_order_no'] ?? $purchase->purchase_order_no,
                 'note' => $validated['note'] ?? $purchase->note,
                 'subtotal' => $subtotal,
                 'discount' => $discount,

@@ -369,60 +369,53 @@
                     </div>
                 </div>
 
-                <div class="row g-3 border-bottom pb-4 mb-3 mt-2">
-                    {{-- LEFT: Invoice & Vendor --}}
-                    <div class="col-lg-3 col-md-4">
-                        <div class="card-panel shadow-sm">
-                            <div class="section-title mb-3">Invoice & Vendor</div>
-
-                            <div class="mb-2 d-flex align-items-center gap-2">
-                                <label class="form-label fw-bold mb-0 text-muted small" style="min-width: 80px;">Invoice
-                                    No</label>
-                                <input type="text" class="form-control input-readonly" name="invoice_no"
-                                    value="{{ $purchase->invoice_no }}" readonly>
-                            </div>
-
-                            <!-- VENDOR SELECT -->
-                            <div class="mb-2">
-                                <label class="form-label fw-bold mb-1 text-muted small">Select Vendor</label>
-                                <select class="form-select select2" id="vendorSelect" name="vendor_id">
-                                    <option value="" disabled>Select Vendor</option>
-                                    @foreach ($Vendor as $v)
-                                        <option value="{{ $v->id }}"
-                                            {{ $v->id == $purchase->vendor_id ? 'selected' : '' }}>
-                                            {{ $v->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <div class="mb-2">
-                                <label class="form-label fw-bold mb-1 text-muted small">Date</label>
-                                <input type="date" name="purchase_date" class="form-control"
-                                    value="{{ $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : date('Y-m-d') }}">
-                            </div>
-
-                            <div class="mb-2">
-                                <label class="form-label fw-bold text-muted small">M.Bill</label>
-                                <textarea class="form-control" name="note" rows="2">{{ $purchase->note }}</textarea>
-                            </div>
-
-                            <div class="mb-2">
-                                <label class="form-label fw-bold text-muted small">Warehouse</label>
-                                <select name="warehouse_id" class="form-control select2">
-                                    @foreach ($Warehouse as $w)
-                                        <option value="{{ $w->id }}"
-                                            {{ $w->id == $purchase->warehouse_id ? 'selected' : '' }}>
-                                            {{ $w->warehouse_name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                {{-- TOP HEADER & INVOICE / VENDOR CARD --}}
+                <div class="card-panel shadow-sm mb-3 p-3">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold mb-1 text-muted small">System No.</label>
+                            <input type="text" class="form-control input-readonly" name="invoice_no" value="{{ $purchase->invoice_no }}" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold mb-1 text-muted small">Vendor Inv#</label>
+                            <input type="text" class="form-control" name="purchase_order_no" placeholder="Manual Ref" value="{{ $purchase->purchase_order_no }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold mb-1 text-muted small">Select Vendor</label>
+                            <div class="d-flex align-items-center gap-1">
+                                <div class="flex-grow-1">
+                                    <select class="form-select select2" id="vendorSelect" name="vendor_id">
+                                        <option value="" selected disabled>Select Vendor</option>
+                                        @foreach ($Vendor as $v)
+                                            <option value="{{ $v->id }}" data-phone="{{ $v->phone }}" data-address="{{ $v->address }}" {{ $purchase->vendor_id == $v->id ? 'selected' : '' }}>{{ $v->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
                         </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-bold mb-1 text-muted small">Date</label>
+                            <input type="date" name="purchase_date" class="form-control" value="{{ $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : date('Y-m-d') }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold mb-1 text-muted small">M.Bill / Remarks</label>
+                            <input type="text" class="form-control" name="note" id="remarks" placeholder="Optional notes..." value="{{ $purchase->note }}">
+                        </div>
+                        <div class="col-md-3 mt-3">
+                            <label class="form-label fw-bold mb-1 text-muted small">Warehouse</label>
+                            <select name="warehouse_id" class="form-control select2">
+                                @foreach ($Warehouse as $w)
+                                    <option value="{{ $w->id }}"
+                                        {{ $w->id == $purchase->warehouse_id ? 'selected' : '' }}>
+                                        {{ $w->warehouse_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
-
-                    {{-- RIGHT: Items --}}
-                    <div class="col-lg-9 col-md-8">
+                </div>
+                <div class="row g-3 pb-4 mb-3 mt-2">
+                    <div class="col-12">
                         <div class="card-panel shadow-sm p-3">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div class="section-title mb-0">Purchase Items</div>

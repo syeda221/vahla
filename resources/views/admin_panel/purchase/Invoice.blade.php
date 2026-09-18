@@ -323,6 +323,9 @@
                     <div class="info-box-header">Reference</div>
                     <div><span class="info-label">Inv #:</span> <strong>INV-{{ $purchase->id }}</strong></div>
                     <div><span class="info-label">Date:</span> {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}</div>
+                    @if(!empty($purchase->purchase_order_no))
+                        <div><span class="info-label">Vendor Inv #:</span> <strong>{{ $purchase->purchase_order_no }}</strong></div>
+                    @endif
                 </div>
             </div>
         </div>

@@ -138,6 +138,11 @@
         <span>Inv #: {{ $purchase->invoice_no }}</span>
         <span>{{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}</span>
     </div>
+    @if(!empty($purchase->purchase_order_no))
+    <div class="info-row">
+        <span>Vendor Inv#: {{ $purchase->purchase_order_no }}</span>
+    </div>
+    @endif
     <div class="info-row">
         <span>Vendor: {{ Str::limit($purchase->vendor->name ?? 'N/A', 15) }}</span>
     </div>
