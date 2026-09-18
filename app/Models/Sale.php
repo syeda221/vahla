@@ -10,7 +10,8 @@ class Sale extends Model
     protected $fillable = [
         'customer_id', 'reference', 'total_amount_Words', 'total_bill_amount',
         'total_extradiscount', 'total_net', 'cash', 'card', 'change', 'change_account_id',
-        'total_items', 'discount_type', 'sale_status', 'invoice_no', 'is_booking'
+        'total_items', 'discount_type', 'sale_status', 'invoice_no', 'is_booking',
+        'sale_type', 'delivery_status', 'parent_quotation_id'
     ];
 
     public function customer_relation()
@@ -51,6 +52,16 @@ class Sale extends Model
     public function returns()
     {
         return $this->hasMany(SaleReturn::class, 'sale_id');
+    }
+
+    public function deliveryChallans()
+    {
+        return $this->hasMany(DeliveryChallan::class, 'sale_id');
+    }
+
+    public function quotation()
+    {
+        return $this->belongsTo(Sale::class, 'parent_quotation_id');
     }
 
     protected static function boot()

@@ -302,6 +302,10 @@
                             <i class="fas fa-bookmark"></i> Bookings
                         </a>
                         @can('sales.create')
+                            <a class="btn btn-info px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1 text-white"
+                                href="{{ route('sale.add') }}?type=quotation" style="border-radius: 8px;">
+                                <i class="fas fa-file-contract"></i> Add Quotation
+                            </a>
                             <a class="btn btn-primary px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
                                 href="{{ route('sale.add') }}" style="border-radius: 8px;">
                                 <i class="fas fa-plus"></i> Add Sale

@@ -372,6 +372,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/from-booking/{id}', [SaleController::class, 'convertFromBooking'])->name('sales.from.booking');
     Route::post('/sales/{id}/confirm', [SaleController::class, 'confirmBooking'])->middleware('permission:sales.create')->name('sales.confirm');
 
+    // Quotation to Sales Order
+    Route::post('/sales/{id}/convert-to-order', [SaleController::class, 'convertToOrder'])->middleware('permission:sales.create')->name('sales.convert_to_order');
+    Route::get('/sales/{id}/create-dc', [App\Http\Controllers\DeliveryChallanController::class, 'create'])->middleware('permission:sales.create')->name('sales.create_dc');
+    Route::post('/sales/{id}/store-dc', [App\Http\Controllers\DeliveryChallanController::class, 'store'])->middleware('permission:sales.create')->name('sales.store_dc');
+    Route::get('/sales/{id}/dc-list', [App\Http\Controllers\DeliveryChallanController::class, 'index'])->middleware('permission:sales.view')->name('sales.dc_list');
+    Route::get('/dc/{id}/print', [App\Http\Controllers\DeliveryChallanController::class, 'print'])->middleware('permission:sales.view')->name('sales.dc_print');
+    Route::post('/sales/{id}/generate-invoice', [SaleController::class, 'generateInvoice'])->middleware('permission:sales.create')->name('sales.generate_invoice');
+
     // web.php
     Route::get('/warehouse-stock-quantity', [StockTransferController::class, 'getStockQuantity'])->middleware('permission:stock.transfer.view')->name('warehouse.stock.quantity');
     Route::get('/get-products-by-warehouse', [StockTransferController::class, 'getProductsByWarehouse'])->middleware('permission:stock.transfer.view')->name('get.products.by.warehouse');

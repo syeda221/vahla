@@ -505,7 +505,7 @@
                         <a href="{{ route('sale.index') }}" class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Back"><i class="fas fa-arrow-left text-secondary"></i></a>
                         <div>
                             <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 1.05rem;">
-                                <i class="fas fa-edit text-primary"></i> Edit Sale #{{ $sale->invoice_no }}
+                                <i class="fas fa-edit text-primary"></i> Edit Sale {{ $sale->invoice_no ?: ($sale->sale_type === 'quotation' ? 'QUO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : ($sale->sale_type === 'sales_order' ? 'SO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : '#'.$sale->id)) }}
                             </h5>
                             <small class="text-muted" style="font-size: 0.72rem;">Update invoice details & order items</small>
                         </div>
@@ -523,7 +523,19 @@
                         <!-- Invoice No -->
                         <div class="col-sm-6 col-md-3 col-lg-2">
                             <label class="meta-label"><i class="fas fa-receipt text-primary"></i> Invoice No.</label>
-                            <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $sale->invoice_no }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                            @php
+                                $displayDocNo = $sale->invoice_no;
+                                if (!$displayDocNo) {
+                                    if ($sale->sale_type === 'quotation') {
+                                        $displayDocNo = 'QUO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
+                                    } elseif ($sale->sale_type === 'sales_order') {
+                                        $displayDocNo = 'SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
+                                    } else {
+                                        $displayDocNo = '#' . $sale->id;
+                                    }
+                                }
+                            @endphp
+                            <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $displayDocNo }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
                         </div>
 
                         <!-- Date -->
@@ -1094,8 +1106,12 @@
                                     </div>
                                 </div>
 
+                                @php
+                                    $btnText = $sale->sale_type === 'quotation' ? 'Save Quotation (F9)' : 'Save & Complete (F9)';
+                                @endphp
+
                                 <button type="button" class="btn btn-save-complete w-100 mt-auto py-2 d-flex align-items-center justify-content-center gap-2" id="btnSaveAndComplete">
-                                    <i class="fas fa-check-circle"></i> Save & Complete (F9)
+                                    <i class="fas fa-check-circle"></i> {{ $btnText }}
                                 </button>
                             </div>
                         </div>
@@ -1137,14 +1153,13 @@
                     </div>
 
                     <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
-                        <i class="fas fa-check-circle"></i> Save & Complete (F9)
+                        <i class="fas fa-check-circle"></i> {{ $btnText }}
                     </button>
                 </div>
 
-                {{-- ACTION BUTTONS ROW --}}
-                <div class="d-flex flex-wrap gap-2 justify-content-center py-2 px-3 mt-3 border-top bg-light rounded-3">
+                {{-- ACTION BUTTONS ROW (Hidden visually but required in DOM for JS) --}}
+                <div class="d-none flex-wrap gap-2 justify-content-center py-2 px-3 mt-3 border-top bg-light rounded-3">
                     <button type="button" class="btn btn-outline-info btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnQuotation"><i class="fas fa-file-invoice"></i> Quotation</button>
-                    <!-- <button type="button" class="btn btn-outline-warning btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnSave"><i class="fas fa-bookmark"></i> Booking</button> -->
                     <button type="button" class="btn btn-primary btn-sm px-4 fw-bold rounded-2 d-flex align-items-center gap-1 shadow-sm" id="btnPosted"><i class="fas fa-shopping-cart"></i> Sale</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnPrint"><i class="fas fa-print"></i> A4 Print</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnEstimate"><i class="fas fa-file-invoice"></i> Estimate</button>

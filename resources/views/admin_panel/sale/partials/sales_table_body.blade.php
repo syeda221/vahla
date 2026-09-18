@@ -12,26 +12,38 @@
         $statusBadge = '<span class="badge badge-warning text-dark border border-warning">Draft</span>';
         $isExchange = \Illuminate\Support\Str::startsWith($sale->reference, 'Exchange for');
         
-        if ($sale->sale_status === 'posted') {
-            if ($sale->is_booking) {
-                $statusBadge = '<span class="badge badge-success border border-success"><i class="fas fa-check-circle me-1"></i>Confirmed Booking</span>';
-            } elseif ($isExchange) {
-                $statusBadge = '<span class="badge badge-info text-white border border-info"><i class="fas fa-exchange-alt me-1"></i>Exchange</span>';
-            } else {
-                $statusBadge = '<span class="badge badge-success border border-success">Posted</span>';
+        if ($sale->sale_type === 'quotation') {
+            $statusBadge = '<span class="badge badge-info text-white border border-info"><i class="fas fa-file-contract me-1"></i>Quotation</span>';
+        } elseif ($sale->sale_type === 'sales_order') {
+            if ($sale->delivery_status === 'pending') {
+                $statusBadge = '<span class="badge badge-warning text-dark border border-warning"><i class="fas fa-clock me-1"></i>SO Pending</span>';
+            } elseif ($sale->delivery_status === 'partial') {
+                $statusBadge = '<span class="badge badge-primary border border-primary"><i class="fas fa-truck-loading me-1"></i>SO Partial</span>';
+            } elseif ($sale->delivery_status === 'delivered') {
+                $statusBadge = '<span class="badge badge-success border border-success"><i class="fas fa-check-circle me-1"></i>SO Delivered</span>';
             }
-        } elseif ($sale->sale_status === 'booked') {
-            if ($sale->is_booking) {
-                $statusBadge = '<span class="badge badge-warning text-dark border border-warning"><i class="fas fa-bookmark me-1"></i>Booked</span>';
-            } else {
-                $statusBadge = '<span class="badge badge-info text-white border border-info"><i class="fas fa-file-invoice me-1"></i>Quotation</span>';
+        } else {
+            if ($sale->sale_status === 'posted') {
+                if ($sale->is_booking) {
+                    $statusBadge = '<span class="badge badge-success border border-success"><i class="fas fa-check-circle me-1"></i>Confirmed Booking</span>';
+                } elseif ($isExchange) {
+                    $statusBadge = '<span class="badge badge-info text-white border border-info"><i class="fas fa-exchange-alt me-1"></i>Exchange</span>';
+                } else {
+                    $statusBadge = '<span class="badge badge-success border border-success">Posted</span>';
+                }
+            } elseif ($sale->sale_status === 'booked') {
+                if ($sale->is_booking) {
+                    $statusBadge = '<span class="badge badge-warning text-dark border border-warning"><i class="fas fa-bookmark me-1"></i>Booked</span>';
+                } else {
+                    $statusBadge = '<span class="badge badge-info text-white border border-info"><i class="fas fa-file-invoice me-1"></i>Quotation</span>';
+                }
+            } elseif ($sale->sale_status === 'returned') {
+                $statusBadge = '<span class="badge badge-danger border border-danger">Returned</span>';
+            } elseif ($sale->sale_status == 1) {
+                $statusBadge = '<span class="badge badge-danger border border-danger">Return</span>';
+            } elseif ($sale->sale_status === null) {
+                $statusBadge = '<span class="badge badge-success border border-success">Sale</span>';
             }
-        } elseif ($sale->sale_status === 'returned') {
-            $statusBadge = '<span class="badge badge-danger border border-danger">Returned</span>';
-        } elseif ($sale->sale_status == 1) {
-            $statusBadge = '<span class="badge badge-danger border border-danger">Return</span>';
-        } elseif ($sale->sale_status === null) {
-            $statusBadge = '<span class="badge badge-success border border-success">Sale</span>';
         }
 
         if ($sale->returns && $sale->returns->count() > 0) {
@@ -56,7 +68,13 @@
     {{-- Table Row --}}
     <tr class="border-bottom-0">
         <td class="ps-3 fw-bold font-monospace">
-            @if ($sale->invoice_no)
+            @if ($sale->sale_type === 'quotation')
+                <span class="text-info fw-bold">QUO-{{ str_pad($sale->id, 4, '0', STR_PAD_LEFT) }}</span>
+                <small class="text-muted d-block" style="font-size: 11px;">#{{ $sale->id }}</small>
+            @elseif ($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted')
+                <span class="text-warning fw-bold">SO-{{ str_pad($sale->id, 4, '0', STR_PAD_LEFT) }}</span>
+                <small class="text-muted d-block" style="font-size: 11px;">#{{ $sale->id }}</small>
+            @elseif ($sale->invoice_no)
                 <span class="text-primary fw-bold">{{ $sale->invoice_no }}</span>
                 <small class="text-muted d-block" style="font-size: 11px;">#{{ $sale->id }}</small>
             @else
@@ -160,31 +178,66 @@
                     <li><hr class="dropdown-divider"></li>
 
                     @can('sales.view')
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', $sale->id) }}" target="_blank">
-                                <i class="fas fa-file-invoice text-info fa-fw"></i> View Invoice
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', ['id' => $sale->id, 'type' => 'estimate']) }}" target="_blank">
-                                <i class="fas fa-calculator text-secondary fa-fw"></i> View Estimate
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc', $sale->id) }}" target="_blank">
-                                <i class="fas fa-shipping-fast text-warning fa-fw"></i> Delivery Challan (DC)
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc_thermal', $sale->id) }}" target="_blank">
-                                <i class="fas fa-truck text-muted fa-fw"></i> DC Thermal
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.receipt', $sale->id) }}" target="_blank">
-                                <i class="fas fa-receipt text-success fa-fw"></i> Receipt
-                            </a>
-                        </li>
+                        @if ($sale->sale_type === 'direct_sale' || ($sale->sale_type === 'sales_order' && $sale->sale_status === 'posted'))
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', $sale->id) }}" target="_blank">
+                                    <i class="fas fa-file-invoice text-info fa-fw"></i> View Invoice
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.receipt', $sale->id) }}" target="_blank">
+                                    <i class="fas fa-receipt text-success fa-fw"></i> Receipt
+                                </a>
+                            </li>
+                        @endif
+
+                        @if ($sale->sale_type === 'quotation')
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', ['id' => $sale->id, 'type' => 'estimate']) }}" target="_blank">
+                                    <i class="fas fa-file-contract text-info fa-fw"></i> Print Quotation
+                                </a>
+                            </li>
+                            @can('sales.create')
+                                <li>
+                                    <form action="{{ route('sales.convert_to_order', $sale->id) }}" method="POST">
+                                        @csrf
+                                        <button type="submit" class="dropdown-item text-primary d-flex align-items-center gap-2 py-2 fw-bold">
+                                            <i class="fas fa-random fa-fw text-primary"></i> Convert to Sales Order
+                                        </button>
+                                    </form>
+                                </li>
+                            @endcan
+                        @endif
+
+                        @if ($sale->sale_type === 'sales_order' && $sale->delivery_status === 'delivered' && $sale->sale_status !== 'posted')
+                            @can('sales.create')
+                                <li>
+                                    <form action="{{ route('sales.generate_invoice', $sale->id) }}" method="POST">
+                                        @csrf
+                                        <button type="submit" class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold">
+                                            <i class="fas fa-file-invoice-dollar fa-fw text-success"></i> Generate Invoice
+                                        </button>
+                                    </form>
+                                </li>
+                            @endcan
+                        @endif
+
+                        @if ($sale->sale_type === 'sales_order')
+                            @can('sales.create')
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.create_dc', $sale->id) }}">
+                                        <i class="fas fa-truck-loading text-warning fa-fw"></i> Create Delivery Challan
+                                    </a>
+                                </li>
+                            @endcan
+                            @can('sales.view')
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc_list', $sale->id) }}">
+                                        <i class="fas fa-list text-info fa-fw"></i> View Delivery Challans
+                                    </a>
+                                </li>
+                            @endcan
+                        @endif
                     @endcan
 
                     @if ($sale->sale_status !== 'returned')

@@ -555,6 +555,7 @@
                 <input type="hidden" id="action" name="action" value="sale">
                 <input type="hidden" name="cash" value="0">
                 <input type="hidden" id="totalBalance" value="0">
+                <input type="hidden" id="sale_type" name="sale_type" value="{{ request('type') == 'quotation' ? 'quotation' : 'direct_sale' }}">
 
                 {{-- TOP HEADER BAR --}}
                 <div class="d-flex justify-content-between align-items-center mb-2 px-1">
@@ -562,9 +563,12 @@
                         <a href="{{ route('sale.index') }}" class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Back"><i class="fas fa-arrow-left text-secondary"></i></a>
                         <div>
                             <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 1.05rem;">
-                                <i class="fas fa-shopping-cart text-primary"></i> New Sale
+                                <i class="fas fa-shopping-cart text-primary"></i> 
+                                {{ request('type') == 'quotation' ? 'New Quotation' : 'New Sale' }}
                             </h5>
-                            <small class="text-muted" style="font-size: 0.72rem;">Create a new invoice & manage checkout</small>
+                            <small class="text-muted" style="font-size: 0.72rem;">
+                                {{ request('type') == 'quotation' ? 'Create a new quotation' : 'Create a new invoice & manage checkout' }}
+                            </small>
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-2">
@@ -895,8 +899,13 @@
                                     </div>
                                 </div>
 
+                                @php
+                                    $saleType = request()->query('type', 'direct_sale');
+                                    $btnText = $saleType === 'quotation' ? 'Save Quotation (F9)' : 'Save & Complete (F9)';
+                                @endphp
+
                                 <button type="button" class="btn btn-save-complete w-100 mt-auto py-2 d-flex align-items-center justify-content-center gap-2" id="btnSaveAndComplete">
-                                    <i class="fas fa-check-circle"></i> Save & Complete (F9)
+                                    <i class="fas fa-check-circle"></i> {{ $btnText }}
                                 </button>
                             </div>
                         </div>
@@ -938,14 +947,13 @@
                     </div>
 
                     <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
-                        <i class="fas fa-check-circle"></i> Save & Complete (F9)
+                        <i class="fas fa-check-circle"></i> {{ $btnText }}
                     </button>
                 </div>
 
-                {{-- ACTION BUTTONS ROW --}}
-                <div class="d-flex flex-wrap gap-2 justify-content-center py-2 px-3 mt-3 border-top bg-light rounded-3">
+                {{-- ACTION BUTTONS ROW (Hidden visually but required in DOM for JS) --}}
+                <div class="d-none flex-wrap gap-2 justify-content-center py-2 px-3 mt-3 border-top bg-light rounded-3">
                     <button type="button" class="btn btn-outline-info btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnQuotation"><i class="fas fa-file-invoice"></i> Quotation</button>
-                    <!-- <button type="button" class="btn btn-outline-warning btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnSave"><i class="fas fa-bookmark"></i> Booking</button> -->
                     <button type="button" class="btn btn-primary btn-sm px-4 fw-bold rounded-2 d-flex align-items-center gap-1 shadow-sm" id="btnPosted" disabled><i class="fas fa-shopping-cart"></i> Sale</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnPrint"><i class="fas fa-print"></i> A4 Print</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnEstimate"><i class="fas fa-file-invoice"></i> Estimate</button>
@@ -1144,11 +1152,15 @@
             updateGrandTotals();
             refreshPostedState();
 
-            // --- Check if URL is for Booking Flow ---
+            // --- Check if URL is for Booking Flow or Quotation ---
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('type') === 'booking') {
                 $('.header-text').html('<i class="fas fa-bookmark text-primary me-2"></i>Add Booking');
                 $('#action').val('booking');
+                $('#btnPosted').addClass('d-none');
+                $('#btnHeaderPosted').addClass('d-none');
+            } else if (urlParams.get('type') === 'quotation') {
+                $('#action').val('quotation');
                 $('#btnPosted').addClass('d-none');
                 $('#btnHeaderPosted').addClass('d-none');
             }

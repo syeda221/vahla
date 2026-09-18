@@ -137,8 +137,10 @@ class ProductController extends Controller
             if (count($variants) > 0) {
                 // Fetch all sales and returns for this product to distribute
                 $salesList = DB::table('sale_items')
-                    ->where('product_id', $p->id)
-                    ->select('total_pieces', 'color')
+                    ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                    ->where('sale_items.product_id', $p->id)
+                    ->whereIn('sales.sale_status', ['posted', 'returned'])->where('sales.sale_type', '!=', 'sales_order')
+                    ->select('sale_items.total_pieces', 'sale_items.color')
                     ->get();
 
                 // Fetch confirmed web sales
@@ -157,6 +159,18 @@ class ProductController extends Controller
                             'color' => $wItem->color ?: '-',
                             'size' => $wItem->size ?: '-'
                         ])
+                    ];
+                }
+                                $dcList = DB::table('delivery_challan_items as dci')
+                    ->join('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
+                    ->where('dci.product_id', $p->id ?? $product->id)
+                    ->select('dci.delivered_qty as total_pieces', 'si.color')
+                    ->get();
+                foreach ($dcList as $dcItem) {
+                    $salesListArray[] = (object) [
+                        'total_pieces' => $dcItem->total_pieces,
+                        'total' => 0, // DCs don't hold price natively in this array
+                        'color' => $dcItem->color
                     ];
                 }
                 $salesList = collect($salesListArray);

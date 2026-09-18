@@ -1103,9 +1103,24 @@ class SaleController extends Controller
 
         $status = in_array($request->action, ['post', 'sale', 'posted']) ? 'posted' : 'booked';
 
+        $saleType = $request->input('sale_type');
+        if (empty($saleType) && $sale->exists) {
+            $saleType = $sale->sale_type;
+        } elseif (empty($saleType)) {
+            $saleType = 'direct_sale';
+        }
+
+        if ($request->action === 'quotation') {
+            $saleType = 'quotation';
+        }
+        
+        if (in_array($saleType, ['quotation', 'sales_order'])) {
+            $status = 'booked'; // Force booked so it doesn't affect stock/ledger
+        }
+
         // Concurrency Safe Transaction
         try {
-            return DB::transaction(function () use ($request, $sale, $status, $isWalkin) {
+            return DB::transaction(function () use ($request, $sale, $status, $isWalkin, $saleType) {
 
                 // If this is an update to a previously posted sale, rollback its impact first
                 if ($sale->exists && $sale->sale_status === 'posted') {
@@ -1119,6 +1134,10 @@ class SaleController extends Controller
             $sale->reference = $request->reference;
             $sale->total_amount_Words = $request->total_amount_Words; // Consider auto-generating this too?
             $sale->sale_status = $status;
+            $sale->sale_type = $saleType;
+            if ($isNew && $request->filled('parent_quotation_id')) {
+                $sale->parent_quotation_id = $request->parent_quotation_id;
+            }
 
             // Credit Days & Due Date (Optional)
             if ($request->filled('credit_days') && $request->credit_days > 0) {
@@ -1137,21 +1156,29 @@ class SaleController extends Controller
             if ($isNew) {
                 // Check if user provided manual invoice number or selected series
                 $invInput = $request->input('Invoice_no') ?: $request->input('invoice_no');
-                if (!empty($invInput)) {
-                    $manualInvoice = trim($invInput);
+                
+                $tType = $request->sale_type ?? 'direct_sale';
+                $tStatus = $request->sale_status ?? 'completed';
 
-                    // Check for duplicates
-                    $exists = Sale::where('invoice_no', $manualInvoice)->exists();
-                    if ($exists) {
-                        throw \Illuminate\Validation\ValidationException::withMessages([
-                            'invoice_no' => "Invoice number '{$manualInvoice}' already exists. Please use a different number or click refresh.",
-                        ]);
-                    }
-
-                    $sale->invoice_no = $manualInvoice;
+                if ($tType === 'quotation' || ($tType === 'sales_order' && $tStatus !== 'posted')) {
+                    $sale->invoice_no = null;
                 } else {
-                    // Auto-generate unique invoice number
-                    $sale->invoice_no = Sale::generateInvoiceNo();
+                    if (!empty($invInput)) {
+                        $manualInvoice = trim($invInput);
+
+                        // Check for duplicates
+                        $exists = Sale::where('invoice_no', $manualInvoice)->exists();
+                        if ($exists) {
+                            throw \Illuminate\Validation\ValidationException::withMessages([
+                                'invoice_no' => "Invoice number '{$manualInvoice}' already exists. Please use a different number or click refresh.",
+                            ]);
+                        }
+
+                        $sale->invoice_no = $manualInvoice;
+                    } else {
+                        // Auto-generate unique invoice number
+                        $sale->invoice_no = Sale::generateInvoiceNo();
+                    }
                 }
             }
 
@@ -2346,5 +2373,97 @@ class SaleController extends Controller
         $prefix = $request->prefix;
         $invoiceNo = \App\Models\InvoiceSeries::generateNextNo($prefix);
         return response()->json(['invoice_no' => $invoiceNo]);
+    }
+
+    public function convertToOrder(Request $request, $id)
+    {
+        $sale = Sale::findOrFail($id);
+
+        if ($sale->sale_type !== 'quotation') {
+            return redirect()->back()->with('error', 'Only quotations can be converted to sales orders.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $sale->sale_type = 'sales_order';
+            $sale->delivery_status = 'pending';
+            $sale->save();
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Quotation successfully converted to Sales Order.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Conversion Error: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Failed to convert: '.$e->getMessage());
+        }
+    }
+
+    public function generateInvoice(Request $request, $id)
+    {
+        $sale = Sale::findOrFail($id);
+
+        if ($sale->sale_type !== 'sales_order') {
+            return redirect()->back()->with('error', 'Only Sales Orders can generate invoices.');
+        }
+
+        if ($sale->delivery_status !== 'delivered') {
+            return redirect()->back()->with('error', 'Cannot generate invoice before complete delivery.');
+        }
+
+        if ($sale->sale_status === 'posted') {
+            return redirect()->back()->with('error', 'Invoice has already been generated.');
+        }
+
+        DB::beginTransaction();
+        try {
+            // Update status to posted (this is what triggers it being considered a full financial invoice)
+            $sale->sale_status = 'posted';
+            
+            // Assign Invoice Number if it doesn't have one
+            if (empty($sale->invoice_no)) {
+                $seriesList = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
+                $defaultSeries = $seriesList->where('is_default', 1)->first() ?: $seriesList->first();
+                $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+                
+                $generatedNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+                $sale->invoice_no = $generatedNo;
+                \App\Models\InvoiceSeries::incrementCounterForInvoice($generatedNo);
+            }
+            
+            $sale->save();
+
+            // Note: We DO NOT deduct stock here because it was already deducted during Delivery Challan confirmation!
+            
+            // 2. LEGACY LEDGER: Post Invoice First (Increases Balance)
+            $this->updateLedger($sale);
+
+            // 3. PROFESSIONAL LEDGER POSTING (ENTRY 1: THE INVOICE)
+            $journalService = app(\App\Services\JournalEntryService::class);
+            $balanceService = app(\App\Services\BalanceService::class);
+
+            $custForVoucher = $sale->customer_relation ?? \App\Models\Customer::find($sale->customer_id);
+
+            if ($custForVoucher) {
+                $balanceService->createSaleVoucher(
+                    $custForVoucher,
+                    $sale->total_net,
+                    $sale->invoice_no,
+                    now()->format('Y-m-d') // Use current date for invoice generation
+                );
+            }
+
+            // 4. AUTO RECEIPT (ENTRY 2: THE PAYMENT)
+            // Sales orders might have advance payments or pay now. Assuming they pay on invoice generation.
+            $transactionService = app(\App\Services\TransactionService::class);
+            $transactionService->createReceiptFromSale($sale);
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Invoice generated and financial ledgers updated successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Invoice Generation Error: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Failed to generate invoice: '.$e->getMessage());
+        }
     }
 }

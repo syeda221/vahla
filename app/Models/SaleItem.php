@@ -12,7 +12,7 @@ class SaleItem extends Model
         'qty', 'price', 'total',
         'discount_percent', 'discount_amount',
         'color', 'total_pieces', 'loose_pieces',
-        'price_per_piece', 'price_per_m2',
+        'price_per_piece', 'price_per_m2', 'delivered_qty'
     ];
 
     public function sale()
@@ -28,5 +28,10 @@ class SaleItem extends Model
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function getRemainingQtyAttribute()
+    {
+        return max(0, $this->total_pieces - $this->delivered_qty);
     }
 }
