@@ -745,7 +745,8 @@
                                                         $totalWt = (float) ($item->total_pieces ?: $item->qty);
                                                         
                                                         // Infer unit based on price ratio to total
-                                                        $basePricePerKg = ($item->total_pieces > 0) ? ($item->total / $item->total_pieces) : 0;
+                                                        $grossTotal = (float)$item->total + (float)$item->discount_amount;
+                                                        $basePricePerKg = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
                                                         $storedPrice = (float) $item->price;
                                                         
                                                         $isWtPcs = false;
