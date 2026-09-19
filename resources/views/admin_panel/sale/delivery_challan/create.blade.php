@@ -76,7 +76,7 @@
                                             $vUnit = strtolower($variant['unit'] ?? optional(optional($item->product)->unit)->name ?? '');
                                             
                                             // INFER UNIT FROM PRICE RATIO
-                                            if (in_array($sizeMode, ['by_kg', 'by_gm'])) {
+                                            if (empty($variant['unit']) && !in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces']) && in_array($sizeMode, ['by_kg', 'by_gm'])) {
                                                 $grossTotal = (float)$item->total + (float)$item->discount_amount;
                                                 $basePricePerKg = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
                                                 $storedPrice = (float) $item->price;
