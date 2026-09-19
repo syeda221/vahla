@@ -651,6 +651,9 @@
                             <label class="meta-label"><i class="fas fa-user-tag text-primary"></i> Customer Type</label>
                             <select class="form-select fw-bold" id="partyTypeSelect" name="partyType">
                                 @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
+                                    @if(request()->query('type') === 'quotation' && $type->name === 'Walking Customer')
+                                        @continue
+                                    @endif
                                     <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
                                 @endforeach
                             </select>
