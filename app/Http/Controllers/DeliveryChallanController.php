@@ -95,9 +95,10 @@ class DeliveryChallanController extends Controller
 
             // Create DC
             $dcCount = DeliveryChallan::where('sale_id', $saleId)->count() + 1;
+            $baseNo = $sale->invoice_no ?: ('SO-' . $sale->id);
             $dc = DeliveryChallan::create([
                 'sale_id' => $saleId,
-                'dc_number' => $sale->invoice_no . '-DC' . str_pad($dcCount, 2, '0', STR_PAD_LEFT),
+                'dc_number' => $baseNo . '-DC' . str_pad($dcCount, 2, '0', STR_PAD_LEFT),
                 'dc_date' => now()->format('Y-m-d'),
                 'status' => 'confirmed', // We confirm it immediately as per plan
                 'remarks' => $request->input('remarks'),
@@ -121,6 +122,26 @@ class DeliveryChallanController extends Controller
                     $sizeMode = $item->size_mode ?? optional($item->product)->size_mode ?? 'by_size';
                     $vUnit = strtolower($variant['unit'] ?? optional(optional($item->product)->unit)->name ?? '');
                     
+                    // INFER UNIT FROM PRICE RATIO
+                    if (in_array($sizeMode, ['by_kg', 'by_gm'])) {
+                        $grossTotal = (float)$item->total + (float)$item->discount_amount;
+                        $basePricePerKg = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
+                        $storedPrice = (float) $item->price;
+                        $wtConvForInference = (float)($variant['conv_factor'] ?? $item->pieces_per_box ?? 1);
+                        if ($wtConvForInference <= 0) $wtConvForInference = 1;
+                        
+                        if ($storedPrice > 0 && $basePricePerKg > 0) {
+                            $ratio = round($storedPrice / $basePricePerKg, 4);
+                            if (abs($ratio - $wtConvForInference) < 0.001) {
+                                $vUnit = 'pcs';
+                            } elseif (abs($ratio - 0.001) < 0.0001) {
+                                $vUnit = 'gm';
+                            } elseif (abs($ratio - 1) < 0.001) {
+                                $vUnit = 'kg';
+                            }
+                        }
+                    }
+
                     $dispQtyFactor = 1;
                     if (in_array($sizeMode, ['by_kg', 'by_gm'])) {
                         if (in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
@@ -167,7 +188,7 @@ class DeliveryChallanController extends Controller
                             'qty' => -$deliveryQty,
                             'ref_type' => 'DELIVERY_CHALLAN',
                             'ref_id' => $dc->id,
-                            'note' => "DC #{$dc->dc_number} for Sale #{$sale->invoice_no} (Warehouse #{$warehouseId})",
+                            'note' => "DC #{$dc->dc_number} for Sale #{$baseNo} (Warehouse #{$warehouseId})",
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);

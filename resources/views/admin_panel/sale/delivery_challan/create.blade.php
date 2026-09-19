@@ -74,6 +74,27 @@
                                             $sizeMode = $item->size_mode ?? optional($item->product)->size_mode ?? 'by_size';
                                             
                                             $vUnit = strtolower($variant['unit'] ?? optional(optional($item->product)->unit)->name ?? '');
+                                            
+                                            // INFER UNIT FROM PRICE RATIO
+                                            if (in_array($sizeMode, ['by_kg', 'by_gm'])) {
+                                                $grossTotal = (float)$item->total + (float)$item->discount_amount;
+                                                $basePricePerKg = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
+                                                $storedPrice = (float) $item->price;
+                                                $wtConvForInference = (float)($variant['conv_factor'] ?? $item->pieces_per_box ?? 1);
+                                                if ($wtConvForInference <= 0) $wtConvForInference = 1;
+                                                
+                                                if ($storedPrice > 0 && $basePricePerKg > 0) {
+                                                    $ratio = round($storedPrice / $basePricePerKg, 4);
+                                                    if (abs($ratio - $wtConvForInference) < 0.001) {
+                                                        $vUnit = 'pcs';
+                                                    } elseif (abs($ratio - 0.001) < 0.0001) {
+                                                        $vUnit = 'gm';
+                                                    } elseif (abs($ratio - 1) < 0.001) {
+                                                        $vUnit = 'kg';
+                                                    }
+                                                }
+                                            }
+
                                             $dispQtyFactor = 1;
                                             
                                             $dispUnit = 'Pcs';
