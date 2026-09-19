@@ -1091,6 +1091,11 @@
 
                             <!-- Payment Methods Card -->
                             <div class="payment-methods-card flex-grow-1 d-flex flex-column">
+                                @php
+                                    $btnText = $sale->sale_type === 'quotation' ? 'Save Quotation (F9)' : 'Save & Complete (F9)';
+                                @endphp
+
+                                @if($sale->sale_type !== 'quotation')
                                 <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
                                     <span class="fw-bold text-dark d-flex align-items-center gap-1" style="font-size:0.85rem;"><i class="fas fa-wallet text-success"></i> Payment Methods</span>
                                     <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-2 fw-bold" id="btnAddRV" style="font-size:0.7rem;"><i class="fas fa-plus me-1"></i>Add Account</button>
@@ -1106,10 +1111,7 @@
                                         <input type="number" step="0.01" class="form-control form-control-sm text-end rv-amount fw-bold" name="receipt_amount[]" value="{{ $sale->cash > 0 ? $sale->cash : '' }}" placeholder="0.00" style="width: 110px; font-size:0.8rem;">
                                     </div>
                                 </div>
-
-                                @php
-                                    $btnText = $sale->sale_type === 'quotation' ? 'Save Quotation (F9)' : 'Save & Complete (F9)';
-                                @endphp
+                                @endif
 
                                 <button type="button" class="btn btn-save-complete w-100 mt-auto py-2 d-flex align-items-center justify-content-center gap-2" id="btnSaveAndComplete">
                                     <i class="fas fa-check-circle"></i> {{ $btnText }}
@@ -1134,6 +1136,7 @@
                         </div>
                     </div>
 
+                    @if($sale->sale_type !== 'quotation')
                     <div class="d-flex align-items-center gap-2">
                         <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Payments</span>
                         <span class="fs-6 fw-bold text-success" id="bottomPaymentsTotal">0.00</span>
@@ -1152,6 +1155,7 @@
                             @endforeach
                         </select>
                     </div>
+                    @endif
 
                     <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
                         <i class="fas fa-check-circle"></i> {{ $btnText }}
