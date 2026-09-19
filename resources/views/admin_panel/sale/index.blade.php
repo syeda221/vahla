@@ -287,10 +287,30 @@
                 {{-- Page Header --}}
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
                     <div>
+                        @php
+                            $pageTitle = 'Sales Management';
+                            $pageDesc = 'View, search, filter and edit your sales invoices & bookings';
+                            $icon = 'fa-shopping-cart';
+                            if (isset($page_type)) {
+                                if ($page_type === 'quotation') {
+                                    $pageTitle = 'Quotations';
+                                    $pageDesc = 'Manage customer quotations and estimates';
+                                    $icon = 'fa-file-invoice';
+                                } elseif ($page_type === 'sales_order') {
+                                    $pageTitle = 'Sales Orders';
+                                    $pageDesc = 'Manage pending sales orders and deliveries';
+                                    $icon = 'fa-file-signature';
+                                } elseif ($page_type === 'direct_sale') {
+                                    $pageTitle = 'Direct Sales';
+                                    $pageDesc = 'View all POS and direct retail sales';
+                                    $icon = 'fa-receipt';
+                                }
+                            }
+                        @endphp
                         <h4 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
-                            <i class="fas fa-shopping-cart text-primary"></i> Sales Management
+                            <i class="fas {{ $icon }} text-primary"></i> {{ $pageTitle }}
                         </h4>
-                        <p class="text-muted mb-0 small">View, search, filter and edit your sales invoices & bookings</p>
+                        <p class="text-muted mb-0 small">{{ $pageDesc }}</p>
                     </div>
                     <div class="sales-hdr-actions">
                         <a class="btn btn-outline-danger px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
@@ -302,14 +322,22 @@
                             <i class="fas fa-bookmark"></i> Bookings
                         </a>
                         @can('sales.create')
-                            <a class="btn btn-info px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1 text-white"
-                                href="{{ route('sale.add') }}?type=quotation" style="border-radius: 8px;">
-                                <i class="fas fa-file-contract"></i> Add Quotation
-                            </a>
-                            <a class="btn btn-primary px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
-                                href="{{ route('sale.add') }}" style="border-radius: 8px;">
-                                <i class="fas fa-plus"></i> Add Sale
-                            </a>
+                            @if(isset($page_type) && $page_type === 'quotation')
+                                <a class="btn btn-info px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1 text-white"
+                                    href="{{ route('sale.add') }}?type=quotation" style="border-radius: 8px;">
+                                    <i class="fas fa-file-contract"></i> Add Quotation
+                                </a>
+                            @elseif(isset($page_type) && $page_type === 'sales_order')
+                                <a class="btn btn-info px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1 text-white"
+                                    href="{{ route('quotations.index') }}" style="border-radius: 8px;">
+                                    <i class="fas fa-file-contract"></i> Convert from Quotation
+                                </a>
+                            @else
+                                <a class="btn btn-primary px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
+                                    href="{{ route('sale.add') }}" style="border-radius: 8px;">
+                                    <i class="fas fa-plus"></i> Add Sale
+                                </a>
+                            @endif
                         @endcan
                     </div>
                 </div>

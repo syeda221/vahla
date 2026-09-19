@@ -18,11 +18,8 @@ use Illuminate\Support\Facades\DB;
 
 class SaleController extends Controller
 {
-    public function index(Request $request)
+        private function applySalesFilters($query, Request $request)
     {
-        $query = Sale::with(['customer_relation', 'items.product', 'returns'])
-            ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned']);
-
         // Apply Status Filter
         if ($request->has('status') && $request->status != 'all') {
             $query->where('sale_status', $request->status);
@@ -87,14 +84,17 @@ class SaleController extends Controller
             $query->where('customer_id', $request->customer_id);
         }
 
-        // Order By (Most recent / newest on top)
+        // Order By
         $orderBy = $request->input('order_by', 'id');
         if ($orderBy === 'invoice_no') {
             $query->orderBy('invoice_no', 'desc')->orderBy('id', 'desc');
         } else {
             $query->orderBy('id', 'desc');
         }
+    }
 
+    private function getSalesDataAndRespond($query, Request $request, $pageType)
+    {
         $sales = $query->get();
 
         $stats = [
@@ -107,7 +107,6 @@ class SaleController extends Controller
             'returned_count' => $sales->whereIn('sale_status', ['returned', 1])->count(),
         ];
 
-        // If AJAX request, return only table rows partial & stats
         if ($request->ajax()) {
             return response()->json([
                 'html' => view('admin_panel.sale.partials.sales_table_body', compact('sales'))->render(),
@@ -115,13 +114,44 @@ class SaleController extends Controller
             ]);
         }
 
-        // Load all customers for filter dropdown
         $customers = Customer::orderBy('customer_name')->get();
 
-        return view('admin_panel.sale.index', compact('sales', 'customers', 'stats'));
+        return view('admin_panel.sale.index', compact('sales', 'customers', 'stats'))->with('page_type', $pageType);
     }
 
-    public function addsale()
+    public function index(Request $request)
+    {
+        $query = Sale::with(['customer_relation', 'items.product', 'returns'])
+            ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
+            ->where(function($q) {
+                $q->where('sale_type', 'direct_sale')
+                  ->orWhereNull('sale_type');
+            });
+        
+        $this->applySalesFilters($query, $request);
+        return $this->getSalesDataAndRespond($query, $request, 'direct_sale');
+    }
+
+    public function quotations(Request $request)
+    {
+        $query = Sale::with(['customer_relation', 'items.product', 'returns'])
+            ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
+            ->where('sale_type', 'quotation');
+        
+        $this->applySalesFilters($query, $request);
+        return $this->getSalesDataAndRespond($query, $request, 'quotation');
+    }
+
+    public function salesOrders(Request $request)
+    {
+        $query = Sale::with(['customer_relation', 'items.product', 'returns'])
+            ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
+            ->where('sale_type', 'sales_order');
+        
+        $this->applySalesFilters($query, $request);
+        return $this->getSalesDataAndRespond($query, $request, 'sales_order');
+    }
+public function addsale()
     {
         $customer = Customer::all();
         $warehouse = Warehouse::all();
@@ -1906,7 +1936,13 @@ class SaleController extends Controller
                 ]);
             }
 
-            return redirect()->route('sale.index')->with('success', 'Sale saved as '.$msgStatus);
+            $targetRoute = 'sale.index';
+            if ($sale->sale_type === 'quotation') {
+                $targetRoute = 'quotations.index';
+            } elseif ($sale->sale_type === 'sales_order') {
+                $targetRoute = 'sales_orders.index';
+            }
+            return redirect()->route($targetRoute)->with('success', 'Sale saved as '.$msgStatus);
         });
         } catch (\Exception $e) {
             $errorMsg = $e->getMessage();

@@ -339,6 +339,8 @@ Route::middleware('auth')->group(function () {
 
     // Route::get('booking/system', [SaleController::class,'booking-system'])->name('booking.index');
     Route::get('sale', [SaleController::class, 'index'])->middleware('permission:sales.view')->name('sale.index');
+    Route::get('quotations', [SaleController::class, 'quotations'])->middleware('permission:sales.view')->name('quotations.index');
+    Route::get('sales-orders', [SaleController::class, 'salesOrders'])->middleware('permission:sales.view')->name('sales_orders.index');
     Route::get('sale/create', [SaleController::class, 'addsale'])->middleware('permission:sales.create')->name('sale.add');
     Route::get('/invoice-series/fetch', [SaleController::class, 'fetchInvoiceSeries'])->name('invoice_series.fetch');
     Route::post('/invoice-series/store', [SaleController::class, 'storeInvoiceSeries'])->name('invoice_series.store');

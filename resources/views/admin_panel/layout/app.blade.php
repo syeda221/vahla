@@ -924,7 +924,11 @@
                                                 <ul class="submenu-item">
                                                     @can('sales.view')
                                                         <li><a href="{{ url('sale') }}"><i class="fas fa-receipt"></i>
-                                                                Sales</a></li>
+                                                                Direct Sales</a></li>
+                                                        <li><a href="{{ route('quotations.index') }}"><i class="fas fa-file-invoice"></i>
+                                                                Quotations</a></li>
+                                                        <li><a href="{{ route('sales_orders.index') }}"><i class="fas fa-file-signature"></i>
+                                                                Sales Orders</a></li>
                                                     @endcan
                                                     @can('sales.create')
                                                         <li><a href="{{ route('pos.index') }}"><i class="fas fa-cash-register"></i>
@@ -938,6 +942,7 @@
                                                         <li><a href="{{ route('customer-types.index') }}"><i class="fas fa-tags"></i>
                                                                 Customer Types</a></li>
                                                     @endcan
+                                                    {{--
                                                     @can('zones.view')
                                                         <li><a href="{{ url('zone') }}"><i class="fas fa-map-marker-alt"></i>
                                                                 Zone</a></li>
@@ -949,8 +954,9 @@
                                                     @can('receipts.voucher.view')
                                                         <li><a href="{{ route('all_recepit_vochers') }}"><i
                                                                     class="fas fa-file-invoice-dollar"></i>
-                                                                Receipt Vouchers</a></li>
+                                                                Receipt Voucher</a></li>
                                                     @endcan
+                                                    --}}
                                                 </ul>
                                             </div>
                                         @endcanany
@@ -989,10 +995,12 @@
                                             <li><a href="{{ route('expense_categories.index') }}"><i
                                                         class="fa-solid fa-list-check"></i> Expense Categories</a></li>
                                         @endcan
+                                        {{--
                                         @can('receipts.voucher.view')
                                             <li><a href="{{ route('all_recepit_vochers') }}"><i
                                                         class="fa-solid fa-wallet"></i> Receipts Voucher</a></li>
                                         @endcan
+                                        --}}
                                         @can('journal.voucher.view')
                                             <li><a href="{{ route('vouchers.index', 'journal voucher') }}"><i
                                                         class="fa-solid fa-wallet"></i> Journal Voucher</a></li>
