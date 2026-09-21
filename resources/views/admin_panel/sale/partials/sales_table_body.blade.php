@@ -13,14 +13,23 @@
         $isExchange = \Illuminate\Support\Str::startsWith($sale->reference, 'Exchange for');
         
         if ($sale->sale_type === 'quotation') {
-            $statusBadge = '<span class="badge badge-info text-white border border-info"><i class="fas fa-file-contract me-1"></i>Quotation</span>';
+            $hasConverted = \App\Models\Sale::where('parent_quotation_id', $sale->id)->exists();
+            if ($hasConverted) {
+                $statusBadge = '<span class="badge badge-success text-white border border-success"><i class="fas fa-check-circle me-1"></i>Converted</span>';
+            } else {
+                $statusBadge = '<span class="badge badge-info text-white border border-info"><i class="fas fa-file-contract me-1"></i>Quotation</span>';
+            }
         } elseif ($sale->sale_type === 'sales_order') {
-            if ($sale->delivery_status === 'pending') {
-                $statusBadge = '<span class="badge badge-warning text-dark border border-warning"><i class="fas fa-clock me-1"></i>SO Pending</span>';
-            } elseif ($sale->delivery_status === 'partial') {
-                $statusBadge = '<span class="badge badge-primary border border-primary"><i class="fas fa-truck-loading me-1"></i>SO Partial</span>';
-            } elseif ($sale->delivery_status === 'delivered') {
-                $statusBadge = '<span class="badge badge-success border border-success"><i class="fas fa-check-circle me-1"></i>SO Delivered</span>';
+            if ($sale->sale_status === 'posted') {
+                $statusBadge = '<span class="badge badge-success border border-success"><i class="fas fa-file-invoice-dollar me-1"></i>Invoiced</span>';
+            } else {
+                if ($sale->delivery_status === 'pending') {
+                    $statusBadge = '<span class="badge badge-warning text-dark border border-warning"><i class="fas fa-clock me-1"></i>SO Pending</span>';
+                } elseif ($sale->delivery_status === 'partial') {
+                    $statusBadge = '<span class="badge badge-primary border border-primary"><i class="fas fa-truck-loading me-1"></i>SO Partial</span>';
+                } elseif ($sale->delivery_status === 'delivered') {
+                    $statusBadge = '<span class="badge badge-info text-white border border-info"><i class="fas fa-check-circle me-1"></i>Delivered (Inv. Pending)</span>';
+                }
             }
         } else {
             if ($sale->sale_status === 'posted') {
@@ -140,7 +149,7 @@
         <td>{!! $statusBadge !!}</td>
         <td class="pe-3 text-center">
             <div class="dropdown">
-                <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" data-display="static" aria-expanded="false">
+                <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" data-boundary="window" data-bs-boundary="window" aria-expanded="false">
                     <i class="fas fa-ellipsis-v small me-1"></i> Actions
                 </button>
                 <ul class="dropdown-menu dropdown-menu-right border-0 shadow-lg rounded-3">
@@ -198,14 +207,16 @@
                                 </a>
                             </li>
                             @can('sales.create')
-                                <li>
-                                    <form action="{{ route('sales.convert_to_order', $sale->id) }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="dropdown-item text-primary d-flex align-items-center gap-2 py-2 fw-bold">
-                                            <i class="fas fa-random fa-fw text-primary"></i> Convert to Sales Order
-                                        </button>
-                                    </form>
-                                </li>
+                                @if (!isset($hasConverted) || !$hasConverted)
+                                    <li>
+                                        <form action="{{ route('sales.convert_to_order', $sale->id) }}" method="POST">
+                                            @csrf
+                                            <button type="submit" class="dropdown-item text-primary d-flex align-items-center gap-2 py-2 fw-bold">
+                                                <i class="fas fa-random fa-fw text-primary"></i> Convert to Sales Order
+                                            </button>
+                                        </form>
+                                    </li>
+                                @endif
                             @endcan
                         @endif
 

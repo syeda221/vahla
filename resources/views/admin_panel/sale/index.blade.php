@@ -277,6 +277,19 @@
                 display: flex;
                 gap: 8px;
             }
+            .table-responsive {
+                overflow: visible !important;
+            }
+            .dataTables_scrollBody {
+                overflow: visible !important;
+            }
+        }
+
+        /* Force all DataTables wrappers and columns to not clip dropdowns */
+        .dataTables_wrapper,
+        .dataTables_wrapper .row,
+        .dataTables_wrapper .col-sm-12 {
+            overflow: visible !important;
         }
     </style>
 
@@ -759,7 +772,6 @@
                         form.submit();
                     }
                 });
-            });
         });
     </script>
 @endsection

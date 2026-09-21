@@ -2413,7 +2413,7 @@ public function addsale()
 
     public function convertToOrder(Request $request, $id)
     {
-        $sale = Sale::findOrFail($id);
+        $sale = Sale::with('items')->findOrFail($id);
 
         if ($sale->sale_type !== 'quotation') {
             return redirect()->back()->with('error', 'Only quotations can be converted to sales orders.');
@@ -2421,11 +2421,34 @@ public function addsale()
 
         DB::beginTransaction();
         try {
-            $sale->sale_type = 'sales_order';
-            $sale->delivery_status = 'pending';
-            $sale->save();
-            DB::commit();
+            // Check if already converted
+            $existingOrder = Sale::where('parent_quotation_id', $sale->id)->first();
+            if ($existingOrder) {
+                return redirect()->back()->with('error', 'This quotation has already been converted to a Sales Order.');
+            }
 
+            // Create new order by replicating the quotation
+            $newOrder = $sale->replicate();
+            $newOrder->uuid = null; // Clear UUID to avoid unique constraint violations
+            $newOrder->sale_type = 'sales_order';
+            $newOrder->delivery_status = 'pending';
+            $newOrder->parent_quotation_id = $sale->id;
+            
+            // Try to generate a new invoice number based on the first active invoice series
+            $series = \App\Models\InvoiceSeries::where('is_default', 1)->first() ?: \App\Models\InvoiceSeries::first();
+            $prefix = $series ? $series->prefix : 'INV';
+            $newOrder->invoice_no = \App\Models\InvoiceSeries::generateNextNo($prefix);
+            
+            $newOrder->save();
+
+            // Replicate the items
+            foreach ($sale->items as $item) {
+                $newItem = $item->replicate();
+                $newItem->sale_id = $newOrder->id;
+                $newItem->save();
+            }
+
+            DB::commit();
             return redirect()->back()->with('success', 'Quotation successfully converted to Sales Order.');
         } catch (\Exception $e) {
             DB::rollBack();
