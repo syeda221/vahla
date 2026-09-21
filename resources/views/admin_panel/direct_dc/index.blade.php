@@ -34,13 +34,18 @@
     }
 </style>
 <div class="content-wrapper">
-    <div class="page-header">
-        <h3 class="page-title">Direct Delivery Challans</h3>
-        <nav aria-label="breadcrumb">
-            <a href="{{ route('direct-dc.create') }}" class="btn btn-primary">Create Direct DC</a>
-        </nav>
+    <!-- Modern Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="page-title mb-1 fw-bold text-dark">
+                <i class="fas fa-truck-loading text-primary me-2"></i> Direct Delivery Challans
+            </h3>
+            <p class="text-muted mb-0" style="font-size: 0.9rem;">Manage and consolidate direct delivery challans</p>
+        </div>
+        <a href="{{ route('direct-dc.create') }}" class="btn btn-primary shadow-sm px-4 fw-bold rounded-2">
+            <i class="fas fa-plus me-1"></i> Create Direct DC
+        </a>
     </div>
-
     <div class="row">
         <div class="col-12 grid-margin stretch-card">
             <div class="card">
@@ -64,49 +69,55 @@
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-bordered">
-                                <thead>
+                            <table class="table table-hover table-bordered align-middle">
+                                <thead class="table-light">
                                     <tr>
-                                        <th style="width: 50px;">
+                                        <th style="width: 50px;" class="text-center">
                                             <input type="checkbox" id="selectAll">
                                         </th>
-                                        <th>DC Number</th>
-                                        <th>Date</th>
-                                        <th>Customer</th>
-                                        <th>Items Count</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
+                                        <th class="fw-bold">DC Number</th>
+                                        <th class="fw-bold">Date</th>
+                                        <th class="fw-bold">Customer</th>
+                                        <th class="fw-bold">Items Count</th>
+                                        <th class="fw-bold text-center">Status</th>
+                                        <th class="fw-bold text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($challans as $dc)
+                                    @forelse($challans as $dc)
                                     <tr>
-                                        <td>
+                                        <td class="text-center">
                                             @if(!$dc->is_invoiced)
                                                 <input type="checkbox" name="dc_ids[]" class="dc-checkbox" value="{{ $dc->id }}" data-customer-id="{{ $dc->customer_id }}" data-customer-name="{{ $dc->customer->customer_name ?? 'N/A' }}">
                                             @else
                                                 <input type="checkbox" disabled style="opacity: 0.3;">
                                             @endif
                                         </td>
-                                        <td>{{ $dc->dc_number }}</td>
-                                        <td>{{ \Carbon\Carbon::parse($dc->dc_date)->format('d-m-Y') }}</td>
+                                        <td class="fw-bold text-primary">{{ $dc->dc_number }}</td>
+                                        <td>{{ \Carbon\Carbon::parse($dc->dc_date)->format('d M, Y') }}</td>
                                         <td>{{ $dc->customer->customer_name ?? 'N/A' }}</td>
                                         <td>{{ $dc->items->count() }}</td>
-                                        <td>
+                                        <td class="text-center">
                                             @if($dc->is_invoiced)
-                                                <span class="badge badge-success">invoiced</span>
+                                                <span class="badge bg-success rounded-pill px-3 py-2 shadow-sm"><i class="fas fa-check-circle me-1"></i> invoiced</span>
                                             @else
-                                                <span class="badge badge-warning">un-invoiced</span>
+                                                <span class="badge bg-warning text-dark rounded-pill px-3 py-2 shadow-sm"><i class="fas fa-clock me-1"></i> un-invoiced</span>
                                             @endif
                                         </td>
-                                        <td>
-                                            @if(!$dc->is_invoiced)
-                                                <a href="{{ route('direct-dc.edit', $dc->id) }}" class="btn btn-sm btn-info">Edit</a>
-                                            @endif
-                                            <a href="{{ route('sales.dc_print', $dc->id) }}" class="btn btn-sm btn-primary" target="_blank">Print</a>
+                                        <td class="text-center">
+                                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                                @if(!$dc->is_invoiced)
+                                                    <a href="{{ route('direct-dc.edit', $dc->id) }}" class="btn btn-sm btn-outline-info rounded-pill px-3 shadow-sm"><i class="fas fa-edit"></i> Edit</a>
+                                                @endif
+                                                <a href="{{ route('sales.dc_print', $dc->id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" target="_blank"><i class="fas fa-print"></i> Print</a>
+                                            </div>
                                         </td>
                                     </tr>
-                                    @endforeach
+                                    @empty
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4 text-muted">No Direct Delivery Challans found.</td>
+                                    </tr>
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>

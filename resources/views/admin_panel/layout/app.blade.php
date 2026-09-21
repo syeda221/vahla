@@ -927,11 +927,11 @@
                                                 <ul class="submenu-item">
                                                     @can('sales.view')
                                                         <li><a href="{{ url('sale') }}"><i class="fas fa-receipt"></i>
-                                                                Direct Sales</a></li>
+                                                                Sales</a></li>
                                                         <li><a href="{{ route('quotations.index') }}"><i class="fas fa-file-invoice"></i>
                                                                 Quotations</a></li>
                                                         <li><a href="{{ route('direct-dc.index') }}"><i class="fas fa-truck"></i>
-                                                                Direct DCs</a></li>
+                                                                Delivery</a></li>
                                                         <li><a href="{{ route('sales_orders.index') }}"><i class="fas fa-file-signature"></i>
                                                                 Sales Orders</a></li>
                                                     @endcan

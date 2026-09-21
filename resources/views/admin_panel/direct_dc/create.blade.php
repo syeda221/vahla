@@ -1,27 +1,48 @@
 @extends('admin_panel.layout.app')
 @section('content')
+<style>
+    .form-control, .form-select, .select2-container--default .select2-selection--single {
+        border: 1px solid #ced4da !important;
+        box-shadow: none !important;
+    }
+    .table-bordered th, .table-bordered td, .table-bordered {
+        border: 1px solid #dee2e6 !important;
+    }
+</style>
 <div class="content-wrapper">
-    <div class="page-header">
-        <h3 class="page-title">Create Direct Delivery Challan</h3>
+    <!-- Modern Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="page-title mb-1 fw-bold text-dark">
+                <i class="fas fa-truck-loading text-primary me-2"></i> Create Direct Delivery Challan
+            </h4>
+            <p class="text-muted mb-0" style="font-size: 0.85rem;">Fill in the details to generate a new direct delivery challan</p>
+        </div>
+        <a href="{{ route('direct-dc.index') }}" class="btn btn-sm btn-light px-3 fw-bold rounded-2 border">
+            <i class="fas fa-arrow-left me-1"></i> Back to List
+        </a>
     </div>
+
     <div class="row">
         <div class="col-12 grid-margin stretch-card">
-            <div class="card">
-                <div class="card-body">
+            <div class="card border border-light-subtle rounded-3 shadow-sm">
+                <div class="card-body p-3">
                     <form action="{{ route('direct-dc.store') }}" method="POST">
                         @csrf
                         @if ($errors->any())
-                            <div class="alert alert-danger">
-                                <ul>
+                            <div class="alert alert-danger rounded-3">
+                                <ul class="mb-0">
                                     @foreach ($errors->all() as $error)
                                         <li>{{ $error }}</li>
                                     @endforeach
                                 </ul>
                             </div>
                         @endif
-                        <div class="row">
-                            <div class="col-md-4 form-group">
-                                <label>Customer</label>
+                        
+                        <h6 class="fw-bold text-dark mb-2 pb-1 border-bottom"><i class="fas fa-info-circle text-primary me-1"></i> Basic Information</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-4 form-group mb-2">
+                                <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;">Customer <span class="text-danger">*</span></label>
                                 <select name="customer_id" class="form-control select2" required>
                                     <option value="">Select...</option>
                                     @foreach($customers as $c)
@@ -29,66 +50,72 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-4 form-group">
-                                <label>DC Date</label>
+                            <div class="col-md-4 form-group mb-2">
+                                <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;">DC Date <span class="text-danger">*</span></label>
                                 <input type="date" name="dc_date" class="form-control" value="{{ date('Y-m-d') }}" required>
                             </div>
-                            <div class="col-md-4 form-group">
-                                <label>DC Number</label>
-                                <input type="text" name="dc_number" class="form-control" value="{{ $nextDcNumber }}" required readonly>
+                            <div class="col-md-4 form-group mb-2">
+                                <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;">DC Number</label>
+                                <input type="text" name="dc_number" class="form-control bg-light text-muted" value="{{ $nextDcNumber }}" required readonly>
                             </div>
                             <input type="hidden" name="warehouse_id" value="{{ auth()->user()->warehouse_id ?? 1 }}">
-                            <div class="col-md-8 form-group">
-                                <label>Remarks</label>
-                                <input type="text" name="remarks" class="form-control">
+                            <div class="col-md-12 form-group mb-2">
+                                <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;">Remarks</label>
+                                <input type="text" name="remarks" class="form-control" placeholder="Any additional notes or instructions...">
                             </div>
                         </div>
 
-                        <h5>Items</h5>
-                        <table class="table table-bordered" id="itemsTable">
-                            <thead>
-                                <tr>
-                                    <th style="width: 35%;">Product</th>
-                                    <th style="width: 12%;">Stock</th>
-                                    <th style="width: 10%;">Qty</th>
-                                    <th style="width: 12%;">Price</th>
-                                    <th style="width: 10%;">Discount %</th>
-                                    <th style="width: 15%;">Amount</th>
-                                    <th style="width: 6%;"><i class="fas fa-trash"></i></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        <select class="form-select product-select" style="width: 100%;">
-                                            <option value="">Select Product...</option>
-                                        </select>
-                                        <input type="hidden" name="product_id[]" class="product-id-hidden">
-                                        <input type="hidden" name="color[]" class="variant-data-hidden">
-                                        <input type="hidden" class="size-mode-hidden">
-                                        <input type="hidden" class="pack-qty-hidden" value="1">
-                                    </td>
-                                    <td><input type="text" class="form-control stock-display text-center" readonly tabindex="-1"></td>
-                                    <td>
-                                        <input type="text" class="form-control display-qty-input" required value="1">
-                                        <input type="hidden" name="qty[]" class="real-qty-hidden" value="1">
-                                        <input type="hidden" name="loose_qty[]" class="real-loose-hidden" value="0">
-                                    </td>
-                                    <td><input type="number" step="any" name="price[]" class="form-control price-input" required value="0"></td>
-                                    <td><input type="number" step="any" class="form-control disc-input" value="0"></td>
-                                    <td><input type="text" class="form-control amount-display text-end" readonly tabindex="-1"></td>
-                                    <td><button type="button" class="btn btn-danger btn-sm remove-row">X</button></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div class="mt-2 text-end">
-                            <strong>Total Amount: <span id="gridTotal">0.00</span></strong>
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                            <h6 class="fw-bold text-dark mb-0"><i class="fas fa-boxes text-primary me-1"></i> Items Details</h6>
+                            <button type="button" id="addRow" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold" style="padding-top: 2px; padding-bottom: 2px;"><i class="fas fa-plus me-1"></i> Add Row</button>
                         </div>
-                        <button type="button" id="addRow" class="btn btn-info btn-sm mt-2">Add Row</button>
                         
-                        <div class="mt-4">
-                            <button type="submit" class="btn btn-primary">Save DC</button>
-                            <a href="{{ route('direct-dc.index') }}" class="btn btn-secondary">Cancel</a>
+                        <div class="table-responsive mb-2">
+                            <table class="table table-hover table-bordered align-middle" id="itemsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 35%;" class="fw-bold text-dark">Product</th>
+                                        <th style="width: 12%;" class="fw-bold text-dark text-center">Stock</th>
+                                        <th style="width: 10%;" class="fw-bold text-dark text-center">Qty</th>
+                                        <th style="width: 12%;" class="fw-bold text-dark text-end">Price</th>
+                                        <th style="width: 10%;" class="fw-bold text-dark text-center">Disc %</th>
+                                        <th style="width: 15%;" class="fw-bold text-dark text-end">Amount</th>
+                                        <th style="width: 6%;" class="text-center"><i class="fas fa-trash text-danger"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <select class="form-select product-select" style="width: 100%;">
+                                                <option value="">Select Product...</option>
+                                            </select>
+                                            <input type="hidden" name="product_id[]" class="product-id-hidden">
+                                            <input type="hidden" name="color[]" class="variant-data-hidden">
+                                            <input type="hidden" class="size-mode-hidden">
+                                            <input type="hidden" class="pack-qty-hidden" value="1">
+                                        </td>
+                                        <td><input type="text" class="form-control stock-display text-center bg-light" readonly tabindex="-1"></td>
+                                        <td>
+                                            <input type="text" class="form-control display-qty-input text-center fw-bold" required value="1">
+                                            <input type="hidden" name="qty[]" class="real-qty-hidden" value="1">
+                                            <input type="hidden" name="loose_qty[]" class="real-loose-hidden" value="0">
+                                        </td>
+                                        <td><input type="number" step="any" name="price[]" class="form-control price-input text-end fw-bold" required value="0"></td>
+                                        <td><input type="number" step="any" class="form-control disc-input text-center" value="0"></td>
+                                        <td><input type="text" class="form-control amount-display text-end bg-light fw-bold text-primary" readonly tabindex="-1"></td>
+                                        <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm rounded-circle remove-row" style="width: 28px; height: 28px; padding: 0;"><i class="fas fa-times"></i></button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="d-flex justify-content-end align-items-center mb-3 p-2 bg-light rounded-2 border">
+                            <h5 class="mb-0 fw-bold text-dark">Total Amount: <span id="gridTotal" class="text-primary ms-2">0.00</span></h5>
+                        </div>
+                        
+                        <div class="text-end">
+                            <a href="{{ route('direct-dc.index') }}" class="btn btn-light px-4 fw-bold rounded-pill border me-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary px-5 fw-bold rounded-pill"><i class="fas fa-save me-1"></i> Save DC</button>
                         </div>
                     </form>
                 </div>
@@ -219,14 +246,14 @@ $(document).ready(function() {
             '<input type="hidden" name="color[]" class="variant-data-hidden">' +
             '<input type="hidden" class="size-mode-hidden">' +
             '<input type="hidden" class="pack-qty-hidden" value="1"></td>' +
-            '<td><input type="text" class="form-control stock-display text-center" readonly tabindex="-1"></td>' +
-            '<td><input type="text" class="form-control display-qty-input" required value="1">' +
+            '<td><input type="text" class="form-control stock-display text-center bg-light" readonly tabindex="-1"></td>' +
+            '<td><input type="text" class="form-control display-qty-input text-center fw-bold" required value="1">' +
             '<input type="hidden" name="qty[]" class="real-qty-hidden" value="1">' +
             '<input type="hidden" name="loose_qty[]" class="real-loose-hidden" value="0"></td>' +
-            '<td><input type="number" step="any" name="price[]" class="form-control price-input" required value="0"></td>' +
-            '<td><input type="number" step="any" class="form-control disc-input" value="0"></td>' +
-            '<td><input type="text" class="form-control amount-display text-end" readonly tabindex="-1"></td>' +
-            '<td><button type="button" class="btn btn-danger btn-sm remove-row">X</button></td>' +
+            '<td><input type="number" step="any" name="price[]" class="form-control price-input text-end fw-bold" required value="0"></td>' +
+            '<td><input type="number" step="any" class="form-control disc-input text-center" value="0"></td>' +
+            '<td><input type="text" class="form-control amount-display text-end bg-light fw-bold text-primary" readonly tabindex="-1"></td>' +
+            '<td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm rounded-circle remove-row" style="width: 28px; height: 28px; padding: 0;"><i class="fas fa-times"></i></button></td>' +
             '</tr>';
         var $tr = $(tr);
         $('#itemsTable tbody').append($tr);

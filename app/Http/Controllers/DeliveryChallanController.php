@@ -244,7 +244,13 @@ class DeliveryChallanController extends Controller
 
             DB::commit();
 
-            return redirect()->route('sale.index')->with('success', 'Delivery Challan created successfully and stock deducted.');
+            $targetRoute = 'sale.index';
+            if ($sale->sale_type === 'quotation') {
+                $targetRoute = 'quotations.index';
+            } elseif ($sale->sale_type === 'sales_order') {
+                $targetRoute = 'sales_orders.index';
+            }
+            return redirect()->route($targetRoute)->with('success', 'Delivery Challan created successfully and stock deducted.');
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Delivery Challan Error: ' . $e->getMessage());

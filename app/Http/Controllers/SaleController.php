@@ -125,7 +125,11 @@ class SaleController extends Controller
             ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
             ->where(function($q) {
                 $q->where('sale_type', 'direct_sale')
-                  ->orWhereNull('sale_type');
+                  ->orWhereNull('sale_type')
+                  ->orWhere(function($sq) {
+                      $sq->where('sale_type', 'sales_order')
+                         ->whereIn('sale_status', ['posted', 'returned']);
+                  });
             });
         
         $this->applySalesFilters($query, $request);
@@ -145,7 +149,7 @@ class SaleController extends Controller
     public function salesOrders(Request $request)
     {
         $query = Sale::with(['customer_relation', 'items.product', 'returns'])
-            ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
+            ->whereIn('sale_status', ['draft', 'booked'])
             ->where('sale_type', 'sales_order');
         
         $this->applySalesFilters($query, $request);
@@ -1003,7 +1007,13 @@ public function addsale()
         $sale = Sale::with(['items.product.warehouseStocks', 'customer_relation'])->findOrFail($id);
 
         if (in_array($sale->sale_status, ['cancelled', 'returned'])) {
-            return redirect()->route('sale.index')->with('error', 'Cannot edit a '.$sale->sale_status.' sale.');
+            $targetRoute = 'sale.index';
+            if ($sale->sale_type === 'quotation') {
+                $targetRoute = 'quotations.index';
+            } elseif ($sale->sale_type === 'sales_order') {
+                $targetRoute = 'sales_orders.index';
+            }
+            return redirect()->route($targetRoute)->with('error', 'Cannot edit a '.$sale->sale_status.' sale.');
         }
 
         // 2. Data for Dropdowns (Same as addsale)
@@ -1960,6 +1970,13 @@ public function addsale()
                 }
             }
 
+            $targetRoute = 'sale.index';
+            if ($sale->sale_type === 'quotation') {
+                $targetRoute = 'quotations.index';
+            } elseif ($sale->sale_type === 'sales_order') {
+                $targetRoute = 'sales_orders.index';
+            }
+
             if ($request->ajax() || $request->wantsJson()) {
                 $receiptUrl = route('sales.receipt', $sale->id) . '?from=pos';
                 return response()->json([
@@ -1968,15 +1985,10 @@ public function addsale()
                     'msg' => 'Sale '.$msgStatus.' Successfully',
                     'invoice_url' => $receiptUrl,
                     'receipt_url' => $receiptUrl,
+                    'redirect_url' => route($targetRoute)
                 ]);
             }
 
-            $targetRoute = 'sale.index';
-            if ($sale->sale_type === 'quotation') {
-                $targetRoute = 'quotations.index';
-            } elseif ($sale->sale_type === 'sales_order') {
-                $targetRoute = 'sales_orders.index';
-            }
             return redirect()->route($targetRoute)->with('success', 'Sale saved as '.$msgStatus);
         });
         } catch (\Exception $e) {

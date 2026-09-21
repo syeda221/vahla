@@ -709,7 +709,7 @@
                         timer: 1500,
                         showConfirmButton: false
                     });
-                    setTimeout(() => window.location.href = "{{ route('sale.index') }}", 1500);
+                    setTimeout(() => window.location.href = res.redirect_url || "{{ route('sale.index') }}", 1500);
                 } else {
                     Swal.fire('Post Failed', res.msg || 'Post failed', 'error');
                 }

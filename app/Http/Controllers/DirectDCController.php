@@ -29,7 +29,7 @@ class DirectDCController extends Controller
         $warehouses = Warehouse::orderBy('warehouse_name')->get();
         $products = Product::orderBy('item_name')->get();
         
-        $lastDC = DeliveryChallan::whereNull('sale_id')->latest('id')->first();
+        $lastDC = DeliveryChallan::where('dc_number', 'like', 'DDC-%')->latest('id')->first();
         $dcCount = $lastDC ? (int) preg_replace('/[^0-9]/', '', $lastDC->dc_number) : 0;
         $nextDcNumber = 'DDC-' . str_pad($dcCount + 1, 4, '0', STR_PAD_LEFT);
 

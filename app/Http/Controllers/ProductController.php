@@ -235,7 +235,7 @@ class ProductController extends Controller
                         if ($factor == 1) {
                             $vBalance = max(0, $stockPieces);
                         } else {
-                            $vBalance = (int) floor(max(0, $stockPieces) / $factor);
+                            $vBalance = (int) floor(round(max(0, $stockPieces) / $factor, 4));
                         }
                     } else {
                         // Initial Stock in Pieces
