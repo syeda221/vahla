@@ -179,6 +179,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/get-categories', [ProductController::class, 'getCategoriesJson'])->name('get-categories');
     Route::get('/get-brands', [ProductController::class, 'getBrandsJson'])->name('get-brands');
 
+    // Direct Delivery Challans
+    Route::get('/direct-dc', [App\Http\Controllers\DirectDCController::class, 'index'])->name('direct-dc.index');
+    Route::get('/direct-dc/create', [App\Http\Controllers\DirectDCController::class, 'create'])->name('direct-dc.create');
+    Route::post('/direct-dc/store', [App\Http\Controllers\DirectDCController::class, 'store'])->name('direct-dc.store');
+    Route::get('/direct-dc/{id}/edit', [App\Http\Controllers\DirectDCController::class, 'edit'])->name('direct-dc.edit');
+    Route::post('/direct-dc/{id}/update', [App\Http\Controllers\DirectDCController::class, 'update'])->name('direct-dc.update');
+    Route::get('/direct-dc-consolidate', [App\Http\Controllers\DirectDCController::class, 'consolidateIndex'])->name('direct-dc.consolidate');
+    Route::get('/direct-dc/api/fetch-dcs/{customer_id}', [App\Http\Controllers\DirectDCController::class, 'fetchCustomerDCs']);
+    Route::post('/direct-dc-consolidate/preview', [App\Http\Controllers\DirectDCController::class, 'consolidatePreview'])->name('direct-dc.consolidate.preview');
+    Route::post('/direct-dc-consolidate/store', [App\Http\Controllers\DirectDCController::class, 'consolidateStore'])->name('direct-dc.consolidate.store');
+
     Route::prefix('discount')->group(function () {
         Route::get('/', [DiscountController::class, 'index'])->middleware('permission:discount.products.view')->name('discount.index');
         Route::get('/create', [DiscountController::class, 'create'])->middleware('permission:discount.products.create')->name('discount.create');
@@ -284,6 +295,7 @@ Route::middleware('auth')->group(function () {
     // products
 
     route::get('/Purchase', [PurchaseController::class, 'index'])->middleware('permission:purchases.view')->name('Purchase.home');
+    Route::get('/purchase-orders', [PurchaseController::class, 'purchaseOrders'])->middleware('permission:purchases.view')->name('purchase_orders.index');
     route::get('/add/Purchase', [PurchaseController::class, 'add_purchase'])->middleware('permission:purchases.create')->name('add_purchase');
     Route::get('/purchase/quick', [PurchaseController::class, 'quickCreate'])->middleware('permission:purchases.create')->name('purchase.quick_create');
     Route::post('/purchase/quick', [PurchaseController::class, 'quickStore'])->middleware('permission:purchases.create')->name('purchase.quick_store');

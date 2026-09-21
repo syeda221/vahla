@@ -401,7 +401,12 @@
                 const vdEncoded = $row.find('.variant-data-hidden').val();
                 if (vdEncoded) {
                     try {
-                        const vd = JSON.parse(atob(vdEncoded));
+                        let vd;
+                        try {
+                            vd = JSON.parse(atob(vdEncoded));
+                        } catch(e) {
+                            vd = JSON.parse(vdEncoded);
+                        }
                         if (vd.conv_factor && parseFloat(vd.conv_factor) > 0) {
                             convFactor = parseFloat(vd.conv_factor);
                         } else if (vd.weight_per_piece && parseFloat(vd.weight_per_piece) > 0) {
@@ -655,7 +660,7 @@
                                 text: 'Sale saved as booking successfully',
                                 icon: 'success'
                             }).then(() => {
-                                window.location.href = "{{ route('sale.index') }}";
+                                window.location.href = res.redirect_url || "{{ route('sale.index') }}";
                             });
                         } else if ($('#action').val() === 'quotation') {
                             Swal.fire({
@@ -663,7 +668,7 @@
                                 text: 'Quotation created successfully!',
                                 icon: 'success'
                             }).then(() => {
-                                window.location.href = "{{ route('sale.index') }}";
+                                window.location.href = res.redirect_url || "{{ route('sale.index') }}";
                             });
                         }
                         resolve(res);
@@ -1190,7 +1195,12 @@
             const vdEncoded = $row.find('.variant-data-hidden').val();
             if (vdEncoded) {
                 try {
-                    const vd = JSON.parse(atob(vdEncoded));
+                    let vd;
+                    try {
+                        vd = JSON.parse(atob(vdEncoded));
+                    } catch(e) {
+                        vd = JSON.parse(vdEncoded);
+                    }
                     if (vd.conv_factor && parseFloat(vd.conv_factor) > 0) {
                         convFactor = parseFloat(vd.conv_factor);
                     } else if (vd.weight_per_piece && parseFloat(vd.weight_per_piece) > 0) {
@@ -1582,7 +1592,7 @@
                     timer: 1500,
                     showConfirmButton: false
                 });
-                setTimeout(() => window.location.href = "{{ route('sale.index') }}", 1500);
+                setTimeout(() => window.location.href = (res && res.redirect_url) ? res.redirect_url : "{{ route('sale.index') }}", 1500);
             });
         });
 

@@ -30,8 +30,11 @@ class ProductController extends Controller
         if ($product->size_mode === 'by_size') {
             $price = $product->price_per_m2;
         } else {
-            // For by_cartons or by_pieces, use the box/piece price
-            $price = $product->sale_price_per_box;
+            // For by_cartons or by_pieces, use the box price. For by_kg, if box price is 0, use piece price.
+            $price = (float)$product->sale_price_per_box;
+            if ($price <= 0 && (float)$product->sale_price_per_piece > 0) {
+                $price = (float)$product->sale_price_per_piece;
+            }
         }
 
         return response()->json([
@@ -161,10 +164,10 @@ class ProductController extends Controller
                         ])
                     ];
                 }
-                                $dcList = DB::table('delivery_challan_items as dci')
-                    ->join('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
+                $dcList = DB::table('delivery_challan_items as dci')
+                    ->leftJoin('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
                     ->where('dci.product_id', $p->id ?? $product->id)
-                    ->select('dci.delivered_qty as total_pieces', 'si.color')
+                    ->select('dci.delivered_qty as total_pieces', DB::raw('COALESCE(dci.color, si.color) as color'))
                     ->get();
                 foreach ($dcList as $dcItem) {
                     $salesListArray[] = (object) [

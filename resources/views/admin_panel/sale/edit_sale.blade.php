@@ -590,11 +590,18 @@
                         </div>
 
                         <!-- Save Sale Button -->
-                        <div class="col-sm-12 col-md-12 col-lg-1 d-flex align-items-end">
+                        <div class="col-sm-12 col-md-12 col-lg-auto d-flex align-items-end flex-grow-1">
                             <input type="hidden" name="is_walkin" id="is_walkin" value="{{ $sale->walkin_name ? '1' : '0' }}">
-                            <button type="button" class="btn btn-top-save w-100 fw-bold d-flex align-items-center justify-content-center gap-1" id="btnHeaderSaveSale" style="font-size: 0.75rem;">
-                                <i class="fas fa-check"></i> Save
-                            </button>
+                            @if(request()->has('convert_to_so'))
+                                <input type="hidden" name="convert_to_so" value="1">
+                                <button type="button" class="btn btn-top-save btn-success w-100 fw-bold d-flex align-items-center justify-content-center gap-1 px-3" id="btnHeaderSaveSale" style="font-size: 0.75rem; white-space: nowrap;">
+                                    <i class="fas fa-check"></i> Confirm & Convert to Sales Order
+                                </button>
+                            @else
+                                <button type="button" class="btn btn-top-save w-100 fw-bold d-flex align-items-center justify-content-center gap-1" id="btnHeaderSaveSale" style="font-size: 0.75rem;">
+                                    <i class="fas fa-check"></i> Save
+                                </button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -840,11 +847,25 @@
                                                             $l = fmod((float)$stk, (float)$ppb);
                                                             $selStockDisp = $l > 0 ? "$b.$l" : $b;
                                                         } elseif ($sizeMode === 'by_kg') {
-                                                            if ($stk > 0 && $stk < 1) {
-                                                                $gm = round($stk * 1000);
-                                                                $selStockDisp = "{$stk} Kg ({$gm} Gm)";
+                                                            // Calculate variant stock if it's a pcs variant
+                                                            $cf = 0;
+                                                            if ($liveVariant && !empty($liveVariant['conv_factor'])) $cf = (float)$liveVariant['conv_factor'];
+                                                            elseif ($liveVariant && !empty($liveVariant['weight_per_piece'])) $cf = (float)$liveVariant['weight_per_piece'] / 1000.0;
+                                                            elseif (!empty($variantData['conv_factor'])) $cf = (float)$variantData['conv_factor'];
+                                                            elseif (!empty($variantData['weight_per_piece'])) $cf = (float)$variantData['weight_per_piece'] / 1000.0;
+                                                            
+                                                            $vUnit = strtolower($variantData['unit'] ?? ($liveVariant['unit'] ?? ''));
+                                                            
+                                                            if ($cf > 0 && in_array($vUnit, ['pcs', 'pc', 'piece'])) {
+                                                                $pcs = round($stk / $cf);
+                                                                $selStockDisp = "{$pcs} Pcs";
                                                             } else {
-                                                                $selStockDisp = "{$stk} Kg";
+                                                                if ($stk > 0 && $stk < 1) {
+                                                                    $gm = round($stk * 1000);
+                                                                    $selStockDisp = "{$stk} Kg ({$gm} Gm)";
+                                                                } else {
+                                                                    $selStockDisp = "{$stk} Kg";
+                                                                }
                                                             }
                                                         } else {
                                                             $selStockDisp = $stk;
@@ -1095,7 +1116,11 @@
                             <!-- Payment Methods Card -->
                             <div class="payment-methods-card flex-grow-1 d-flex flex-column">
                                 @php
-                                    $btnText = $sale->sale_type === 'quotation' ? 'Save Quotation (F9)' : 'Save & Complete (F9)';
+                                    if (request()->has('convert_to_so')) {
+                                        $btnText = 'Confirm & Convert (F9)';
+                                    } else {
+                                        $btnText = $sale->sale_type === 'quotation' ? 'Save Quotation (F9)' : 'Save & Complete (F9)';
+                                    }
                                 @endphp
 
                                 @if($sale->sale_type !== 'quotation')

@@ -73,29 +73,31 @@
                 Rs. {{ number_format($purchase->net_amount, 2) }}
             @endif
         </td>
-        <td class="text-end text-success">
-            {{ number_format($purchase->paid_amount, 2) }}
-        </td>
-        <td class="text-end">
-            @php
-                $displayDue = $purchase->total_returned > 0 ? $purchase->updated_due_amount : $purchase->due_amount;
-            @endphp
-            @if ($displayDue > 0)
-                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill">{{ number_format($displayDue, 2) }}</span>
-            @else
-                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Paid</span>
-            @endif
+        @if (!isset($isOrdersPage) || !$isOrdersPage)
+            <td class="text-end text-success">
+                {{ number_format($purchase->paid_amount, 2) }}
+            </td>
+            <td class="text-end">
+                @php
+                    $displayDue = $purchase->total_returned > 0 ? $purchase->updated_due_amount : $purchase->due_amount;
+                @endphp
+                @if ($displayDue > 0)
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill">{{ number_format($displayDue, 2) }}</span>
+                @else
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Paid</span>
+                @endif
 
-            @if ($purchase->has_partial_return)
-                <br><small class="badge bg-danger text-white mt-1"><i class="fas fa-undo-alt me-1"></i> Partial Return</small>
-            @elseif($purchase->is_fully_returned)
-                <br><small class="badge bg-danger mt-1">Fully Returned</small>
-            @endif
-        </td>
+                @if ($purchase->has_partial_return)
+                    <br><small class="badge bg-danger text-white mt-1"><i class="fas fa-undo-alt me-1"></i> Partial Return</small>
+                @elseif($purchase->is_fully_returned)
+                    <br><small class="badge bg-danger mt-1">Fully Returned</small>
+                @endif
+            </td>
+        @endif
 
         <td class="pe-3 text-center">
             <div class="dropdown">
-                <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="false">
+                <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" data-boundary="window" data-bs-boundary="window" aria-expanded="false">
                     <i class="fas fa-ellipsis-v small me-1"></i> Actions
                 </button>
                 <ul class="dropdown-menu dropdown-menu-right border-0 shadow-lg rounded-3">
@@ -115,11 +117,20 @@
                     @if ($purchase->status_purchase == 'draft')
                         @can('purchases.create')
                             <li>
-                                <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-success confirm-purchase-btn" href="{{ route('purchase.confirm', $purchase->id) }}">
-                                    <i class="fas fa-check-circle fa-fw"></i> Confirm Purchase
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-primary" href="{{ route('add_inwardgatepass') }}?purchase_id={{ $purchase->id }}">
+                                    <i class="fas fa-truck-loading fa-fw"></i> Receive Goods (GRN)
                                 </a>
                             </li>
-                            <li><hr class="dropdown-divider"></li>
+                        @endcan
+                    @endif
+
+                    @if ($purchase->status_purchase == 'received')
+                        @can('purchases.create')
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-success confirm-purchase-btn" href="{{ route('purchase.confirm', $purchase->id) }}">
+                                    <i class="fas fa-file-invoice-dollar fa-fw"></i> Generate Invoice
+                                </a>
+                            </li>
                         @endcan
                     @endif
 

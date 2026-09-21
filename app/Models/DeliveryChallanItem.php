@@ -15,7 +15,9 @@ class DeliveryChallanItem extends Model
         'warehouse_id',
         'delivered_qty',
         'boxes',
-        'loose_pieces'
+        'loose_pieces',
+        'color',
+        'price'
     ];
 
     public function deliveryChallan()

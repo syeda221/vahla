@@ -208,7 +208,7 @@ class SaleReturnController extends Controller
             $item->price = (!empty($item->price_per_piece) && $item->price_per_piece > 0) 
                 ? $item->price_per_piece 
                 : ($item->price ?? $item->per_price ?? 0);
-            $item->discount = $item->discount ?? $item->per_discount ?? 0;
+            $item->discount = $item->discount_amount ?? $item->discount ?? $item->per_discount ?? 0;
         });
         
         return view('admin_panel.sale.sale_return.create', compact('sale', 'accounts', 'returnedQtyMap'));

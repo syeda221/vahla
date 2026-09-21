@@ -883,6 +883,9 @@
                                                         <li><a href="{{ route('Purchase.home') }}"><i
                                                                     class="fas fa-shopping-cart"></i> Purchase</a>
                                                         </li>
+                                                        <li><a href="{{ route('purchase_orders.index') }}"><i
+                                                                    class="fas fa-file-contract"></i> Purchase Orders</a>
+                                                        </li>
                                                     @endcan
                                                     @can('purchase_pos.create')
                                                         <li><a href="{{ route('purchase-pos.index') }}"><i
@@ -927,6 +930,8 @@
                                                                 Direct Sales</a></li>
                                                         <li><a href="{{ route('quotations.index') }}"><i class="fas fa-file-invoice"></i>
                                                                 Quotations</a></li>
+                                                        <li><a href="{{ route('direct-dc.index') }}"><i class="fas fa-truck"></i>
+                                                                Direct DCs</a></li>
                                                         <li><a href="{{ route('sales_orders.index') }}"><i class="fas fa-file-signature"></i>
                                                                 Sales Orders</a></li>
                                                     @endcan

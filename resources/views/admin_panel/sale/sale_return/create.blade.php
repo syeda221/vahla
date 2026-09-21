@@ -452,6 +452,7 @@
 
                                         <td><input type="text" name="total[]"
                                                 class="form-control text-end fw-bold row-total" value="0.00" readonly>
+                                        <input type="hidden" class="row-discount" value="0.00">
                                         </td>
                                         <td class="text-center">
                                             <button type="button"

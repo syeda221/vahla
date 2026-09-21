@@ -216,7 +216,12 @@
                     <strong>TOTAL PIECES : </strong> <span id="totalPieces">0</span>
                 </div>
                 <div>
-                    <button type="submit" class="btn btn-success">Save</button>
+                    @if(request()->has('convert_to_so'))
+                        <input type="hidden" name="convert_to_so" value="1">
+                        <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Confirm & Convert to Sales Order</button>
+                    @else
+                        <button type="submit" class="btn btn-success">Save</button>
+                    @endif
                     <button type="button" class="btn btn-secondary">Close</button>
                 </div>
             </div>

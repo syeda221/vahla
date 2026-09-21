@@ -296,14 +296,22 @@
             <div class="meta-left">
                 <div class="meta-row">
                     <div class="meta-label">No:</div>
-                    <div class="meta-value" style="color: #1e40af;">{{ $dc->dc_number }} (Order: {{ $dc->sale->invoice_no }})</div>
+                    <div class="meta-value" style="color: #1e40af;">{{ $dc->dc_number }} {!! $dc->sale ? '(Order: ' . $dc->sale->invoice_no . ')' : '' !!}</div>
                 </div>
                 <div class="meta-row mt-2">
                     <div class="meta-label">M/s.</div>
-                    <div class="meta-value" style="color: #1e40af;">{{ $dc->sale->walkin_name ?? ($dc->sale->customer_relation->customer_name ?? 'Walk-in Customer') }}</div>
+                    <div class="meta-value" style="color: #1e40af;">
+                        @if($dc->sale)
+                            {{ $dc->sale->walkin_name ?? ($dc->sale->customer_relation->customer_name ?? 'Walk-in Customer') }}
+                        @elseif($dc->customer_id)
+                            {{ $dc->customer->customer_name ?? 'Customer' }}
+                        @else
+                            Customer
+                        @endif
+                    </div>
                 </div>
                 <div class="mt-3" style="font-size: 11px; color: #1e40af; font-weight: bold;">
-                    Please Receive the following goods, your order No. <span style="border-bottom: 1px solid var(--pad-border); display: inline-block; width: 150px; color: #000; font-weight: normal; text-align: center;">{{ $dc->sale->reference ?? '' }}</span>
+                    Please Receive the following goods, your order No. <span style="border-bottom: 1px solid var(--pad-border); display: inline-block; width: 150px; color: #000; font-weight: normal; text-align: center;">{{ $dc->sale?->reference ?? '' }}</span>
                 </div>
             </div>
             <div class="meta-right">
@@ -334,7 +342,7 @@
                     @php
                         $productTitle = optional($item->product)->item_name ?? 'Unknown Item';
                         $saleItem = $item->saleItem;
-                        $rate = $saleItem ? $saleItem->price : 0;
+                        $rate = $saleItem ? $saleItem->price : $item->price;
                         $unit = optional($item->product)->unit->name ?? 'Pcs';
                     @endphp
 
@@ -342,10 +350,11 @@
                             @php
                                 $variant = [];
                                 $saleItem = $item->saleItem;
-                                if ($saleItem && !empty($saleItem->color)) {
-                                    $b64 = base64_decode($saleItem->color, true);
+                                $colorData = $saleItem ? $saleItem->color : $item->color;
+                                if (!empty($colorData)) {
+                                    $b64 = base64_decode($colorData, true);
                                     if ($b64 !== false) $variant = json_decode($b64, true) ?: [];
-                                    if (empty($variant)) $variant = json_decode($saleItem->color, true) ?: [];
+                                    if (empty($variant)) $variant = json_decode($colorData, true) ?: [];
                                 }
                                 $sizeMode = $saleItem->size_mode ?? optional($item->product)->size_mode ?? 'by_size';
                                 $vUnit = strtolower($variant['unit'] ?? optional(optional($item->product)->unit)->name ?? '');
@@ -355,7 +364,7 @@
                                 if (in_array($sizeMode, ['by_kg', 'by_gm'])) {
                                     if (in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
                                         $dispUnit = 'Pcs';
-                                        $wtConv = (float)($variant['conv_factor'] ?? $saleItem->pieces_per_box ?? 1);
+                                        $wtConv = (float)($variant['conv_factor'] ?? optional($saleItem)->pieces_per_box ?? optional($item->product)->pieces_per_box ?? 1);
                                         if ($wtConv <= 0) $wtConv = 1;
                                         $dispQtyFactor = 1 / $wtConv;
                                     } elseif (in_array($vUnit, ['gm', 'g'])) {

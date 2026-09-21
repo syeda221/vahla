@@ -1925,6 +1925,41 @@ public function addsale()
             // If AJAX/JSON response needed
             $msgStatus = $status === 'booked' ? ($sale->is_booking ? 'Booked' : 'Quoted') : ucfirst($status);
 
+            if ($request->has('convert_to_so') && $request->convert_to_so == '1' && $sale->sale_type === 'quotation') {
+                $sale->load('items'); // Ensure we have the newly saved items, not the old ones
+                $existingOrder = \App\Models\Sale::where('parent_quotation_id', $sale->id)->first();
+                if (!$existingOrder) {
+                    $newOrder = $sale->replicate();
+                    $newOrder->uuid = null;
+                    $newOrder->sale_type = 'sales_order';
+                    $newOrder->delivery_status = 'pending';
+                    $newOrder->parent_quotation_id = $sale->id;
+                    
+                    $series = \App\Models\InvoiceSeries::where('is_default', 1)->first() ?: \App\Models\InvoiceSeries::first();
+                    $prefix = $series ? $series->prefix : 'INV';
+                    $newOrder->invoice_no = \App\Models\InvoiceSeries::generateNextNo($prefix);
+                    
+                    $newOrder->save();
+
+                    // Replicate the items
+                    foreach ($sale->items as $item) {
+                        $newItem = $item->replicate();
+                        $newItem->sale_id = $newOrder->id;
+                        $newItem->save();
+                    }
+                    
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json([
+                            'ok' => true,
+                            'booking_id' => $newOrder->id,
+                            'msg' => 'Quotation updated and successfully converted to Sales Order.',
+                            'redirect_url' => route('sales_orders.index')
+                        ]);
+                    }
+                    return redirect()->route('sales_orders.index')->with('success', 'Quotation updated and successfully converted to Sales Order.');
+                }
+            }
+
             if ($request->ajax() || $request->wantsJson()) {
                 $receiptUrl = route('sales.receipt', $sale->id) . '?from=pos';
                 return response()->json([

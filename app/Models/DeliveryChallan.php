@@ -10,12 +10,19 @@ class DeliveryChallan extends Model
 
     protected $fillable = [
         'sale_id',
+        'customer_id',
         'dc_number',
         'dc_date',
         'status',
+        'is_invoiced',
         'remarks',
         'created_by',
     ];
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
+    }
 
     public function sale()
     {

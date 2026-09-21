@@ -209,12 +209,9 @@
                             @can('sales.create')
                                 @if (!isset($hasConverted) || !$hasConverted)
                                     <li>
-                                        <form action="{{ route('sales.convert_to_order', $sale->id) }}" method="POST">
-                                            @csrf
-                                            <button type="submit" class="dropdown-item text-primary d-flex align-items-center gap-2 py-2 fw-bold">
-                                                <i class="fas fa-random fa-fw text-primary"></i> Convert to Sales Order
-                                            </button>
-                                        </form>
+                                        <a class="dropdown-item d-flex align-items-center gap-2 py-2 fw-bold text-primary" href="{{ route('sales.edit', $sale->id) }}?convert_to_so=1">
+                                            <i class="fas fa-random text-primary fa-fw"></i> Convert to Sales Order
+                                        </a>
                                     </li>
                                 @endif
                             @endcan

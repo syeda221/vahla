@@ -322,6 +322,10 @@
                                                     href="{{ route('Purchase.home') }}"><i
                                                         class="menu_icon icon-basket"></i><span>Purchase</span></a>
                                             </li>
+                                            <li class="nav-item"><a class="nav-link"
+                                                    href="{{ route('purchase_orders.index') }}"><i
+                                                        class="menu_icon icon-notebook"></i><span>Purchase Orders</span></a>
+                                            </li>
                                         </ul>
                                     </div>
                                 </div>
