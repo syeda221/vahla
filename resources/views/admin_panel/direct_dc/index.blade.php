@@ -85,17 +85,21 @@
                                 </thead>
                                 <tbody>
                                     @forelse($challans as $dc)
+                                    @php
+                                        $cName = $dc->customer->customer_name ?? ($dc->sale->customer_relation->customer_name ?? 'N/A');
+                                        $cId = $dc->customer_id ?? ($dc->sale->customer_id ?? '');
+                                    @endphp
                                     <tr>
                                         <td class="text-center">
                                             @if(!$dc->is_invoiced)
-                                                <input type="checkbox" name="dc_ids[]" class="dc-checkbox" value="{{ $dc->id }}" data-customer-id="{{ $dc->customer_id }}" data-customer-name="{{ $dc->customer->customer_name ?? 'N/A' }}">
+                                                <input type="checkbox" name="dc_ids[]" class="dc-checkbox" value="{{ $dc->id }}" data-customer-id="{{ $cId }}" data-customer-name="{{ $cName }}">
                                             @else
                                                 <input type="checkbox" disabled style="opacity: 0.3;">
                                             @endif
                                         </td>
                                         <td class="fw-bold text-primary">{{ $dc->dc_number }}</td>
                                         <td>{{ \Carbon\Carbon::parse($dc->dc_date)->format('d M, Y') }}</td>
-                                        <td>{{ $dc->customer->customer_name ?? 'N/A' }}</td>
+                                        <td>{{ $cName }}</td>
                                         <td>{{ $dc->items->count() }}</td>
                                         <td class="text-center">
                                             @if($dc->is_invoiced)

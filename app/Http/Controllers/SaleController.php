@@ -155,14 +155,22 @@ class SaleController extends Controller
         $this->applySalesFilters($query, $request);
         return $this->getSalesDataAndRespond($query, $request, 'sales_order');
     }
-public function addsale()
+    public function addsale(Request $request = null)
     {
         $customer = Customer::all();
         $warehouse = Warehouse::all();
         
         $allSeries = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
-        $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
-        $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+        
+        $type = request('type');
+        if ($type === 'quotation') {
+            $quoSeries = $allSeries->where('prefix', 'QUO')->first();
+            $activePrefix = $quoSeries ? $quoSeries->prefix : 'QUO';
+        } else {
+            $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
+            $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+        }
+
         $nextInvoiceNumber = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
 
         $recentProducts = Product::latest()->take(12)->get();
@@ -1200,8 +1208,20 @@ public function addsale()
                 $tType = $request->sale_type ?? 'direct_sale';
                 $tStatus = $request->sale_status ?? 'completed';
 
-                if ($tType === 'quotation' || ($tType === 'sales_order' && $tStatus !== 'posted')) {
-                    $sale->invoice_no = null;
+                if ($tType === 'quotation') {
+                    $targetNo = (!empty($invInput) && \Illuminate\Support\Str::startsWith($invInput, 'QUO-')) ? trim($invInput) : \App\Models\InvoiceSeries::generateNextNo('QUO');
+                    $exists = Sale::where('invoice_no', $targetNo)->exists();
+                    if ($exists) {
+                        $targetNo = \App\Models\InvoiceSeries::generateNextNo('QUO');
+                    }
+                    $sale->invoice_no = $targetNo;
+                } elseif ($tType === 'sales_order' && $tStatus !== 'posted') {
+                    $targetNo = (!empty($invInput) && \Illuminate\Support\Str::startsWith($invInput, 'SO-')) ? trim($invInput) : \App\Models\InvoiceSeries::generateNextNo('SO');
+                    $exists = Sale::where('invoice_no', $targetNo)->exists();
+                    if ($exists) {
+                        $targetNo = \App\Models\InvoiceSeries::generateNextNo('SO');
+                    }
+                    $sale->invoice_no = $targetNo;
                 } else {
                     if (!empty($invInput)) {
                         $manualInvoice = trim($invInput);
@@ -1945,9 +1965,8 @@ public function addsale()
                     $newOrder->delivery_status = 'pending';
                     $newOrder->parent_quotation_id = $sale->id;
                     
-                    $series = \App\Models\InvoiceSeries::where('is_default', 1)->first() ?: \App\Models\InvoiceSeries::first();
-                    $prefix = $series ? $series->prefix : 'INV';
-                    $newOrder->invoice_no = \App\Models\InvoiceSeries::generateNextNo($prefix);
+                    $newOrder->invoice_no = \App\Models\InvoiceSeries::generateNextNo('SO');
+                    \App\Models\InvoiceSeries::incrementCounterForInvoice($newOrder->invoice_no);
                     
                     $newOrder->save();
 
@@ -2481,10 +2500,8 @@ public function addsale()
             $newOrder->delivery_status = 'pending';
             $newOrder->parent_quotation_id = $sale->id;
             
-            // Try to generate a new invoice number based on the first active invoice series
-            $series = \App\Models\InvoiceSeries::where('is_default', 1)->first() ?: \App\Models\InvoiceSeries::first();
-            $prefix = $series ? $series->prefix : 'INV';
-            $newOrder->invoice_no = \App\Models\InvoiceSeries::generateNextNo($prefix);
+            $newOrder->invoice_no = \App\Models\InvoiceSeries::generateNextNo('SO');
+            \App\Models\InvoiceSeries::incrementCounterForInvoice($newOrder->invoice_no);
             
             $newOrder->save();
 

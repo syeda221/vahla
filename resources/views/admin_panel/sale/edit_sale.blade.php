@@ -505,7 +505,9 @@
                         <a href="{{ route('sale.index') }}" class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Back"><i class="fas fa-arrow-left text-secondary"></i></a>
                         <div>
                             <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 1.05rem;">
-                                <i class="fas fa-edit text-primary"></i> Edit Sale {{ $sale->invoice_no ?: ($sale->sale_type === 'quotation' ? 'QUO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : ($sale->sale_type === 'sales_order' ? 'SO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : '#'.$sale->id)) }}
+                                <i class="{{ $sale->sale_type === 'quotation' ? 'fas fa-file-contract' : ($sale->sale_type === 'sales_order' ? 'fas fa-shopping-bag' : 'fas fa-edit') }} text-primary"></i> 
+                                {{ $sale->sale_type === 'quotation' ? 'Edit Quotation' : ($sale->sale_type === 'sales_order' ? 'Edit Sales Order' : 'Edit Sale') }} 
+                                {{ $sale->invoice_no ?: (($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted') ? 'SO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : ($sale->sale_type === 'quotation' ? 'QUO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : '#'.$sale->id)) }}
                             </h5>
                             <small class="text-muted" style="font-size: 0.72rem;">Update invoice details & order items</small>
                         </div>
@@ -520,16 +522,19 @@
                 <!-- TOP INFORMATION PANEL -->
                 <div class="top-info-card mb-3">
                     <div class="row g-2 align-items-end w-100 m-0">
-                        <!-- Invoice No -->
+                        <!-- Invoice No / Quotation No -->
                         <div class="col-sm-6 col-md-3 col-lg-2">
-                            <label class="meta-label"><i class="fas fa-receipt text-primary"></i> Invoice No.</label>
+                            <label class="meta-label">
+                                <i class="{{ $sale->sale_type === 'quotation' ? 'fas fa-file-contract' : 'fas fa-receipt' }} text-primary"></i> 
+                                {{ $sale->sale_type === 'quotation' ? 'QUOTATION NO.' : ($sale->sale_type === 'sales_order' ? 'SO NO.' : 'INVOICE NO.') }}
+                            </label>
                             @php
                                 $displayDocNo = $sale->invoice_no;
                                 if (!$displayDocNo) {
-                                    if ($sale->sale_type === 'quotation') {
-                                        $displayDocNo = 'QUO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
-                                    } elseif ($sale->sale_type === 'sales_order') {
+                                    if ($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted') {
                                         $displayDocNo = 'SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
+                                    } elseif ($sale->sale_type === 'quotation') {
+                                        $displayDocNo = 'QUO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
                                     } else {
                                         $displayDocNo = '#' . $sale->id;
                                     }

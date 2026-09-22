@@ -24,16 +24,17 @@ class InvoiceSeries extends Model
             $series = self::where('prefix', strtoupper(trim($prefix)))->first();
         }
 
-        if (!$series) {
-            $series = self::where('is_default', 1)->first() ?: self::first();
-        }
+        $pref = $series ? strtoupper($series->prefix) : ($prefix ? strtoupper(trim($prefix)) : null);
 
-        if (!$series) {
-            return 'INV-0001';
+        if (!$pref) {
+            $defaultSeries = self::where('is_default', 1)->first() ?: self::first();
+            $pref = $defaultSeries ? strtoupper($defaultSeries->prefix) : 'INV';
+            $padding = $defaultSeries->padding ?? 4;
+            $nextNumSeries = $defaultSeries->next_number ?? 1;
+        } else {
+            $padding = $series->padding ?? 4;
+            $nextNumSeries = $series->next_number ?? 1;
         }
-
-        $pref = strtoupper($series->prefix);
-        $padding = $series->padding ?: 4;
 
         // Find highest existing invoice number in sales table for this prefix
         $lastSale = Sale::where('invoice_no', 'LIKE', $pref . '-%')
@@ -47,7 +48,7 @@ class InvoiceSeries extends Model
             }
         }
 
-        $nextNum = max((int) $series->next_number, $numFromSale + 1);
+        $nextNum = max((int) $nextNumSeries, $numFromSale + 1);
 
         return $pref . '-' . str_pad($nextNum, $padding, '0', STR_PAD_LEFT);
     }

@@ -581,33 +581,36 @@
                 <!-- TOP INFORMATION PANEL -->
                 <div class="top-info-card mb-3">
                     <div class="row g-2 align-items-end w-100 m-0">
-                        <!-- Invoice No with Prefix Dropdown & Refresh -->
+                        <!-- Invoice No / Quotation No with Prefix Dropdown & Refresh -->
                         <div class="col-sm-6 col-md-3 col-lg-2">
-                            <label class="meta-label"><i class="fas fa-receipt text-primary"></i> Invoice No.</label>
+                            <label class="meta-label">
+                                <i class="{{ request('type') == 'quotation' ? 'fas fa-file-contract' : 'fas fa-receipt' }} text-primary"></i> 
+                                {{ request('type') == 'quotation' ? 'QUOTATION NO.' : 'INVOICE NO.' }}
+                            </label>
                             <div class="input-group input-group-sm invoice-group">
                                 <button class="btn btn-prefix dropdown-toggle d-flex align-items-center gap-1" 
                                         type="button" 
                                         id="btnInvoicePrefix" 
                                         data-bs-toggle="dropdown" 
                                         aria-expanded="false">
-                                    <span id="activePrefixLabel">{{ $activePrefix ?? 'INV' }}</span>
+                                    <span id="activePrefixLabel">{{ $activePrefix ?? (request('type') == 'quotation' ? 'QUO' : 'INV') }}</span>
                                 </button>
                                 <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownInvoiceSeriesList" aria-labelledby="btnInvoicePrefix" style="min-width: 155px; font-size: 0.8rem; z-index: 1050;">
                                     @if(isset($allSeries) && count($allSeries) > 0)
                                         @foreach($allSeries as $s)
                                             <li>
-                                                <a class="dropdown-item fw-bold {{ ($activePrefix ?? 'INV') == $s->prefix ? 'text-success active bg-light' : '' }}" 
+                                                <a class="dropdown-item fw-bold {{ ($activePrefix ?? (request('type') == 'quotation' ? 'QUO' : 'INV')) == $s->prefix ? 'text-success active bg-light' : '' }}" 
                                                    href="#" 
                                                    data-prefix="{{ $s->prefix }}" 
                                                    data-next="{{ $s->next_number }}" 
                                                    data-padding="{{ $s->padding }}">
-                                                    @if(($activePrefix ?? 'INV') == $s->prefix) <i class="fas fa-check text-success me-1"></i> @endif 
+                                                    @if(($activePrefix ?? (request('type') == 'quotation' ? 'QUO' : 'INV')) == $s->prefix) <i class="fas fa-check text-success me-1"></i> @endif 
                                                     {{ $s->prefix }} <span class="text-muted small font-monospace">({{ $s->padding }}d)</span>
                                                 </a>
                                             </li>
                                         @endforeach
                                     @else
-                                        <li><a class="dropdown-item fw-bold text-success active bg-light" href="#" data-prefix="INV"><i class="fas fa-check text-success me-1"></i> INV (4d)</a></li>
+                                        <li><a class="dropdown-item fw-bold text-success active bg-light" href="#" data-prefix="{{ request('type') == 'quotation' ? 'QUO' : 'INV' }}"><i class="fas fa-check text-success me-1"></i> {{ request('type') == 'quotation' ? 'QUO' : 'INV' }} (4d)</a></li>
                                     @endif
                                     <li><hr class="dropdown-divider my-1"></li>
                                     <li>
@@ -622,7 +625,7 @@
                                 <button class="btn btn-refresh" 
                                         type="button" 
                                         id="btnRefreshInvoiceNo" 
-                                        title="Regenerate Invoice Number">
+                                        title="{{ request('type') == 'quotation' ? 'Regenerate Quotation Number' : 'Regenerate Invoice Number' }}">
                                     <i class="fas fa-sync-alt" id="iconRefreshInvoice"></i>
                                 </button>
                             </div>

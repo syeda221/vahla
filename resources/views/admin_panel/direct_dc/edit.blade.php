@@ -21,10 +21,12 @@
                         @endif
                         <div class="row">
                             <div class="col-md-4 form-group">
-                                <label>Customer</label>
+                                @php
+                                    $effCustId = $dc->customer_id ?? ($dc->sale->customer_id ?? null);
+                                @endphp
                                 <select name="customer_id" class="form-control select2" required>
                                     @foreach($customers as $c)
-                                        <option value="{{ $c->id }}" {{ $dc->customer_id == $c->id ? 'selected' : '' }}>{{ $c->customer_name }}</option>
+                                        <option value="{{ $c->id }}" {{ $effCustId == $c->id ? 'selected' : '' }}>{{ $c->customer_name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -59,73 +61,79 @@
                             <tbody>
                                 @foreach($dc->items as $item)
                                 <tr>
-                                    <td>
-                                        @php
-                                            $vName = '';
-                                            if (!empty($item->color)) {
-                                                $b64 = base64_decode($item->color, true);
-                                                $vd = $b64 !== false ? json_decode($b64, true) : json_decode($item->color, true);
-                                                if (is_array($vd) && !empty($vd['name'])) {
-                                                    $vName = ' — ' . $vd['name'];
-                                                }
-                                            }
-                                        @endphp
-                                        <select class="form-select product-select" style="width: 100%;">
-                                            <option value="{{ $item->product_id }}|variant|{{ $item->color }}" selected>{{ ($item->product->item_name ?? 'Product') . $vName }}</option>
-                                        </select>
-                                        <input type="hidden" name="product_id[]" class="product-id-hidden" value="{{ $item->product_id }}">
-                                        <input type="hidden" name="color[]" class="variant-data-hidden" value="{{ $item->color }}">
-                                        <input type="hidden" class="size-mode-hidden" value="{{ $item->product->size_mode ?? '' }}">
-                                        <input type="hidden" class="pack-qty-hidden" value="{{ $item->product->pieces_per_box ?? 1 }}">
-                                    </td>
-                                    @php
-                                        $stockRec = \App\Models\WarehouseStock::where('warehouse_id', $item->warehouse_id ?? 1)
-                                            ->where('product_id', $item->product_id)->first();
-                                        
-                                        $initStock = 0;
-                                        if ($stockRec) {
-                                            $sizeMode = $item->product ? $item->product->size_mode : '';
-                                            $stockTotalPieces = $stockRec->total_pieces;
-                                            
-                                            if (($sizeMode === 'by_kg' || $sizeMode === 'by_gm') && !empty($item->color)) {
-                                                $b64 = base64_decode($item->color, true);
-                                                $vd = $b64 !== false ? json_decode($b64, true) : json_decode($item->color, true);
-                                                $conv = 0;
-                                                if (is_array($vd)) {
-                                                    if (!empty($vd['conv_factor'])) $conv = (float)$vd['conv_factor'];
-                                                    elseif (!empty($vd['weight_per_piece'])) $conv = (float)$vd['weight_per_piece'] / 1000.0;
-                                                }
-                                                if ($conv > 0 && isset($vd['unit']) && in_array(strtolower($vd['unit']), ['pcs', 'pc', 'piece'])) {
-                                                    $initStock = $stockTotalPieces / $conv;
-                                                } else {
-                                                    $initStock = $stockRec->quantity;
-                                                }
-                                            } else {
-                                                $initStock = $stockRec->quantity;
-                                            }
-                                        }
-                                    @endphp
-                                    <td><input type="text" class="form-control stock-display text-center" readonly tabindex="-1" value="{{ round($initStock, 2) }}"></td>
-                                    <td>
-                                        @php
-                                            $ppb = $item->product ? ($item->product->pieces_per_box > 0 ? $item->product->pieces_per_box : 1) : 1;
-                                            $sizeMode = $item->product ? $item->product->size_mode : '';
-                                            $displayQty = $item->boxes;
-                                            if (($sizeMode === 'by_cartons' || $sizeMode === 'by_size') && $item->loose_pieces > 0) {
-                                                $displayQty = $item->boxes . '.' . $item->loose_pieces;
-                                            } elseif (($sizeMode === 'by_kg' || $sizeMode === 'by_gm') && $item->loose_pieces > 0) {
-                                                // Actually DirectDC controller stored it as loose_pieces.
-                                                // We don't merge it visually because our script doesn't split dot for kg!
-                                                // Wait, for edit view, we should just show the boxes (which is rawQty)
-                                                // If size_mode is by_kg, then displayQty is just boxes.
-                                                $displayQty = $item->boxes;
-                                            }
-                                        @endphp
-                                        <input type="text" class="form-control display-qty-input" required value="{{ $displayQty }}">
-                                        <input type="hidden" name="qty[]" class="real-qty-hidden" value="{{ $item->boxes }}">
-                                        <input type="hidden" name="loose_qty[]" class="real-loose-hidden" value="{{ $item->loose_pieces }}">
-                                    </td>
-                                    <td><input type="number" step="any" name="price[]" class="form-control price-input" required value="{{ $item->price }}"></td>
+                                     <td>
+                                         @php
+                                             $itemColor = !empty($item->color) ? $item->color : optional($item->saleItem)->color;
+                                             $vName = '';
+                                             if (!empty($itemColor)) {
+                                                 $b64 = base64_decode($itemColor, true);
+                                                 $vd = $b64 !== false ? json_decode($b64, true) : json_decode($itemColor, true);
+                                                 if (is_array($vd) && !empty($vd['name'])) {
+                                                     $vName = ' — ' . $vd['name'];
+                                                 }
+                                             }
+                                         @endphp
+                                         <select class="form-select product-select" style="width: 100%;">
+                                             <option value="{{ $item->product_id }}|variant|{{ $itemColor }}" selected>{{ ($item->product->item_name ?? 'Product') . $vName }}</option>
+                                         </select>
+                                         <input type="hidden" name="product_id[]" class="product-id-hidden" value="{{ $item->product_id }}">
+                                         <input type="hidden" name="color[]" class="variant-data-hidden" value="{{ $itemColor }}">
+                                         <input type="hidden" class="size-mode-hidden" value="{{ $item->product->size_mode ?? '' }}">
+                                         <input type="hidden" class="pack-qty-hidden" value="{{ $item->product->pieces_per_box ?? 1 }}">
+                                     </td>
+                                     @php
+                                         $stockRec = \App\Models\WarehouseStock::where('warehouse_id', $item->warehouse_id ?? 1)
+                                             ->where('product_id', $item->product_id)->first();
+                                         
+                                         $initStock = 0;
+                                         if ($stockRec) {
+                                             $sizeMode = $item->product ? $item->product->size_mode : '';
+                                             $stockTotalPieces = $stockRec->total_pieces;
+                                             
+                                             if (($sizeMode === 'by_kg' || $sizeMode === 'by_gm') && !empty($itemColor)) {
+                                                 $b64 = base64_decode($itemColor, true);
+                                                 $vd = $b64 !== false ? json_decode($b64, true) : json_decode($itemColor, true);
+                                                 $conv = 0;
+                                                 if (is_array($vd)) {
+                                                     if (!empty($vd['conv_factor'])) $conv = (float)$vd['conv_factor'];
+                                                     elseif (!empty($vd['weight_per_piece'])) $conv = (float)$vd['weight_per_piece'] / 1000.0;
+                                                 }
+                                                 if ($conv > 0 && isset($vd['unit']) && in_array(strtolower($vd['unit']), ['pcs', 'pc', 'piece'])) {
+                                                     $initStock = $stockTotalPieces / $conv;
+                                                 } else {
+                                                     $initStock = $stockRec->quantity;
+                                                 }
+                                             } else {
+                                                 $initStock = $stockRec->quantity;
+                                             }
+                                         }
+                                     @endphp
+                                     <td><input type="text" class="form-control stock-display text-center" readonly tabindex="-1" value="{{ round($initStock, 2) }}"></td>
+                                     <td>
+                                         @php
+                                             $ppb = $item->product ? ($item->product->pieces_per_box > 0 ? $item->product->pieces_per_box : 1) : 1;
+                                             $sizeMode = $item->product ? $item->product->size_mode : '';
+                                             
+                                             $itemBoxes = ($item->boxes !== null && (float)$item->boxes > 0) 
+                                                 ? (float)$item->boxes 
+                                                 : ((float)$item->delivered_qty > 0 ? (float)$item->delivered_qty : 0);
+                                                 
+                                             $itemLoose = (float)($item->loose_pieces ?? 0);
+                                             
+                                             $displayQty = $itemBoxes;
+                                             if (($sizeMode === 'by_cartons' || $sizeMode === 'by_size') && $itemLoose > 0) {
+                                                 $displayQty = $itemBoxes . '.' . $itemLoose;
+                                             }
+
+                                             $itemPrice = ($item->price !== null && (float)$item->price > 0)
+                                                 ? (float)$item->price
+                                                 : ((float)optional($item->saleItem)->price > 0 ? (float)optional($item->saleItem)->price : 0);
+                                         @endphp
+                                         <input type="text" class="form-control display-qty-input" required value="{{ $displayQty }}">
+                                         <input type="hidden" name="qty[]" class="real-qty-hidden" value="{{ $itemBoxes }}">
+                                         <input type="hidden" name="loose_qty[]" class="real-loose-hidden" value="{{ $itemLoose }}">
+                                     </td>
+                                     <td><input type="number" step="any" name="price[]" class="form-control price-input" required value="{{ $itemPrice }}"></td>
                                     <td><input type="number" step="any" class="form-control disc-input" value="0"></td>
                                     <td><input type="text" class="form-control amount-display text-end" readonly tabindex="-1"></td>
                                     <td><button type="button" class="btn btn-danger btn-sm remove-row">X</button></td>
@@ -343,7 +351,7 @@ $(document).ready(function() {
 });
 
 $(document).ready(function() {
-    $('#salesTableBody tr').each(function() {
+    $('#itemsTable tbody tr').each(function() {
         var tr = $(this);
         var price = parseFloat(tr.find('.price-input').val()) || 0;
         

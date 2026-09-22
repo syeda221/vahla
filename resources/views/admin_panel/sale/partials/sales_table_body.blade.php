@@ -26,7 +26,15 @@
                 if ($sale->delivery_status === 'pending') {
                     $statusBadge = '<span class="badge badge-warning text-dark border border-warning"><i class="fas fa-clock me-1"></i>SO Pending</span>';
                 } elseif ($sale->delivery_status === 'partial') {
-                    $statusBadge = '<span class="badge badge-primary border border-primary"><i class="fas fa-truck-loading me-1"></i>SO Partial</span>';
+                    $hasInvoicedDc = $sale->deliveryChallans()->where('is_invoiced', 1)->exists();
+                    $hasUninvoicedDc = $sale->deliveryChallans()->where('is_invoiced', 0)->exists();
+                    if ($hasInvoicedDc && !$hasUninvoicedDc) {
+                        $statusBadge = '<span class="badge text-white border" style="background-color: #0d6efd;"><i class="fas fa-file-invoice-dollar me-1"></i>SO Partial (Invoiced)</span>';
+                    } elseif ($hasInvoicedDc && $hasUninvoicedDc) {
+                        $statusBadge = '<span class="badge text-white border" style="background-color: #6f42c1;"><i class="fas fa-file-invoice-dollar me-1"></i>SO Partial (Partial Inv)</span>';
+                    } else {
+                        $statusBadge = '<span class="badge text-white border" style="background-color: #6610f2;"><i class="fas fa-truck-loading me-1"></i>SO Partial (Inv. Pending)</span>';
+                    }
                 } elseif ($sale->delivery_status === 'delivered') {
                     $statusBadge = '<span class="badge badge-info text-white border border-info"><i class="fas fa-check-circle me-1"></i>Delivered (Inv. Pending)</span>';
                 }
@@ -78,10 +86,10 @@
     <tr class="border-bottom-0">
         <td class="ps-3 fw-bold font-monospace">
             @if ($sale->sale_type === 'quotation')
-                <span class="text-info fw-bold">QUO-{{ str_pad($sale->id, 4, '0', STR_PAD_LEFT) }}</span>
+                <span class="text-info fw-bold">{{ $sale->invoice_no ?: ('QUO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) }}</span>
                 <small class="text-muted d-block" style="font-size: 11px;">#{{ $sale->id }}</small>
             @elseif ($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted')
-                <span class="text-warning fw-bold">SO-{{ str_pad($sale->id, 4, '0', STR_PAD_LEFT) }}</span>
+                <span class="text-warning fw-bold">{{ $sale->invoice_no ?: ('SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) }}</span>
                 <small class="text-muted d-block" style="font-size: 11px;">#{{ $sale->id }}</small>
             @elseif ($sale->invoice_no)
                 <span class="text-primary fw-bold">{{ $sale->invoice_no }}</span>
@@ -226,6 +234,16 @@
                                             <i class="fas fa-file-invoice-dollar fa-fw text-success"></i> Generate Invoice
                                         </button>
                                     </form>
+                                </li>
+                            @endcan
+                        @endif
+
+                        @if ($sale->sale_type === 'sales_order' && $sale->delivery_status === 'partial' && $sale->sale_status !== 'posted')
+                            @can('sales.create')
+                                <li>
+                                    <a class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold" href="{{ route('sales.dc_list', $sale->id) }}?highlight_uninvoiced=1">
+                                        <i class="fas fa-file-invoice-dollar fa-fw text-success"></i> Generate Partial Invoice
+                                    </a>
                                 </li>
                             @endcan
                         @endif

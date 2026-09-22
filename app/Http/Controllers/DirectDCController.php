@@ -17,7 +17,7 @@ class DirectDCController extends Controller
 {
     public function index()
     {
-        $challans = DeliveryChallan::with(['customer', 'items.product'])
+        $challans = DeliveryChallan::with(['customer', 'items.product', 'sale.customer_relation'])
             ->orderBy('id', 'desc')
             ->get();
         return view('admin_panel.direct_dc.index', compact('challans'));
@@ -167,7 +167,7 @@ class DirectDCController extends Controller
 
     public function edit($id)
     {
-        $dc = DeliveryChallan::with('items.product')->whereNull('sale_id')->findOrFail($id);
+        $dc = DeliveryChallan::with(['items.product', 'customer', 'sale.customer_relation'])->findOrFail($id);
         if ($dc->is_invoiced) {
             return redirect()->route('direct-dc.index')->with('error', 'Cannot edit an invoiced DC.');
         }
@@ -181,7 +181,7 @@ class DirectDCController extends Controller
 
     public function update(Request $request, $id)
     {
-        $dc = DeliveryChallan::with('items')->whereNull('sale_id')->findOrFail($id);
+        $dc = DeliveryChallan::with('items')->findOrFail($id);
         if ($dc->is_invoiced) {
             return redirect()->route('direct-dc.index')->with('error', 'Cannot edit an invoiced DC.');
         }
@@ -273,9 +273,19 @@ class DirectDCController extends Controller
                 $mainQty = $qty + ($loose / $ppb);
                 $colorVal = isset($validated['color'][$index]) ? $validated['color'][$index] : null;
 
+                $saleItemId = null;
+                if ($dc->sale_id) {
+                    $saleItem = \App\Models\SaleItem::where('sale_id', $dc->sale_id)
+                        ->where('product_id', $productId)
+                        ->first();
+                    if ($saleItem) {
+                        $saleItemId = $saleItem->id;
+                    }
+                }
+
                 DeliveryChallanItem::create([
                     'delivery_challan_id' => $dc->id,
-                    'sale_item_id' => null,
+                    'sale_item_id' => $saleItemId,
                     'product_id' => $productId,
                     'color' => $colorVal,
                     'warehouse_id' => $warehouseId,
@@ -341,6 +351,13 @@ class DirectDCController extends Controller
 
             if (!empty($srMovements)) {
                 DB::table('stock_movements')->insert($srMovements);
+            }
+
+            if ($dc->sale_id) {
+                $sale = Sale::find($dc->sale_id);
+                if ($sale) {
+                    $sale->recalculateDeliveryStatus();
+                }
             }
 
             DB::commit();

@@ -392,6 +392,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/sales/{id}/store-dc', [App\Http\Controllers\DeliveryChallanController::class, 'store'])->middleware('permission:sales.create')->name('sales.store_dc');
     Route::get('/sales/{id}/dc-list', [App\Http\Controllers\DeliveryChallanController::class, 'index'])->middleware('permission:sales.view')->name('sales.dc_list');
     Route::get('/dc/{id}/print', [App\Http\Controllers\DeliveryChallanController::class, 'print'])->middleware('permission:sales.view')->name('sales.dc_print');
+    Route::post('/dc/{id}/generate-invoice', [App\Http\Controllers\DeliveryChallanController::class, 'generateInvoiceForDc'])->middleware('permission:sales.create')->name('sales.dc_generate_invoice');
     Route::post('/sales/{id}/generate-invoice', [SaleController::class, 'generateInvoice'])->middleware('permission:sales.create')->name('sales.generate_invoice');
 
     // web.php

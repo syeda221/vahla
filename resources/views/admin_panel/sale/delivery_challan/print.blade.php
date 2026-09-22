@@ -294,9 +294,17 @@
         <!-- Meta -->
         <div class="meta-section">
             <div class="meta-left">
+                @php
+                    $orderDocNo = '';
+                    if ($dc->sale) {
+                        $orderDocNo = $dc->sale->invoice_no ?: (($dc->sale->sale_type === 'sales_order' && $dc->sale->sale_status !== 'posted') 
+                            ? ('SO-' . str_pad($dc->sale->id, 4, '0', STR_PAD_LEFT)) 
+                            : ($dc->sale->sale_type === 'quotation' ? ('QUO-' . str_pad($dc->sale->id, 4, '0', STR_PAD_LEFT)) : ('#' . $dc->sale->id)));
+                    }
+                @endphp
                 <div class="meta-row">
                     <div class="meta-label">No:</div>
-                    <div class="meta-value" style="color: #1e40af;">{{ $dc->dc_number }} {!! $dc->sale ? '(Order: ' . $dc->sale->invoice_no . ')' : '' !!}</div>
+                    <div class="meta-value" style="color: #1e40af;">{{ $dc->dc_number }} {!! $dc->sale ? '(Order: ' . $orderDocNo . ')' : '' !!}</div>
                 </div>
                 <div class="meta-row mt-2">
                     <div class="meta-label">M/s.</div>

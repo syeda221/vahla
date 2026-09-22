@@ -95,7 +95,8 @@ class DeliveryChallanController extends Controller
 
             // Create DC
             $dcCount = DeliveryChallan::where('sale_id', $saleId)->count() + 1;
-            $baseNo = $sale->invoice_no ?: ('SO-' . $sale->id);
+            $baseNo = $sale->invoice_no ?: (($sale->sale_type === 'sales_order' ? 'SO-' : ($sale->sale_type === 'quotation' ? 'QUO-' : '#')) . str_pad($sale->id, 4, '0', STR_PAD_LEFT));
+
             $dc = DeliveryChallan::create([
                 'sale_id' => $saleId,
                 'dc_number' => $baseNo . '-DC' . str_pad($dcCount, 2, '0', STR_PAD_LEFT),
@@ -219,8 +220,12 @@ class DeliveryChallanController extends Controller
                         'delivery_challan_id' => $dc->id,
                         'sale_item_id' => $item->id,
                         'product_id' => $productId,
+                        'color' => $item->color,
                         'warehouse_id' => $warehouseId,
                         'delivered_qty' => $deliveryQty,
+                        'boxes' => $deliveryQtyInput,
+                        'loose_pieces' => 0,
+                        'price' => $item->price,
                     ]);
 
                     // Update Sale Item
@@ -228,19 +233,9 @@ class DeliveryChallanController extends Controller
                     $item->save();
                     $anyDelivered = true;
                 }
-
-                if ($item->remaining_qty > 0) {
-                    $allDelivered = false;
-                }
             }
 
-            // Update Sale Status
-            if ($allDelivered) {
-                $sale->delivery_status = 'delivered';
-            } elseif ($anyDelivered || $sale->delivery_status == 'partial') {
-                $sale->delivery_status = 'partial';
-            }
-            $sale->save();
+            $sale->recalculateDeliveryStatus();
 
             DB::commit();
 
@@ -262,5 +257,131 @@ class DeliveryChallanController extends Controller
     {
         $dc = DeliveryChallan::with(['sale.customer_relation', 'items.product'])->findOrFail($id);
         return view('admin_panel.sale.delivery_challan.print', compact('dc'));
+    }
+
+    public function generateInvoiceForDc($id)
+    {
+        $dc = DeliveryChallan::with(['items.product', 'sale.customer_relation', 'customer'])->findOrFail($id);
+
+        if ($dc->is_invoiced) {
+            return redirect()->back()->with('error', 'This Delivery Challan has already been invoiced.');
+        }
+
+        if ($dc->items->isEmpty()) {
+            return redirect()->back()->with('error', 'This Delivery Challan has no items to invoice.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $customerId = $dc->customer_id ?: optional($dc->sale)->customer_id;
+            if (!$customerId) {
+                throw new \Exception('No customer associated with this Delivery Challan.');
+            }
+
+            $sale = new Sale();
+            $sale->customer_id = $customerId;
+            $sale->sale_type = 'sales_order';
+            $sale->sale_status = 'posted';
+            $sale->delivery_status = 'delivered';
+            
+            $seriesList = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
+            $defaultSeries = $seriesList->where('is_default', 1)->first() ?: $seriesList->first();
+            $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+            
+            $generatedNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+            $sale->invoice_no = $generatedNo;
+            $sale->parent_quotation_id = $dc->sale_id;
+            $sale->reference = 'Invoice for DC: ' . $dc->dc_number;
+
+            $totalBillAmount = 0;
+            $totalItems = 0;
+            $saleItemsData = [];
+
+            foreach ($dc->items as $dcItem) {
+                $qty = (float) $dcItem->delivered_qty;
+                $price = (float) ($dcItem->price > 0 ? $dcItem->price : optional($dcItem->saleItem)->price ?? 0);
+                $lineTotal = $qty * $price;
+
+                $saleItemsData[] = [
+                    'product_id' => $dcItem->product_id,
+                    'warehouse_id' => $dcItem->warehouse_id ?? 1,
+                    'color' => $dcItem->color,
+                    'product_name' => optional($dcItem->product)->item_name ?? 'Product #' . $dcItem->product_id,
+                    'qty' => $qty,
+                    'total_pieces' => $qty,
+                    'price' => $price,
+                    'discount_percent' => 0,
+                    'discount_amount' => 0,
+                    'total' => $lineTotal,
+                    'delivered_qty' => $qty,
+                ];
+
+                $totalBillAmount += $lineTotal;
+                $totalItems += $qty;
+            }
+
+            $sale->total_bill_amount = $totalBillAmount;
+            $sale->total_net = $totalBillAmount;
+            $sale->total_items = $totalItems;
+            $sale->cash = 0;
+            $sale->change = 0;
+            $sale->save();
+
+            \App\Models\InvoiceSeries::incrementCounterForInvoice($generatedNo);
+
+            foreach ($saleItemsData as $siData) {
+                $saleItem = new \App\Models\SaleItem($siData);
+                $saleItem->sale_id = $sale->id;
+                $saleItem->save();
+            }
+
+            $dc->is_invoiced = 1;
+            $dc->save();
+
+            $balanceService = app(\App\Services\BalanceService::class);
+            $custForVoucher = \App\Models\Customer::find($customerId);
+            if ($custForVoucher) {
+                $balanceService->createSaleVoucher(
+                    $custForVoucher,
+                    $sale->total_net,
+                    $sale->invoice_no,
+                    now()->format('Y-m-d')
+                );
+
+                $ledger = \App\Models\CustomerLedger::where('customer_id', $custForVoucher->id)->latest('id')->first();
+                $prev_bal = $ledger ? $ledger->closing_balance : ($custForVoucher->previous_balance ?? 0);
+                $new_bal = $prev_bal + $sale->total_net;
+
+                \App\Models\CustomerLedger::create([
+                    'customer_id' => $custForVoucher->id,
+                    'admin_or_user_id' => auth()->id() ?? 1,
+                    'description' => 'Sale Invoice #'.$sale->invoice_no . ' (DC #' . $dc->dc_number . ')',
+                    'previous_balance' => $prev_bal,
+                    'closing_balance' => $new_bal,
+                    'opening_balance' => 0,
+                ]);
+
+                $custForVoucher->previous_balance = $new_bal;
+                $custForVoucher->save();
+            }
+
+            if ($dc->sale_id) {
+                $parentSale = Sale::find($dc->sale_id);
+                if ($parentSale) {
+                    $parentSale->recalculateDeliveryStatus();
+                    $uninvoicedDcsCount = DeliveryChallan::where('sale_id', $parentSale->id)->where('is_invoiced', 0)->count();
+                    if ($parentSale->delivery_status === 'delivered' && $uninvoicedDcsCount === 0) {
+                        $parentSale->sale_status = 'posted';
+                        $parentSale->save();
+                    }
+                }
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', "Invoice {$sale->invoice_no} generated successfully for Delivery Challan {$dc->dc_number}!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Error generating invoice: ' . $e->getMessage());
+        }
     }
 }

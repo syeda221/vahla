@@ -18,8 +18,12 @@
             <div class="card premium-card">
                 <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
                     <div>
-                        <h5 class="mb-1 text-primary fw-bold"><i class="fas fa-truck-loading me-2"></i> Create Delivery Challan</h5>
-                        <small class="text-muted">Order: <span class="text-dark fw-bold">{{ $sale->invoice_no }}</span> | Customer: <span class="text-dark fw-bold">{{ optional($sale->customer_relation)->customer_name ?? 'Walk-in' }}</span></small>
+                        @php
+                            $orderDocNo = $sale->invoice_no ?: (($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted') 
+                                ? ('SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) 
+                                : ($sale->sale_type === 'quotation' ? ('QUO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) : ('#' . $sale->id)));
+                        @endphp
+                        <small class="text-muted">Order: <span class="text-dark fw-bold">{{ $orderDocNo }}</span> | Customer: <span class="text-dark fw-bold">{{ optional($sale->customer_relation)->customer_name ?? 'Walk-in' }}</span></small>
                     </div>
                     <div>
                         <span class="badge bg-light text-dark border"><i class="fas fa-calendar-alt me-1"></i> {{ $sale->created_at->format('d M, Y') }}</span>

@@ -8,6 +8,7 @@
     .item-list-box { background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e2e8f0; max-height: 120px; overflow-y: auto; }
     .item-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px dashed #cbd5e1; }
     .item-row:last-child { border-bottom: none; }
+    .uninvoiced-highlight { background-color: #fffbeb !important; border-left: 4px solid #f59e0b !important; }
 </style>
 
 <div class="container-fluid py-4">
@@ -16,8 +17,12 @@
             <div class="card premium-card">
                 <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
                     <div>
-                        <h5 class="mb-1 text-primary fw-bold"><i class="fas fa-list-alt me-2"></i> Delivery Challans History</h5>
-                        <small class="text-muted">Order: <span class="text-dark fw-bold">{{ $sale->invoice_no }}</span> | Customer: <span class="text-dark fw-bold">{{ optional($sale->customer_relation)->customer_name ?? 'Walk-in' }}</span></small>
+                        @php
+                            $orderDocNo = $sale->invoice_no ?: (($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted') 
+                                ? ('SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) 
+                                : ($sale->sale_type === 'quotation' ? ('QUO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) : ('#' . $sale->id)));
+                        @endphp
+                        <small class="text-muted">Order: <span class="text-dark fw-bold">{{ $orderDocNo }}</span> | Customer: <span class="text-dark fw-bold">{{ optional($sale->customer_relation)->customer_name ?? 'Walk-in' }}</span></small>
                     </div>
                     <div>
                         <a href="{{ route('sale.index') }}" class="btn btn-light border fw-bold btn-sm"><i class="fas fa-arrow-left me-1"></i> Back to Sales</a>
@@ -27,6 +32,13 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
+                    @if(request('highlight_uninvoiced') || request('action') === 'invoice')
+                        <div class="alert alert-warning border-warning mx-3 mt-3 mb-0 d-flex align-items-center" role="alert">
+                            <i class="fas fa-info-circle me-2 fa-lg text-warning"></i>
+                            <div>Select an <strong>un-invoiced Delivery Challan</strong> below and click <strong>Generate Invoice</strong> to create an invoice for that specific delivery.</div>
+                        </div>
+                    @endif
+
                     @if($challans->isEmpty())
                         <div class="text-center py-5">
                             <i class="fas fa-box-open text-muted" style="font-size: 48px; opacity: 0.3;"></i>
@@ -39,15 +51,16 @@
                                     <tr>
                                         <th>Challan ID</th>
                                         <th>Date</th>
-                                        <th>Status</th>
-                                        <th style="width: 40%">Items Delivered</th>
+                                        <th>Delivery Status</th>
+                                        <th>Invoice Status</th>
+                                        <th style="width: 35%">Items Delivered</th>
                                         <th>Remarks</th>
                                         <th class="text-end">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($challans as $dc)
-                                    <tr>
+                                    <tr class="{{ ($dc->is_invoiced == 0 && (request('highlight_uninvoiced') || request('action') === 'invoice')) ? 'uninvoiced-highlight' : '' }}">
                                         <td>
                                             <span class="text-primary fw-bold font-monospace">{{ $dc->dc_number }}</span>
                                         </td>
@@ -56,6 +69,13 @@
                                         </td>
                                         <td>
                                             <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fas fa-check-circle me-1"></i>{{ ucfirst($dc->status) }}</span>
+                                        </td>
+                                        <td>
+                                            @if($dc->is_invoiced == 1)
+                                                <span class="badge bg-success text-white px-2 py-1"><i class="fas fa-file-invoice-dollar me-1"></i>Invoiced</span>
+                                            @else
+                                                <span class="badge bg-warning text-dark px-2 py-1"><i class="fas fa-clock me-1"></i>Un-invoiced</span>
+                                            @endif
                                         </td>
                                         <td>
                                             <div class="item-list-box">
@@ -93,7 +113,7 @@
                                                         
                                                         $rawDelivered = (float) $item->delivered_qty * $dispQtyFactor;
                                                         if ($item->delivered_qty == 0 && $item->qty > 0) {
-                                                            $rawDelivered = (float) $item->qty * $dispQtyFactor; // Fallback
+                                                            $rawDelivered = (float) $item->qty * $dispQtyFactor;
                                                         }
                                                         $deliveredStr = $rawDelivered == (int)$rawDelivered ? (int)$rawDelivered : number_format($rawDelivered, 3, '.', '');
                                                     @endphp
@@ -111,6 +131,14 @@
                                             <a href="{{ route('sales.dc_print', $dc->id) }}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-sm">
                                                 <i class="fas fa-print me-1"></i> Print
                                             </a>
+                                            @if($dc->is_invoiced == 0 && auth()->user()->can('sales.create'))
+                                                <form action="{{ route('sales.dc_generate_invoice', $dc->id) }}" method="POST" class="d-inline ms-1">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-sm btn-success fw-bold shadow-sm" onclick="return confirm('Generate Invoice for DC {{ $dc->dc_number }}?')">
+                                                        <i class="fas fa-file-invoice-dollar me-1"></i> Generate Invoice
+                                                    </button>
+                                                </form>
+                                            @endif
                                         </td>
                                     </tr>
                                     @endforeach

@@ -64,6 +64,55 @@ class Sale extends Model
         return $this->belongsTo(Sale::class, 'parent_quotation_id');
     }
 
+    public function recalculateDeliveryStatus()
+    {
+        $this->load(['items', 'deliveryChallans.items']);
+
+        if ($this->items->isEmpty()) {
+            return;
+        }
+
+        $allDelivered = true;
+        $anyDelivered = false;
+
+        foreach ($this->items as $item) {
+            $deliveredQty = \App\Models\DeliveryChallanItem::whereHas('deliveryChallan', function ($q) {
+                $q->where('sale_id', $this->id);
+            })
+            ->where(function ($q) use ($item) {
+                $q->where('sale_item_id', $item->id)
+                  ->orWhere(function ($q2) use ($item) {
+                      $q2->whereNull('sale_item_id')
+                         ->where('product_id', $item->product_id);
+                  });
+            })
+            ->sum('delivered_qty');
+
+            $item->delivered_qty = (float) $deliveredQty;
+            $item->save();
+
+            $targetQty = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
+
+            if (($targetQty - $item->delivered_qty) > 0.0001) {
+                $allDelivered = false;
+            }
+
+            if ($item->delivered_qty > 0.0001) {
+                $anyDelivered = true;
+            }
+        }
+
+        if ($allDelivered && $anyDelivered) {
+            $this->delivery_status = 'delivered';
+        } elseif ($anyDelivered) {
+            $this->delivery_status = 'partial';
+        } else {
+            $this->delivery_status = 'pending';
+        }
+
+        $this->save();
+    }
+
     protected static function boot()
     {
         parent::boot();

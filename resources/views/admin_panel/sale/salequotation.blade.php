@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>
         @if ($sale->sale_type === 'quotation')
-            Quotation - QUO-{{ str_pad($sale->id, 4, '0', STR_PAD_LEFT) }}
+            Quotation - {{ $sale->invoice_no ?: ('QUO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) }}
         @elseif ($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted')
-            Sales Order - SO-{{ str_pad($sale->id, 4, '0', STR_PAD_LEFT) }}
+            Sales Order - {{ $sale->invoice_no ?: ('SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) }}
         @else
             Quotation/Estimate - {{ $sale->invoice_no }}
         @endif
@@ -294,9 +294,9 @@
                     <div class="meta-label" style="width:60px;">S. No.</div>
                     <div class="meta-value" style="color: #1e40af;">
                         @if ($sale->sale_type === 'quotation')
-                            QUO-{{ str_pad($sale->id, 4, '0', STR_PAD_LEFT) }}
+                            {{ $sale->invoice_no ?: ('QUO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) }}
                         @elseif ($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted')
-                            SO-{{ str_pad($sale->id, 4, '0', STR_PAD_LEFT) }}
+                            {{ $sale->invoice_no ?: ('SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) }}
                         @else
                             {{ $sale->invoice_no }}
                         @endif
