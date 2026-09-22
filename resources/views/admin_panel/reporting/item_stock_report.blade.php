@@ -629,7 +629,9 @@ $(document).ready(function() {
 
             if (mode === 'summary') {
                 let statusBadge = '<span class="status-healthy"><i class="fas fa-check-circle me-1"></i> Healthy</span>';
-                if (row.status === 'out_of_stock') {
+                if (row.status === 'negative_stock') {
+                    statusBadge = '<span class="badge bg-danger text-white px-2 py-1" style="font-size:0.75rem;"><i class="fas fa-minus-circle me-1"></i> Negative Stock</span>';
+                } else if (row.status === 'out_of_stock') {
                     statusBadge = '<span class="status-out"><i class="fas fa-times-circle me-1"></i> Out of Stock</span>';
                 } else if (row.status === 'low_stock') {
                     statusBadge = '<span class="status-low"><i class="fas fa-exclamation-triangle me-1"></i> Low Stock</span>';
@@ -642,7 +644,7 @@ $(document).ready(function() {
                     <td class="fw-semibold">${row.item_name}</td>
                     <td>${row.category_name}</td>
                     <td><span class="badge bg-light text-dark border">${row.unit_name}</span></td>
-                    <td class="text-center fw-bold text-primary">${row.formatted_stock}</td>
+                    <td class="text-center fw-bold ${parseFloat(row.balance) < 0 ? 'text-danger' : 'text-primary'}">${row.formatted_stock}</td>
                     <td class="text-center fw-semibold text-secondary">${row.carton_display || '—'}</td>
                     <td class="text-end">Rs ${parseFloat(row.average_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                     <td class="text-end fw-bold text-dark">Rs ${parseFloat(row.stock_value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
@@ -672,7 +674,7 @@ $(document).ready(function() {
                     <td class="text-end text-success">+${parseFloat(row.returned_qty).toLocaleString()}</td>
                     <td class="text-end text-danger">-${parseFloat(row.purch_returned_qty).toLocaleString()}</td>
                     <td class="text-center" style="background:#fffbeb !important;">${adjBadge}</td>
-                    <td class="text-end fw-bold text-primary" style="background:#eef2ff !important;">${row.formatted_stock}</td>
+                    <td class="text-end fw-bold ${parseFloat(row.balance) < 0 ? 'text-danger' : 'text-primary'}" style="background:#eef2ff !important;">${row.formatted_stock}</td>
                     <td class="text-end fw-bold">Rs ${parseFloat(row.stock_value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                     <td class="text-center">${historyBtn}</td>
                 </tr>`;

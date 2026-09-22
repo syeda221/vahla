@@ -15,13 +15,24 @@ class DeliveryChallan extends Model
         'dc_date',
         'status',
         'is_invoiced',
+        'invoice_id',
         'remarks',
         'created_by',
     ];
 
+    public function invoice()
+    {
+        return $this->belongsTo(Sale::class, 'invoice_id');
+    }
+
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customer_id');
+    }
+
+    public function getCustomerRecordAttribute()
+    {
+        return $this->customer ?: optional($this->sale)->customer_relation;
     }
 
     public function sale()

@@ -151,11 +151,29 @@
             overflow: visible !important;
         }
 
-        /* Prevent Dropdowns from Being Clipped */
-        .table-responsive {
+        /* Prevent Dropdowns from Being Clipped on Main Sales Table */
+        .premium-card .table-responsive {
             border-radius: 8px !important;
             overflow: visible !important;
             min-height: 380px;
+        }
+
+        /* Order Trail Modal overrides to eliminate any empty bottom space and scrollbars */
+        #orderTrailModal .modal-content {
+            border-radius: 12px !important;
+            overflow: hidden !important;
+        }
+        #orderTrailModal .modal-body {
+            min-height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+        }
+        #orderTrailModal div,
+        #orderTrailModal table,
+        #orderTrailModal .card,
+        #orderTrailModal .card-body,
+        #orderTrailModal .table-responsive {
+            min-height: auto !important;
         }
 
         /* Premium Dropdown Menu Customizations */
@@ -413,25 +431,28 @@
                     </div>
                 </div>
 
+                @php
+                    $currentStatusRoute = Route::currentRouteName() ?: 'sale.index';
+                @endphp
                 {{-- Status Filter Pills --}}
                 <div class="mb-4 sales-status-pills">
-                    <a href="{{ route('sale.index', ['status' => 'all']) }}"
+                    <a href="{{ route($currentStatusRoute, ['status' => 'all']) }}"
                         class="btn btn-sm {{ request('status') == 'all' || !request('status') ? 'btn-secondary' : 'btn-outline-secondary' }} rounded-3 shadow-sm px-3 fw-bold">
                         All <span class="badge bg-white text-dark ms-1">{{ $stats['total_count'] ?? 0 }}</span>
                     </a>
-                    <a href="{{ route('sale.index', ['status' => 'posted']) }}"
+                    <a href="{{ route($currentStatusRoute, ['status' => 'posted']) }}"
                         class="btn btn-sm {{ request('status') == 'posted' ? 'btn-success' : 'btn-outline-success' }} rounded-3 shadow-sm px-3 fw-bold">
                         Posted <span class="badge bg-white text-success ms-1">{{ $stats['posted_count'] ?? 0 }}</span>
                     </a>
-                    <a href="{{ route('sale.index', ['status' => 'draft']) }}"
+                    <a href="{{ route($currentStatusRoute, ['status' => 'draft']) }}"
                         class="btn btn-sm {{ request('status') == 'draft' ? 'btn-warning text-dark' : 'btn-outline-warning' }} rounded-3 shadow-sm px-3 fw-bold">
                         Draft <span class="badge bg-white text-dark ms-1">{{ $stats['draft_count'] ?? 0 }}</span>
                     </a>
-                    <a href="{{ route('sale.index', ['status' => 'booked']) }}"
+                    <a href="{{ route($currentStatusRoute, ['status' => 'booked']) }}"
                         class="btn btn-sm {{ request('status') == 'booked' ? 'btn-info text-white' : 'btn-outline-info' }} rounded-3 shadow-sm px-3 fw-bold">
                         Booked <span class="badge bg-white text-info ms-1">{{ $stats['booked_count'] ?? 0 }}</span>
                     </a>
-                    <a href="{{ route('sale.index', ['status' => 'returned']) }}"
+                    <a href="{{ route($currentStatusRoute, ['status' => 'returned']) }}"
                         class="btn btn-sm {{ request('status') == 'returned' ? 'btn-danger' : 'btn-outline-danger' }} rounded-3 shadow-sm px-3 fw-bold">
                         Returned <span class="badge bg-white text-danger ms-1">{{ $stats['returned_count'] ?? 0 }}</span>
                     </a>
@@ -540,6 +561,15 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    {{-- Order Trail 360 Modal --}}
+    <div class="modal fade" id="orderTrailModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 820px; width: 95%;">
+            <div class="modal-content border-0 shadow" id="orderTrailModalContent" style="border-radius: 12px; overflow: hidden;">
+                <!-- Loaded via AJAX -->
             </div>
         </div>
     </div>
@@ -766,12 +796,52 @@
                     showCancelButton: true,
                     confirmButtonColor: "#28a745",
                     cancelButtonColor: "#6c757d",
-                    confirmButtonText: "Yes, Confirm it!"
-                }).then((result) => {
+                    }).then((result) => {
                     if (result.isConfirmed) {
                         form.submit();
                     }
                 });
+            });
+
+            // 360 Order Trail Modal Handler
+            $(document).on('click', '.btn-order-trail', function(e) {
+                e.preventDefault();
+                var saleId = $(this).data('sale-id');
+                if (!saleId) return;
+
+                $('#orderTrailModalContent').html(
+                    '<div class="p-5 text-center">' +
+                    '  <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>' +
+                    '  <div class="mt-3 text-muted fw-semibold">Loading 360° Order Trail...</div>' +
+                    '</div>'
+                );
+
+                if (typeof $.fn.modal !== 'undefined') {
+                    $('#orderTrailModal').modal('show');
+                } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    var m = bootstrap.Modal.getInstance(document.getElementById('orderTrailModal')) || new bootstrap.Modal(document.getElementById('orderTrailModal'));
+                    m.show();
+                }
+
+                $.ajax({
+                    url: '/sales-order/' + saleId + '/trail',
+                    type: 'GET',
+                    success: function(html) {
+                        $('#orderTrailModalContent').html(html);
+                    },
+                    error: function(xhr) {
+                        console.error("Failed to load trail:", xhr);
+                        $('#orderTrailModalContent').html(
+                            '<div class="p-5 text-center text-danger">' +
+                            '  <i class="fas fa-exclamation-triangle fa-3x mb-3 text-danger"></i>' +
+                            '  <h5 class="fw-bold">Failed to load Order Trail</h5>' +
+                            '  <p class="text-muted small">Could not retrieve order details.</p>' +
+                            '  <button type="button" class="btn btn-secondary btn-sm mt-2" data-bs-dismiss="modal" data-dismiss="modal">Close</button>' +
+                            '</div>'
+                        );
+                    }
+                });
+            });
         });
     </script>
 @endsection

@@ -132,12 +132,9 @@
                                                 <i class="fas fa-print me-1"></i> Print
                                             </a>
                                             @if($dc->is_invoiced == 0 && auth()->user()->can('sales.create'))
-                                                <form action="{{ route('sales.dc_generate_invoice', $dc->id) }}" method="POST" class="d-inline ms-1">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-sm btn-success fw-bold shadow-sm" onclick="return confirm('Generate Invoice for DC {{ $dc->dc_number }}?')">
-                                                        <i class="fas fa-file-invoice-dollar me-1"></i> Generate Invoice
-                                                    </button>
-                                                </form>
+                                                <a href="{{ route('direct-dc.index', ['highlight_dc' => $dc->id, 'sale_id' => $sale->id]) }}" class="btn btn-sm btn-success fw-bold shadow-sm ms-1">
+                                                    <i class="fas fa-file-invoice-dollar me-1"></i> Generate Invoice
+                                                </a>
                                             @endif
                                         </td>
                                     </tr>

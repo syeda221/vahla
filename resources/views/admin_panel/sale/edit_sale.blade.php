@@ -513,11 +513,19 @@
                         <a href="{{ route($backRoute) }}" class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Back"><i class="fas fa-arrow-left text-secondary"></i></a>
                         <div>
                             <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 1.05rem;">
-                                <i class="{{ $sale->sale_type === 'quotation' ? 'fas fa-file-contract' : ($sale->sale_type === 'sales_order' ? 'fas fa-shopping-bag' : 'fas fa-edit') }} text-primary"></i> 
-                                {{ $sale->sale_type === 'quotation' ? 'Edit Quotation' : ($sale->sale_type === 'sales_order' ? 'Edit Sales Order' : 'Edit Sale') }} 
-                                {{ $sale->invoice_no ?: (($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted') ? 'SO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : ($sale->sale_type === 'quotation' ? 'QUO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : '#'.$sale->id)) }}
+                                @if(request()->has('convert_to_so'))
+                                    <i class="fas fa-random text-primary"></i> Convert Quotation to Sales Order
+                                    <span class="badge bg-primary text-white ms-1" style="font-size: 11px;">Preview & Create SO</span>
+                                @elseif(request()->has('convert_to_sale'))
+                                    <i class="fas fa-check-circle text-success"></i> Convert Quotation to Sale
+                                    <span class="badge bg-success text-white ms-1" style="font-size: 11px;">Preview & Post Sale</span>
+                                @else
+                                    <i class="{{ $sale->sale_type === 'quotation' ? 'fas fa-file-contract' : ($sale->sale_type === 'sales_order' ? 'fas fa-shopping-bag' : 'fas fa-edit') }} text-primary"></i> 
+                                    {{ $sale->sale_type === 'quotation' ? 'Edit Quotation' : ($sale->sale_type === 'sales_order' ? 'Edit Sales Order' : 'Edit Sale') }} 
+                                    {{ $sale->invoice_no ?: (($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted') ? 'SO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : ($sale->sale_type === 'quotation' ? 'QUO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : '#'.$sale->id)) }}
+                                @endif
                             </h5>
-                            <small class="text-muted" style="font-size: 0.72rem;">Update invoice details & order items</small>
+                            <small class="text-muted" style="font-size: 0.72rem;">Review & edit items, quantities, or prices before saving</small>
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-2">
@@ -607,8 +615,13 @@
                             <input type="hidden" name="is_walkin" id="is_walkin" value="{{ $sale->walkin_name ? '1' : '0' }}">
                             @if(request()->has('convert_to_so'))
                                 <input type="hidden" name="convert_to_so" value="1">
-                                <button type="button" class="btn btn-top-save btn-success w-100 fw-bold d-flex align-items-center justify-content-center gap-1 px-3" id="btnHeaderSaveSale" style="font-size: 0.75rem; white-space: nowrap;">
+                                <button type="button" class="btn btn-top-save btn-primary w-100 fw-bold d-flex align-items-center justify-content-center gap-1 px-3" id="btnHeaderSaveSale" style="font-size: 0.75rem; white-space: nowrap;">
                                     <i class="fas fa-check"></i> Confirm & Convert to Sales Order
+                                </button>
+                            @elseif(request()->has('convert_to_sale'))
+                                <input type="hidden" name="convert_to_sale" value="1">
+                                <button type="button" class="btn btn-top-save btn-success w-100 fw-bold d-flex align-items-center justify-content-center gap-1 px-3" id="btnHeaderSaveSale" style="font-size: 0.75rem; white-space: nowrap;">
+                                    <i class="fas fa-check-circle"></i> Confirm & Convert to Sale
                                 </button>
                             @else
                                 <button type="button" class="btn btn-top-save w-100 fw-bold d-flex align-items-center justify-content-center gap-1" id="btnHeaderSaveSale" style="font-size: 0.75rem;">
@@ -1130,13 +1143,15 @@
                             <div class="payment-methods-card flex-grow-1 d-flex flex-column">
                                 @php
                                     if (request()->has('convert_to_so')) {
-                                        $btnText = 'Confirm & Convert (F9)';
+                                        $btnText = 'Confirm & Convert to SO (F9)';
+                                    } elseif (request()->has('convert_to_sale')) {
+                                        $btnText = 'Confirm & Post Sale (F9)';
                                     } else {
                                         $btnText = $sale->sale_type === 'quotation' ? 'Save Quotation (F9)' : 'Save & Complete (F9)';
                                     }
                                 @endphp
 
-                                @if($sale->sale_type !== 'quotation')
+                                @if($sale->sale_type !== 'quotation' || request()->has('convert_to_sale'))
                                 <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
                                     <span class="fw-bold text-dark d-flex align-items-center gap-1" style="font-size:0.85rem;"><i class="fas fa-wallet text-success"></i> Payment Methods</span>
                                     <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-2 fw-bold" id="btnAddRV" style="font-size:0.7rem;"><i class="fas fa-plus me-1"></i>Add Account</button>

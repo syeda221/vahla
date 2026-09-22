@@ -149,8 +149,8 @@
                                     <td class="text-center text-nowrap">
                                         <span class="badge bg-info text-dark">{{ $stock->quantity }} Boxes</span>
                                     </td>
-                                    <td class="text-center fw-bold text-primary">
-                                        {{ number_format($stock->total_pieces) }}</td>
+                                    <td class="text-center fw-bold {{ $stock->total_pieces < 0 ? 'text-danger' : 'text-primary' }}">
+                                        {{ rtrim(rtrim(number_format($stock->total_pieces, 3, '.', ''), '0'), '.') }}</td>
                                     <td class="text-end">
                                         @can('warehouse.stock.edit')
                                             <button onclick="editStock({{ $stock->id }})"

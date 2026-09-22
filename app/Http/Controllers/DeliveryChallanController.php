@@ -99,6 +99,7 @@ class DeliveryChallanController extends Controller
 
             $dc = DeliveryChallan::create([
                 'sale_id' => $saleId,
+                'customer_id' => $sale->customer_id,
                 'dc_number' => $baseNo . '-DC' . str_pad($dcCount, 2, '0', STR_PAD_LEFT),
                 'dc_date' => now()->format('Y-m-d'),
                 'status' => 'confirmed', // We confirm it immediately as per plan
@@ -189,18 +190,18 @@ class DeliveryChallanController extends Controller
                             ->lockForUpdate()
                             ->first();
 
-                        if (!$stock) {
-                            throw new \Exception("No stock found in warehouse for {$item->product_name}.");
+                        if ($stock) {
+                            $stock->total_pieces -= $deliveryQty;
+                            $stock->quantity = $stock->total_pieces / $ppb;
+                            $stock->save();
+                        } else {
+                            $stock = WarehouseStock::create([
+                                'warehouse_id' => $warehouseId,
+                                'product_id' => $productId,
+                                'total_pieces' => -$deliveryQty,
+                                'quantity' => -$deliveryQty / $ppb,
+                            ]);
                         }
-
-                        if ($stock->total_pieces < $deliveryQty) {
-                            throw new \Exception("Insufficient stock in warehouse for {$item->product_name}. Available: {$stock->total_pieces}, Required: {$deliveryQty}.");
-                        }
-
-                        // Update Stock
-                        $stock->total_pieces -= $deliveryQty;
-                        $stock->quantity = $stock->total_pieces / $ppb;
-                        $stock->save();
 
                         // Add Movement
                         StockMovement::create([

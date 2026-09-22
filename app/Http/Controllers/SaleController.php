@@ -121,7 +121,7 @@ class SaleController extends Controller
 
     public function index(Request $request)
     {
-        $query = Sale::with(['customer_relation', 'items.product', 'returns'])
+        $query = Sale::with(['customer_relation', 'items.product', 'returns', 'deliveryChallans'])
             ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
             ->where(function($q) {
                 $q->where('sale_type', 'direct_sale')
@@ -138,7 +138,7 @@ class SaleController extends Controller
 
     public function quotations(Request $request)
     {
-        $query = Sale::with(['customer_relation', 'items.product', 'returns'])
+        $query = Sale::with(['customer_relation', 'items.product', 'returns', 'deliveryChallans'])
             ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
             ->where('sale_type', 'quotation');
         
@@ -148,8 +148,8 @@ class SaleController extends Controller
 
     public function salesOrders(Request $request)
     {
-        $query = Sale::with(['customer_relation', 'items.product', 'returns'])
-            ->whereIn('sale_status', ['draft', 'booked'])
+        $query = Sale::with(['customer_relation', 'items.product', 'returns', 'deliveryChallans'])
+            ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
             ->where('sale_type', 'sales_order');
         
         $this->applySalesFilters($query, $request);
@@ -1986,7 +1986,66 @@ class SaleController extends Controller
                         ]);
                     }
                     return redirect()->route('sales_orders.index')->with('success', 'Quotation updated and successfully converted to Sales Order.');
+                } else {
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json([
+                            'ok' => true,
+                            'booking_id' => $existingOrder->id,
+                            'msg' => 'This quotation was already converted to Sales Order.',
+                            'redirect_url' => route('sales_orders.index')
+                        ]);
+                    }
+                    return redirect()->route('sales_orders.index')->with('info', 'This quotation was already converted to Sales Order.');
                 }
+            }
+
+            if ($request->has('convert_to_sale') && $request->convert_to_sale == '1' && $sale->sale_type === 'quotation') {
+                $sale->load('items');
+                $newSale = $sale->replicate();
+                $newSale->uuid = null;
+                $newSale->sale_type = 'direct_sale';
+                $newSale->sale_status = 'posted';
+                $newSale->parent_quotation_id = $sale->id;
+                
+                $seriesList = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
+                $defaultSeries = $seriesList->where('is_default', 1)->first() ?: $seriesList->first();
+                $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+                $newSale->invoice_no = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+                \App\Models\InvoiceSeries::incrementCounterForInvoice($newSale->invoice_no);
+                
+                $newSale->save();
+
+                foreach ($sale->items as $item) {
+                    $newItem = $item->replicate();
+                    $newItem->sale_id = $newSale->id;
+                    $newItem->save();
+                }
+
+                $this->handleStockImpact($newSale, 'out');
+                $this->updateLedger($newSale);
+
+                $custForVoucher = $newSale->customer_relation ?? \App\Models\Customer::find($newSale->customer_id);
+                if ($custForVoucher) {
+                    $balanceService = app(\App\Services\BalanceService::class);
+                    $balanceService->createSaleVoucher(
+                        $custForVoucher,
+                        $newSale->total_net,
+                        (string)$newSale->invoice_no,
+                        $newSale->created_at->format('Y-m-d')
+                    );
+                }
+                $transactionService = app(\App\Services\TransactionService::class);
+                $transactionService->createReceiptFromSale($newSale);
+
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'ok' => true,
+                        'booking_id' => $newSale->id,
+                        'msg' => 'Quotation updated and successfully converted to Sale Invoice.',
+                        'redirect_url' => route('sale.index')
+                    ]);
+                }
+                return redirect()->route('sale.index')->with('success', 'Quotation converted to Sale Invoice successfully.');
             }
 
             $targetRoute = 'sale.index';
@@ -2053,8 +2112,12 @@ class SaleController extends Controller
             }
 
             if (! $stock) {
-                // Create if missing? Or fail? User said "Validate warehouse stock".
-                throw new \Exception('Stock not found for product: '.$item->product_name);
+                $stock = WarehouseStock::create([
+                    'warehouse_id' => $targetWhId,
+                    'product_id' => $item->product_id,
+                    'total_pieces' => 0,
+                    'quantity' => 0,
+                ]);
             }
 
             // Calculate stock deduction quantity (for Kg products, total_pieces in WarehouseStock = total Kg)
@@ -2068,12 +2131,7 @@ class SaleController extends Controller
             }
 
             if ($type === 'out') {
-                // Deduct
-                if ($stock->total_pieces < $qtyPieces) {
-                    $availFormatted = number_format($stock->total_pieces, 3);
-                    $unitLabel = ($productMode === 'by_kg' || $productMode === 'by_gm') ? 'Kg' : 'Pcs';
-                    throw new \Exception('Insufficient stock for '.$item->product_name.'. Available: '.$availFormatted.' '.$unitLabel);
-                }
+                // Deduct (allow negative stock)
                 $stock->total_pieces -= $qtyPieces;
                 // Update approx boxes for display
                 $ppb = $item->product->pieces_per_box ?? 1;
@@ -2379,6 +2437,22 @@ class SaleController extends Controller
         try {
             // Update status to posted (which is the system-wide confirmed status)
             $sale->sale_status = 'posted';
+
+            // Assign Invoice Number if it doesn't have one
+            if (empty($sale->invoice_no)) {
+                $seriesList = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
+                $defaultSeries = $seriesList->where('is_default', 1)->first() ?: $seriesList->first();
+                $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+                
+                $generatedNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+                $sale->invoice_no = $generatedNo;
+                \App\Models\InvoiceSeries::incrementCounterForInvoice($generatedNo);
+            }
+
+            if ($sale->sale_type === 'quotation') {
+                $sale->sale_type = 'direct_sale';
+            }
+
             $sale->save();
 
             // 1. DEDUCT STOCK FROM WAREHOUSE
@@ -2397,7 +2471,7 @@ class SaleController extends Controller
                 $balanceService->createSaleVoucher(
                     $custForVoucher,
                     $sale->total_net,
-                    $sale->invoice_no,
+                    (string)($sale->invoice_no ?: ('INV-' . $sale->id)),
                     $sale->created_at->format('Y-m-d')
                 );
             }
@@ -2588,5 +2662,56 @@ class SaleController extends Controller
             \Log::error('Invoice Generation Error: '.$e->getMessage());
             return redirect()->back()->with('error', 'Failed to generate invoice: '.$e->getMessage());
         }
+    }
+
+    public function orderTrail($id)
+    {
+        $sale = Sale::with([
+            'customer_relation',
+            'items.product.unit',
+            'deliveryChallans.items.product',
+            'deliveryChallans.invoice',
+        ])->findOrFail($id);
+
+        $invoiceIds = $sale->deliveryChallans->pluck('invoice_id')->filter()->unique()->toArray();
+
+        $invoices = Sale::with(['items.product', 'customer_relation'])
+            ->where(function($q) use ($sale, $invoiceIds) {
+                $q->where('parent_quotation_id', $sale->id);
+                if (!empty($invoiceIds)) {
+                    $q->orWhereIn('id', $invoiceIds);
+                }
+            })
+            ->where('id', '!=', $sale->id)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $totalOrderAmount = (float)($sale->total_net > 0 ? $sale->total_net : $sale->total_bill_amount);
+        $totalInvoicedAmount = (float)$invoices->sum('total_net');
+        $remainingInvoiceAmount = max(0, $totalOrderAmount - $totalInvoicedAmount);
+
+        $totalOrderedPieces = 0;
+        $totalDeliveredPieces = 0;
+        foreach ($sale->items as $it) {
+            $ordered = (float)($it->total_pieces > 0 ? $it->total_pieces : $it->qty);
+            $delivered = (float)$it->delivered_qty;
+            $totalOrderedPieces += $ordered;
+            $totalDeliveredPieces += $delivered;
+        }
+
+        $deliveryPct = $totalOrderedPieces > 0 ? min(100, round(($totalDeliveredPieces / $totalOrderedPieces) * 100)) : 0;
+        $invoicedPct = $totalOrderAmount > 0 ? min(100, round(($totalInvoicedAmount / $totalOrderAmount) * 100)) : 0;
+
+        return view('admin_panel.sale.partials.order_trail_modal', compact(
+            'sale',
+            'invoices',
+            'totalOrderAmount',
+            'totalInvoicedAmount',
+            'remainingInvoiceAmount',
+            'totalOrderedPieces',
+            'totalDeliveredPieces',
+            'deliveryPct',
+            'invoicedPct'
+        ));
     }
 }

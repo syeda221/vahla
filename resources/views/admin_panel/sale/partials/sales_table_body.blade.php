@@ -88,12 +88,24 @@
             @if ($sale->sale_type === 'quotation')
                 <span class="text-info fw-bold">{{ $sale->invoice_no ?: ('QUO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) }}</span>
                 <small class="text-muted d-block" style="font-size: 11px;">#{{ $sale->id }}</small>
-            @elseif ($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted')
-                <span class="text-warning fw-bold">{{ $sale->invoice_no ?: ('SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) }}</span>
+            @elseif ($sale->sale_type === 'sales_order')
+                <span class="{{ $sale->sale_status === 'posted' ? 'text-success' : 'text-warning' }} fw-bold">{{ $sale->invoice_no ?: ('SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) }}</span>
                 <small class="text-muted d-block" style="font-size: 11px;">#{{ $sale->id }}</small>
+                <a href="javascript:void(0)" class="btn-order-trail text-decoration-none d-inline-flex align-items-center mt-1" data-sale-id="{{ $sale->id }}" title="View Invoices & Trail">
+                    <span class="badge rounded-pill" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; font-size: 10px; font-weight: 600; padding: 2px 7px;">
+                        <i class="fas fa-layer-group text-primary me-1"></i> Trail
+                    </span>
+                </a>
             @elseif ($sale->invoice_no)
                 <span class="text-primary fw-bold">{{ $sale->invoice_no }}</span>
                 <small class="text-muted d-block" style="font-size: 11px;">#{{ $sale->id }}</small>
+                @if ($sale->parent_quotation_id)
+                    <a href="javascript:void(0)" class="btn-order-trail text-decoration-none d-inline-flex align-items-center mt-1" data-sale-id="{{ $sale->parent_quotation_id }}" title="View Order Trail">
+                        <span class="badge rounded-pill" style="background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; font-size: 10px; font-weight: 500; padding: 2px 7px;">
+                            <i class="fas fa-link text-info me-1"></i> SO #{{ $sale->parent_quotation_id }}
+                        </span>
+                    </a>
+                @endif
             @else
                 <span class="text-muted">#{{ $sale->id }}</span>
             @endif
@@ -167,28 +179,36 @@
                                 <i class="fas fa-edit text-primary fa-fw"></i> Edit (Simple)
                             </a>
                         </li>
-                        <li>
+                        {{-- <li>
                             <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('pos.index') }}?edit_id={{ $sale->id }}">
                                 <i class="fas fa-cash-register text-success fa-fw"></i> Edit (POS Sale)
                             </a>
-                        </li>
+                        </li> --}}
                     @endcan
 
                     @if ($sale->sale_status === 'draft' || $sale->sale_status === 'booked')
                         @can('sales.create')
-                            <li>
-                                <form action="{{ route('sales.confirm', $sale->id) }}" method="POST" class="confirm-booking-form">
-                                    @csrf
-                                    <button type="submit" class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold">
-                                        <i class="fas fa-check-circle fa-fw text-success"></i> 
-                                        @if($sale->sale_status === 'booked' && !$sale->is_booking)
-                                            Convert to Sale
-                                        @else
-                                            Confirm Booking
-                                        @endif
-                                    </button>
-                                </form>
-                            </li>
+                            @if ($sale->sale_type === 'quotation')
+                                <li>
+                                    <a class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold" href="{{ route('sales.edit', $sale->id) }}?convert_to_sale=1">
+                                        <i class="fas fa-check-circle fa-fw text-success"></i> Convert to Sale
+                                    </a>
+                                </li>
+                            @else
+                                <li>
+                                    <form action="{{ route('sales.confirm', $sale->id) }}" method="POST" class="confirm-booking-form">
+                                        @csrf
+                                        <button type="submit" class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold">
+                                            <i class="fas fa-check-circle fa-fw text-success"></i> 
+                                            @if($sale->sale_status === 'booked' && !$sale->is_booking)
+                                                Convert to Sale
+                                            @else
+                                                Confirm Booking
+                                            @endif
+                                        </button>
+                                    </form>
+                                </li>
+                            @endif
                         @endcan
                     @endif
 
@@ -225,7 +245,19 @@
                             @endcan
                         @endif
 
-                        @if ($sale->sale_type === 'sales_order' && $sale->delivery_status === 'delivered' && $sale->sale_status !== 'posted')
+                        @php
+                            $uninvoicedDc = $sale->deliveryChallans ? $sale->deliveryChallans->where('is_invoiced', 0)->first() : null;
+                        @endphp
+
+                        @if ($sale->sale_type === 'sales_order' && $uninvoicedDc)
+                            @can('sales.create')
+                                <li>
+                                    <a class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold" href="{{ route('direct-dc.index', ['highlight_dc' => $uninvoicedDc->id, 'sale_id' => $sale->id]) }}">
+                                        <i class="fas fa-file-invoice-dollar fa-fw text-success"></i> Generate Partial Invoice
+                                    </a>
+                                </li>
+                            @endcan
+                        @elseif ($sale->sale_type === 'sales_order' && $sale->delivery_status === 'delivered' && $sale->sale_status !== 'posted')
                             @can('sales.create')
                                 <li>
                                     <form action="{{ route('sales.generate_invoice', $sale->id) }}" method="POST">
@@ -234,16 +266,6 @@
                                             <i class="fas fa-file-invoice-dollar fa-fw text-success"></i> Generate Invoice
                                         </button>
                                     </form>
-                                </li>
-                            @endcan
-                        @endif
-
-                        @if ($sale->sale_type === 'sales_order' && $sale->delivery_status === 'partial' && $sale->sale_status !== 'posted')
-                            @can('sales.create')
-                                <li>
-                                    <a class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold" href="{{ route('sales.dc_list', $sale->id) }}?highlight_uninvoiced=1">
-                                        <i class="fas fa-file-invoice-dollar fa-fw text-success"></i> Generate Partial Invoice
-                                    </a>
                                 </li>
                             @endcan
                         @endif

@@ -368,6 +368,66 @@ class DirectDCController extends Controller
         }
     }
 
+    private function getItemDisplayData($item)
+    {
+        $product = $item->product;
+        $variant = [];
+        $colorData = $item->color;
+        if (!empty($colorData)) {
+            $b64 = base64_decode($colorData, true);
+            if ($b64 !== false) $variant = json_decode($b64, true) ?: [];
+            if (empty($variant)) $variant = json_decode($colorData, true) ?: [];
+        }
+
+        $sizeMode = optional($product)->size_mode ?? 'by_size';
+        $vUnit = strtolower($variant['unit'] ?? optional(optional($product)->unit)->name ?? '');
+
+        $dispQtyFactor = 1;
+        $unitName = 'Pcs';
+
+        if (in_array($sizeMode, ['by_kg', 'by_gm'])) {
+            if (in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
+                $unitName = 'Pcs';
+                $wtConv = (float)($variant['conv_factor'] ?? optional($product)->pieces_per_box ?? 1);
+                if ($wtConv <= 0) $wtConv = 1;
+                $dispQtyFactor = 1 / $wtConv;
+            } elseif (in_array($vUnit, ['gm', 'g'])) {
+                $unitName = 'Gm';
+                $dispQtyFactor = 1000;
+            } else {
+                $unitName = 'Kg';
+                $dispQtyFactor = 1;
+            }
+        } elseif ($sizeMode === 'by_cartons') {
+            $unitName = 'Ctn';
+        } elseif ($sizeMode === 'by_boxes') {
+            $unitName = 'Box';
+        } else {
+            $unitName = optional(optional($product)->unit)->name ?: 'Pcs';
+        }
+
+        if ((float)$item->boxes > 0) {
+            $displayQty = (float)$item->boxes + ((float)$item->loose_pieces / (optional($product)->pieces_per_box > 0 ? $product->pieces_per_box : 1));
+        } elseif ($item->sale_item_id && (float)$item->delivered_qty > 0) {
+            $displayQty = (float)$item->delivered_qty * $dispQtyFactor;
+        } else {
+            $displayQty = (float)$item->delivered_qty;
+        }
+
+        $rate = (float)($item->price > 0 ? $item->price : optional($item->saleItem)->price ?? 0);
+        $amount = round($displayQty * $rate, 2);
+
+        return [
+            'display_qty' => $displayQty,
+            'unit' => $unitName,
+            'rate' => $rate,
+            'amount' => $amount,
+            'disp_factor' => $dispQtyFactor,
+            'conv_factor' => (float)($variant['conv_factor'] ?? 1),
+            'size_mode' => $sizeMode,
+        ];
+    }
+
     public function consolidatePreview(Request $request)
     {
         $dcIds = $request->input('dc_ids');
@@ -375,14 +435,17 @@ class DirectDCController extends Controller
             return redirect()->route('direct-dc.index')->with('error', 'No DCs selected.');
         }
 
-        $dcs = DeliveryChallan::with(['items.product', 'customer'])->whereIn('id', $dcIds)->get();
+        $dcs = DeliveryChallan::with(['items.product', 'items.saleItem', 'customer', 'sale.customer_relation'])->whereIn('id', $dcIds)->get();
         if ($dcs->isEmpty()) {
             return redirect()->route('direct-dc.index')->with('error', 'Selected DCs not found.');
         }
 
-        $customerId = $dcs->first()->customer_id;
+        $firstDc = $dcs->first();
+        $customerId = $firstDc->customer_id ?: optional($firstDc->sale)->customer_id;
+
         foreach ($dcs as $dc) {
-            if ($dc->customer_id != $customerId) {
+            $dcCustomerId = $dc->customer_id ?: optional($dc->sale)->customer_id;
+            if ($dcCustomerId != $customerId) {
                 return redirect()->route('direct-dc.index')->with('error', 'Only DCs from the SAME customer can be consolidated together.');
             }
             if ($dc->is_invoiced) {
@@ -390,27 +453,36 @@ class DirectDCController extends Controller
             }
         }
 
-        $customer = $dcs->first()->customer;
+        $customer = $firstDc->customer ?: (optional($firstDc->sale)->customer_relation ?: Customer::find($customerId));
         
         // Merge items based on product_id + warehouse_id + color
         $mergedItems = [];
         foreach ($dcs as $dc) {
             foreach ($dc->items as $item) {
+                $itemData = $this->getItemDisplayData($item);
                 $key = $item->product_id . '_' . $item->warehouse_id . '_' . ($item->color ?? 'base');
                 if (!isset($mergedItems[$key])) {
                     $mergedItems[$key] = [
                         'product' => $item->product,
+                        'product_id' => $item->product_id,
                         'warehouse_id' => $item->warehouse_id,
                         'color' => $item->color,
-                        'price' => $item->price, // We take the first price. In a real scenario, prices might differ.
+                        'price' => $itemData['rate'],
+                        'unit' => $itemData['unit'],
+                        'display_qty' => 0,
                         'delivered_qty' => 0,
+                        'amount' => 0,
+                        'disp_factor' => $itemData['disp_factor'],
+                        'size_mode' => $itemData['size_mode'],
                     ];
                 }
-                $mergedItems[$key]['delivered_qty'] += $item->delivered_qty;
+                $mergedItems[$key]['display_qty'] += $itemData['display_qty'];
+                $mergedItems[$key]['delivered_qty'] += $itemData['display_qty'];
+                $mergedItems[$key]['amount'] += $itemData['amount'];
             }
         }
 
-        return view('admin_panel.direct_dc.consolidate_preview', compact('dcs', 'customer', 'mergedItems', 'dcIds'));
+        return view('admin_panel.direct_dc.consolidate_preview', compact('dcs', 'customer', 'mergedItems', 'dcIds', 'customerId'));
     }
 
     public function consolidateIndex()
@@ -421,16 +493,21 @@ class DirectDCController extends Controller
 
     public function fetchCustomerDCs($customerId)
     {
-        $dcs = DeliveryChallan::with('items.product')
-            ->whereNull('sale_id')
-            ->where('customer_id', $customerId)
+        $dcs = DeliveryChallan::with(['items.product', 'items.saleItem'])
+            ->where(function($q) use ($customerId) {
+                $q->where('customer_id', $customerId)
+                  ->orWhereHas('sale', function($sq) use ($customerId) {
+                      $sq->where('customer_id', $customerId);
+                  });
+            })
             ->where('is_invoiced', 0)
             ->get();
             
         // Map to simpler format for frontend
         $data = $dcs->map(function($dc) {
             $total = $dc->items->sum(function($item) {
-                return $item->delivered_qty * $item->price;
+                $itemData = $this->getItemDisplayData($item);
+                return $itemData['amount'];
             });
             return [
                 'id' => $dc->id,
@@ -454,9 +531,14 @@ class DirectDCController extends Controller
 
         DB::beginTransaction();
         try {
-            $dcs = DeliveryChallan::with('items')
+            $dcs = DeliveryChallan::with(['items.product', 'items.saleItem', 'sale'])
                 ->whereIn('id', $validated['dc_ids'])
-                ->where('customer_id', $validated['customer_id'])
+                ->where(function($q) use ($validated) {
+                    $q->where('customer_id', $validated['customer_id'])
+                      ->orWhereHas('sale', function($sq) use ($validated) {
+                          $sq->where('customer_id', $validated['customer_id']);
+                      });
+                })
                 ->where('is_invoiced', 0)
                 ->get();
                 
@@ -481,58 +563,63 @@ class DirectDCController extends Controller
             
             foreach ($dcs as $dc) {
                 foreach ($dc->items as $item) {
+                    $itemData = $this->getItemDisplayData($item);
                     $key = $item->product_id . '_' . $item->warehouse_id . '_' . ($item->color ?? 'base');
                     
                     if (!isset($mergedItems[$key])) {
                         $mergedItems[$key] = [
                             'product_id' => $item->product_id,
                             'warehouse_id' => $item->warehouse_id,
-                            'qty' => 0,
-                            'total_pieces' => 0,
-                            'price' => $item->price,
-                            'total' => 0,
-                            'discount_amount' => 0,
-                            'discount_percent' => 0,
+                            'display_qty' => 0,
+                            'price' => $itemData['rate'],
                             'color' => $item->color,
+                            'disp_factor' => $itemData['disp_factor'],
+                            'size_mode' => $itemData['size_mode'],
                         ];
                     }
                     
-                    $mergedItems[$key]['qty'] += $item->delivered_qty;
-                    $mergedItems[$key]['total_pieces'] += $item->delivered_qty;
-                    
-                    // We recalculate total at the end just in case prices differ, 
-                    // though it uses the first encountered price as the base price.
+                    $mergedItems[$key]['display_qty'] += $itemData['display_qty'];
                 }
             }
             
             $saleItemsData = [];
             foreach ($mergedItems as $mi) {
-                $originalQty = $mi['qty'];
-                $lineTotal = $originalQty * $mi['price'];
-                $mi['total'] = $lineTotal;
+                $displayQty = $mi['display_qty'];
+                $rate = $mi['price'];
+                $lineTotal = round($displayQty * $rate, 2);
                 
-                // Convert qty to KGs if product is by_kg/gm (because SaleItem stores in Kg)
                 $product = \App\Models\Product::find($mi['product_id']);
-                if ($product && in_array($product->size_mode, ['by_kg', 'by_gm'])) {
-                    $conv = 1;
-                    if (!empty($mi['color'])) {
-                        $decoded = base64_decode($mi['color'], true);
-                        $vData = $decoded !== false ? json_decode($decoded, true) : null;
-                        if (!is_array($vData)) {
-                            $vData = is_string($mi['color']) ? json_decode($mi['color'], true) : $mi['color'];
-                        }
-                        if (is_array($vData) && isset($vData['conv_factor']) && (float)$vData['conv_factor'] > 0) {
-                            $conv = (float)$vData['conv_factor'];
-                        }
-                    }
-                    $mi['qty'] = $originalQty * $conv;
-                    $mi['total_pieces'] = $originalQty * $conv;
+                $sizeMode = $product ? $product->size_mode : $mi['size_mode'];
+                $dispFactor = $mi['disp_factor'] > 0 ? $mi['disp_factor'] : 1;
+
+                // For by_kg / by_gm, qty in sale_items is stored in base unit (Kg)
+                if ($product && in_array($sizeMode, ['by_kg', 'by_gm'])) {
+                    $storedQty = $displayQty / $dispFactor;
+                } else {
+                    $storedQty = $displayQty;
                 }
                 
-                $totalBillAmount += $lineTotal;
-                $totalPieces += $originalQty; // Total pieces for invoice header
+                $saleItemsData[] = [
+                    'product_id' => $mi['product_id'],
+                    'warehouse_id' => $mi['warehouse_id'],
+                    'color' => $mi['color'],
+                    'qty' => $storedQty,
+                    'total_pieces' => $storedQty,
+                    'price' => $rate,
+                    'discount_amount' => 0,
+                    'discount_percent' => 0,
+                    'total' => $lineTotal,
+                    'delivered_qty' => $storedQty,
+                ];
                 
-                $saleItemsData[] = $mi;
+                $totalBillAmount += $lineTotal;
+                $totalPieces += $displayQty;
+            }
+
+            $firstOriginalSaleId = $dcs->pluck('sale_id')->filter()->first();
+            if ($firstOriginalSaleId) {
+                $sale->parent_quotation_id = $firstOriginalSaleId;
+                $sale->reference = 'Consolidated Invoice for ' . $dcs->pluck('dc_number')->implode(', ');
             }
 
             $sale->total_bill_amount = $totalBillAmount;
@@ -553,9 +640,28 @@ class DirectDCController extends Controller
 
             // Update DCs
             foreach ($dcs as $dc) {
-                $dc->sale_id = $sale->id;
+                $originalSaleId = $dc->sale_id;
+                if (!$dc->sale_id) {
+                    $dc->sale_id = $sale->id;
+                }
+                if (!$dc->customer_id) {
+                    $dc->customer_id = $validated['customer_id'];
+                }
+                $dc->invoice_id = $sale->id;
                 $dc->is_invoiced = 1;
                 $dc->save();
+
+                if ($originalSaleId && $originalSaleId != $sale->id) {
+                    $parentSale = Sale::find($originalSaleId);
+                    if ($parentSale) {
+                        $parentSale->recalculateDeliveryStatus();
+                        $uninvoicedDcsCount = DeliveryChallan::where('sale_id', $parentSale->id)->where('is_invoiced', 0)->count();
+                        if ($parentSale->delivery_status === 'delivered' && $uninvoicedDcsCount === 0) {
+                            $parentSale->sale_status = 'posted';
+                            $parentSale->save();
+                        }
+                    }
+                }
             }
 
             // Post Ledger

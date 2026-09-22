@@ -32,6 +32,11 @@
         background-color: #6b7280;
         cursor: not-allowed;
     }
+    .highlight-uninvoiced-dc {
+        background-color: #fffbeb !important;
+        border-left: 4px solid #f59e0b !important;
+        box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+    }
 </style>
 <div class="content-wrapper">
     <!-- Modern Header -->
@@ -55,6 +60,12 @@
                     @endif
                     @if(session('error'))
                         <div class="alert alert-danger">{{ session('error') }}</div>
+                    @endif
+                    @if(request('highlight_dc') || request('sale_id'))
+                        <div class="alert alert-warning border-warning d-flex align-items-center mb-3 py-2 px-3 shadow-sm rounded-2">
+                            <i class="fas fa-info-circle fa-lg me-2 text-warning"></i>
+                            <div><strong>Delivery Challan Selected:</strong> Invoice generate karne ke liye upar diye gaye <strong>"Consolidate into invoice"</strong> button par click karein.</div>
+                        </div>
                     @endif
                     
                     <form id="consolidateForm" action="{{ route('direct-dc.consolidate.preview') }}" method="POST">
@@ -88,16 +99,22 @@
                                     @php
                                         $cName = $dc->customer->customer_name ?? ($dc->sale->customer_relation->customer_name ?? 'N/A');
                                         $cId = $dc->customer_id ?? ($dc->sale->customer_id ?? '');
+                                        $isHighlighted = (request('highlight_dc') == $dc->id) || (request('sale_id') && $dc->sale_id == request('sale_id') && !$dc->is_invoiced);
                                     @endphp
-                                    <tr>
+                                    <tr class="{{ $isHighlighted ? 'highlight-uninvoiced-dc' : '' }}" id="dc-row-{{ $dc->id }}">
                                         <td class="text-center">
                                             @if(!$dc->is_invoiced)
-                                                <input type="checkbox" name="dc_ids[]" class="dc-checkbox" value="{{ $dc->id }}" data-customer-id="{{ $cId }}" data-customer-name="{{ $cName }}">
+                                                <input type="checkbox" name="dc_ids[]" class="dc-checkbox" value="{{ $dc->id }}" data-customer-id="{{ $cId }}" data-customer-name="{{ $cName }}" {{ $isHighlighted ? 'checked' : '' }}>
                                             @else
                                                 <input type="checkbox" disabled style="opacity: 0.3;">
                                             @endif
                                         </td>
-                                        <td class="fw-bold text-primary">{{ $dc->dc_number }}</td>
+                                        <td class="fw-bold text-primary">
+                                            {{ $dc->dc_number }}
+                                            @if($isHighlighted)
+                                                <span class="badge bg-warning text-dark ms-1 shadow-sm"><i class="fas fa-check-circle me-1"></i> Selected for Invoice</span>
+                                            @endif
+                                        </td>
                                         <td>{{ \Carbon\Carbon::parse($dc->dc_date)->format('d M, Y') }}</td>
                                         <td>{{ $cName }}</td>
                                         <td>{{ $dc->items->count() }}</td>
@@ -204,8 +221,14 @@ $(document).ready(function() {
         }
     });
     
-    // Call it initially in case browser cached checkbox states
+    // Call it initially in case browser cached checkbox states or highlighted via URL
     updateSelection();
+
+    if ($('.highlight-uninvoiced-dc').length) {
+        $('html, body').animate({
+            scrollTop: $('.highlight-uninvoiced-dc').first().offset().top - 150
+        }, 500);
+    }
 });
 </script>
 @endsection

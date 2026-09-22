@@ -394,6 +394,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/dc/{id}/print', [App\Http\Controllers\DeliveryChallanController::class, 'print'])->middleware('permission:sales.view')->name('sales.dc_print');
     Route::post('/dc/{id}/generate-invoice', [App\Http\Controllers\DeliveryChallanController::class, 'generateInvoiceForDc'])->middleware('permission:sales.create')->name('sales.dc_generate_invoice');
     Route::post('/sales/{id}/generate-invoice', [SaleController::class, 'generateInvoice'])->middleware('permission:sales.create')->name('sales.generate_invoice');
+    Route::get('/sales-order/{id}/trail', [SaleController::class, 'orderTrail'])->middleware('permission:sales.view')->name('sales_orders.trail');
 
     // web.php
     Route::get('/warehouse-stock-quantity', [StockTransferController::class, 'getStockQuantity'])->middleware('permission:stock.transfer.view')->name('warehouse.stock.quantity');

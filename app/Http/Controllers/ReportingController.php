@@ -417,7 +417,7 @@ class ReportingController extends Controller
                         }
 
                         // Balance in Total Pieces = Initial + Purchased - Sold + Returned - Purchased Returned + Adjustments
-                        $balance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments);
+                        $balance = $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments;
                     }
 
                     // Weighted Average Purchase Price
@@ -433,26 +433,53 @@ class ReportingController extends Controller
                     $totalAdjustments  += $adjustments;
                     $totalSoldAmount   += $saleAmount;
 
+                    $isNegative = $balance < 0;
+                    $absBalance = abs($balance);
+                    $sign = $isNegative ? '-' : '';
+
                     if ($isCartonMode) {
-                        $cartons = (int) floor($balance / $ppb);
-                        $loose   = (int) round($balance - ($cartons * $ppb));
-                        $formattedStock = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs" : "{$cartons} Ctn";
-                        $cartonDisplay = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/ctn)</span>" : "{$cartons} Ctn <span class='text-muted small'>({$ppb} pcs/ctn)</span>";
+                        $cartons = (int) floor($absBalance / $ppb);
+                        $loose   = (int) round($absBalance - ($cartons * $ppb));
+                        if ($cartons > 0 && $loose > 0) {
+                            $formattedStock = "{$sign}{$cartons} Ctn + {$loose} Pcs";
+                        } elseif ($cartons > 0) {
+                            $formattedStock = "{$sign}{$cartons} Ctn";
+                        } else {
+                            $formattedStock = "{$sign}{$loose} Pcs";
+                        }
+                        $cartonDisplay = "{$formattedStock} <span class='text-muted small'>({$ppb} pcs/ctn)</span>";
+                        if ($isNegative) {
+                            $cartons = -$cartons;
+                            $loose   = -$loose;
+                        }
                     } elseif ($ppb > 1 && $product->size_mode === 'by_size') {
-                        $cartons = (int) floor($balance / $ppb);
-                        $loose   = (int) round($balance - ($cartons * $ppb));
-                        $formattedStock = ($loose > 0) ? "{$cartons} Box . {$loose} Pcs" : "{$cartons} Boxes";
-                        $cartonDisplay = ($loose > 0) ? "{$cartons} Box + {$loose} Pcs" : "{$cartons} Box";
+                        $cartons = (int) floor($absBalance / $ppb);
+                        $loose   = (int) round($absBalance - ($cartons * $ppb));
+                        if ($cartons > 0 && $loose > 0) {
+                            $formattedStock = "{$sign}{$cartons} Box . {$loose} Pcs";
+                        } elseif ($cartons > 0) {
+                            $formattedStock = "{$sign}{$cartons} Boxes";
+                        } else {
+                            $formattedStock = "{$sign}{$loose} Pcs";
+                        }
+                        $cartonDisplay = ($cartons > 0 && $loose > 0) ? "{$sign}{$cartons} Box + {$loose} Pcs" : "{$sign}{$cartons} Box";
+                        if ($isNegative) {
+                            $cartons = -$cartons;
+                            $loose   = -$loose;
+                        }
                     } else {
                         $cartons = '-';
                         $loose   = $balance;
-                        $formattedStock = number_format($balance, (in_array($product->size_mode, ['by_kg','by_gm','by_ton','by_meter','by_feet']) ? 2 : 0)) . " {$vUnitName}";
+                        $decimals = in_array($product->size_mode, ['by_kg','by_gm','by_ton','by_meter','by_feet']) ? 2 : (($balance == (int)$balance) ? 0 : 3);
+                        $formattedNum = rtrim(rtrim(number_format($balance, $decimals, '.', ''), '0'), '.');
+                        $formattedStock = "{$formattedNum} {$vUnitName}";
                         $cartonDisplay = '—';
                     }
 
                     // Stock Status Badge
                     $status = 'healthy';
-                    if ($balance <= 0) $status = 'out_of_stock';
+                    if ($balance < 0) $status = 'negative_stock';
+                    elseif ($balance == 0) $status = 'out_of_stock';
                     elseif ($product->alert_quantity && $balance < $product->alert_quantity) $status = 'low_stock';
 
                     $rows[] = [
@@ -570,26 +597,54 @@ class ReportingController extends Controller
                 $isCartonMode = ($product->size_mode === 'by_cartons' || strtolower($unitName) === 'carton');
                 $ppb = (float) ($product->pieces_per_box ?? 1);
                 if ($ppb <= 0) $ppb = 1;
+
+                $isNegative = $balance < 0;
+                $absBalance = abs($balance);
+                $sign = $isNegative ? '-' : '';
+
                 if ($isCartonMode) {
-                    $cartons = (int) floor($balance / $ppb);
-                    $loose   = (int) round($balance - ($cartons * $ppb));
-                    $formattedStock = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs" : "{$cartons} Ctn";
-                    $cartonDisplay = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/ctn)</span>" : "{$cartons} Ctn <span class='text-muted small'>({$ppb} pcs/ctn)</span>";
+                    $cartons = (int) floor($absBalance / $ppb);
+                    $loose   = (int) round($absBalance - ($cartons * $ppb));
+                    if ($cartons > 0 && $loose > 0) {
+                        $formattedStock = "{$sign}{$cartons} Ctn + {$loose} Pcs";
+                    } elseif ($cartons > 0) {
+                        $formattedStock = "{$sign}{$cartons} Ctn";
+                    } else {
+                        $formattedStock = "{$sign}{$loose} Pcs";
+                    }
+                    $cartonDisplay = "{$formattedStock} <span class='text-muted small'>({$ppb} pcs/ctn)</span>";
+                    if ($isNegative) {
+                        $cartons = -$cartons;
+                        $loose   = -$loose;
+                    }
                 } elseif ($ppb > 1 && $product->size_mode === 'by_size') {
-                    $cartons = (int) floor($balance / $ppb);
-                    $loose   = (int) round($balance - ($cartons * $ppb));
-                    $formattedStock = ($loose > 0) ? "{$cartons} Box . {$loose} Pcs" : "{$cartons} Boxes";
-                    $cartonDisplay = ($loose > 0) ? "{$cartons} Box + {$loose} Pcs" : "{$cartons} Box";
+                    $cartons = (int) floor($absBalance / $ppb);
+                    $loose   = (int) round($absBalance - ($cartons * $ppb));
+                    if ($cartons > 0 && $loose > 0) {
+                        $formattedStock = "{$sign}{$cartons} Box . {$loose} Pcs";
+                    } elseif ($cartons > 0) {
+                        $formattedStock = "{$sign}{$cartons} Boxes";
+                    } else {
+                        $formattedStock = "{$sign}{$loose} Pcs";
+                    }
+                    $cartonDisplay = ($cartons > 0 && $loose > 0) ? "{$sign}{$cartons} Box + {$loose} Pcs" : "{$sign}{$cartons} Box";
+                    if ($isNegative) {
+                        $cartons = -$cartons;
+                        $loose   = -$loose;
+                    }
                 } else {
                     $cartons = '-';
                     $loose   = $balance;
-                    $formattedStock = number_format($balance, (in_array($product->size_mode, ['by_kg','by_gm','by_ton','by_meter','by_feet']) ? 2 : 0)) . " {$unitName}";
+                    $decimals = in_array($product->size_mode, ['by_kg','by_gm','by_ton','by_meter','by_feet']) ? 2 : (($balance == (int)$balance) ? 0 : 3);
+                    $formattedNum = rtrim(rtrim(number_format($balance, $decimals, '.', ''), '0'), '.');
+                    $formattedStock = "{$formattedNum} {$unitName}";
                     $cartonDisplay = '—';
                 }
 
                 // Stock Status Badge
                 $status = 'healthy';
-                if ($balance <= 0) $status = 'out_of_stock';
+                if ($balance < 0) $status = 'negative_stock';
+                elseif ($balance == 0) $status = 'out_of_stock';
                 elseif ($product->alert_quantity && $balance < $product->alert_quantity) $status = 'low_stock';
 
                 $rows[] = [

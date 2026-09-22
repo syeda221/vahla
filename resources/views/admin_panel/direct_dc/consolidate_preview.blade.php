@@ -25,16 +25,20 @@
                             <thead class="bg-light">
                                 <tr>
                                     <th>Item</th>
-                                    <th class="text-right">Qty</th>
-                                    <th class="text-right">Amount</th>
+                                    <th class="text-center" style="width: 15%;">Qty</th>
+                                    <th class="text-center" style="width: 15%;">Unit</th>
+                                    <th class="text-end text-right" style="width: 15%;">Rate</th>
+                                    <th class="text-end text-right" style="width: 18%;">Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @php $grandTotal = 0; @endphp
                                 @foreach($mergedItems as $mi)
                                 @php 
-                                    $amount = $mi['delivered_qty'] * $mi['price'];
+                                    $amount = $mi['amount'] ?? ($mi['display_qty'] * $mi['price']);
                                     $grandTotal += $amount;
+                                    $displayQty = $mi['display_qty'] ?? $mi['delivered_qty'];
+                                    $qtyText = ((float)$displayQty == (int)$displayQty) ? (int)$displayQty : number_format((float)$displayQty, 2);
                                     
                                     $vName = '';
                                     if(!empty($mi['color'])) {
@@ -50,15 +54,17 @@
                                 @endphp
                                 <tr>
                                     <td><strong>{{ $mi['product']->item_name ?? 'N/A' }}</strong>{!! $vName !!}</td>
-                                    <td class="text-right">{{ $mi['delivered_qty'] }}</td>
-                                    <td class="text-right">{{ number_format($amount, 2) }}</td>
+                                    <td class="text-center fw-bold">{{ $qtyText }}</td>
+                                    <td class="text-center">{{ $mi['unit'] ?? 'Pcs' }}</td>
+                                    <td class="text-end text-right">{{ number_format($mi['price'], 2) }}</td>
+                                    <td class="text-end text-right fw-bold">{{ number_format($amount, 2) }}</td>
                                 </tr>
                                 @endforeach
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <td colspan="2" class="text-right"><strong>Total Invoice Amount:</strong></td>
-                                    <td class="text-right text-success"><strong>{{ number_format($grandTotal, 2) }}</strong></td>
+                                    <td colspan="4" class="text-end text-right"><strong>Total Invoice Amount:</strong></td>
+                                    <td class="text-end text-right text-success"><strong>{{ number_format($grandTotal, 2) }}</strong></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -75,7 +81,7 @@
                     
                     <div class="d-flex justify-content-between mb-3">
                         <span class="text-muted">Customer Name:</span>
-                        <strong>{{ $customer->customer_name }}</strong>
+                        <strong>{{ $customer->customer_name ?? 'N/A' }}</strong>
                     </div>
                     
                     @php 
@@ -108,7 +114,7 @@
 
                     <form action="{{ route('direct-dc.consolidate.store') }}" method="POST">
                         @csrf
-                        <input type="hidden" name="customer_id" value="{{ $customer->id }}">
+                        <input type="hidden" name="customer_id" value="{{ $customer->id ?? ($customerId ?? '') }}">
                         @foreach($dcIds as $did)
                             <input type="hidden" name="dc_ids[]" value="{{ $did }}">
                         @endforeach
