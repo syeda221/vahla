@@ -502,7 +502,15 @@
                 {{-- TOP HEADER BAR --}}
                 <div class="d-flex justify-content-between align-items-center mb-2 px-1">
                     <div class="d-flex align-items-center gap-2">
-                        <a href="{{ route('sale.index') }}" class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Back"><i class="fas fa-arrow-left text-secondary"></i></a>
+                        @php
+                            $backRoute = 'sale.index';
+                            if (isset($sale) && $sale->sale_type === 'quotation') {
+                                $backRoute = 'quotations.index';
+                            } elseif (isset($sale) && $sale->sale_type === 'sales_order') {
+                                $backRoute = 'sales_orders.index';
+                            }
+                        @endphp
+                        <a href="{{ route($backRoute) }}" class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Back"><i class="fas fa-arrow-left text-secondary"></i></a>
                         <div>
                             <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 1.05rem;">
                                 <i class="fas fa-edit text-primary"></i> Edit Sale {{ $sale->invoice_no ?: ($sale->sale_type === 'quotation' ? 'QUO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : ($sale->sale_type === 'sales_order' ? 'SO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : '#'.$sale->id)) }}
