@@ -285,9 +285,14 @@ class DeliveryChallanController extends Controller
             $sale->sale_status = 'posted';
             $sale->delivery_status = 'delivered';
             
-            $seriesList = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
-            $defaultSeries = $seriesList->where('is_default', 1)->first() ?: $seriesList->first();
-            $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+            // Allow backdating invoice if sale_date is provided
+            if (request()->filled('sale_date')) {
+                $sale->created_at = \Carbon\Carbon::parse(request('sale_date'))->format('Y-m-d H:i:s');
+            }
+            $invoiceDate = $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d');
+
+            $chosenPrefix = request('prefix');
+            $activePrefix = in_array(strtoupper($chosenPrefix), ['TAX', 'CO', 'INV']) ? strtoupper($chosenPrefix) : 'INV';
             
             $generatedNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
             $sale->invoice_no = $generatedNo;
@@ -346,7 +351,7 @@ class DeliveryChallanController extends Controller
                     $custForVoucher,
                     $sale->total_net,
                     $sale->invoice_no,
-                    now()->format('Y-m-d')
+                    $invoiceDate
                 );
 
                 $ledger = \App\Models\CustomerLedger::where('customer_id', $custForVoucher->id)->latest('id')->first();

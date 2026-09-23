@@ -119,7 +119,53 @@
                 <span class="fw-medium text-dark">{{ optional($sale->customer_relation)->customer_name ?? 'N/A' }}</span>
             </div>
         </td>
-        <td class="font-monospace text-dark">{{ $sale->reference ?? '-' }}</td>
+        <td class="font-monospace text-dark" style="max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $sale->reference ?? '' }}">
+            @php
+                $rawRef = $sale->reference ?? '';
+                $cleanRef = $rawRef;
+                $isSpecial = false;
+                $badgeIcon = 'fas fa-hashtag';
+                $badgeClass = 'bg-light text-secondary border';
+
+                if (preg_match('/^Consolidated\s+Invoice\s+for\s*(.*)$/i', $rawRef, $m)) {
+                    $cleanRef = trim($m[1]);
+                    $isSpecial = true;
+                    $badgeIcon = 'fas fa-layer-group';
+                    $badgeClass = 'bg-light text-primary border';
+                } elseif (preg_match('/^Invoice\s+for\s+DC:\s*(.*)$/i', $rawRef, $m)) {
+                    $cleanRef = trim($m[1]);
+                    $isSpecial = true;
+                    $badgeIcon = 'fas fa-truck';
+                    $badgeClass = 'bg-light text-info border';
+                } elseif (preg_match('/^Exchange\s+for\s*(.*)$/i', $rawRef, $m)) {
+                    $cleanRef = 'Ex: ' . trim($m[1]);
+                    $isSpecial = true;
+                    $badgeIcon = 'fas fa-exchange-alt';
+                    $badgeClass = 'bg-light text-warning border';
+                }
+            @endphp
+
+            @if(empty($rawRef))
+                <span class="text-muted">-</span>
+            @elseif($isSpecial || str_contains($cleanRef, ','))
+                @php
+                    $parts = array_filter(array_map('trim', explode(',', $cleanRef)));
+                    $firstPart = $parts[0] ?? $cleanRef;
+                    $extraCount = count($parts) - 1;
+                @endphp
+                <span class="badge {{ $badgeClass }} font-monospace text-truncate d-inline-flex align-items-center"
+                      style="font-size: 11px; max-width: 135px; vertical-align: middle; padding: 3px 6px;"
+                      title="{{ $rawRef }}">
+                    <i class="{{ $badgeIcon }} me-1" style="font-size: 10px;"></i>
+                    <span class="text-truncate">{{ \Illuminate\Support\Str::limit($firstPart, 13, '..') }}</span>
+                    @if($extraCount > 0)
+                        <span class="badge bg-secondary-subtle text-dark ms-1 px-1 py-0" style="font-size: 9px; font-weight: 600;">+{{ $extraCount }}</span>
+                    @endif
+                </span>
+            @else
+                <span title="{{ $rawRef }}">{{ \Illuminate\Support\Str::limit($rawRef, 15, '..') }}</span>
+            @endif
+        </td>
         <td title="{{ $pNames }}" class="text-muted small">
             {{ \Illuminate\Support\Str::limit($pNames, 40) }}
         </td>
@@ -215,7 +261,7 @@
                     <li><hr class="dropdown-divider"></li>
 
                     @can('sales.view')
-                        @if ($sale->sale_type === 'direct_sale' || ($sale->sale_type === 'sales_order' && $sale->sale_status === 'posted'))
+                        @if ($sale->sale_type === 'direct_sale' || empty($sale->sale_type) || ($sale->sale_type === 'sales_order' && $sale->sale_status === 'posted'))
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', $sale->id) }}" target="_blank">
                                     <i class="fas fa-file-invoice text-info fa-fw"></i> View Invoice
@@ -224,6 +270,27 @@
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.receipt', $sale->id) }}" target="_blank">
                                     <i class="fas fa-receipt text-success fa-fw"></i> Receipt
+                                </a>
+                            </li>
+                            @php
+                                $directDc = $sale->deliveryChallans ? $sale->deliveryChallans->first() : null;
+                            @endphp
+                            @if ($directDc)
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc_print', $directDc->id) }}" target="_blank">
+                                        <i class="fas fa-truck text-warning fa-fw"></i> Delivery Challan
+                                    </a>
+                                </li>
+                            @else
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc', $sale->id) }}" target="_blank">
+                                        <i class="fas fa-truck text-warning fa-fw"></i> Delivery Challan
+                                    </a>
+                                </li>
+                            @endif
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc_thermal', $sale->id) }}" target="_blank">
+                                    <i class="fas fa-print text-secondary fa-fw"></i> Thermal DC
                                 </a>
                             </li>
                         @endif
@@ -260,12 +327,15 @@
                         @elseif ($sale->sale_type === 'sales_order' && $sale->delivery_status === 'delivered' && $sale->sale_status !== 'posted')
                             @can('sales.create')
                                 <li>
-                                    <form action="{{ route('sales.generate_invoice', $sale->id) }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold">
-                                            <i class="fas fa-file-invoice-dollar fa-fw text-success"></i> Generate Invoice
-                                        </button>
-                                    </form>
+                                    <button type="button" 
+                                            class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold btn-open-invoice-series-modal" 
+                                            data-sale-id="{{ $sale->id }}" 
+                                            data-order-no="{{ $orderDocNo }}" 
+                                            data-customer="{{ optional($sale->customer_relation)->customer_name ?? ($sale->walkin_name ?? 'Walk-in') }}"
+                                            data-amount="{{ number_format($sale->total_net, 2) }}"
+                                            data-date="{{ date('Y-m-d') }}">
+                                        <i class="fas fa-file-invoice-dollar fa-fw text-success"></i> Generate Invoice
+                                    </button>
                                 </li>
                             @endcan
                         @endif

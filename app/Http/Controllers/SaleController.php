@@ -10,11 +10,14 @@ use App\Models\ProductBooking;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SaleReturn;
+use App\Models\DeliveryChallan;
+use App\Models\DeliveryChallanItem;
 use App\Models\Stock;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class SaleController extends Controller
 {
@@ -160,12 +163,37 @@ class SaleController extends Controller
         $customer = Customer::all();
         $warehouse = Warehouse::all();
         
-        $allSeries = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
-        
+        // Ensure standard series exist (INV, TAX, CO, SO, QUO)
+        $standardSeries = [
+            ['prefix' => 'INV', 'padding' => 4, 'is_default' => 1],
+            ['prefix' => 'TAX', 'padding' => 3, 'is_default' => 0],
+            ['prefix' => 'CO', 'padding' => 3, 'is_default' => 0],
+            ['prefix' => 'SO', 'padding' => 4, 'is_default' => 0],
+            ['prefix' => 'QUO', 'padding' => 4, 'is_default' => 0],
+        ];
+        foreach ($standardSeries as $ss) {
+            \App\Models\InvoiceSeries::firstOrCreate(
+                ['prefix' => $ss['prefix']],
+                ['padding' => $ss['padding'], 'next_number' => 1, 'is_default' => $ss['is_default']]
+            );
+        }
+
         $type = request('type');
+        if ($type === 'quotation') {
+            $allowedPrefixes = ['QUO', 'INV', 'TAX', 'CO'];
+        } elseif ($type === 'sales_order') {
+            $allowedPrefixes = ['SO', 'INV', 'TAX', 'CO'];
+        } else {
+            $allowedPrefixes = ['INV', 'TAX', 'CO'];
+        }
+        $allSeries = \App\Models\InvoiceSeries::whereIn('prefix', $allowedPrefixes)->orderByRaw("FIELD(prefix, 'INV', 'TAX', 'CO', 'SO', 'QUO')")->get();
+        
         if ($type === 'quotation') {
             $quoSeries = $allSeries->where('prefix', 'QUO')->first();
             $activePrefix = $quoSeries ? $quoSeries->prefix : 'QUO';
+        } elseif ($type === 'sales_order') {
+            $soSeries = $allSeries->where('prefix', 'SO')->first();
+            $activePrefix = $soSeries ? $soSeries->prefix : 'SO';
         } else {
             $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
             $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
@@ -1186,6 +1214,9 @@ class SaleController extends Controller
             if ($isNew && $request->filled('parent_quotation_id')) {
                 $sale->parent_quotation_id = $request->parent_quotation_id;
             }
+            if ($saleType === 'sales_order' && empty($sale->delivery_status)) {
+                $sale->delivery_status = 'pending';
+            }
 
             // Credit Days & Due Date (Optional)
             if ($request->filled('credit_days') && $request->credit_days > 0) {
@@ -1936,6 +1967,11 @@ class SaleController extends Controller
                 } catch (\Exception $e) {
                     \Log::error('Professional Ledger Posting Error: '.$e->getMessage());
                 }
+
+                // Auto-generate or sync Delivery Challan (DC) for Direct Sale
+                if (in_array($sale->sale_type, ['direct_sale', null])) {
+                    $this->syncDeliveryChallanForDirectSale($sale);
+                }
             } elseif ($status === 'booked' && $sale->is_booking) {
                 // For Bookings, we don't deduct stock or post the sales invoice to the ledger,
                 // BUT we do want to record any advance payment made.
@@ -2037,6 +2073,9 @@ class SaleController extends Controller
                 $transactionService = app(\App\Services\TransactionService::class);
                 $transactionService->createReceiptFromSale($newSale);
 
+                // Auto-generate Delivery Challan (DC) for converted Direct Sale
+                $this->syncDeliveryChallanForDirectSale($newSale);
+
                 if ($request->ajax() || $request->wantsJson()) {
                     return response()->json([
                         'ok' => true,
@@ -2085,6 +2124,89 @@ class SaleController extends Controller
             }
             return redirect()->back()->withInput()->with('error', $errorMsg);
         }
+    }
+
+    /**
+     * Auto-generate or re-sync Delivery Challan (DC) for a Direct Sale.
+     * Ensures stock deduction remains with the sale, and DC is confirmed & marked invoiced.
+     */
+    public function syncDeliveryChallanForDirectSale(Sale $sale)
+    {
+        if (!in_array($sale->sale_type, ['direct_sale', null]) || $sale->sale_status !== 'posted') {
+            return null;
+        }
+
+        $sale->load('items');
+        if ($sale->items->isEmpty()) {
+            return null;
+        }
+
+        // Check if there are already consolidated DCs linked to this sale as invoice_id
+        $consolidatedCount = DeliveryChallan::where('invoice_id', $sale->id)->count();
+        $existingDc = DeliveryChallan::where('sale_id', $sale->id)->first();
+
+        // If multiple DCs are linked or if the existing DC is from Direct DC module (e.g. DDC-), preserve them
+        if ($consolidatedCount > 1 || ($existingDc && Str::startsWith($existingDc->dc_number, 'DDC-'))) {
+            $sale->delivery_status = 'delivered';
+            $sale->save();
+            return $existingDc;
+        }
+
+        if ($existingDc) {
+            $existingDc->customer_id = $sale->customer_id;
+            $existingDc->dc_date = $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d');
+            $existingDc->status = 'confirmed';
+            $existingDc->is_invoiced = 1;
+            $existingDc->invoice_id = $sale->id;
+            $existingDc->remarks = 'Auto-generated DC for Direct Sale #' . ($sale->invoice_no ?: $sale->id);
+            $existingDc->save();
+
+            DeliveryChallanItem::where('delivery_challan_id', $existingDc->id)->delete();
+            $dc = $existingDc;
+        } else {
+            $baseNo = $sale->invoice_no ?: ('#' . str_pad($sale->id, 4, '0', STR_PAD_LEFT));
+            $dcCount = DeliveryChallan::where('sale_id', $sale->id)->count() + 1;
+            $dcNumber = $baseNo . '-DC' . str_pad($dcCount, 2, '0', STR_PAD_LEFT);
+            while (DeliveryChallan::where('dc_number', $dcNumber)->exists()) {
+                $dcCount++;
+                $dcNumber = $baseNo . '-DC' . str_pad($dcCount, 2, '0', STR_PAD_LEFT);
+            }
+
+            $dc = DeliveryChallan::create([
+                'sale_id' => $sale->id,
+                'customer_id' => $sale->customer_id,
+                'dc_number' => $dcNumber,
+                'dc_date' => $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d'),
+                'status' => 'confirmed',
+                'is_invoiced' => 1,
+                'invoice_id' => $sale->id,
+                'remarks' => 'Auto-generated DC for Direct Sale #' . ($sale->invoice_no ?: $sale->id),
+                'created_by' => auth()->id() ?? 1,
+            ]);
+        }
+
+        foreach ($sale->items as $item) {
+            $qty = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
+            DeliveryChallanItem::create([
+                'delivery_challan_id' => $dc->id,
+                'sale_item_id' => $item->id,
+                'product_id' => $item->product_id,
+                'warehouse_id' => $item->warehouse_id ?? (auth()->user()->warehouse_id ?? 1),
+                'delivered_qty' => $qty,
+                'boxes' => (float) $item->qty,
+                'loose_pieces' => (float) ($item->loose_pieces ?? 0),
+                'color' => $item->color,
+                'price' => (float) ($item->price ?? 0),
+            ]);
+
+            $item->delivered_qty = $qty;
+            $item->save();
+        }
+
+        $sale->delivery_status = 'delivered';
+        $sale->save();
+
+        return $dc;
     }
 
     public function handleStockImpact(Sale $sale, $type = 'out')
@@ -2480,6 +2602,11 @@ class SaleController extends Controller
             $transactionService = app(\App\Services\TransactionService::class);
             $transactionService->createReceiptFromSale($sale);
 
+            // AUTO GENERATE DELIVERY CHALLAN FOR DIRECT SALE
+            if (in_array($sale->sale_type, ['direct_sale', null])) {
+                $this->syncDeliveryChallanForDirectSale($sale);
+            }
+
             DB::commit();
 
             return redirect()->back()->with('success', 'Booking confirmed and converted to sale successfully.');
@@ -2495,7 +2622,7 @@ class SaleController extends Controller
      */
     public function fetchInvoiceSeries(Request $request)
     {
-        $seriesList = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
+        $seriesList = \App\Models\InvoiceSeries::whereIn('prefix', ['INV', 'TAX', 'CO'])->orderBy('id', 'asc')->get();
         $activePrefix = $request->prefix ?: ($seriesList->where('is_default', 1)->first()->prefix ?? ($seriesList->first()->prefix ?? 'INV'));
         $invoiceNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
 
@@ -2616,16 +2743,19 @@ class SaleController extends Controller
             // Update status to posted (this is what triggers it being considered a full financial invoice)
             $sale->sale_status = 'posted';
             
-            // Assign Invoice Number if it doesn't have one
-            if (empty($sale->invoice_no)) {
-                $seriesList = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
-                $defaultSeries = $seriesList->where('is_default', 1)->first() ?: $seriesList->first();
-                $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
-                
-                $generatedNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
-                $sale->invoice_no = $generatedNo;
-                \App\Models\InvoiceSeries::incrementCounterForInvoice($generatedNo);
+            // Allow backdating invoice if sale_date is provided
+            if ($request->filled('sale_date')) {
+                $sale->created_at = \Carbon\Carbon::parse($request->sale_date)->format('Y-m-d H:i:s');
             }
+            $invoiceDate = $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d');
+
+            // Assign Invoice Number according to selected prefix (INV, TAX, CO)
+            $chosenPrefix = $request->input('prefix');
+            $activePrefix = in_array(strtoupper($chosenPrefix), ['TAX', 'CO', 'INV']) ? strtoupper($chosenPrefix) : 'INV';
+            
+            $generatedNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+            $sale->invoice_no = $generatedNo;
+            \App\Models\InvoiceSeries::incrementCounterForInvoice($generatedNo);
             
             $sale->save();
 
@@ -2645,7 +2775,7 @@ class SaleController extends Controller
                     $custForVoucher,
                     $sale->total_net,
                     $sale->invoice_no,
-                    now()->format('Y-m-d') // Use current date for invoice generation
+                    $invoiceDate
                 );
             }
 
@@ -2656,7 +2786,7 @@ class SaleController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Invoice generated and financial ledgers updated successfully.');
+            return redirect()->back()->with('success', "Invoice {$sale->invoice_no} ({$activePrefix}) generated successfully with Date: {$invoiceDate}.");
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Invoice Generation Error: '.$e->getMessage());

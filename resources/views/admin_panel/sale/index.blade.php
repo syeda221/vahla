@@ -359,9 +359,13 @@
                                     <i class="fas fa-file-contract"></i> Add Quotation
                                 </a>
                             @elseif(isset($page_type) && $page_type === 'sales_order')
-                                <a class="btn btn-info px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1 text-white"
-                                    href="{{ route('quotations.index') }}" style="border-radius: 8px;">
+                                <a class="btn btn-outline-info px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
+                                    href="{{ route('quotations.index') }}" style="border-radius: 8px;" title="Convert an existing quotation into a sales order">
                                     <i class="fas fa-file-contract"></i> Convert from Quotation
+                                </a>
+                                <a class="btn btn-primary px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1 text-white"
+                                    href="{{ route('sale.add') }}?type=sales_order" style="border-radius: 8px;" title="Create a direct sales order">
+                                    <i class="fas fa-plus"></i> Add Sales Order
                                 </a>
                             @else
                                 <a class="btn btn-primary px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
@@ -541,7 +545,7 @@
                                     <tr>
                                         <th class="py-3 ps-3 rounded-start text-secondary fw-semibold text-uppercase small">Invoice / Bill#</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Customer</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">M.Bill</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small" style="width: 120px; max-width: 140px;">M.Bill</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Products</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-center">Qty</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Gross</th>
@@ -842,6 +846,138 @@
                     }
                 });
             });
+            // Modal handler to open Generate Invoice Confirmation with Series & Date
+            $(document).on('click', '.btn-open-invoice-series-modal', function(e) {
+                e.preventDefault();
+                var saleId = $(this).data('sale-id');
+                var orderNo = $(this).data('order-no') || ('#' + saleId);
+                var customer = $(this).data('customer') || 'Walk-in';
+                var amount = $(this).data('amount') || '0.00';
+                var date = $(this).data('date') || "{{ date('Y-m-d') }}";
+
+                $('#orderModalSaleId').val(saleId);
+                $('#orderModalOrderNo').text(orderNo);
+                $('#orderModalCustomer').text(customer);
+                $('#orderModalAmount').text('PKR ' + amount);
+                $('#orderModalInvoiceDate').val(date);
+
+                // Set form action dynamically
+                $('#formGenerateOrderInvoice').attr('action', '/sales/' + saleId + '/generate-invoice');
+
+                // Pre-fetch live next invoice numbers for INV, TAX, CO
+                ['INV', 'TAX', 'CO'].forEach(function(pref) {
+                    $.ajax({
+                        url: "{{ route('invoice_series.generate_no') }}",
+                        type: "GET",
+                        data: { prefix: pref },
+                        success: function(res) {
+                            if (res.invoice_no) {
+                                $('#nextNoBadge_' + pref).text(res.invoice_no);
+                            }
+                        }
+                    });
+                });
+
+                if (typeof $.fn.modal !== 'undefined') {
+                    $('#modalGenerateOrderInvoice').modal('show');
+                } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    var m = bootstrap.Modal.getInstance(document.getElementById('modalGenerateOrderInvoice')) || new bootstrap.Modal(document.getElementById('modalGenerateOrderInvoice'));
+                    m.show();
+                }
+            });
         });
     </script>
+
+    <!-- Modal: Choose Invoice Series & Date for Sales Order Invoice -->
+    <div class="modal fade" id="modalGenerateOrderInvoice" tabindex="-1" aria-labelledby="modalGenerateOrderInvoiceLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-light border-bottom px-3 py-2">
+                    <h6 class="modal-title fw-bold text-dark mb-0" id="modalGenerateOrderInvoiceLabel">
+                        <i class="fas fa-file-invoice-dollar text-success me-2"></i> Confirm &amp; Generate Invoice
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="formGenerateOrderInvoice" method="POST" action="">
+                    @csrf
+                    <input type="hidden" name="sale_id" id="orderModalSaleId">
+                    <div class="modal-body p-3">
+                        <!-- Order Summary Card -->
+                        <div class="p-3 bg-light rounded-3 border mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted small">Sales Order:</span>
+                                <strong class="text-primary font-monospace" id="orderModalOrderNo">SO-0000</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted small">Customer:</span>
+                                <strong class="text-dark" id="orderModalCustomer">Customer Name</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted small">Order Total:</span>
+                                <strong class="text-success fs-6" id="orderModalAmount">PKR 0.00</strong>
+                            </div>
+                        </div>
+
+                        <!-- Invoice Series Radio Selection -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-secondary mb-2">
+                                <i class="fas fa-layer-group text-primary me-1"></i> Choose Invoice Series
+                            </label>
+                            <div class="d-flex flex-column gap-2">
+                                <label class="border rounded-3 p-2 px-3 d-flex align-items-center justify-content-between cursor-pointer series-radio-card bg-white" style="cursor: pointer;">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="radio" name="prefix" value="INV" class="form-check-input mt-0" checked>
+                                        <span class="badge bg-primary text-white font-monospace px-2 py-1">INV</span>
+                                        <span class="fw-bold small text-dark">Standard Invoice</span>
+                                    </div>
+                                    <span class="badge bg-light text-primary border font-monospace" id="nextNoBadge_INV">
+                                        {{ \App\Models\InvoiceSeries::generateNextNo('INV') }}
+                                    </span>
+                                </label>
+
+                                <label class="border rounded-3 p-2 px-3 d-flex align-items-center justify-content-between cursor-pointer series-radio-card bg-white" style="cursor: pointer;">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="radio" name="prefix" value="TAX" class="form-check-input mt-0">
+                                        <span class="badge bg-primary text-white font-monospace px-2 py-1">TAX</span>
+                                        <span class="fw-bold small text-dark">Tax Invoice</span>
+                                    </div>
+                                    <span class="badge bg-light text-primary border font-monospace" id="nextNoBadge_TAX">
+                                        {{ \App\Models\InvoiceSeries::generateNextNo('TAX') }}
+                                    </span>
+                                </label>
+
+                                <label class="border rounded-3 p-2 px-3 d-flex align-items-center justify-content-between cursor-pointer series-radio-card bg-white" style="cursor: pointer;">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="radio" name="prefix" value="CO" class="form-check-input mt-0">
+                                        <span class="badge bg-primary text-white font-monospace px-2 py-1">CO</span>
+                                        <span class="fw-bold small text-dark">Company Invoice</span>
+                                    </div>
+                                    <span class="badge bg-light text-primary border font-monospace" id="nextNoBadge_CO">
+                                        {{ \App\Models\InvoiceSeries::generateNextNo('CO') }}
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Invoice Date Picker (supports backdating!) -->
+                        <div class="mb-2">
+                            <label class="form-label fw-bold small text-secondary mb-1">
+                                <i class="far fa-calendar-alt text-primary me-1"></i> Invoice Date
+                            </label>
+                            <input type="date" name="sale_date" id="orderModalInvoiceDate" class="form-control form-control-sm fw-bold" value="{{ date('Y-m-d') }}" required>
+                            <small class="text-muted" style="font-size: 11px;">
+                                <i class="fas fa-info-circle me-1"></i> Agar purani date ki invoice banani ho to yahan se date tabdeel karein.
+                            </small>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-top p-2 px-3">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm fw-bold px-3">
+                            <i class="fas fa-check-circle me-1"></i> Confirm &amp; Generate Invoice
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection

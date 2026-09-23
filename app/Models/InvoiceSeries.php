@@ -32,7 +32,8 @@ class InvoiceSeries extends Model
             $padding = $defaultSeries->padding ?? 4;
             $nextNumSeries = $defaultSeries->next_number ?? 1;
         } else {
-            $padding = $series->padding ?? 4;
+            $defaultPad = in_array($pref, ['TAX', 'CO']) ? 3 : 4;
+            $padding = $series ? ($series->padding ?? $defaultPad) : $defaultPad;
             $nextNumSeries = $series->next_number ?? 1;
         }
 

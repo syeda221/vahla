@@ -187,7 +187,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/direct-dc/{id}/update', [App\Http\Controllers\DirectDCController::class, 'update'])->name('direct-dc.update');
     Route::get('/direct-dc-consolidate', [App\Http\Controllers\DirectDCController::class, 'consolidateIndex'])->name('direct-dc.consolidate');
     Route::get('/direct-dc/api/fetch-dcs/{customer_id}', [App\Http\Controllers\DirectDCController::class, 'fetchCustomerDCs']);
-    Route::post('/direct-dc-consolidate/preview', [App\Http\Controllers\DirectDCController::class, 'consolidatePreview'])->name('direct-dc.consolidate.preview');
+    Route::match(['get', 'post'], '/direct-dc-consolidate/preview', [App\Http\Controllers\DirectDCController::class, 'consolidatePreview'])->name('direct-dc.consolidate.preview');
     Route::post('/direct-dc-consolidate/store', [App\Http\Controllers\DirectDCController::class, 'consolidateStore'])->name('direct-dc.consolidate.store');
 
     Route::prefix('discount')->group(function () {

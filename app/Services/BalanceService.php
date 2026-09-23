@@ -476,9 +476,10 @@ class BalanceService
     public function createSaleVoucher(
         Customer $customer,
         float $amount,
-        string $invoiceNo,
+        ?string $invoiceNo,
         string $date
     ): VoucherMaster {
+        $invoiceNo = $invoiceNo ?: 'INV-N/A';
         return DB::transaction(function () use ($customer, $amount, $invoiceNo, $date) {
 
             $voucherNo = $this->generateVoucherNo('journal');

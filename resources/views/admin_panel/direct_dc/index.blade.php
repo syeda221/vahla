@@ -97,7 +97,7 @@
                                 <tbody>
                                     @forelse($challans as $dc)
                                     @php
-                                        $cName = $dc->customer->customer_name ?? ($dc->sale->customer_relation->customer_name ?? 'N/A');
+                                        $cName = $dc->customer->customer_name ?? ($dc->sale->walkin_name ?? ($dc->sale->customer_relation->customer_name ?? 'N/A'));
                                         $cId = $dc->customer_id ?? ($dc->sale->customer_id ?? '');
                                         $isHighlighted = (request('highlight_dc') == $dc->id) || (request('sale_id') && $dc->sale_id == request('sale_id') && !$dc->is_invoiced);
                                     @endphp
@@ -111,6 +111,11 @@
                                         </td>
                                         <td class="fw-bold text-primary">
                                             {{ $dc->dc_number }}
+                                            @if($dc->sale && $dc->sale->invoice_no)
+                                                <small class="text-muted d-block font-monospace" style="font-size: 11px;">
+                                                    <i class="fas fa-file-invoice text-secondary me-1"></i>{{ $dc->sale->invoice_no }}
+                                                </small>
+                                            @endif
                                             @if($isHighlighted)
                                                 <span class="badge bg-warning text-dark ms-1 shadow-sm"><i class="fas fa-check-circle me-1"></i> Selected for Invoice</span>
                                             @endif

@@ -432,8 +432,17 @@ class DirectDCController extends Controller
     {
         $dcIds = $request->input('dc_ids');
         if (empty($dcIds) || !is_array($dcIds)) {
-            return redirect()->route('direct-dc.index')->with('error', 'No DCs selected.');
+            if ($request->query('dc_ids')) {
+                $dcIds = is_array($request->query('dc_ids')) ? $request->query('dc_ids') : explode(',', $request->query('dc_ids'));
+            } elseif (session('consolidate_dc_ids')) {
+                $dcIds = session('consolidate_dc_ids');
+            } else {
+                return redirect()->route('direct-dc.index')->with('error', 'No DCs selected. Please select Delivery Challan(s) to consolidate.');
+            }
         }
+
+        // Cache selected DC IDs in session to support page reload / refresh
+        session(['consolidate_dc_ids' => $dcIds]);
 
         $dcs = DeliveryChallan::with(['items.product', 'items.saleItem', 'customer', 'sale.customer_relation'])->whereIn('id', $dcIds)->get();
         if ($dcs->isEmpty()) {
@@ -482,7 +491,13 @@ class DirectDCController extends Controller
             }
         }
 
-        return view('admin_panel.direct_dc.consolidate_preview', compact('dcs', 'customer', 'mergedItems', 'dcIds', 'customerId'));
+        $seriesList = [
+            'INV' => ['label' => 'Standard Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('INV')],
+            'TAX' => ['label' => 'Tax Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('TAX')],
+            'CO'  => ['label' => 'Company Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('CO')],
+        ];
+
+        return view('admin_panel.direct_dc.consolidate_preview', compact('dcs', 'customer', 'mergedItems', 'dcIds', 'customerId', 'seriesList'));
     }
 
     public function consolidateIndex()
@@ -526,7 +541,9 @@ class DirectDCController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'dc_ids' => 'required|array',
-            'dc_ids.*' => 'required|exists:delivery_challans,id'
+            'dc_ids.*' => 'required|exists:delivery_challans,id',
+            'prefix' => 'nullable|string|in:INV,TAX,CO',
+            'sale_date' => 'nullable|date',
         ]);
 
         DB::beginTransaction();
@@ -552,8 +569,16 @@ class DirectDCController extends Controller
             $sale->sale_type = 'direct_sale';
             $sale->sale_status = 'posted';
             $sale->delivery_status = 'delivered'; // already delivered
-            $series = \App\Models\InvoiceSeries::where('is_default', 1)->first() ?: \App\Models\InvoiceSeries::first();
-            $prefix = $series ? $series->prefix : 'INV';
+            
+            // Allow backdating invoice if sale_date is provided
+            if ($request->filled('sale_date')) {
+                $sale->created_at = \Carbon\Carbon::parse($request->sale_date)->format('Y-m-d H:i:s');
+            }
+            $invoiceDate = $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d');
+
+            // Assign Invoice Number according to selected prefix (INV, TAX, CO)
+            $chosenPrefix = $request->input('prefix');
+            $prefix = in_array(strtoupper($chosenPrefix), ['TAX', 'CO', 'INV']) ? strtoupper($chosenPrefix) : 'INV';
             $sale->invoice_no = \App\Models\InvoiceSeries::generateNextNo($prefix);
             
             // Collect items and aggregate totals
@@ -619,7 +644,7 @@ class DirectDCController extends Controller
             $firstOriginalSaleId = $dcs->pluck('sale_id')->filter()->first();
             if ($firstOriginalSaleId) {
                 $sale->parent_quotation_id = $firstOriginalSaleId;
-                $sale->reference = 'Consolidated Invoice for ' . $dcs->pluck('dc_number')->implode(', ');
+                $sale->reference = $dcs->pluck('dc_number')->implode(', ');
             }
 
             $sale->total_bill_amount = $totalBillAmount;
@@ -673,7 +698,7 @@ class DirectDCController extends Controller
                     $custForVoucher,
                     $sale->total_net,
                     $sale->invoice_no,
-                    now()->format('Y-m-d')
+                    $invoiceDate
                 );
                 
                 // 2. Legacy CustomerLedger
@@ -696,6 +721,7 @@ class DirectDCController extends Controller
             }
 
             DB::commit();
+            session()->forget('consolidate_dc_ids');
             return redirect()->route('sale.index')->with('success', 'DCs successfully consolidated into Invoice: ' . $sale->invoice_no);
         } catch (\Exception $e) {
             DB::rollBack();

@@ -125,8 +125,23 @@
             border-top-left-radius: 6px !important;
             border-bottom-left-radius: 6px !important;
             height: 32px !important;
-            padding: 0 10px !important;
+            padding: 0 8px 0 10px !important;
             font-size: 0.78rem !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 4px !important;
+            box-shadow: 0 1px 2px rgba(2, 132, 199, 0.2) !important;
+            transition: all 0.15s ease !important;
+        }
+        .invoice-group .btn-prefix:hover,
+        .invoice-group .btn-prefix:focus {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+            color: #ffffff !important;
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.35) !important;
+        }
+        .invoice-group .btn-prefix::after {
+            display: none !important;
         }
 
         .invoice-group .btn-refresh {
@@ -555,19 +570,36 @@
                 <input type="hidden" id="action" name="action" value="sale">
                 <input type="hidden" name="cash" value="0">
                 <input type="hidden" id="totalBalance" value="0">
-                <input type="hidden" id="sale_type" name="sale_type" value="{{ request('type') == 'quotation' ? 'quotation' : 'direct_sale' }}">
+                <input type="hidden" id="sale_type" name="sale_type" value="{{ request('type') == 'sales_order' ? 'sales_order' : (request('type') == 'quotation' ? 'quotation' : 'direct_sale') }}">
 
                 {{-- TOP HEADER BAR --}}
                 <div class="d-flex justify-content-between align-items-center mb-2 px-1">
                     <div class="d-flex align-items-center gap-2">
-                        <a href="{{ route('sale.index') }}" class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Back"><i class="fas fa-arrow-left text-secondary"></i></a>
+                        @php
+                            $backUrl = route('sale.index');
+                            $headerTitle = 'New Sale';
+                            $headerDesc = 'Create a new invoice & manage checkout';
+                            $headerIcon = 'fas fa-shopping-cart';
+                            if (request('type') == 'sales_order') {
+                                $backUrl = route('sales_orders.index');
+                                $headerTitle = 'New Sales Order';
+                                $headerDesc = 'Create a direct sales order & book items';
+                                $headerIcon = 'fas fa-clipboard-list';
+                            } elseif (request('type') == 'quotation') {
+                                $backUrl = route('quotations.index');
+                                $headerTitle = 'New Quotation';
+                                $headerDesc = 'Create a new quotation';
+                                $headerIcon = 'fas fa-file-contract';
+                            }
+                        @endphp
+                        <a href="{{ $backUrl }}" class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Back"><i class="fas fa-arrow-left text-secondary"></i></a>
                         <div>
                             <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 1.05rem;">
-                                <i class="fas fa-shopping-cart text-primary"></i> 
-                                {{ request('type') == 'quotation' ? 'New Quotation' : 'New Sale' }}
+                                <i class="{{ $headerIcon }} text-primary"></i> 
+                                {{ $headerTitle }}
                             </h5>
                             <small class="text-muted" style="font-size: 0.72rem;">
-                                {{ request('type') == 'quotation' ? 'Create a new quotation' : 'Create a new invoice & manage checkout' }}
+                                {{ $headerDesc }}
                             </small>
                         </div>
                     </div>
@@ -584,40 +616,75 @@
                         <!-- Invoice No / Quotation No with Prefix Dropdown & Refresh -->
                         <div class="col-sm-6 col-md-3 col-lg-2">
                             <label class="meta-label">
-                                <i class="{{ request('type') == 'quotation' ? 'fas fa-file-contract' : 'fas fa-receipt' }} text-primary"></i> 
-                                {{ request('type') == 'quotation' ? 'QUOTATION NO.' : 'INVOICE NO.' }}
+                                <i class="{{ $headerIcon }} text-primary"></i> 
+                                {{ request('type') == 'sales_order' ? 'ORDER NO.' : (request('type') == 'quotation' ? 'QUOTATION NO.' : 'INVOICE NO.') }}
                             </label>
                             <div class="input-group input-group-sm invoice-group">
                                 <button class="btn btn-prefix dropdown-toggle d-flex align-items-center gap-1" 
                                         type="button" 
                                         id="btnInvoicePrefix" 
+                                        data-toggle="dropdown"
                                         data-bs-toggle="dropdown" 
-                                        aria-expanded="false">
-                                    <span id="activePrefixLabel">{{ $activePrefix ?? (request('type') == 'quotation' ? 'QUO' : 'INV') }}</span>
+                                        aria-haspopup="true"
+                                        aria-expanded="false"
+                                        title="Click to choose series">
+                                    <span id="activePrefixLabel">{{ $activePrefix ?? (request('type') == 'sales_order' ? 'SO' : (request('type') == 'quotation' ? 'QUO' : 'INV')) }}</span>
+                                    <i class="fas fa-caret-down" style="font-size: 0.72rem; opacity: 0.85;"></i>
                                 </button>
-                                <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownInvoiceSeriesList" aria-labelledby="btnInvoicePrefix" style="min-width: 155px; font-size: 0.8rem; z-index: 1050;">
-                                    @if(isset($allSeries) && count($allSeries) > 0)
-                                        @foreach($allSeries as $s)
-                                            <li>
-                                                <a class="dropdown-item fw-bold {{ ($activePrefix ?? (request('type') == 'quotation' ? 'QUO' : 'INV')) == $s->prefix ? 'text-success active bg-light' : '' }}" 
-                                                   href="#" 
-                                                   data-prefix="{{ $s->prefix }}" 
-                                                   data-next="{{ $s->next_number }}" 
-                                                   data-padding="{{ $s->padding }}">
-                                                    @if(($activePrefix ?? (request('type') == 'quotation' ? 'QUO' : 'INV')) == $s->prefix) <i class="fas fa-check text-success me-1"></i> @endif 
-                                                    {{ $s->prefix }} <span class="text-muted small font-monospace">({{ $s->padding }}d)</span>
-                                                </a>
-                                            </li>
-                                        @endforeach
-                                    @else
-                                        <li><a class="dropdown-item fw-bold text-success active bg-light" href="#" data-prefix="{{ request('type') == 'quotation' ? 'QUO' : 'INV' }}"><i class="fas fa-check text-success me-1"></i> {{ request('type') == 'quotation' ? 'QUO' : 'INV' }} (4d)</a></li>
-                                    @endif
-                                    <li><hr class="dropdown-divider my-1"></li>
-                                    <li>
-                                        <a class="dropdown-item fw-bold text-success d-flex align-items-center gap-1" href="#" id="btnOpenAddSeriesModal">
-                                            <i class="fas fa-plus-circle me-1"></i> Add Series
-                                        </a>
-                                    </li>
+                                <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownInvoiceSeriesList" aria-labelledby="btnInvoicePrefix" style="min-width: 220px; font-size: 0.82rem; z-index: 1050;">
+                                    <li class="dropdown-header py-1 text-uppercase fw-bold text-muted small" style="font-size: 10px; letter-spacing: 0.5px;">Choose Series</li>
+                                    @php
+                                        $curPref = $activePrefix ?? (request('type') == 'sales_order' ? 'SO' : (request('type') == 'quotation' ? 'QUO' : 'INV'));
+                                        if (request('type') == 'quotation') {
+                                            $allowedSeries = [
+                                                'QUO' => ['label' => 'Quotation Series', 'padding' => 4],
+                                                'INV' => ['label' => 'Standard Invoice', 'padding' => 4],
+                                                'TAX' => ['label' => 'Tax Invoice', 'padding' => 3],
+                                                'CO'  => ['label' => 'Company Invoice', 'padding' => 3],
+                                            ];
+                                        } elseif (request('type') == 'sales_order') {
+                                            $allowedSeries = [
+                                                'SO'  => ['label' => 'Sales Order Series', 'padding' => 4],
+                                                'INV' => ['label' => 'Standard Invoice', 'padding' => 4],
+                                                'TAX' => ['label' => 'Tax Invoice', 'padding' => 3],
+                                                'CO'  => ['label' => 'Company Invoice', 'padding' => 3],
+                                            ];
+                                        } else {
+                                            $allowedSeries = [
+                                                'INV' => ['label' => 'Standard Invoice', 'padding' => 4],
+                                                'TAX' => ['label' => 'Tax Invoice', 'padding' => 3],
+                                                'CO'  => ['label' => 'Company Invoice', 'padding' => 3],
+                                            ];
+                                        }
+                                    @endphp
+                                    @foreach($allowedSeries as $p => $meta)
+                                        @php
+                                            $sObj = isset($allSeries) ? $allSeries->firstWhere('prefix', $p) : null;
+                                            $nextNo = $sObj ? $sObj->next_number : 1;
+                                            $pad = $sObj ? $sObj->padding : $meta['padding'];
+                                            $isActive = ($curPref == $p);
+                                        @endphp
+                                        <li>
+                                            <a class="dropdown-item fw-bold py-2 px-3 d-flex align-items-center justify-content-between {{ $isActive ? 'text-primary active bg-light' : 'text-dark' }}" 
+                                               href="javascript:void(0)" 
+                                               data-prefix="{{ $p }}" 
+                                               data-next="{{ $nextNo }}" 
+                                               data-padding="{{ $pad }}">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    @if($isActive) 
+                                                        <i class="fas fa-check-circle text-primary"></i> 
+                                                    @else
+                                                        <i class="far fa-circle text-muted" style="font-size: 11px;"></i>
+                                                    @endif
+                                                    <div>
+                                                        <span class="badge bg-primary text-white font-monospace px-2 py-1 me-1">{{ $p }}</span>
+                                                        <span class="small fw-semibold">{{ $meta['label'] }}</span>
+                                                    </div>
+                                                </div>
+                                                <span class="text-muted small font-monospace">({{ $pad }}d)</span>
+                                            </a>
+                                        </li>
+                                    @endforeach
                                 </ul>
 
                                 <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $nextInvoiceNumber }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
@@ -625,7 +692,7 @@
                                 <button class="btn btn-refresh" 
                                         type="button" 
                                         id="btnRefreshInvoiceNo" 
-                                        title="{{ request('type') == 'quotation' ? 'Regenerate Quotation Number' : 'Regenerate Invoice Number' }}">
+                                        title="{{ request('type') == 'sales_order' ? 'Regenerate Order Number' : (request('type') == 'quotation' ? 'Regenerate Quotation Number' : 'Regenerate Invoice Number') }}">
                                     <i class="fas fa-sync-alt" id="iconRefreshInvoice"></i>
                                 </button>
                             </div>
@@ -891,10 +958,10 @@
                             <div class="payment-methods-card flex-grow-1 d-flex flex-column">
                                 @php
                                     $saleType = request()->query('type', 'direct_sale');
-                                    $btnText = $saleType === 'quotation' ? 'Save Quotation (F9)' : 'Save & Complete (F9)';
+                                    $btnText = $saleType === 'quotation' ? 'Save Quotation (F9)' : ($saleType === 'sales_order' ? 'Save Sales Order (F9)' : 'Save & Complete (F9)');
                                 @endphp
 
-                                @if($saleType !== 'quotation')
+                                @if(!in_array($saleType, ['quotation', 'sales_order']))
                                 <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
                                     <span class="fw-bold text-dark d-flex align-items-center gap-1" style="font-size:0.85rem;"><i class="fas fa-wallet text-success"></i> Payment Methods</span>
                                     <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-2 fw-bold" id="btnAddRV" style="font-size:0.7rem;"><i class="fas fa-plus me-1"></i>Add Account</button>
@@ -935,7 +1002,7 @@
                         </div>
                     </div>
 
-                    @if($saleType !== 'quotation')
+                    @if(!in_array($saleType, ['quotation', 'sales_order']))
                     <div class="d-flex align-items-center gap-2">
                         <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Payments</span>
                         <span class="fs-6 fw-bold text-success" id="bottomPaymentsTotal">0.00</span>
@@ -1171,6 +1238,10 @@
                 $('#btnHeaderPosted').addClass('d-none');
             } else if (urlParams.get('type') === 'quotation') {
                 $('#action').val('quotation');
+                $('#btnPosted').addClass('d-none');
+                $('#btnHeaderPosted').addClass('d-none');
+            } else if (urlParams.get('type') === 'sales_order') {
+                $('#action').val('sales_order');
                 $('#btnPosted').addClass('d-none');
                 $('#btnHeaderPosted').addClass('d-none');
             }
@@ -1456,6 +1527,20 @@
                 });
             }
 
+            // Bulletproof Dropdown Toggle for btnInvoicePrefix (compatible with BS4/BS5)
+            $(document).on('click', '#btnInvoicePrefix', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $('#dropdownInvoiceSeriesList').toggleClass('show');
+            });
+
+            // Close series dropdown when clicking outside
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.invoice-group').length) {
+                    $('#dropdownInvoiceSeriesList').removeClass('show');
+                }
+            });
+
             // Prefix Selection Handler
             $(document).on('click', '#dropdownInvoiceSeriesList a[data-prefix]', function(e) {
                 e.preventDefault();
@@ -1465,9 +1550,21 @@
                 currentInvoicePrefix = prefix;
                 $('#activePrefixLabel').text(prefix);
 
-                // Update active highlight in dropdown instantly
-                $('#dropdownInvoiceSeriesList a[data-prefix]').removeClass('text-success active bg-light').find('i.fa-check').remove();
-                $(this).addClass('text-success active bg-light').prepend('<i class="fas fa-check text-success me-1"></i>');
+                // Update active highlight and radio circle icons in dropdown
+                $('#dropdownInvoiceSeriesList a[data-prefix]').removeClass('text-primary active bg-light').addClass('text-dark');
+                $('#dropdownInvoiceSeriesList a[data-prefix]').find('.fa-check-circle')
+                    .removeClass('fas fa-check-circle text-primary')
+                    .addClass('far fa-circle text-muted')
+                    .css('font-size', '11px');
+
+                $(this).removeClass('text-dark').addClass('text-primary active bg-light');
+                $(this).find('.fa-circle')
+                    .removeClass('far fa-circle text-muted')
+                    .addClass('fas fa-check-circle text-primary')
+                    .css('font-size', '');
+
+                // Hide dropdown menu
+                $('#dropdownInvoiceSeriesList').removeClass('show');
 
                 fetchNextInvoiceNo(prefix);
             });
@@ -1480,6 +1577,7 @@
             // Open Add Series Modal
             $(document).on('click', '#btnOpenAddSeriesModal', function(e) {
                 e.preventDefault();
+                $('#dropdownInvoiceSeriesList').removeClass('show');
                 $('#modalAddInvoiceSeries').modal('show');
             });
 
@@ -1503,6 +1601,8 @@
                         
                         if (res.success) {
                             $('#modalAddInvoiceSeries').modal('hide');
+                            $('body').removeClass('modal-open');
+                            $('.modal-backdrop').remove();
                             $('#formAddInvoiceSeries')[0].reset();
 
                             currentInvoicePrefix = res.prefix;
@@ -1515,16 +1615,40 @@
                                 existingItem.data('next', res.series.next_number).data('padding', res.series.padding);
                             } else {
                                 let newItemHtml = `<li>
-                                    <a class="dropdown-item fw-bold text-success active bg-light" href="#" data-prefix="${res.prefix}" data-next="${res.series.next_number}" data-padding="${res.series.padding}">
-                                        <i class="fas fa-check text-success me-1"></i> ${res.prefix} <span class="text-muted small font-monospace">(${res.series.padding}d)</span>
+                                    <a class="dropdown-item fw-bold py-2 px-3 d-flex align-items-center justify-content-between text-primary active bg-light" 
+                                       href="javascript:void(0)" 
+                                       data-prefix="${res.prefix}" 
+                                       data-next="${res.series.next_number}" 
+                                       data-padding="${res.series.padding}">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="fas fa-check-circle text-primary"></i>
+                                            <div>
+                                                <span class="badge bg-primary text-white font-monospace px-2 py-1 me-1">${res.prefix}</span>
+                                                <span class="small fw-semibold">${res.prefix} Series</span>
+                                            </div>
+                                        </div>
+                                        <span class="text-muted small font-monospace">(${res.series.padding}d)</span>
                                     </a>
                                 </li>`;
                                 $('#dropdownInvoiceSeriesList li:has(hr)').before(newItemHtml);
                             }
 
-                            // Update active highlight state
-                            $('#dropdownInvoiceSeriesList a[data-prefix]').removeClass('text-success active bg-light').find('i.fa-check').remove();
-                            $(`#dropdownInvoiceSeriesList a[data-prefix="${res.prefix}"]`).addClass('text-success active bg-light').prepend('<i class="fas fa-check text-success me-1"></i>');
+                            // Update active highlight state for all items
+                            $('#dropdownInvoiceSeriesList a[data-prefix]').not(`[data-prefix="${res.prefix}"]`)
+                                .removeClass('text-primary active bg-light')
+                                .addClass('text-dark');
+                            $('#dropdownInvoiceSeriesList a[data-prefix]').not(`[data-prefix="${res.prefix}"]`)
+                                .find('.fa-check-circle')
+                                .removeClass('fas fa-check-circle text-primary')
+                                .addClass('far fa-circle text-muted')
+                                .css('font-size', '11px');
+
+                            let activeItem = $(`#dropdownInvoiceSeriesList a[data-prefix="${res.prefix}"]`);
+                            activeItem.removeClass('text-dark').addClass('text-primary active bg-light');
+                            activeItem.find('.fa-circle')
+                                .removeClass('far fa-circle text-muted')
+                                .addClass('fas fa-check-circle text-primary')
+                                .css('font-size', '');
 
                             if (typeof showAlert === 'function') {
                                 showAlert('success', res.message);
@@ -1565,30 +1689,31 @@
                     <h6 class="modal-title fw-bold text-dark mb-0" id="modalAddInvoiceSeriesLabel">
                         <i class="fas fa-barcode text-success me-1"></i> Add Invoice Series
                     </h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form id="formAddInvoiceSeries">
                     @csrf
                     <div class="modal-body p-3">
                         <div class="mb-2">
-                            <label class="form-label small fw-bold text-secondary mb-1">Prefix (e.g., SQ, POS, INV)</label>
+                            <label class="form-label small fw-bold text-secondary mb-1">Prefix (e.g., SQ, POS, TAX, CO)</label>
                             <input type="text" name="prefix" id="seriesPrefixInput" class="form-control form-control-sm text-uppercase fw-bold" placeholder="e.g. SQ" required style="letter-spacing: 1px;">
                         </div>
                         <div class="mb-2">
                             <label class="form-label small fw-bold text-secondary mb-1">Starting Number (Counter)</label>
-                            <input type="number" name="next_number" id="seriesNextNumInput" class="form-control form-control-sm fw-bold text-primary" placeholder="e.g. 50" min="1" value="50" required>
+                            <input type="number" name="next_number" id="seriesNextNumInput" class="form-control form-control-sm fw-bold text-primary" placeholder="e.g. 1" min="1" value="1" required>
                         </div>
                         <div class="mb-2">
                             <label class="form-label small fw-bold text-secondary mb-1">Padding Length (Zero Digits)</label>
                             <select name="padding" id="seriesPaddingSelect" class="form-select form-select-sm fw-bold">
-                                <option value="4">4 Digits (e.g., 0050)</option>
-                                <option value="6" selected>6 Digits (e.g., 000050)</option>
-                                <option value="8">8 Digits (e.g., 00000050)</option>
+                                <option value="3">3 Digits (e.g., 001)</option>
+                                <option value="4" selected>4 Digits (e.g., 0001)</option>
+                                <option value="6">6 Digits (e.g., 000001)</option>
+                                <option value="8">8 Digits (e.g., 00000001)</option>
                             </select>
                         </div>
                     </div>
                     <div class="modal-footer bg-light border-top p-2 px-3">
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-success btn-sm fw-bold px-3" id="btnSaveSeries">
                             <i class="fas fa-save me-1"></i> Save &amp; Select
                         </button>

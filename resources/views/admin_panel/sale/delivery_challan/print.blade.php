@@ -348,10 +348,10 @@
 
                 @foreach ($dc->items as $item)
                     @php
-                        $productTitle = optional($item->product)->item_name ?? 'Unknown Item';
+                        $productTitle = optional($item->product)->item_name ?? (optional($item->saleItem)->product_name ?? 'Unknown Item');
                         $saleItem = $item->saleItem;
                         $rate = $saleItem ? $saleItem->price : $item->price;
-                        $unit = optional($item->product)->unit->name ?? 'Pcs';
+                        $unit = optional(optional($item->product)->unit)->name ?? (optional(optional($item->saleItem)->unit)->name ?? 'Pcs');
                     @endphp
 
                     <tr>
