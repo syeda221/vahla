@@ -227,7 +227,7 @@
                         <div>
                             <!-- Using onclick to handle postFinal via AJAX for 'sale' action if needed, or submit form normally -->
                             <button type="button" onclick="submitSale('quotation')" class="btn btn-info">Quotation</button>
-                            <!-- <button type="button" onclick="submitSale('booking')" class="btn btn-warning">Booking</button> -->
+                            <button type="button" onclick="submitSale('draft')" class="btn btn-warning">Draft</button>
                             <button type="button" onclick="submitSale('sale')" class="btn btn-success">Sale</button>
                             <button type="button" class="btn btn-secondary">Close</button>
                         </div>

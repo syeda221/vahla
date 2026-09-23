@@ -1177,7 +1177,11 @@ class SaleController extends Controller
         //     throw \Illuminate\Validation\ValidationException::withMessages(['product_id' => 'Duplicate products are not allowed in a single sale. Please merge quantities.']);
         // }
 
-        $status = in_array($request->action, ['post', 'sale', 'posted']) ? 'posted' : 'booked';
+        if ($request->action === 'draft') {
+            $status = 'draft';
+        } else {
+            $status = in_array($request->action, ['post', 'sale', 'posted']) ? 'posted' : 'booked';
+        }
 
         $saleType = $request->input('sale_type');
         if (empty($saleType) && $sale->exists) {
@@ -1190,7 +1194,9 @@ class SaleController extends Controller
             $saleType = 'quotation';
         }
         
-        if (in_array($saleType, ['quotation', 'sales_order'])) {
+        if ($request->action === 'draft') {
+            $status = 'draft';
+        } elseif (in_array($saleType, ['quotation', 'sales_order'])) {
             $status = 'booked'; // Force booked so it doesn't affect stock/ledger
         }
 
@@ -1567,7 +1573,7 @@ class SaleController extends Controller
             $isConvertToSale = $request->has('convert_to_sale') && $request->convert_to_sale == '1';
             $isQuoOrSo = in_array($saleType, ['quotation', 'sales_order']) && !$isConvertToSale;
 
-            if ($isWalkin && !$isQuoOrSo && $sale->change < -0.05) {
+            if ($isWalkin && !$isQuoOrSo && $status !== 'draft' && $sale->change < -0.05) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'cash' => 'Walk-in customers must pay 100% upfront. Balance cannot be unpaid.'
                 ]);
@@ -2091,7 +2097,10 @@ class SaleController extends Controller
             }
 
             $targetRoute = 'sale.index';
-            if ($sale->sale_type === 'quotation') {
+            $targetParams = [];
+            if ($status === 'draft') {
+                $targetParams = ['status' => 'draft'];
+            } elseif ($sale->sale_type === 'quotation') {
                 $targetRoute = 'quotations.index';
             } elseif ($sale->sale_type === 'sales_order') {
                 $targetRoute = 'sales_orders.index';
@@ -2105,11 +2114,11 @@ class SaleController extends Controller
                     'msg' => 'Sale '.$msgStatus.' Successfully',
                     'invoice_url' => $receiptUrl,
                     'receipt_url' => $receiptUrl,
-                    'redirect_url' => route($targetRoute)
+                    'redirect_url' => route($targetRoute, $targetParams)
                 ]);
             }
 
-            return redirect()->route($targetRoute)->with('success', 'Sale saved as '.$msgStatus);
+            return redirect()->route($targetRoute, $targetParams)->with('success', 'Sale saved as '.$msgStatus);
         });
         } catch (\Exception $e) {
             $errorMsg = $e->getMessage();
@@ -2554,12 +2563,14 @@ class SaleController extends Controller
     {
         $sale = Sale::findOrFail($id);
 
-        if ($sale->sale_status !== 'booked') {
-            return redirect()->back()->with('error', 'Only booked sales can be confirmed.');
+        if (!in_array($sale->sale_status, ['booked', 'draft'])) {
+            return redirect()->back()->with('error', 'Only draft or booked sales can be confirmed.');
         }
 
         DB::beginTransaction();
         try {
+            $isDraft = ($sale->sale_status === 'draft');
+
             // Update status to posted (which is the system-wide confirmed status)
             $sale->sale_status = 'posted';
 
@@ -2612,11 +2623,12 @@ class SaleController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Booking confirmed and converted to sale successfully.');
+            $successMsg = $isDraft ? 'Draft confirmed and posted as sale successfully.' : 'Booking confirmed and converted to sale successfully.';
+            return redirect()->back()->with('success', $successMsg);
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Booking Confirmation Error: '.$e->getMessage());
-            return redirect()->back()->with('error', 'Failed to confirm booking: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Failed to confirm: '.$e->getMessage());
         }
     }
 

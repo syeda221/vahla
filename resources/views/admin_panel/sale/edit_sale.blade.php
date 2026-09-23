@@ -165,6 +165,25 @@
             color: #ffffff !important;
         }
 
+        /* Top Draft Sale Button */
+        .btn-top-draft {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+            border: none !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            height: 32px !important;
+            border-radius: 6px !important;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25) !important;
+            transition: all 0.15s ease !important;
+            cursor: pointer !important;
+        }
+        .btn-top-draft:hover {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);
+            color: #ffffff !important;
+        }
+
         /* ================= TRANSACTION GRID / TABLE ================= */
         .table-responsive {
             border: 1px solid var(--pos-border) !important;
@@ -389,6 +408,25 @@
             background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
             transform: translateY(-2px);
             box-shadow: 0 6px 14px rgba(16, 185, 129, 0.35);
+            color: #ffffff !important;
+        }
+
+        .btn-draft-complete {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+            border: none !important;
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            border-radius: 8px !important;
+            font-size: 0.95rem !important;
+            letter-spacing: 0.3px;
+            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.25);
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .btn-draft-complete:hover {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(245, 158, 11, 0.35);
             color: #ffffff !important;
         }
 
@@ -624,7 +662,7 @@
                                     <i class="fas fa-check-circle"></i> Confirm & Convert to Sale
                                 </button>
                             @else
-                                <button type="button" class="btn btn-top-save w-100 fw-bold d-flex align-items-center justify-content-center gap-1" id="btnHeaderSaveSale" style="font-size: 0.75rem;">
+                                <button type="button" class="btn btn-top-save w-100 fw-bold d-flex align-items-center justify-content-center gap-1 px-3" id="btnHeaderSaveSale" style="font-size: 0.75rem;">
                                     <i class="fas fa-check"></i> Save
                                 </button>
                             @endif
@@ -1213,14 +1251,20 @@
                     </div>
                     @endif
 
-                    <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
-                        <i class="fas fa-check-circle"></i> {{ $btnText }}
-                    </button>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-draft-complete d-flex align-items-center gap-2" id="btnSaveDraft2" title="Save as Draft">
+                            <i class="fas fa-file-alt"></i> Draft
+                        </button>
+                        <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
+                            <i class="fas fa-check-circle"></i> {{ $btnText }}
+                        </button>
+                    </div>
                 </div>
 
                 {{-- ACTION BUTTONS ROW (Hidden visually but required in DOM for JS) --}}
                 <div class="d-none flex-wrap gap-2 justify-content-center py-2 px-3 mt-3 border-top bg-light rounded-3">
                     <button type="button" class="btn btn-outline-info btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnQuotation"><i class="fas fa-file-invoice"></i> Quotation</button>
+                    <button type="button" class="btn btn-warning btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnDraft"><i class="fas fa-file-alt"></i> Draft</button>
                     <button type="button" class="btn btn-primary btn-sm px-4 fw-bold rounded-2 d-flex align-items-center gap-1 shadow-sm" id="btnPosted"><i class="fas fa-shopping-cart"></i> Sale</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnPrint"><i class="fas fa-print"></i> A4 Print</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnEstimate"><i class="fas fa-file-invoice"></i> Estimate</button>

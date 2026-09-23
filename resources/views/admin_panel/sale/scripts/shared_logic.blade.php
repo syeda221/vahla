@@ -630,7 +630,8 @@
 
     function refreshPostedState() {
         const state = canPost();
-        $('#btnPosted, #btnHeaderPosted').prop('disabled', !state);
+        $('#btnPosted, #btnHeaderPosted, #btnSaveAndComplete, #btnSaveAndComplete2').prop('disabled', !state);
+        $('#btnDraft, #btnHeaderDraftSale, #btnSaveDraft, #btnSaveDraft2').prop('disabled', !state);
     }
 
     function ensureSaved() {
@@ -643,18 +644,28 @@
                 method = 'PUT';
             }
 
-            $('#btnSave, #btnQuotation, #btnHeaderPosted, #btnPosted').prop('disabled', true);
+            $('#btnSave, #btnQuotation, #btnHeaderPosted, #btnPosted, #btnDraft, #btnHeaderDraftSale, #btnSaveDraft, #btnSaveDraft2, #btnSaveAndComplete, #btnSaveAndComplete2').prop('disabled', true);
 
             $.ajax({
                 url: url,
                 type: method,
                 data: serializeForm(),
                 success: function(res) {
-                    $('#btnSave, #btnQuotation, #btnHeaderPosted, #btnPosted').prop('disabled', false);
+                    $('#btnSave, #btnQuotation, #btnHeaderPosted, #btnPosted, #btnDraft, #btnHeaderDraftSale, #btnSaveDraft, #btnSaveDraft2, #btnSaveAndComplete, #btnSaveAndComplete2').prop('disabled', false);
                     if (res?.ok) {
                         const bid = res.booking_id || existing;
                         $('#booking_id').val(bid);
-                        if ($('#action').val() === 'booking') {
+                        if ($('#action').val() === 'draft') {
+                            Swal.fire({
+                                title: 'Saved',
+                                text: 'Sale saved as draft successfully',
+                                icon: 'success',
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.href = res.redirect_url || "{{ route('sale.index', ['status' => 'draft']) }}";
+                            });
+                        } else if ($('#action').val() === 'booking') {
                             Swal.fire({
                                 title: 'Saved',
                                 text: 'Sale saved as booking successfully',
@@ -1488,6 +1499,31 @@
             $btn.closest('.discount-wrapper').find('.discount-type-hidden').val(newType);
             computeRow($btn.closest('tr'));
             updateGrandTotals();
+        });
+
+        // Buttons: Draft
+        $('#btnDraft, #btnHeaderDraftSale, #btnSaveDraft, #btnSaveDraft2').off('click').on('click', function() {
+            cleanupEmptyRows();
+            updateGrandTotals();
+            refreshPostedState();
+
+            const v = validateFormAll();
+            if (!v.ok) {
+                showAlert('warning', v.message);
+                if (v.el && v.el.length) {
+                    v.el.focus();
+                    if (v.el.hasClass('js-customer')) v.el.select2?.('open');
+                }
+                return;
+            }
+
+            if (!canPost()) {
+                showAlert('warning', 'Please add at least one valid product item to save draft.');
+                return;
+            }
+
+            $('#action').val('draft');
+            ensureSaved();
         });
 
         // Buttons: Booking (Save)

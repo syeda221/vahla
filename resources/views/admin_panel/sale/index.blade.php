@@ -788,19 +788,21 @@
                 applySalesFilter();
             });
 
-            // Confirm Booking Action
+            // Confirm Booking / Sale Action
             $(document).on('click', '.confirm-booking-btn', function(e) {
                 e.preventDefault();
                 let form = $(this).closest("form");
+                let btnText = $(this).text().trim() || "Confirm";
 
                 Swal.fire({
-                    title: "Confirm Booking?",
-                    text: "Are you sure you want to convert this booking to a posted sale? This will update stocks and post ledgers.",
+                    title: btnText + "?",
+                    text: "Are you sure you want to proceed with this action? This will update stocks and post ledgers.",
                     icon: "warning",
                     showCancelButton: true,
                     confirmButtonColor: "#28a745",
                     cancelButtonColor: "#6c757d",
-                    }).then((result) => {
+                    confirmButtonText: "Yes, Confirm!"
+                }).then((result) => {
                     if (result.isConfirmed) {
                         form.submit();
                     }

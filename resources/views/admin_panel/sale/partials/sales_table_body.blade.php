@@ -252,9 +252,11 @@
                                 <li>
                                     <form action="{{ route('sales.confirm', $sale->id) }}" method="POST" class="confirm-booking-form">
                                         @csrf
-                                        <button type="submit" class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold">
+                                        <button type="submit" class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold confirm-booking-btn">
                                             <i class="fas fa-check-circle fa-fw text-success"></i> 
-                                            @if($sale->sale_status === 'booked' && !$sale->is_booking)
+                                            @if($sale->sale_status === 'draft')
+                                                Confirm Sale
+                                            @elseif($sale->sale_status === 'booked' && !$sale->is_booking)
                                                 Convert to Sale
                                             @else
                                                 Confirm Booking

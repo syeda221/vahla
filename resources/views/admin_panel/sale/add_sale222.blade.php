@@ -176,6 +176,24 @@
             transform: translateY(-1px);
         }
 
+        /* Top Draft Sale Button */
+        .btn-top-draft {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+            border: none !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            height: 32px !important;
+            border-radius: 6px !important;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25) !important;
+            transition: all 0.15s ease !important;
+            cursor: pointer !important;
+        }
+        .btn-top-draft:hover {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+            transform: translateY(-1px);
+            color: #ffffff !important;
+        }
+
         /* Select2 Alignment */
         #customerInputWrapper .select2-container--default .select2-selection--single {
             height: 32px !important;
@@ -478,6 +496,24 @@
         .btn-save-complete:hover {
             background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
             transform: translateY(-1px);
+        }
+
+        .btn-draft-complete {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            border-radius: 6px !important;
+            padding: 8px 20px !important;
+            font-size: 0.85rem !important;
+            border: none !important;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25) !important;
+            transition: all 0.2s ease !important;
+            cursor: pointer;
+        }
+        .btn-draft-complete:hover {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+            transform: translateY(-1px);
+            color: #ffffff !important;
         }
 
         /* Quick Products Drawer Cards */
@@ -1014,14 +1050,20 @@
                     </div>
                     @endif
 
-                    <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
-                        <i class="fas fa-check-circle"></i> {{ $btnText }}
-                    </button>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-draft-complete d-flex align-items-center gap-2" id="btnSaveDraft2" title="Save as Draft">
+                            <i class="fas fa-file-alt"></i> Draft
+                        </button>
+                        <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
+                            <i class="fas fa-check-circle"></i> {{ $btnText }}
+                        </button>
+                    </div>
                 </div>
 
                 {{-- ACTION BUTTONS ROW (Hidden visually but required in DOM for JS) --}}
                 <div class="d-none flex-wrap gap-2 justify-content-center py-2 px-3 mt-3 border-top bg-light rounded-3">
                     <button type="button" class="btn btn-outline-info btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnQuotation"><i class="fas fa-file-invoice"></i> Quotation</button>
+                    <button type="button" class="btn btn-warning btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnDraft"><i class="fas fa-file-alt"></i> Draft</button>
                     <button type="button" class="btn btn-primary btn-sm px-4 fw-bold rounded-2 d-flex align-items-center gap-1 shadow-sm" id="btnPosted" disabled><i class="fas fa-shopping-cart"></i> Sale</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnPrint"><i class="fas fa-print"></i> A4 Print</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnEstimate"><i class="fas fa-file-invoice"></i> Estimate</button>
