@@ -462,6 +462,18 @@ class DirectDCController extends Controller
             }
         }
 
+        $distinctSaleIds = $dcs->pluck('sale_id')->filter()->unique();
+        if ($distinctSaleIds->count() > 1) {
+            $soNumbers = Sale::whereIn('id', $distinctSaleIds)->pluck('invoice_no')->filter()->implode(', ');
+            return redirect()->route('direct-dc.index')->with('error', "Different Sales Orders (" . ($soNumbers ?: 'Multiple SOs') . ") ki Delivery Challans ko aik sath consolidate nahi kiya ja sakta! Sirf aik hi Sales Order ki DCs select karein.");
+        }
+
+        $hasSalesOrder = $dcs->contains(function($d) { return !empty($d->sale_id); });
+        $hasDirectDc = $dcs->contains(function($d) { return empty($d->sale_id); });
+        if ($hasSalesOrder && $hasDirectDc) {
+            return redirect()->route('direct-dc.index')->with('error', "Direct Delivery Challan aur Sales Order ki Delivery Challan ko aik sath consolidate nahi kiya ja sakta.");
+        }
+
         $customer = $firstDc->customer ?: (optional($firstDc->sale)->customer_relation ?: Customer::find($customerId));
         
         // Merge items based on product_id + warehouse_id + color
@@ -561,6 +573,18 @@ class DirectDCController extends Controller
                 
             if ($dcs->isEmpty()) {
                 return redirect()->back()->with('error', 'No valid un-invoiced DCs selected.');
+            }
+
+            $distinctSaleIds = $dcs->pluck('sale_id')->filter()->unique();
+            if ($distinctSaleIds->count() > 1) {
+                $soNumbers = Sale::whereIn('id', $distinctSaleIds)->pluck('invoice_no')->filter()->implode(', ');
+                return redirect()->route('direct-dc.index')->with('error', "Different Sales Orders (" . ($soNumbers ?: 'Multiple SOs') . ") ki Delivery Challans ko aik sath consolidate nahi kiya ja sakta! Sirf aik hi Sales Order ki DCs select karein.");
+            }
+
+            $hasSalesOrder = $dcs->contains(function($d) { return !empty($d->sale_id); });
+            $hasDirectDc = $dcs->contains(function($d) { return empty($d->sale_id); });
+            if ($hasSalesOrder && $hasDirectDc) {
+                return redirect()->route('direct-dc.index')->with('error', "Direct Delivery Challan aur Sales Order ki Delivery Challan ko aik sath consolidate nahi kiya ja sakta.");
             }
 
             // Create Master Sale Invoice

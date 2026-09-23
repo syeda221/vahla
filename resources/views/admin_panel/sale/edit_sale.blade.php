@@ -498,6 +498,7 @@
                 <input type="hidden" id="action" name="action" value="sale">
                 <input type="hidden" name="cash" value="{{ $sale->cash ?? 0 }}">
                 <input type="hidden" id="totalBalance" value="{{ $sale->total_net ?? 0 }}">
+                <input type="hidden" id="sale_type" name="sale_type" value="{{ $sale->sale_type ?? 'direct_sale' }}">
 
                 {{-- TOP HEADER BAR --}}
                 <div class="d-flex justify-content-between align-items-center mb-2 px-1">
@@ -541,12 +542,14 @@
                         <!-- Invoice No / Quotation No -->
                         <div class="col-sm-6 col-md-3 col-lg-2">
                             <label class="meta-label">
-                                <i class="{{ $sale->sale_type === 'quotation' ? 'fas fa-file-contract' : 'fas fa-receipt' }} text-primary"></i> 
-                                {{ $sale->sale_type === 'quotation' ? 'QUOTATION NO.' : ($sale->sale_type === 'sales_order' ? 'SO NO.' : 'INVOICE NO.') }}
+                                <i class="{{ request()->has('convert_to_so') ? 'fas fa-shopping-bag' : ($sale->sale_type === 'quotation' ? 'fas fa-file-contract' : 'fas fa-receipt') }} text-primary"></i> 
+                                {{ request()->has('convert_to_so') ? 'SO NO.' : ($sale->sale_type === 'quotation' ? 'QUOTATION NO.' : ($sale->sale_type === 'sales_order' ? 'SO NO.' : 'INVOICE NO.')) }}
                             </label>
                             @php
                                 $displayDocNo = $sale->invoice_no;
-                                if (!$displayDocNo) {
+                                if (request()->has('convert_to_so')) {
+                                    $displayDocNo = 'SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
+                                } elseif (!$displayDocNo) {
                                     if ($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted') {
                                         $displayDocNo = 'SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
                                     } elseif ($sale->sale_type === 'quotation') {
@@ -582,9 +585,6 @@
                             <label class="meta-label"><i class="fas fa-user-tag text-primary"></i> Customer Type</label>
                             <select class="form-select fw-bold" id="partyTypeSelect" name="partyType">
                                 @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
-                                    @if($sale->sale_type === 'quotation' && $type->name === 'Walking Customer')
-                                        @continue
-                                    @endif
                                     <option value="{{ $type->name }}" {{ $type->name === ($sale->walkin_name ? 'Walking Customer' : (optional($sale->customer_relation)->customer_type ?? 'Main Customer')) ? 'selected' : '' }}>{{ $type->name }}</option>
                                 @endforeach
                             </select>
@@ -649,7 +649,7 @@
                                         <i class="fas fa-list-check text-primary"></i> Order Items
                                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0" style="font-size:0.7rem;" id="itemsRowCount">{{ count($sale->items ?? []) }}</span>
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 rounded-2 fw-semibold d-flex align-items-center gap-1" data-bs-toggle="offcanvas" data-bs-target="#quickProductsOffcanvas" style="font-size:0.75rem;">
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 rounded-2 fw-semibold d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#quickAddProductModal" style="font-size:0.75rem;">
                                         <i class="fas fa-th"></i> Quick Products
                                     </button>
                                 </div>

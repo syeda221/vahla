@@ -938,6 +938,7 @@
         if (isWalkin) {
             $('#customerSelect').addClass('d-none').next('.select2-container').addClass('d-none');
             $('#walkinNameInput').removeClass('d-none');
+            $('#btnOpenAddCustomerModal').hide();
             
             $('#receiptVouchersSection').hide();
             $('#totalsSection').removeClass('col-lg-5').addClass('col-lg-12');
@@ -947,6 +948,7 @@
         } else {
             $('#walkinNameInput').addClass('d-none');
             $('#customerSelect').removeClass('d-none').next('.select2-container').removeClass('d-none');
+            $('#btnOpenAddCustomerModal').show();
             
             $('#receiptVouchersSection').show();
             $('#totalsSection').removeClass('col-lg-12').addClass('col-lg-5');
@@ -1549,13 +1551,15 @@
                 return;
             }
 
-            // Walk-in 100% Payment Validation Check
+            // Walk-in 100% Payment Validation Check (Only for actual posted Sales, not Quotations or Sales Orders)
             const isWalkin = $('#is_walkin').val() === '1';
             const invoiceNet = toNum($('#totalBalance').val());
             const paidNow = toNum($('#receiptsTotal').text());
+            const isConvertToSale = $('input[name="convert_to_sale"]').val() === '1' || (new URLSearchParams(window.location.search).get('convert_to_sale') === '1');
+            const currentSaleType = isConvertToSale ? 'direct_sale' : ($('#sale_type').val() || (new URLSearchParams(window.location.search).get('type')) || '');
 
-            if (isWalkin && $('#sale_type').val() !== 'quotation' && $('#sale_type').val() !== 'sales_order') {
-                // For walk-in, they must pay 100% upfront (with a small floating point tolerance)
+            if (isWalkin && currentSaleType !== 'quotation' && currentSaleType !== 'sales_order') {
+                // For walk-in direct sales (or when converting quotation to sale), they must pay 100% upfront (with a small floating point tolerance)
                 if (paidNow < (invoiceNet - 0.05)) {
                     Swal.fire({
                         icon: 'error',
@@ -1750,6 +1754,105 @@
             e.preventDefault();
             $('#quickAddProductModal').modal('show');
         });
+
+        // Add newly created product with its variants to Sale Table Grid
+        window.addProductToSaleGrid = function(product) {
+            if (!product || !$('#salesTableBody').length) return;
+
+            let variants = [];
+            if (product.color) {
+                try {
+                    let parsed = typeof product.color === 'string' ? JSON.parse(product.color) : product.color;
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        variants = parsed;
+                    }
+                } catch(e) {}
+            }
+
+            if (variants.length === 0) {
+                variants = [{
+                    name: 'Base',
+                    size: '-',
+                    color: '-',
+                    stock: product.total_stock_qty || 0,
+                    sale_price: product.sale_price_per_piece || product.sale_price_per_box || 0,
+                    purch_price: product.purchase_price_per_piece || 0,
+                    unit: product.unit ? product.unit.name : 'Pcs',
+                    conv_factor: 1,
+                    is_base_variant: 1
+                }];
+            }
+
+            variants.forEach(function(variant, idx) {
+                let $targetRow = null;
+                $('#salesTableBody tr').each(function() {
+                    let pVal = $(this).find('.product-id-hidden').val();
+                    let pSelectVal = $(this).find('.product').val();
+                    if (!pVal && !pSelectVal && !$targetRow) {
+                        $targetRow = $(this);
+                    }
+                });
+
+                if (!$targetRow) {
+                    if (typeof addNewRow === 'function') {
+                        addNewRow();
+                        $targetRow = $('#salesTableBody tr:last');
+                    } else {
+                        return;
+                    }
+                }
+
+                let sizeStr = (variant.size && variant.size !== '-') ? ' ' + variant.size : '';
+                let variantNameStr = (variant.name && variant.name !== 'Base') ? ' (' + variant.name + ')' : '';
+                let displayText = product.item_name + sizeStr + variantNameStr;
+                let optionVal = product.id + '|' + (variant.name || 'Base');
+
+                let variantDataEncoded = '';
+                try {
+                    variantDataEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(variant))));
+                } catch(e) {
+                    variantDataEncoded = btoa(JSON.stringify(variant));
+                }
+
+                let selectData = {
+                    id: optionVal,
+                    text: displayText,
+                    name: displayText,
+                    sku: product.item_code || '',
+                    stock: variant.stock !== undefined ? variant.stock : (product.total_stock_qty || 0),
+                    stock_pieces: variant.stock !== undefined ? variant.stock : (product.total_stock_qty || 0),
+                    retail_price: variant.sale_price || product.sale_price_per_piece || product.sale_price_per_box || 0,
+                    trade_price: variant.sale_price || product.sale_price_per_piece || product.sale_price_per_box || 0,
+                    wholesale_price: variant.wholesale_price || product.wholesale_price || 0,
+                    purchase_price: variant.purch_price || product.purchase_price_per_piece || 0,
+                    size_mode: product.size_mode || 'by_pieces',
+                    pieces_per_box: product.pieces_per_box || 1,
+                    variant_data: variantDataEncoded
+                };
+
+                let $select = $targetRow.find('.product');
+                let newOption = new Option(displayText, optionVal, true, true);
+                $(newOption).data('data', selectData);
+                $select.empty().append(newOption);
+
+                $select.trigger({
+                    type: 'select2:select',
+                    params: {
+                        data: selectData
+                    }
+                });
+
+                if (idx === 0) {
+                    setTimeout(function() {
+                        $targetRow.find('.carton-qty').focus().select();
+                    }, 100);
+                }
+            });
+
+            if (typeof updateGrandTotals === 'function') {
+                updateGrandTotals();
+            }
+        };
 
         // Initialize Posted Button State
         refreshPostedState();

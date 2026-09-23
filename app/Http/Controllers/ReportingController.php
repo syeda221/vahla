@@ -141,14 +141,19 @@ class ReportingController extends Controller
                     $parentSaleAmount = (float) $saleStats->total_amount;
                     // Add DC quantities to sold
                     $dcStatsQuery = DB::table('delivery_challan_items as dci')
-                        ->join('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
-                        ->join('sales', 'sales.id', '=', 'si.sale_id')
-                        ->where('dci.product_id', $product->id);
+                        ->join('delivery_challans as dc', 'dc.id', '=', 'dci.delivery_challan_id')
+                        ->leftJoin('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
+                        ->leftJoin('sales', 'sales.id', '=', 'dc.sale_id')
+                        ->where('dci.product_id', $product->id)
+                        ->where(function($q) {
+                            $q->whereNull('dc.sale_id')
+                              ->orWhere('sales.sale_type', '=', 'sales_order');
+                        });
                     if ($warehouseId && $warehouseId !== 'all') $dcStatsQuery->where('dci.warehouse_id', $warehouseId);
                     if ($dateFrom) $dcStatsQuery->whereDate('dci.created_at', '>=', $dateFrom);
                     if ($dateTo)   $dcStatsQuery->whereDate('dci.created_at', '<=', $dateTo);
                     
-                    $dcStats = $dcStatsQuery->selectRaw('COALESCE(SUM(dci.delivered_qty),0) as total_qty, COALESCE(SUM(dci.delivered_qty * (si.price - si.discount_amount)),0) as total_amount')->first();
+                    $dcStats = $dcStatsQuery->selectRaw('COALESCE(SUM(dci.delivered_qty),0) as total_qty, COALESCE(SUM(dci.delivered_qty * (COALESCE(si.price, 0) - COALESCE(si.discount_amount, 0))),0) as total_amount')->first();
                     
                     $parentSold += (float) $dcStats->total_qty;
                     $parentSaleAmount += (float) $dcStats->total_amount;
@@ -229,11 +234,17 @@ class ReportingController extends Controller
                             ])
                         ];
                     }
-                                    $dcList = DB::table('delivery_challan_items as dci')
-                    ->join('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
-                    ->where('dci.product_id', $p->id ?? $product->id)
-                    ->select('dci.delivered_qty as total_pieces', 'si.color')
-                    ->get();
+                    $dcList = DB::table('delivery_challan_items as dci')
+                        ->join('delivery_challans as dc', 'dc.id', '=', 'dci.delivery_challan_id')
+                        ->leftJoin('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
+                        ->leftJoin('sales', 'sales.id', '=', 'dc.sale_id')
+                        ->where('dci.product_id', $p->id ?? $product->id)
+                        ->where(function($q) {
+                            $q->whereNull('dc.sale_id')
+                              ->orWhere('sales.sale_type', '=', 'sales_order');
+                        })
+                        ->select('dci.delivered_qty as total_pieces', DB::raw('COALESCE(dci.color, si.color) as color'))
+                        ->get();
                 foreach ($dcList as $dcItem) {
                     $salesListArray[] = (object) [
                         'total_pieces' => $dcItem->total_pieces,
@@ -471,7 +482,7 @@ class ReportingController extends Controller
                         $cartons = '-';
                         $loose   = $balance;
                         $decimals = in_array($product->size_mode, ['by_kg','by_gm','by_ton','by_meter','by_feet']) ? 2 : (($balance == (int)$balance) ? 0 : 3);
-                        $formattedNum = rtrim(rtrim(number_format($balance, $decimals, '.', ''), '0'), '.');
+                        $formattedNum = ($decimals > 0) ? rtrim(rtrim(number_format($balance, $decimals, '.', ''), '0'), '.') : number_format($balance, 0, '.', '');
                         $formattedStock = "{$formattedNum} {$vUnitName}";
                         $cartonDisplay = '—';
                     }
@@ -531,13 +542,18 @@ class ReportingController extends Controller
                 $sold       = (float) $saleStats->total_qty;
                 $saleAmount = (float) $saleStats->total_amount;
                 $dcStatsQuery = DB::table('delivery_challan_items as dci')
-                    ->join('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
-                    ->join('sales', 'sales.id', '=', 'si.sale_id')
-                    ->where('dci.product_id', $product->id);
+                    ->join('delivery_challans as dc', 'dc.id', '=', 'dci.delivery_challan_id')
+                    ->leftJoin('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
+                    ->leftJoin('sales', 'sales.id', '=', 'dc.sale_id')
+                    ->where('dci.product_id', $product->id)
+                    ->where(function($q) {
+                        $q->whereNull('dc.sale_id')
+                          ->orWhere('sales.sale_type', '=', 'sales_order');
+                    });
                 if ($warehouseId && $warehouseId !== 'all') $dcStatsQuery->where('dci.warehouse_id', $warehouseId);
                 if ($dateFrom) $dcStatsQuery->whereDate('dci.created_at', '>=', $dateFrom);
                 if ($dateTo)   $dcStatsQuery->whereDate('dci.created_at', '<=', $dateTo);
-                $dcStats = $dcStatsQuery->selectRaw('COALESCE(SUM(dci.delivered_qty),0) as total_qty, COALESCE(SUM(dci.delivered_qty * (si.price - si.discount_amount)),0) as total_amount')->first();
+                $dcStats = $dcStatsQuery->selectRaw('COALESCE(SUM(dci.delivered_qty),0) as total_qty, COALESCE(SUM(dci.delivered_qty * (COALESCE(si.price, 0) - COALESCE(si.discount_amount, 0))),0) as total_amount')->first();
                 
                 $sold += (float) $dcStats->total_qty;
                 $saleAmount += (float) $dcStats->total_amount;
@@ -636,7 +652,7 @@ class ReportingController extends Controller
                     $cartons = '-';
                     $loose   = $balance;
                     $decimals = in_array($product->size_mode, ['by_kg','by_gm','by_ton','by_meter','by_feet']) ? 2 : (($balance == (int)$balance) ? 0 : 3);
-                    $formattedNum = rtrim(rtrim(number_format($balance, $decimals, '.', ''), '0'), '.');
+                    $formattedNum = ($decimals > 0) ? rtrim(rtrim(number_format($balance, $decimals, '.', ''), '0'), '.') : number_format($balance, 0, '.', '');
                     $formattedStock = "{$formattedNum} {$unitName}";
                     $cartonDisplay = '—';
                 }
@@ -913,10 +929,16 @@ class ReportingController extends Controller
                         ])
                     ];
                 }
-                                $dcList = DB::table('delivery_challan_items as dci')
-                    ->join('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
+                $dcList = DB::table('delivery_challan_items as dci')
+                    ->join('delivery_challans as dc', 'dc.id', '=', 'dci.delivery_challan_id')
+                    ->leftJoin('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
+                    ->leftJoin('sales', 'sales.id', '=', 'dc.sale_id')
                     ->where('dci.product_id', $p->id ?? $product->id)
-                    ->select('dci.delivered_qty as total_pieces', 'si.color')
+                    ->where(function($q) {
+                        $q->whereNull('dc.sale_id')
+                          ->orWhere('sales.sale_type', '=', 'sales_order');
+                    })
+                    ->select('dci.delivered_qty as total_pieces', DB::raw('COALESCE(dci.color, si.color) as color'))
                     ->get();
                 foreach ($dcList as $dcItem) {
                     $salesListArray[] = (object) [

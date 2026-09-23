@@ -165,8 +165,14 @@ class ProductController extends Controller
                     ];
                 }
                 $dcList = DB::table('delivery_challan_items as dci')
+                    ->join('delivery_challans as dc', 'dc.id', '=', 'dci.delivery_challan_id')
                     ->leftJoin('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
-                    ->where('dci.product_id', $p->id ?? $product->id)
+                    ->leftJoin('sales', 'sales.id', '=', 'dc.sale_id')
+                    ->where('dci.product_id', $p->id)
+                    ->where(function($q) {
+                        $q->whereNull('dc.sale_id')
+                          ->orWhere('sales.sale_type', '=', 'sales_order');
+                    })
                     ->select('dci.delivered_qty as total_pieces', DB::raw('COALESCE(dci.color, si.color) as color'))
                     ->get();
                 foreach ($dcList as $dcItem) {
@@ -781,9 +787,10 @@ class ProductController extends Controller
             $imagePath = null;
         }
 
+        $product = null;
         DB::transaction(function () use ($request, $userId, $nextCode, $imagePath, $mode, $height, $width, $piecesPerBox, $boxesQuantity,
             $totalM2, $pricePerM2, $purchasePricePerM2, $totalStockQty, $piecesPerM2,
-            $salePricePerPiece, $salePricePerBox, $purchasePricePerPiece, $purchasePricePerBox) {
+            $salePricePerPiece, $salePricePerBox, $purchasePricePerPiece, $purchasePricePerBox, &$product) {
 
             $variants = [];
             if ($request->has('variant_name')) {
@@ -907,6 +914,14 @@ class ProductController extends Controller
                 }
             }
 
+            $productUnitId = null;
+            if (is_numeric($request->unit)) {
+                $productUnitId = (int)$request->unit;
+            } elseif (!empty($request->unit)) {
+                $unitRec = \App\Models\Unit::where('name', $request->unit)->first();
+                $productUnitId = $unitRec ? $unitRec->id : null;
+            }
+
             // Create product
             $product = Product::create([
                 'creater_id' => $userId,
@@ -915,7 +930,7 @@ class ProductController extends Controller
                 'item_code' => $nextCode,
                 'item_name' => $request->product_name,
                 'barcode_path' => $request->barcode_path ?? rand(100000000000, 999999999999),
-                'unit_id' => $request->unit,
+                'unit_id' => $productUnitId,
                 'brand_id' => $request->brand_id,
                 'model' => $request->model,
                 'image' => $imagePath,
@@ -1008,7 +1023,14 @@ class ProductController extends Controller
         });
 
         if ($request->wantsJson()) {
-            return response()->json(['status' => 'success', 'message' => 'Product created successfully']);
+            if ($product) {
+                $product->load(['unit', 'category', 'brand']);
+            }
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Product created successfully',
+                'product' => $product
+            ]);
         }
 
         return redirect()->back()->with('success', 'Product created successfully');

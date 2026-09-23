@@ -1529,8 +1529,8 @@ class SaleController extends Controller
                 $saleItem->total = $lineTotal;
 
                 // Meta
-                $saleItem->brand_id = $brandId;
-                $saleItem->unit_id = $unitId;
+                $saleItem->brand_id = is_numeric($brandId) ? (int)$brandId : null;
+                $saleItem->unit_id = is_numeric($unitId) ? (int)$unitId : null;
                 $saleItem->size_mode = $sizeMode;
 
                 if ($isManual) {
@@ -1564,7 +1564,10 @@ class SaleController extends Controller
             $sale->change = ($sale->cash - $sale->total_net);
             $sale->change_account_id = $request->input('change_account_id') ?: null;
 
-            if ($isWalkin && $sale->change < -0.05) {
+            $isConvertToSale = $request->has('convert_to_sale') && $request->convert_to_sale == '1';
+            $isQuoOrSo = in_array($saleType, ['quotation', 'sales_order']) && !$isConvertToSale;
+
+            if ($isWalkin && !$isQuoOrSo && $sale->change < -0.05) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'cash' => 'Walk-in customers must pay 100% upfront. Balance cannot be unpaid.'
                 ]);
@@ -2758,6 +2761,12 @@ class SaleController extends Controller
             \App\Models\InvoiceSeries::incrementCounterForInvoice($generatedNo);
             
             $sale->save();
+
+            // Mark all delivery challans for this sale as invoiced
+            DeliveryChallan::where('sale_id', $sale->id)->update([
+                'is_invoiced' => 1,
+                'invoice_id' => $sale->id
+            ]);
 
             // Note: We DO NOT deduct stock here because it was already deducted during Delivery Challan confirmation!
             

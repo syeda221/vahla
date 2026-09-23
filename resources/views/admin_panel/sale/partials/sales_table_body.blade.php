@@ -111,12 +111,20 @@
             @endif
         </td>
         <td>
+            @php
+                $displayCustomerName = $sale->walkin_name ?: (optional($sale->customer_relation)->customer_name ?? 'N/A');
+            @endphp
             <div class="d-flex align-items-center">
                 <div class="avatar-circle bg-info-subtle text-info me-2 fw-bold d-flex align-items-center justify-content-center rounded-circle"
                     style="width: 32px; height: 32px; font-size: 14px; background-color: #e0f2fe; color: #0369a1;">
-                    {{ strtoupper(substr(optional($sale->customer_relation)->customer_name ?? 'C', 0, 1)) }}
+                    {{ strtoupper(substr($displayCustomerName, 0, 1)) }}
                 </div>
-                <span class="fw-medium text-dark">{{ optional($sale->customer_relation)->customer_name ?? 'N/A' }}</span>
+                <div>
+                    <span class="fw-medium text-dark">{{ $displayCustomerName }}</span>
+                    @if($sale->walkin_name)
+                        <span class="badge bg-light text-muted border ms-1" style="font-size: 10px;">Walk-in</span>
+                    @endif
+                </div>
             </div>
         </td>
         <td class="font-monospace text-dark" style="max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $sale->reference ?? '' }}">

@@ -620,72 +620,66 @@
                                 {{ request('type') == 'sales_order' ? 'ORDER NO.' : (request('type') == 'quotation' ? 'QUOTATION NO.' : 'INVOICE NO.') }}
                             </label>
                             <div class="input-group input-group-sm invoice-group">
-                                <button class="btn btn-prefix dropdown-toggle d-flex align-items-center gap-1" 
-                                        type="button" 
-                                        id="btnInvoicePrefix" 
-                                        data-toggle="dropdown"
-                                        data-bs-toggle="dropdown" 
-                                        aria-haspopup="true"
-                                        aria-expanded="false"
-                                        title="Click to choose series">
-                                    <span id="activePrefixLabel">{{ $activePrefix ?? (request('type') == 'sales_order' ? 'SO' : (request('type') == 'quotation' ? 'QUO' : 'INV')) }}</span>
-                                    <i class="fas fa-caret-down" style="font-size: 0.72rem; opacity: 0.85;"></i>
-                                </button>
-                                <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownInvoiceSeriesList" aria-labelledby="btnInvoicePrefix" style="min-width: 220px; font-size: 0.82rem; z-index: 1050;">
-                                    <li class="dropdown-header py-1 text-uppercase fw-bold text-muted small" style="font-size: 10px; letter-spacing: 0.5px;">Choose Series</li>
-                                    @php
-                                        $curPref = $activePrefix ?? (request('type') == 'sales_order' ? 'SO' : (request('type') == 'quotation' ? 'QUO' : 'INV'));
-                                        if (request('type') == 'quotation') {
-                                            $allowedSeries = [
-                                                'QUO' => ['label' => 'Quotation Series', 'padding' => 4],
-                                                'INV' => ['label' => 'Standard Invoice', 'padding' => 4],
-                                                'TAX' => ['label' => 'Tax Invoice', 'padding' => 3],
-                                                'CO'  => ['label' => 'Company Invoice', 'padding' => 3],
-                                            ];
-                                        } elseif (request('type') == 'sales_order') {
-                                            $allowedSeries = [
-                                                'SO'  => ['label' => 'Sales Order Series', 'padding' => 4],
-                                                'INV' => ['label' => 'Standard Invoice', 'padding' => 4],
-                                                'TAX' => ['label' => 'Tax Invoice', 'padding' => 3],
-                                                'CO'  => ['label' => 'Company Invoice', 'padding' => 3],
-                                            ];
-                                        } else {
-                                            $allowedSeries = [
-                                                'INV' => ['label' => 'Standard Invoice', 'padding' => 4],
-                                                'TAX' => ['label' => 'Tax Invoice', 'padding' => 3],
-                                                'CO'  => ['label' => 'Company Invoice', 'padding' => 3],
-                                            ];
-                                        }
-                                    @endphp
-                                    @foreach($allowedSeries as $p => $meta)
+                                @if(request('type') == 'quotation')
+                                    <span class="btn btn-prefix d-flex align-items-center justify-content-center fw-bold" style="cursor: default; pointer-events: none; border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                                        <span id="activePrefixLabel">QUO</span>
+                                    </span>
+                                @elseif(request('type') == 'sales_order')
+                                    <span class="btn btn-prefix d-flex align-items-center justify-content-center fw-bold" style="cursor: default; pointer-events: none; border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                                        <span id="activePrefixLabel">SO</span>
+                                    </span>
+                                @else
+                                    <button class="btn btn-prefix dropdown-toggle d-flex align-items-center gap-1" 
+                                            type="button" 
+                                            id="btnInvoicePrefix" 
+                                            data-toggle="dropdown"
+                                            data-bs-toggle="dropdown" 
+                                            aria-haspopup="true" 
+                                            aria-expanded="false"
+                                            title="Click to choose series">
+                                        <span id="activePrefixLabel">{{ $activePrefix ?? 'INV' }}</span>
+                                        <i class="fas fa-caret-down" style="font-size: 0.72rem; opacity: 0.85;"></i>
+                                    </button>
+                                    <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownInvoiceSeriesList" aria-labelledby="btnInvoicePrefix" style="min-width: 220px; font-size: 0.82rem; z-index: 1050;">
+                                        <li class="dropdown-header py-1 text-uppercase fw-bold text-muted small" style="font-size: 10px; letter-spacing: 0.5px;">Choose Series</li>
                                         @php
-                                            $sObj = isset($allSeries) ? $allSeries->firstWhere('prefix', $p) : null;
-                                            $nextNo = $sObj ? $sObj->next_number : 1;
-                                            $pad = $sObj ? $sObj->padding : $meta['padding'];
-                                            $isActive = ($curPref == $p);
+                                            $curPref = $activePrefix ?? 'INV';
+                                            $allowedSeries = [
+                                                'INV' => ['label' => 'Standard Invoice', 'padding' => 4],
+                                                'TAX' => ['label' => 'Tax Invoice', 'padding' => 3],
+                                                'CO'  => ['label' => 'Company Invoice', 'padding' => 3],
+                                            ];
                                         @endphp
-                                        <li>
-                                            <a class="dropdown-item fw-bold py-2 px-3 d-flex align-items-center justify-content-between {{ $isActive ? 'text-primary active bg-light' : 'text-dark' }}" 
-                                               href="javascript:void(0)" 
-                                               data-prefix="{{ $p }}" 
-                                               data-next="{{ $nextNo }}" 
-                                               data-padding="{{ $pad }}">
-                                                <div class="d-flex align-items-center gap-2">
-                                                    @if($isActive) 
-                                                        <i class="fas fa-check-circle text-primary"></i> 
-                                                    @else
-                                                        <i class="far fa-circle text-muted" style="font-size: 11px;"></i>
-                                                    @endif
-                                                    <div>
-                                                        <span class="badge bg-primary text-white font-monospace px-2 py-1 me-1">{{ $p }}</span>
-                                                        <span class="small fw-semibold">{{ $meta['label'] }}</span>
+                                        @foreach($allowedSeries as $p => $meta)
+                                            @php
+                                                $sObj = isset($allSeries) ? $allSeries->firstWhere('prefix', $p) : null;
+                                                $nextNo = $sObj ? $sObj->next_number : 1;
+                                                $pad = $sObj ? $sObj->padding : $meta['padding'];
+                                                $isActive = ($curPref == $p);
+                                            @endphp
+                                            <li>
+                                                <a class="dropdown-item fw-bold py-2 px-3 d-flex align-items-center justify-content-between {{ $isActive ? 'text-primary active bg-light' : 'text-dark' }}" 
+                                                   href="javascript:void(0)" 
+                                                   data-prefix="{{ $p }}" 
+                                                   data-next="{{ $nextNo }}" 
+                                                   data-padding="{{ $pad }}">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        @if($isActive) 
+                                                            <i class="fas fa-check-circle text-primary"></i> 
+                                                        @else
+                                                            <i class="far fa-circle text-muted" style="font-size: 11px;"></i>
+                                                        @endif
+                                                        <div>
+                                                            <span class="badge bg-primary text-white font-monospace px-2 py-1 me-1">{{ $p }}</span>
+                                                            <span class="small fw-semibold">{{ $meta['label'] }}</span>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <span class="text-muted small font-monospace">({{ $pad }}d)</span>
-                                            </a>
-                                        </li>
-                                    @endforeach
-                                </ul>
+                                                    <span class="text-muted small font-monospace">({{ $pad }}d)</span>
+                                                </a>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @endif
 
                                 <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $nextInvoiceNumber }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
 
@@ -721,9 +715,6 @@
                             <label class="meta-label"><i class="fas fa-user-tag text-primary"></i> Customer Type</label>
                             <select class="form-select fw-bold" id="partyTypeSelect" name="partyType">
                                 @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
-                                    @if(request()->query('type') === 'quotation' && $type->name === 'Walking Customer')
-                                        @continue
-                                    @endif
                                     <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
                                 @endforeach
                             </select>
@@ -772,7 +763,7 @@
                                         <i class="fas fa-list-check text-primary"></i> Order Items
                                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0" style="font-size:0.7rem;" id="itemsRowCount">0</span>
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 rounded-2 fw-semibold d-flex align-items-center gap-1" data-bs-toggle="offcanvas" data-bs-target="#quickProductsOffcanvas" style="font-size:0.75rem;">
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 rounded-2 fw-semibold d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#quickAddProductModal" style="font-size:0.75rem;">
                                         <i class="fas fa-th"></i> Quick Products
                                     </button>
                                 </div>
@@ -1128,87 +1119,6 @@
             </div>
         </div>
     </div>
-
-    {{-- ===== QUICK ADD PRODUCT MODAL ===== --}}
-<!-- <div class="modal fade" id="quickAddProductModal" tabindex="-1" aria-labelledby="quickAddProductModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-light border-bottom-0 pb-2">
-                <h5 class="modal-title fw-bold" id="quickAddProductModalLabel">
-                    <i class="fa fa-plus-circle text-primary me-2"></i>Quick Add Product
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="quickAddProductForm">
-                @csrf
-                <div class="modal-body pt-2">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label fw-bold small text-muted">Product Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="product_name" required placeholder="Enter product name">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Category <span class="text-danger">*</span></label>
-                            <select class="form-select" name="category_id" id="qap_category" required>
-                                <option value="">Select Category</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Sub Category</label>
-                            <select class="form-select" name="sub_category_id" id="qap_subcategory">
-                                <option value="">Select Sub Category</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Brand <span class="text-danger">*</span></label>
-                            <select class="form-select" name="brand_id" id="qap_brand" required>
-                                <option value="">Select Brand</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Model / Series</label>
-                            <input type="text" class="form-control" name="model" placeholder="Optional">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Size Mode <span class="text-danger">*</span></label>
-                            <select class="form-select" name="size_mode" id="qap_size_mode" required>
-                                <option value="by_cartons" selected>By Cartons</option>
-                                <option value="by_pieces">By Pieces</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6" id="qap_ppb_wrap">
-                            <label class="form-label fw-bold small text-muted">Pieces Per Box</label>
-                            <input type="number" class="form-control" name="pieces_per_box" id="qap_ppb" value="1" min="1" placeholder="e.g. 12">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Low Stock (Cartons)</label>
-                            <input type="number" class="form-control" name="alert_carton_quantity" min="0" placeholder="e.g. 5">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Purchase Price /pc</label>
-                            <input type="number" step="0.01" class="form-control" name="purchase_price_per_piece" value="0" placeholder="0.00">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold small text-muted">Sale Price /pc</label>
-                            <input type="number" step="0.01" class="form-control" name="sale_price_per_box" value="0" placeholder="0.00">
-                        </div>
-                    </div>
-                    {{-- Hidden defaults for validation --}}
-                    <input type="hidden" name="boxes_quantity" value="0">
-                    <input type="hidden" name="loose_pieces" value="0">
-                    <input type="hidden" name="piece_quantity" value="0">
-                </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary px-4 fw-bold" id="btnQuickSaveProduct">
-                        <i class="fa fa-save me-1"></i>Save Product
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
--->
 
     {{-- Quick Add Product Modal --}}
     @include('admin_panel.partials.quick_add_product_modal')

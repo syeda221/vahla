@@ -97,12 +97,15 @@ class DeliveryChallanController extends Controller
             $dcCount = DeliveryChallan::where('sale_id', $saleId)->count() + 1;
             $baseNo = $sale->invoice_no ?: (($sale->sale_type === 'sales_order' ? 'SO-' : ($sale->sale_type === 'quotation' ? 'QUO-' : '#')) . str_pad($sale->id, 4, '0', STR_PAD_LEFT));
 
+            $isAlreadyInvoiced = ($sale->sale_type === 'direct_sale' || $sale->sale_status === 'posted') ? 1 : 0;
             $dc = DeliveryChallan::create([
                 'sale_id' => $saleId,
                 'customer_id' => $sale->customer_id,
                 'dc_number' => $baseNo . '-DC' . str_pad($dcCount, 2, '0', STR_PAD_LEFT),
                 'dc_date' => now()->format('Y-m-d'),
                 'status' => 'confirmed', // We confirm it immediately as per plan
+                'is_invoiced' => $isAlreadyInvoiced,
+                'invoice_id' => $isAlreadyInvoiced ? $sale->id : null,
                 'remarks' => $request->input('remarks'),
                 'created_by' => auth()->id()
             ]);

@@ -7,13 +7,17 @@
         justify-content: space-between;
         background-color: #1a1d21;
         color: #fff;
-        padding: 10px 15px;
-        border-radius: 5px;
+        padding: 10px 18px;
+        border-radius: 6px;
         margin-bottom: 15px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        transition: all 0.2s ease-in-out;
     }
     .selection-bar.error {
-        background-color: #5a1919;
-        color: #fca5a5;
+        background-color: #7f1d1d !important;
+        color: #fee2e2 !important;
+        border: 1px solid #ef4444 !important;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25) !important;
     }
     .selection-info {
         display: flex;
@@ -99,12 +103,14 @@
                                     @php
                                         $cName = $dc->customer->customer_name ?? ($dc->sale->walkin_name ?? ($dc->sale->customer_relation->customer_name ?? 'N/A'));
                                         $cId = $dc->customer_id ?? ($dc->sale->customer_id ?? '');
-                                        $isHighlighted = (request('highlight_dc') == $dc->id) || (request('sale_id') && $dc->sale_id == request('sale_id') && !$dc->is_invoiced);
+                                        $soNo = $dc->sale ? ($dc->sale->invoice_no ?: 'SO-' . $dc->sale->id) : '';
+                                        $isInvoiced = $dc->is_invoiced || !empty($dc->invoice_id) || ($dc->sale && ($dc->sale->sale_type === 'direct_sale' || $dc->sale->sale_status === 'posted'));
+                                        $isHighlighted = (request('highlight_dc') == $dc->id) || (request('sale_id') && $dc->sale_id == request('sale_id') && !$isInvoiced);
                                     @endphp
                                     <tr class="{{ $isHighlighted ? 'highlight-uninvoiced-dc' : '' }}" id="dc-row-{{ $dc->id }}">
                                         <td class="text-center">
-                                            @if(!$dc->is_invoiced)
-                                                <input type="checkbox" name="dc_ids[]" class="dc-checkbox" value="{{ $dc->id }}" data-customer-id="{{ $cId }}" data-customer-name="{{ $cName }}" {{ $isHighlighted ? 'checked' : '' }}>
+                                            @if(!$isInvoiced)
+                                                <input type="checkbox" name="dc_ids[]" class="dc-checkbox" value="{{ $dc->id }}" data-customer-id="{{ $cId }}" data-customer-name="{{ $cName }}" data-sale-id="{{ $dc->sale_id ?? '' }}" data-so-number="{{ $soNo }}" {{ $isHighlighted ? 'checked' : '' }}>
                                             @else
                                                 <input type="checkbox" disabled style="opacity: 0.3;">
                                             @endif
@@ -124,7 +130,7 @@
                                         <td>{{ $cName }}</td>
                                         <td>{{ $dc->items->count() }}</td>
                                         <td class="text-center">
-                                            @if($dc->is_invoiced)
+                                            @if($isInvoiced)
                                                 <span class="badge bg-success rounded-pill px-3 py-2 shadow-sm"><i class="fas fa-check-circle me-1"></i> invoiced</span>
                                             @else
                                                 <span class="badge bg-warning text-dark rounded-pill px-3 py-2 shadow-sm"><i class="fas fa-clock me-1"></i> un-invoiced</span>
@@ -132,7 +138,7 @@
                                         </td>
                                         <td class="text-center">
                                             <div class="d-flex align-items-center justify-content-center gap-2">
-                                                @if(!$dc->is_invoiced)
+                                                @if(!$isInvoiced)
                                                     <a href="{{ route('direct-dc.edit', $dc->id) }}" class="btn btn-sm btn-outline-info rounded-pill px-3 shadow-sm"><i class="fas fa-edit"></i> Edit</a>
                                                 @endif
                                                 <a href="{{ route('sales.dc_print', $dc->id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" target="_blank"><i class="fas fa-print"></i> Print</a>
@@ -173,26 +179,53 @@ $(document).ready(function() {
 
         var customers = new Set();
         var customerName = '';
+        var saleIds = new Set();
+        var soNumbers = new Set();
+        var hasSoDc = false;
+        var hasDirectDc = false;
 
         selectedCheckboxes.each(function() {
             var cid = $(this).data('customer-id');
             var cname = $(this).data('customer-name');
-            if(cid) {
+            var sid = $(this).data('sale-id');
+            var soNo = $(this).data('so-number');
+
+            if (cid) {
                 customers.add(cid);
                 customerName = cname;
+            }
+            if (sid) {
+                saleIds.add(sid);
+                if (soNo) {
+                    soNumbers.add(soNo);
+                }
+                hasSoDc = true;
+            } else {
+                hasDirectDc = true;
             }
         });
 
         if (customers.size > 1) {
             $('#selectionBar').addClass('error');
-            $('#selectionText').html('<i class="mdi mdi-alert-circle"></i> Sirf ek hi customer ki DCs ek sath consolidate ho sakti hain.');
-            $('#btnConsolidate').prop('disabled', true);
-            $('#btnConsolidate').hide();
+            $('#selectionText').html('<i class="fas fa-exclamation-triangle me-1"></i> <strong>Validation Error:</strong> Sirf ek hi customer ki DCs ek sath consolidate ho sakti hain.');
+            $('#btnConsolidate').prop('disabled', true).hide();
+        } else if (saleIds.size > 1) {
+            var soList = Array.from(soNumbers).join(', ');
+            $('#selectionBar').addClass('error');
+            $('#selectionText').html('<i class="fas fa-exclamation-triangle me-1"></i> <strong>Validation Error:</strong> Different Sales Orders (' + (soList || 'Multiple SOs') + ') ki DCs ko aik sath consolidate nahi kar sakte! Sirf ek hi Sales Order ki DCs select karein.');
+            $('#btnConsolidate').prop('disabled', true).hide();
+        } else if (hasSoDc && hasDirectDc) {
+            $('#selectionBar').addClass('error');
+            $('#selectionText').html('<i class="fas fa-exclamation-triangle me-1"></i> <strong>Validation Error:</strong> Direct Delivery Challan aur Sales Order ki DC ko aik sath consolidate nahi kar sakte! Alag alag consolidate karein.');
+            $('#btnConsolidate').prop('disabled', true).hide();
         } else {
             $('#selectionBar').removeClass('error');
-            $('#selectionText').html('<strong>' + count + ' selected</strong> &mdash; customer: ' + customerName);
-            $('#btnConsolidate').prop('disabled', false);
-            $('#btnConsolidate').show();
+            var infoText = '<strong>' + count + ' selected</strong> &mdash; customer: ' + customerName;
+            if (soNumbers.size === 1) {
+                infoText += ' <span class="badge bg-primary text-white ms-2" style="font-size: 11px;">' + Array.from(soNumbers)[0] + '</span>';
+            }
+            $('#selectionText').html(infoText);
+            $('#btnConsolidate').prop('disabled', false).show();
         }
     }
 
@@ -220,8 +253,15 @@ $(document).ready(function() {
         }
     });
 
+    $('#consolidateForm').on('submit', function(e) {
+        if ($('#selectionBar').hasClass('error') || $('#btnConsolidate').prop('disabled')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+
     $(document).on('click', '#btnConsolidate', function() {
-        if ($('.dc-checkbox:checked').length > 0 && !$('#btnConsolidate').prop('disabled')) {
+        if ($('.dc-checkbox:checked').length > 0 && !$('#btnConsolidate').prop('disabled') && !$('#selectionBar').hasClass('error')) {
             $('#consolidateForm').submit();
         }
     });
