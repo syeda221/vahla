@@ -100,7 +100,11 @@ class PurchaseController extends Controller
 
     public function index(Request $request)
     {
-        $query = Purchase::with(['branch', 'warehouse', 'vendor', 'items', 'returns']);
+        $query = Purchase::with(['branch', 'warehouse', 'vendor', 'items.product', 'returns', 'goodsReceivingNotes'])
+            ->where(function ($q) {
+                $q->whereIn('purchase_type', ['direct_purchase', 'purchase_invoice'])
+                  ->orWhereNull('purchase_type');
+            });
 
         if ($request->has('status') && $request->status != 'all') {
             $query->where('status_purchase', $request->status);
@@ -144,66 +148,93 @@ class PurchaseController extends Controller
         if ($orderBy === 'invoice_no') {
             $query->orderBy('invoice_no', 'desc');
         } else {
-            $query->orderBy('purchase_date', 'desc');
+            $query->orderBy('id', 'desc');
         }
 
         $Purchase = $query->get();
         
         // Calculate updated amounts after returns
         $Purchase->each(function ($purchase) {
-            // Calculate total returned amount for this purchase
             $totalReturned = $purchase->returns->sum('net_amount');
-            
-            // Store calculated values as attributes
             $purchase->total_returned = $totalReturned;
             $purchase->updated_net_amount = max(0, $purchase->net_amount - $totalReturned);
             $purchase->updated_due_amount = max(0, $purchase->due_amount - $totalReturned);
-            
-            // Check if fully returned
             $purchase->is_fully_returned = $purchase->net_amount > 0 && $totalReturned >= $purchase->net_amount;
             $purchase->has_partial_return = $totalReturned > 0 && $totalReturned < $purchase->net_amount;
         });
 
-        // If AJAX request, return only table rows partial
         if ($request->ajax()) {
             return response()->json([
                 'html' => view('admin_panel.purchase.partials.purchase_table_body', compact('Purchase'))->render()
             ]);
         }
 
-        // Load all vendors for filter dropdown
+        $vendors = Vendor::orderBy('name')->get();
+        return view('admin_panel.purchase.index', compact('Purchase', 'vendors'));
+    }
+
+    public function purchaseOrders(Request $request)
+    {
+        $query = Purchase::with(['branch', 'warehouse', 'vendor', 'items.product', 'returns', 'goodsReceivingNotes'])
+            ->where('purchase_type', 'purchase_order');
+
+        if ($request->filled('from_date')) {
+            $query->whereDate('purchase_date', '>=', $request->from_date);
+        }
+        if ($request->filled('to_date')) {
+            $query->whereDate('purchase_date', '<=', $request->to_date);
+        }
+        if ($request->filled('vendor_id')) {
+            $query->where('vendor_id', $request->vendor_id);
+        }
+        if ($request->filled('bill_no')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('invoice_no', 'like', "%{$request->bill_no}%")
+                  ->orWhere('id', 'like', "%{$request->bill_no}%");
+            });
+        }
+
+        $orders = $query->orderBy('id', 'desc')->get();
         $vendors = Vendor::orderBy('name')->get();
 
-        return view('admin_panel.purchase.index', compact('Purchase', 'vendors'));
+        return view('admin_panel.purchase.orders', compact('orders', 'vendors'));
     }
 
     public function addBill($gatepassId)
     {
-        // Fetch the gatepass along with its related items and products
         $gatepass = InwardGatepass::with('items.product')->findOrFail($gatepassId);
-
-        // Pass the gatepass data to the view
         return view('admin_panel.inward.add_bill', compact('gatepass'));
     }
 
     public function add_purchase()
     {
-        // $userId = Auth::id();
         $Purchase = Purchase::get();
-        $Vendor = Vendor::get();
-        $Warehouse = Warehouse::get();
-        // Filter accounts to only show Cash (1) and Bank (2) heads to prevent logic errors
+        $Vendor = Vendor::orderBy('name')->get();
+        $Warehouse = Warehouse::orderByRaw("id = 1 DESC, id ASC")->get();
+        
         $accounts = \App\Models\Account::whereHas('head', function($q) {
             $q->whereIn('name', ['Cash', 'Bank']);
         })->where('status', 1)->orderBy('title')->get();
 
-        $lastInvoice = Purchase::latest('id')->value('invoice_no');
-        $nextInvoice = $lastInvoice
-            ? 'PUR-'.str_pad(((int) preg_replace('/[^0-9]/', '', $lastInvoice)) + 1, 3, '0', STR_PAD_LEFT)
-            : 'PUR-001';
+        $type = request('type', 'direct_purchase');
 
-        // Return new V2 view
-        return view('admin_panel.purchase.add_purchase_v2', compact('Vendor', 'Warehouse', 'Purchase', 'accounts', 'nextInvoice'));
+        if ($type === 'purchase_order') {
+            $activePrefix = 'PO';
+            $nextInvoice = \App\Models\InvoiceSeries::generateNextNo('PO');
+            $allowedSeries = [];
+        } else {
+            $activePrefix = 'PINV';
+            $nextInvoice = \App\Models\InvoiceSeries::generateNextNo('PINV');
+            $allowedSeries = [
+                'PINV' => ['label' => 'Standard Purchase Bill', 'padding' => 4],
+                'PTAX' => ['label' => 'Tax Purchase Bill', 'padding' => 3],
+                'PCO'  => ['label' => 'Company Purchase Bill', 'padding' => 3],
+            ];
+        }
+
+        return view('admin_panel.purchase.add_purchase_v2', compact(
+            'Vendor', 'Warehouse', 'Purchase', 'accounts', 'nextInvoice', 'activePrefix', 'allowedSeries', 'type'
+        ));
     }
     public function quickCreate()
     {
@@ -659,7 +690,6 @@ class PurchaseController extends Controller
                 if ($request->ajax()) {
                     return response()->json(['success' => false, 'message' => 'Gatepass already has a bill.'], 422);
                 }
-
                 return back()->with('error', 'This gatepass already has an associated bill.');
             }
         }
@@ -671,7 +701,7 @@ class PurchaseController extends Controller
                 'vendor_id' => 'required|exists:vendors,id',
                 'purchase_date' => 'nullable|date',
                 'branch_id' => 'nullable|exists:branches,id',
-                'warehouse_id' => 'required|exists:warehouses,id',
+                'warehouse_id' => 'nullable|exists:warehouses,id',
                 'note' => 'nullable|string',
                 'discount' => 'nullable|numeric|min:0',
                 'extra_cost' => 'nullable|numeric|min:0',
@@ -695,28 +725,37 @@ class PurchaseController extends Controller
             throw $e;
         }
 
-        // Wrap in transaction... to allow returning $purchase outside
-        $purchase = DB::transaction(function () use ($validated, $request, $gatepass) {
+        $purchaseType = $request->input('purchase_type') ?: (request('type') === 'purchase_order' ? 'purchase_order' : 'direct_purchase');
 
-            // invoice number
-            $lastInvoice = Purchase::latest('id')->value('invoice_no');
-            $nextInvoice = $lastInvoice
-                ? 'PUR-'.str_pad(((int) preg_replace('/[^0-9]/', '', $lastInvoice)) + 1, 3, '0', STR_PAD_LEFT)
-                : 'PUR-001';
+        // Wrap in transaction...
+        $purchase = DB::transaction(function () use ($validated, $request, $gatepass, $purchaseType) {
+            $prefix = $request->input('purchase_prefix') ?: ($purchaseType === 'purchase_order' ? 'PO' : 'PINV');
+            $invoiceNo = $validated['invoice_no'] ?: \App\Models\InvoiceSeries::generateNextNo($prefix);
+            \App\Models\InvoiceSeries::incrementCounterForInvoice($invoiceNo);
 
-            $branchId = (int) ($validated['branch_id'] ?? 1);                 // ✅ use real branch
-            $warehouseId = (int) $validated['warehouse_id'];
+            $branchId = (int) ($validated['branch_id'] ?? 1);
+            $warehouseId = (int) ($validated['warehouse_id'] ?? 1);
 
-            // Status Logic
-            $status = ($request->action === 'save_only') ? 'draft' : 'approved';
+            if ($purchaseType === 'purchase_order') {
+                $statusPurchase = ($request->action === 'save_only') ? 'draft' : 'booked';
+                $receivingStatus = 'pending';
+            } else {
+                $statusPurchase = ($request->action === 'save_only') ? 'draft' : 'approved';
+                $receivingStatus = 'received';
+            }
 
-            // create header
             $purchase = Purchase::create([
+                'purchase_type' => $purchaseType,
+                'purchase_status' => $statusPurchase === 'draft' ? 'draft' : 'posted',
+                'receiving_status' => $receivingStatus,
                 'branch_id' => $branchId,
                 'warehouse_id' => $warehouseId,
                 'vendor_id' => $validated['vendor_id'] ?? null,
                 'purchase_date' => $validated['purchase_date'] ?? now(),
-                'invoice_no' => $validated['invoice_no'] ?? $nextInvoice,
+                'credit_days' => (int) ($request->credit_days ?? 0),
+                'invoice_no' => $invoiceNo,
+                'purchase_prefix' => $prefix,
+                'vendor_bill_no' => $request->vendor_bill_no ?? null,
                 'note' => $validated['note'] ?? null,
                 'subtotal' => 0,
                 'discount' => 0,
@@ -724,18 +763,16 @@ class PurchaseController extends Controller
                 'net_amount' => 0,
                 'paid_amount' => 0,
                 'due_amount' => 0,
-                'status_purchase' => $status,
+                'status_purchase' => $statusPurchase,
             ]);
 
             $subtotal = 0;
             $pids = $validated['product_id'] ?? [];
             $qtys = $validated['qty'] ?? [];
             $prices = $validated['price'] ?? [];
-            $cartonPrices = $validated['price_per_carton'] ?? [];
             $units = $validated['unit'] ?? [];
             $itemDiscs = $validated['item_discount'] ?? [];
 
-            // Snapshot fields
             $sizeModes = $request->size_mode ?? [];
             $ppbs = $request->pieces_per_box ?? [];
             $ppm2 = $request->pieces_per_m2 ?? [];
@@ -762,14 +799,12 @@ class PurchaseController extends Controller
                 }
                 if ($curPPB <= 0) $curPPB = 1;
 
-                // Calculate Line Total matching Frontend Logic
                 $curSizeMode = $sizeModes[$i] ?? null;
-                $curPPM2 = (float) ($ppm2[$i] ?? 0); // This is actually m2_per_piece if by_size
+                $curPPM2 = (float) ($ppm2[$i] ?? 0);
                 $rawQtyStr = (string) ($qtys[$i] ?? '0');
                 $isCarton = in_array($u, ['carton', 'ctn', 'box']) || ($curSizeMode === 'by_cartons');
 
                 if ($curSizeMode === 'by_size') {
-                    // Frontend: pieces_per_m2 * totalPieces * price
                     $grossTotal = $curPPM2 * $qty * $price;
                 } elseif ($u === 'gm' || $u === 'g') {
                     $grossTotal = ($qty / 1000.0) * $price;
@@ -781,11 +816,9 @@ class PurchaseController extends Controller
                     $grossTotal = $qty * $price;
                 }
 
-                // Calculate absolute discount from percentage
                 $discAmount = $grossTotal * ($discPercent / 100);
                 $lineTotal = $grossTotal - $discAmount;
 
-                // Snapshots
                 $bQty = (float) ($boxesQtys[$i] ?? 0);
                 $lQty = (float) ($looseQtys[$i] ?? 0);
                 if ($isCarton) {
@@ -800,12 +833,11 @@ class PurchaseController extends Controller
                     'product_id' => $pid,
                     'unit' => $unit,
                     'price' => $price,
-                    'item_discount' => $discAmount, // Store calculated amount
+                    'item_discount' => $discAmount,
                     'qty' => $qty,
-                    'line_total' => $lineTotal, // Fixed logic
-                    'color' => $request->color[$i] ?? null, // Save variant details
-
-                    // Snapshots
+                    'received_qty' => ($purchaseType === 'direct_purchase' && $statusPurchase === 'approved') ? $qty : 0,
+                    'line_total' => $lineTotal,
+                    'color' => $request->color[$i] ?? null,
                     'size_mode' => $sizeModes[$i] ?? null,
                     'pieces_per_box' => $curPPB,
                     'pieces_per_m2' => $ppm2[$i] ?? 0,
@@ -815,7 +847,7 @@ class PurchaseController extends Controller
                     'width' => $widths[$i] ?? null,
                 ]);
 
-                // --- Automatically Update Product Purchase Price ---
+                // Update product price metadata if needed
                 try {
                     $prod = Product::find($pid);
                     if ($prod) {
@@ -824,83 +856,22 @@ class PurchaseController extends Controller
                             $updateData['purchase_price_per_m2'] = $price;
                         } elseif ($isCarton) {
                             $updateData['purchase_price_per_box'] = $price;
-                            if ($curPPB > 0) {
-                                $updateData['purchase_price_per_piece'] = $price / $curPPB;
-                            }
+                            if ($curPPB > 0) $updateData['purchase_price_per_piece'] = $price / $curPPB;
                         } else {
                             $updateData['purchase_price_per_piece'] = $price;
-                            if ($curPPB > 0) {
-                                $updateData['purchase_price_per_box'] = $price * $curPPB;
-                            }
+                            if ($curPPB > 0) $updateData['purchase_price_per_box'] = $price * $curPPB;
                         }
-                        
-                        if ($discPercent > 0) {
-                            $updateData['purchase_discount_percent'] = $discPercent;
-                        }
-
-                        // --- Also update JSON variants if they exist ---
-                        $purchasedVariant = $request->color[$i] ?? null;
-                        if (!empty($prod->color)) {
-                            $rawProductVariants = $prod->color;
-                            $b64 = base64_decode($rawProductVariants, true);
-                            if ($b64 !== false && (str_starts_with(trim($b64), '[') || str_starts_with(trim($b64), '{'))) {
-                                $rawProductVariants = $b64;
-                            }
-                            $decodedProdVariants = json_decode($rawProductVariants, true);
-                            if (is_string($decodedProdVariants)) {
-                                $decodedProdVariants = json_decode($decodedProdVariants, true);
-                            }
-                            
-                            $searchName = null; $searchColor = null; $searchSize = null;
-                            if ($purchasedVariant) {
-                                $pv = base64_decode($purchasedVariant, true);
-                                if ($pv !== false && (str_starts_with(trim($pv), '[') || str_starts_with(trim($pv), '{'))) {
-                                    $purchasedVariant = $pv;
-                                }
-                                $decPV = json_decode($purchasedVariant, true);
-                                if (is_string($decPV)) $decPV = json_decode($decPV, true);
-                                if (is_array($decPV)) {
-                                    $searchName = $decPV['name'] ?? null;
-                                    $searchColor = $decPV['color'] ?? null;
-                                    $searchSize = $decPV['size'] ?? null;
-                                }
-                            }
-
-                            if (is_array($decodedProdVariants)) {
-                                $variantsModified = false;
-                                foreach ($decodedProdVariants as &$v) {
-                                    $match = false;
-                                    if ($searchName && isset($v['name']) && $v['name'] == $searchName) { $match = true; }
-                                    elseif ($searchColor && isset($v['color']) && $v['color'] == $searchColor && isset($v['size']) && $v['size'] == $searchSize) { $match = true; }
-                                    elseif (!$searchName && !$searchColor) { $match = true; } // Update all if no specific variant identified
-                                    
-                                    if ($match) {
-                                        $v['purch_price'] = $price;
-                                        $variantsModified = true;
-                                    }
-                                }
-                                if ($variantsModified) {
-                                    $updateData['color'] = json_encode($decodedProdVariants);
-                                }
-                            }
-                        }
-
-                        if (!empty($updateData)) {
-                            $prod->update($updateData);
-                        }
+                        if ($discPercent > 0) $updateData['purchase_discount_percent'] = $discPercent;
+                        if (!empty($updateData)) $prod->update($updateData);
                     }
-                } catch (\Exception $e) {
-                    \Log::error("Failed to update product purchase price: " . $e->getMessage());
-                }
-                // ---------------------------------------------------
+                } catch (\Exception $e) {}
 
                 $subtotal += $lineTotal;
             }
 
-            // totals
             $discount = (float) ($request->discount ?? 0);
             $extraCost = (float) ($request->extra_cost ?? 0);
-            $netAmount = ($subtotal - $discount) + $extraCost;
+            $netAmount = max(0, ($subtotal - $discount) + $extraCost);
 
             $purchase->update([
                 'subtotal' => $subtotal,
@@ -911,35 +882,56 @@ class PurchaseController extends Controller
                 'due_amount' => $netAmount,
             ]);
 
-            // Check if payment was submitted (array or scalar)
-            $paymentAccountIds = (array) ($request->input('payment_account_id') ?? []);
-            $paymentAmounts = (array) ($request->input('payment_amount') ?? []);
+            // Only run approval (stock in + ledger) and auto-GRN if Direct Purchase
+            if ($purchaseType === 'direct_purchase' && $statusPurchase === 'approved') {
+                $purchase->load('items');
+                $this->approvePurchase($purchase);
 
-            $singlePaid = (float) ($request->input('paid_amount') ?? $request->input('payment_amount_single') ?? 0);
-            if ($singlePaid > 0 && empty(array_filter($paymentAmounts, fn($v) => (float)$v > 0))) {
-                $paymentAmounts = [$singlePaid];
-            }
+                // Auto Create GRN
+                $grnNumber = $purchase->invoice_no . '-GRN01';
+                $grn = \App\Models\GoodsReceivingNote::create([
+                    'purchase_id' => $purchase->id,
+                    'vendor_id' => $purchase->vendor_id,
+                    'warehouse_id' => $purchase->warehouse_id,
+                    'grn_number' => $grnNumber,
+                    'grn_date' => $purchase->purchase_date ? $purchase->purchase_date->format('Y-m-d') : now()->format('Y-m-d'),
+                    'status' => 'received',
+                    'is_invoiced' => 1,
+                    'invoice_id' => $purchase->id,
+                    'remarks' => 'Auto GRN for Direct Purchase #' . $purchase->invoice_no,
+                    'created_by' => auth()->id() ?? 1,
+                ]);
 
-            $totalPaymentEntered = 0;
-            foreach ($paymentAmounts as $pAmt) {
-                $totalPaymentEntered += (float) $pAmt;
-            }
-
-            // If NOT draft OR if payment is provided, run full approval & record payment
-            if ($status === 'approved' || $totalPaymentEntered > 0) {
-                if ($purchase->status_purchase !== 'approved') {
-                    $purchase->update(['status_purchase' => 'approved']);
+                foreach ($purchase->items as $pItem) {
+                    \App\Models\GoodsReceivingNoteItem::create([
+                        'goods_receiving_note_id' => $grn->id,
+                        'purchase_item_id' => $pItem->id,
+                        'product_id' => $pItem->product_id,
+                        'warehouse_id' => $purchase->warehouse_id,
+                        'received_qty' => $pItem->qty,
+                        'boxes' => $pItem->boxes_qty ?: $pItem->qty,
+                        'loose_pieces' => $pItem->loose_qty ?: 0,
+                        'color' => $pItem->color,
+                        'purchase_price' => $pItem->price,
+                    ]);
                 }
 
-                $purchase->load('items');
-                $this->approvePurchase($purchase); // Basic Stock + Ledger + Voucher
+                // Process Payments
+                $paymentAccountIds = (array) ($request->input('payment_account_id') ?? []);
+                $paymentAmounts = (array) ($request->input('payment_amount') ?? []);
+                $singlePaid = (float) ($request->input('paid_amount') ?? $request->input('payment_amount_single') ?? 0);
+                if ($singlePaid > 0 && empty(array_filter($paymentAmounts, fn($v) => (float)$v > 0))) {
+                    $paymentAmounts = [$singlePaid];
+                }
 
-                // Record Payment to Vendor
+                $totalPaymentEntered = 0;
+                foreach ($paymentAmounts as $pAmt) {
+                    $totalPaymentEntered += (float) $pAmt;
+                }
+
                 if ($totalPaymentEntered > 0) {
                     try {
                         $transactionService = app(\App\Services\TransactionService::class);
-
-                        // Find default Cash/Bank account fallback if account is missing
                         $defaultAccount = \App\Models\Account::whereHas('head', function($q) {
                             $q->whereIn('name', ['Cash', 'Bank']);
                         })->where('status', 1)->first() ?? \App\Models\Account::where('status', 1)->first();
@@ -968,12 +960,11 @@ class PurchaseController extends Controller
                             );
                         }
                     } catch (\Throwable $e) {
-                        \Log::error('Purchase Payment Processing Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+                        \Log::error('Purchase Payment Processing Error: ' . $e->getMessage());
                     }
                 }
             }
 
-            // link gatepass -> purchase (and keep status)
             if ($gatepass) {
                 $gatepass->purchase_id = $purchase->id;
                 $gatepass->status = 'linked';
@@ -983,16 +974,19 @@ class PurchaseController extends Controller
             return $purchase;
         });
 
+        $redirectUrl = $purchaseType === 'purchase_order' ? route('purchase_orders.index') : route('Purchase.home');
+        $msg = $purchaseType === 'purchase_order' ? "Purchase Order {$purchase->invoice_no} saved successfully!" : "Purchase {$purchase->invoice_no} saved successfully.";
+
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Purchase saved successfully.',
-                'invoice_url' => route('purchase.invoice', $purchase->id),
-                'redirect_url' => route('Purchase.home'),
+                'message' => $msg,
+                'invoice_url' => $purchaseType === 'purchase_order' ? null : route('purchase.invoice', $purchase->id),
+                'redirect_url' => $redirectUrl,
             ]);
         }
 
-        return redirect()->route('Purchase.home')->with('success', 'Purchase saved successfully.');
+        return redirect($redirectUrl)->with('success', $msg);
     }
 
     // public function store(Request $request)
@@ -1393,7 +1387,7 @@ class PurchaseController extends Controller
             'vendor_id' => 'nullable|exists:vendors,id',
             'purchase_date' => 'nullable|date',
             'branch_id' => 'nullable|exists:branches,id',
-            'warehouse_id' => 'required|exists:warehouses,id',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
             'note' => 'nullable|string',
             'discount' => 'nullable|numeric|min:0',
             'extra_cost' => 'nullable|numeric|min:0',
@@ -1420,7 +1414,7 @@ class PurchaseController extends Controller
             $oldBranchId = (int) ($purchase->branch_id ?? 1);
 
             $branchId = (int) ($validated['branch_id'] ?? $purchase->branch_id ?? 1);
-            $warehouseId = (int) ($validated['warehouse_id'] ?? $purchase->warehouse_id);
+            $warehouseId = (int) ($validated['warehouse_id'] ?? $purchase->warehouse_id ?? 1);
 
             // Map old totals per product for Stock Delta Logic (in base pieces)
             $oldMap = $purchase->items->groupBy('product_id')->map(function ($items) {
@@ -1703,189 +1697,195 @@ class PurchaseController extends Controller
                 'due_amount' => $dueAmount,
             ]);
 
-            // Stock movements & Warehouse stock updates
-            $isLinkedToGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
+            // Stock movements & Warehouse stock updates and Accounting (Only for Direct Purchase / Invoices)
+            if ($purchase->purchase_type !== 'purchase_order') {
+                $isLinkedToGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
 
-            if (! $isLinkedToGatepass) {
-                $movs = [];
-                $now = now();
+                if (! $isLinkedToGatepass) {
+                    $movs = [];
+                    $now = now();
 
-                if ($oldWarehouseId !== $warehouseId) {
-                    // Rollback from old warehouse
-                    foreach ($oldMap as $pid => $oldQ) {
-                        if ($oldQ > 0) {
-                            $this->upsertStocks((int) $pid, -$oldQ, $oldBranchId, $oldWarehouseId);
+                    if ($oldWarehouseId !== $warehouseId) {
+                        // Rollback from old warehouse
+                        foreach ($oldMap as $pid => $oldQ) {
+                            if ($oldQ > 0) {
+                                $this->upsertStocks((int) $pid, -$oldQ, $oldBranchId, $oldWarehouseId);
+                            }
                         }
-                    }
-                    // Add to new warehouse
-                    foreach ($newMap as $pid => $newQ) {
-                        if ($newQ > 0) {
-                            $this->upsertStocks((int) $pid, +$newQ, $branchId, $warehouseId);
+                        // Add to new warehouse
+                        foreach ($newMap as $pid => $newQ) {
+                            if ($newQ > 0) {
+                                $this->upsertStocks((int) $pid, +$newQ, $branchId, $warehouseId);
+                                $movs[] = [
+                                    'product_id' => (int) $pid,
+                                    'type' => 'in',
+                                    'qty' => $newQ,
+                                    'ref_type' => 'PURCHASE_EDIT',
+                                    'ref_id' => $purchase->id,
+                                    'note' => 'Purchase warehouse change delta',
+                                    'created_at' => $now,
+                                    'updated_at' => $now,
+                                ];
+                            }
+                        }
+                    } else {
+                        $all = $oldMap->keys()->merge($newMap->keys())->unique();
+                        foreach ($all as $pid) {
+                            $oldQ = (float) ($oldMap[$pid] ?? 0);
+                            $newQ = (float) ($newMap[$pid] ?? 0);
+                            $delta = $newQ - $oldQ;
+                            if ($delta == 0) {
+                                continue;
+                            }
+
+                            $type = $delta > 0 ? 'in' : 'out';
+                            $qty = abs($delta);
+
                             $movs[] = [
                                 'product_id' => (int) $pid,
-                                'type' => 'in',
-                                'qty' => $newQ,
+                                'type' => $type,
+                                'qty' => $qty,
                                 'ref_type' => 'PURCHASE_EDIT',
                                 'ref_id' => $purchase->id,
-                                'note' => 'Purchase warehouse change delta',
+                                'note' => 'Purchase edit delta',
                                 'created_at' => $now,
                                 'updated_at' => $now,
                             ];
+
+                            $this->upsertStocks((int) $pid, ($type === 'in' ? +$qty : -$qty), $branchId, $warehouseId);
                         }
                     }
+
+                    if (! empty($movs)) {
+                        DB::table('stock_movements')->insert($movs);
+                    }
+                }
+
+                // Accounting & General Ledger Updates
+                $balanceService = app(\App\Services\BalanceService::class);
+                $voucherService = app(\App\Services\VoucherService::class);
+                $transactionService = app(\App\Services\TransactionService::class);
+                $expenseAccountId = $balanceService->getPurchaseExpenseId();
+                $apAccountId = $balanceService->getAccountsPayableId();
+
+                // 1. Purchase Voucher (Journal Voucher)
+                $purchaseVoucher = \App\Models\VoucherMaster::where('remarks', "Purchase Voucher #{$purchase->invoice_no}")->first();
+                if ($purchaseVoucher) {
+                    $purchaseVoucher->total_amount = $netAmount;
+                    $purchaseVoucher->date = $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : now()->format('Y-m-d');
+                    $purchaseVoucher->party_id = $purchase->vendor_id;
+                    $purchaseVoucher->status = \App\Models\VoucherMaster::STATUS_DRAFT;
+                    $purchaseVoucher->save();
+
+                    // Clear old details and journal entries
+                    $purchaseVoucher->journalEntries()->delete();
+                    $purchaseVoucher->details()->delete();
+
+                    // Recreate details
+                    \App\Models\VoucherDetail::create([
+                        'voucher_master_id' => $purchaseVoucher->id,
+                        'account_id' => $expenseAccountId,
+                        'debit' => $netAmount,
+                        'credit' => 0,
+                        'narration' => "Purchase Invoice #{$purchase->invoice_no}",
+                    ]);
+                    \App\Models\VoucherDetail::create([
+                        'voucher_master_id' => $purchaseVoucher->id,
+                        'account_id' => $apAccountId,
+                        'debit' => 0,
+                        'credit' => $netAmount,
+                        'narration' => "Payable to Vendor " . ($purchase->vendor->name ?? ''),
+                    ]);
+
+                    $voucherService->postVoucher($purchaseVoucher);
                 } else {
-                    $all = $oldMap->keys()->merge($newMap->keys())->unique();
-                    foreach ($all as $pid) {
-                        $oldQ = (float) ($oldMap[$pid] ?? 0);
-                        $newQ = (float) ($newMap[$pid] ?? 0);
-                        $delta = $newQ - $oldQ;
-                        if ($delta == 0) {
-                            continue;
+                    $transactionService->createPurchaseVoucher($purchase);
+                }
+
+                // 2. Payment Voucher (Payment Voucher)
+                $paymentVoucher = \App\Models\VoucherMaster::where('remarks', "Auto-Payment for Purchase #{$purchase->invoice_no}")->first();
+                if (! empty($validPaymentAccounts)) {
+                    if ($paymentVoucher) {
+                        $paymentVoucher->journalEntries()->delete();
+                        $paymentVoucher->details()->delete();
+                        $paymentVoucher->total_amount = $newPaidAmount;
+                        $paymentVoucher->date = $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : now()->format('Y-m-d');
+                        $paymentVoucher->party_id = $purchase->vendor_id;
+                        $paymentVoucher->status = \App\Models\VoucherMaster::STATUS_DRAFT;
+                        $paymentVoucher->save();
+
+                        foreach ($validPaymentAccounts as $pIdx => $pAccId) {
+                            $pAmt = (float) $validPaymentAmounts[$pIdx];
+                            \App\Models\VoucherDetail::create([
+                                'voucher_master_id' => $paymentVoucher->id,
+                                'account_id' => $pAccId,
+                                'debit' => 0,
+                                'credit' => $pAmt,
+                                'narration' => "Payment for Purchase #{$purchase->invoice_no}",
+                            ]);
                         }
 
-                        $type = $delta > 0 ? 'in' : 'out';
-                        $qty = abs($delta);
-
-                        $movs[] = [
-                            'product_id' => (int) $pid,
-                            'type' => $type,
-                            'qty' => $qty,
-                            'ref_type' => 'PURCHASE_EDIT',
-                            'ref_id' => $purchase->id,
-                            'note' => 'Purchase edit delta',
-                            'created_at' => $now,
-                            'updated_at' => $now,
-                        ];
-
-                        $this->upsertStocks((int) $pid, ($type === 'in' ? +$qty : -$qty), $branchId, $warehouseId);
-                    }
-                }
-
-                if (! empty($movs)) {
-                    DB::table('stock_movements')->insert($movs);
-                }
-            }
-
-            // Accounting & General Ledger Updates
-            $balanceService = app(\App\Services\BalanceService::class);
-            $voucherService = app(\App\Services\VoucherService::class);
-            $transactionService = app(\App\Services\TransactionService::class);
-            $expenseAccountId = $balanceService->getPurchaseExpenseId();
-            $apAccountId = $balanceService->getAccountsPayableId();
-
-            // 1. Purchase Voucher (Journal Voucher)
-            $purchaseVoucher = \App\Models\VoucherMaster::where('remarks', "Purchase Voucher #{$purchase->invoice_no}")->first();
-            if ($purchaseVoucher) {
-                $purchaseVoucher->total_amount = $netAmount;
-                $purchaseVoucher->date = $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : now()->format('Y-m-d');
-                $purchaseVoucher->party_id = $purchase->vendor_id;
-                $purchaseVoucher->status = \App\Models\VoucherMaster::STATUS_DRAFT;
-                $purchaseVoucher->save();
-
-                // Clear old details and journal entries
-                $purchaseVoucher->journalEntries()->delete();
-                $purchaseVoucher->details()->delete();
-
-                // Recreate details
-                \App\Models\VoucherDetail::create([
-                    'voucher_master_id' => $purchaseVoucher->id,
-                    'account_id' => $expenseAccountId,
-                    'debit' => $netAmount,
-                    'credit' => 0,
-                    'narration' => "Purchase Invoice #{$purchase->invoice_no}",
-                ]);
-                \App\Models\VoucherDetail::create([
-                    'voucher_master_id' => $purchaseVoucher->id,
-                    'account_id' => $apAccountId,
-                    'debit' => 0,
-                    'credit' => $netAmount,
-                    'narration' => "Payable to Vendor " . ($purchase->vendor->name ?? ''),
-                ]);
-
-                $voucherService->postVoucher($purchaseVoucher);
-            } else {
-                $transactionService->createPurchaseVoucher($purchase);
-            }
-
-            // 2. Payment Voucher (Payment Voucher)
-            $paymentVoucher = \App\Models\VoucherMaster::where('remarks', "Auto-Payment for Purchase #{$purchase->invoice_no}")->first();
-            if (! empty($validPaymentAccounts)) {
-                if ($paymentVoucher) {
-                    $paymentVoucher->journalEntries()->delete();
-                    $paymentVoucher->details()->delete();
-                    $paymentVoucher->total_amount = $newPaidAmount;
-                    $paymentVoucher->date = $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : now()->format('Y-m-d');
-                    $paymentVoucher->party_id = $purchase->vendor_id;
-                    $paymentVoucher->status = \App\Models\VoucherMaster::STATUS_DRAFT;
-                    $paymentVoucher->save();
-
-                    foreach ($validPaymentAccounts as $pIdx => $pAccId) {
-                        $pAmt = (float) $validPaymentAmounts[$pIdx];
                         \App\Models\VoucherDetail::create([
                             'voucher_master_id' => $paymentVoucher->id,
-                            'account_id' => $pAccId,
-                            'debit' => 0,
-                            'credit' => $pAmt,
-                            'narration' => "Payment for Purchase #{$purchase->invoice_no}",
+                            'account_id' => $apAccountId,
+                            'debit' => $newPaidAmount,
+                            'credit' => 0,
+                            'narration' => "Payment to Vendor " . ($purchase->vendor->name ?? ''),
+                        ]);
+
+                        $voucherService->postVoucher($paymentVoucher);
+                    } else {
+                        $transactionService->createPaymentForPurchase($purchase, $validPaymentAccounts, $validPaymentAmounts);
+                    }
+                } else {
+                    if ($paymentVoucher) {
+                        $paymentVoucher->journalEntries()->delete();
+                        $paymentVoucher->details()->delete();
+                        $paymentVoucher->delete();
+                    }
+                }
+
+                // 3. Synchronize Vendor Ledger closing balance
+                if ($purchase->vendor_id) {
+                    $currentVendorBalance = $balanceService->getVendorBalance($purchase->vendor_id);
+                    $vendorLedger = \App\Models\VendorLedger::where('vendor_id', $purchase->vendor_id)->orderBy('id', 'desc')->first();
+                    if ($vendorLedger) {
+                        $vendorLedger->closing_balance = $currentVendorBalance;
+                        $vendorLedger->save();
+                    } else {
+                        \App\Models\VendorLedger::create([
+                            'vendor_id' => $purchase->vendor_id,
+                            'admin_or_user_id' => auth()->id() ?? 1,
+                            'previous_balance' => 0,
+                            'opening_balance' => 0,
+                            'closing_balance' => $currentVendorBalance,
                         ]);
                     }
-
-                    \App\Models\VoucherDetail::create([
-                        'voucher_master_id' => $paymentVoucher->id,
-                        'account_id' => $apAccountId,
-                        'debit' => $newPaidAmount,
-                        'credit' => 0,
-                        'narration' => "Payment to Vendor " . ($purchase->vendor->name ?? ''),
-                    ]);
-
-                    $voucherService->postVoucher($paymentVoucher);
-                } else {
-                    $transactionService->createPaymentForPurchase($purchase, $validPaymentAccounts, $validPaymentAmounts);
                 }
-            } else {
-                if ($paymentVoucher) {
-                    $paymentVoucher->journalEntries()->delete();
-                    $paymentVoucher->details()->delete();
-                    $paymentVoucher->delete();
-                }
-            }
 
-            // 3. Synchronize Vendor Ledger closing balance
-            if ($purchase->vendor_id) {
-                $currentVendorBalance = $balanceService->getVendorBalance($purchase->vendor_id);
-                $vendorLedger = \App\Models\VendorLedger::where('vendor_id', $purchase->vendor_id)->orderBy('id', 'desc')->first();
-                if ($vendorLedger) {
-                    $vendorLedger->closing_balance = $currentVendorBalance;
-                    $vendorLedger->save();
-                } else {
-                    \App\Models\VendorLedger::create([
-                        'vendor_id' => $purchase->vendor_id,
-                        'admin_or_user_id' => auth()->id() ?? 1,
-                        'previous_balance' => 0,
-                        'opening_balance' => 0,
-                        'closing_balance' => $currentVendorBalance,
-                    ]);
-                }
-            }
-
-            // If vendor was changed, sync old vendor balance as well
-            if ($oldVendorId && $oldVendorId != $purchase->vendor_id) {
-                $oldVendorBal = $balanceService->getVendorBalance($oldVendorId);
-                $oldLedger = \App\Models\VendorLedger::where('vendor_id', $oldVendorId)->orderBy('id', 'desc')->first();
-                if ($oldLedger) {
-                    $oldLedger->closing_balance = $oldVendorBal;
-                    $oldLedger->save();
+                // If vendor was changed, sync old vendor balance as well
+                if ($oldVendorId && $oldVendorId != $purchase->vendor_id) {
+                    $oldVendorBal = $balanceService->getVendorBalance($oldVendorId);
+                    $oldLedger = \App\Models\VendorLedger::where('vendor_id', $oldVendorId)->orderBy('id', 'desc')->first();
+                    if ($oldLedger) {
+                        $oldLedger->closing_balance = $oldVendorBal;
+                        $oldLedger->save();
+                    }
                 }
             }
         });
 
-        return redirect()->route('Purchase.home')->with('success', 'Purchase updated successfully!');
+        $redirectRoute = $purchase->purchase_type === 'purchase_order' ? route('purchase_orders.index') : route('Purchase.home');
+        $msg = ($purchase->purchase_type === 'purchase_order' ? 'Purchase Order ' : 'Purchase ') . $purchase->invoice_no . ' updated successfully!';
+        return redirect($redirectRoute)->with('success', $msg);
     }
 
     public function destroy($id)
     {
-        DB::transaction(function () use ($id) {
-            $purchase = Purchase::with('items')->findOrFail($id);
+        $purchase = Purchase::with('items')->findOrFail($id);
+        $isPo = $purchase->purchase_type === 'purchase_order';
+
+        DB::transaction(function () use ($purchase, $isPo) {
             $oldNetAmount = $purchase->net_amount;
 
             $branchId = (int) ($purchase->branch_id ?? 1);
@@ -1894,7 +1894,7 @@ class PurchaseController extends Controller
             // linked to gatepass? then NO stock changes
             $isLinkedToGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
 
-            if (! $isLinkedToGatepass) {
+            if (! $isLinkedToGatepass && ! $isPo) {
                 $movs = [];
                 $now = now();
 
@@ -1926,7 +1926,8 @@ class PurchaseController extends Controller
             $purchase->delete();
         });
 
-        return redirect()->back()->with('success', 'Purchase deleted successfully.');
+        $msg = ($isPo ? 'Purchase Order ' : 'Purchase ') . 'deleted successfully.';
+        return redirect()->back()->with('success', $msg);
     }
 
     public function Invoice($id)

@@ -27,4 +27,58 @@ class Purchase extends Model
     public function vendor()   { return $this->belongsTo(Vendor::class, 'vendor_id'); }
     public function items()    { return $this->hasMany(PurchaseItem::class); }
     public function returns()  { return $this->hasMany(PurchaseReturn::class); }
+
+    public function goodsReceivingNotes()
+    {
+        return $this->hasMany(GoodsReceivingNote::class, 'purchase_id');
+    }
+
+    public function parentOrder()
+    {
+        return $this->belongsTo(Purchase::class, 'parent_po_id');
+    }
+
+    public function childInvoices()
+    {
+        return $this->hasMany(Purchase::class, 'parent_po_id');
+    }
+
+    public function recalculateReceivingStatus(): void
+    {
+        if ($this->purchase_type !== 'purchase_order') {
+            return;
+        }
+
+        $items = $this->items()->get();
+        if ($items->isEmpty()) {
+            $this->receiving_status = 'pending';
+            $this->save();
+            return;
+        }
+
+        $allReceived = true;
+        $anyReceived = false;
+
+        foreach ($items as $item) {
+            $orderQty = (float) $item->qty;
+            $receivedQty = (float) $item->received_qty;
+
+            if ($receivedQty > 0) {
+                $anyReceived = true;
+            }
+            if ($receivedQty < $orderQty) {
+                $allReceived = false;
+            }
+        }
+
+        if ($allReceived) {
+            $this->receiving_status = 'received';
+        } elseif ($anyReceived) {
+            $this->receiving_status = 'partial';
+        } else {
+            $this->receiving_status = 'pending';
+        }
+
+        $this->save();
+    }
 }

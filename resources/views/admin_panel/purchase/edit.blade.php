@@ -359,11 +359,11 @@
                 {{-- HEADER --}}
                 <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
                     <div>
-                        <a href="{{ route('Purchase.home') }}" class="btn btn-sm btn-outline-secondary">
+                        <a href="{{ $purchase->purchase_type === 'purchase_order' ? route('purchase_orders.index') : route('Purchase.home') }}" class="btn btn-sm btn-outline-secondary">
                             <i class="bi bi-arrow-left"></i> Back to List
                         </a>
                     </div>
-                    <h2 class="header-text text-secondary fw-bold mb-0">Edit Purchase #{{ $purchase->invoice_no }}</h2>
+                    <h2 class="header-text text-secondary fw-bold mb-0">Edit {{ $purchase->purchase_type === 'purchase_order' ? 'Purchase Order' : 'Purchase' }} #{{ $purchase->invoice_no }}</h2>
                     <div class="d-flex align-items-center gap-2">
                         <small class="text-secondary" id="entryDate">Date: {{ date('d/m/Y') }}</small>
                     </div>
@@ -373,11 +373,10 @@
                     {{-- LEFT: Invoice & Vendor --}}
                     <div class="col-lg-3 col-md-4">
                         <div class="card-panel shadow-sm">
-                            <div class="section-title mb-3">Invoice & Vendor</div>
+                            <div class="section-title mb-3">{{ $purchase->purchase_type === 'purchase_order' ? 'Order & Vendor' : 'Invoice & Vendor' }}</div>
 
                             <div class="mb-2 d-flex align-items-center gap-2">
-                                <label class="form-label fw-bold mb-0 text-muted small" style="min-width: 80px;">Invoice
-                                    No</label>
+                                <label class="form-label fw-bold mb-0 text-muted small" style="min-width: 80px;">{{ $purchase->purchase_type === 'purchase_order' ? 'Order No' : 'Invoice No' }}</label>
                                 <input type="text" class="form-control input-readonly" name="invoice_no"
                                     value="{{ $purchase->invoice_no }}" readonly>
                             </div>
@@ -409,14 +408,8 @@
 
                             <div class="mb-2">
                                 <label class="form-label fw-bold text-muted small">Warehouse</label>
-                                <select name="warehouse_id" class="form-control select2">
-                                    @foreach ($Warehouse as $w)
-                                        <option value="{{ $w->id }}"
-                                            {{ $w->id == $purchase->warehouse_id ? 'selected' : '' }}>
-                                            {{ $w->warehouse_name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <input type="hidden" name="warehouse_id" value="{{ $purchase->warehouse_id ?: 1 }}">
+                                <input type="text" class="form-control fw-bold bg-light text-dark" value="{{ optional($purchase->warehouse)->warehouse_name ?: 'Main Store' }}" readonly>
                             </div>
                         </div>
                     </div>
@@ -615,64 +608,66 @@
 
                 {{-- SUMMARY --}}
                 <div class="row g-3 mt-1">
-                    {{-- LEFT: Payment / Receipt Voucher --}}
-                    <div class="col-lg-7">
-                        <div class="card-panel shadow-sm">
-                            <div class="section-title mb-3">Payment / Receipt Voucher</div>
-                            <div id="paymentWrapper" class="border rounded p-3 bg-light mb-3">
-                                @if (isset($existingPayments) && $existingPayments->isNotEmpty())
-                                    @foreach ($existingPayments as $pIndex => $pDetail)
+                    @if($purchase->purchase_type !== 'purchase_order')
+                        {{-- LEFT: Payment / Receipt Voucher --}}
+                        <div class="col-lg-7">
+                            <div class="card-panel shadow-sm">
+                                <div class="section-title mb-3">Payment / Receipt Voucher</div>
+                                <div id="paymentWrapper" class="border rounded p-3 bg-light mb-3">
+                                    @if (isset($existingPayments) && $existingPayments->isNotEmpty())
+                                        @foreach ($existingPayments as $pIndex => $pDetail)
+                                            <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
+                                                <select class="form-select rv-account" name="payment_account_id[]"
+                                                    style="max-width: 300px; flex-grow: 1;">
+                                                    <option value="" disabled>Select Account</option>
+                                                    @foreach ($accounts as $acc)
+                                                        <option value="{{ $acc->id }}" {{ $acc->id == $pDetail->account_id ? 'selected' : '' }}>
+                                                            {{ $acc->title }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <input type="number" class="form-control text-end payment-amount"
+                                                    name="payment_amount[]" value="{{ (float) $pDetail->credit }}" placeholder="Amount" style="width:140px" step="0.01">
+                                                @if ($loop->first)
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPayment">
+                                                        <i class="bi bi-plus"></i> Add
+                                                    </button>
+                                                @else
+                                                    <button type="button" class="btn btn-sm btn-outline-danger remove-payment">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    @else
                                         <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
                                             <select class="form-select rv-account" name="payment_account_id[]"
                                                 style="max-width: 300px; flex-grow: 1;">
-                                                <option value="" disabled>Select Account</option>
+                                                <option value="" selected disabled>Select Account</option>
                                                 @foreach ($accounts as $acc)
-                                                    <option value="{{ $acc->id }}" {{ $acc->id == $pDetail->account_id ? 'selected' : '' }}>
-                                                        {{ $acc->title }}
-                                                    </option>
+                                                    <option value="{{ $acc->id }}">{{ $acc->title }}</option>
                                                 @endforeach
                                             </select>
                                             <input type="number" class="form-control text-end payment-amount"
-                                                name="payment_amount[]" value="{{ (float) $pDetail->credit }}" placeholder="Amount" style="width:140px" step="0.01">
-                                            @if ($loop->first)
-                                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPayment">
-                                                    <i class="bi bi-plus"></i> Add
-                                                </button>
-                                            @else
-                                                <button type="button" class="btn btn-sm btn-outline-danger remove-payment">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            @endif
+                                                name="payment_amount[]" placeholder="Amount" style="width:140px" step="0.01">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPayment">
+                                                <i class="bi bi-plus"></i> Add
+                                            </button>
                                         </div>
-                                    @endforeach
-                                @else
-                                    <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
-                                        <select class="form-select rv-account" name="payment_account_id[]"
-                                            style="max-width: 300px; flex-grow: 1;">
-                                            <option value="" selected disabled>Select Account</option>
-                                            @foreach ($accounts as $acc)
-                                                <option value="{{ $acc->id }}">{{ $acc->title }}</option>
-                                            @endforeach
-                                        </select>
-                                        <input type="number" class="form-control text-end payment-amount"
-                                            name="payment_amount[]" placeholder="Amount" style="width:140px" step="0.01">
-                                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPayment">
-                                            <i class="bi bi-plus"></i> Add
-                                        </button>
-                                    </div>
-                                @endif
-                            </div>
-                            <div class="text-end">
-                                <span class="me-2 fw-bold text-muted">Total Paid:</span>
-                                <span class="fw-bold fs-6 text-success" id="totalPaid">0.00</span>
+                                    @endif
+                                </div>
+                                <div class="text-end">
+                                    <span class="me-2 fw-bold text-muted">Total Paid:</span>
+                                    <span class="fw-bold fs-6 text-success" id="totalPaid">0.00</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    @endif
 
                     {{-- RIGHT: Summary --}}
-                    <div class="col-lg-5">
+                    <div class="{{ $purchase->purchase_type === 'purchase_order' ? 'col-lg-6 mx-auto' : 'col-lg-5' }}">
                         <div class="card-panel shadow-sm">
-                            <div class="section-title mb-3">Summary</div>
+                            <div class="section-title mb-3">{{ $purchase->purchase_type === 'purchase_order' ? 'Order Summary' : 'Summary' }}</div>
                             <div class="row py-1 align-items-center">
                                 <div class="col-7 text-muted fw-medium">Total Qty (Pieces)</div>
                                 <div class="col-5 text-end"><span id="tQty" class="fw-bold">0</span></div>
@@ -683,7 +678,7 @@
                                 <input type="hidden" name="subtotal" id="subtotalInput">
                             </div>
                             <div class="row py-1 align-items-center">
-                                <div class="col-7 text-muted fw-medium">Bill Discount</div>
+                                <div class="col-7 text-muted fw-medium">{{ $purchase->purchase_type === 'purchase_order' ? 'Order Discount' : 'Bill Discount' }}</div>
                                 <div class="col-5 text-end d-flex gap-1">
                                     @php
                                         $inlineVal = $purchase->items->sum('item_discount');
@@ -706,8 +701,8 @@
                                 </div>
                             </div>
                             <hr class="my-2 border-secondary">
-                            <div class="row py-2">
-                                <div class="col-6 fw-bold fs-5 text-primary">Net Payable</div>
+                            <div class="row py-2 {{ $purchase->purchase_type === 'purchase_order' ? 'bg-primary-subtle rounded-2 px-2' : '' }}">
+                                <div class="col-6 fw-bold fs-5 text-primary">{{ $purchase->purchase_type === 'purchase_order' ? 'Total Order Amount' : 'Net Payable' }}</div>
                                 <div class="col-6 text-end fw-bold fs-5 text-primary"><span id="tPayable">0.00</span>
                                 </div>
                                 <input type="hidden" name="net_amount" id="netAmountInput">
@@ -717,8 +712,8 @@
                 </div>
 
                 <div class="text-end mt-4">
-                    <button type="submit" class="btn btn-success btn-submit-update px-5 fw-bold shadow-sm">
-                        <i class="bi bi-save me-2"></i> Update Purchase
+                    <button type="submit" class="btn btn-{{ $purchase->purchase_type === 'purchase_order' ? 'primary' : 'success' }} btn-submit-update px-5 fw-bold shadow-sm">
+                        <i class="bi bi-save me-2"></i> Update {{ $purchase->purchase_type === 'purchase_order' ? 'Purchase Order' : 'Purchase' }}
                     </button>
                 </div>
 

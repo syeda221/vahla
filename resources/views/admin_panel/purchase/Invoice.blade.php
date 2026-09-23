@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Purchase Invoice - {{ $purchase->invoice_no }}</title>
+    <title>{{ $purchase->purchase_type === 'purchase_order' ? 'Purchase Order' : 'Purchase Invoice' }} - {{ $purchase->invoice_no }}</title>
     <!-- Bootstrap 5 CSS -->
     <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
     <style>
@@ -276,7 +276,7 @@
                     </svg>
                     Print
                 </button>
-                <a href="{{ route('Purchase.home') }}" class="btn btn-outline-secondary btn-sm px-2 px-md-3 fw-semibold text-nowrap" style="border-radius: 8px; font-size: 0.8rem;">Back</a>
+                <a href="{{ $purchase->purchase_type === 'purchase_order' ? route('purchase_orders.index') : route('Purchase.home') }}" class="btn btn-outline-secondary btn-sm px-2 px-md-3 fw-semibold text-nowrap" style="border-radius: 8px; font-size: 0.8rem;">Back</a>
             </div>
         </div>
     </div>
@@ -288,7 +288,7 @@
             <div style="font-size: 12px; color: #475569;">{{ \App\Models\Setting::get('company_address', 'Hyderabad') }}</div>
         </div>
 
-        <div class="invoice-title">Purchase Invoice</div>
+        <div class="invoice-title">{{ $purchase->purchase_type === 'purchase_order' ? 'Purchase Order' : 'Purchase Invoice' }}</div>
 
         <!-- Info Grid -->
         <div class="row g-2 mb-3">
@@ -321,7 +321,7 @@
             <div class="col-12 col-md-4">
                 <div class="info-box">
                     <div class="info-box-header">Reference</div>
-                    <div><span class="info-label">Inv #:</span> <strong>INV-{{ $purchase->id }}</strong></div>
+                    <div><span class="info-label">{{ $purchase->purchase_type === 'purchase_order' ? 'PO #:' : 'Inv #:' }}</span> <strong>{{ $purchase->invoice_no }}</strong></div>
                     <div><span class="info-label">Date:</span> {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}</div>
                 </div>
             </div>
@@ -759,6 +759,7 @@
                             <td>Total Net</td>
                             <td class="text-end font-monospace">Rs. {{ number_format($purchase->net_amount, 2) }}</td>
                         </tr>
+                        @if($purchase->purchase_type !== 'purchase_order')
                         <tr>
                             <td>Paid Amount</td>
                             <td class="text-end text-success fw-bold font-monospace">Rs. {{ number_format($purchase->paid_amount, 2) }}</td>
@@ -779,6 +780,7 @@
                                 Rs. {{ number_format($currentBalance, 2) }}
                             </td>
                         </tr>
+                        @endif
                     </table>
                 </div>
             </div>

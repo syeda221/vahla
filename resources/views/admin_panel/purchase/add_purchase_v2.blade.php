@@ -377,16 +377,20 @@
 
             <form id="purchaseForm" action="{{ route('store.Purchase') }}" method="POST" autocomplete="off">
                 @csrf
-                <input type="hidden" id="action" name="action" value="purchase">
+                <input type="hidden" id="action" name="action" value="{{ request('type') == 'purchase_order' ? 'purchase_order' : 'purchase' }}">
+                <input type="hidden" id="purchase_type" name="purchase_type" value="{{ request('type') == 'purchase_order' ? 'purchase_order' : 'direct_purchase' }}">
+                <input type="hidden" id="purchase_prefix" name="purchase_prefix" value="{{ $activePrefix ?? (request('type') == 'purchase_order' ? 'PO' : 'PINV') }}">
 
                 {{-- TOP HEADER & INVOICE / VENDOR CARD --}}
                 <div class="card-panel shadow-sm mb-3 p-3">
                     <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
                         <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('Purchase.home') }}" class="btn btn-sm btn-outline-secondary">
+                            <a href="{{ request('type') == 'purchase_order' ? route('purchase_orders.index') : route('Purchase.home') }}" class="btn btn-sm btn-outline-secondary">
                                 <i class="bi bi-arrow-left"></i> Back to List
                             </a>
-                            <h4 class="header-text text-dark fw-bold mb-0 ms-2">Purchase Entry</h4>
+                            <h4 class="header-text text-dark fw-bold mb-0 ms-2">
+                                {{ request('type') == 'purchase_order' ? 'New Purchase Order' : 'Purchase Entry' }}
+                            </h4>
                         </div>
                         <div>
                             <span class="badge bg-light text-secondary border px-3 py-2 fs-6 fw-semibold" id="entryDate">
@@ -397,12 +401,25 @@
 
                     <div class="row g-2 align-items-end">
                         <div class="col-md-2">
-                            <label class="form-label fw-bold mb-1 text-muted small">System No.</label>
-                            <input type="text" class="form-control input-readonly" name="invoice_no" value="{{ $nextInvoice ?? 'NEW' }}" readonly>
+                            <label class="form-label fw-bold mb-1 text-muted small">
+                                {{ request('type') == 'purchase_order' ? 'ORDER NO.' : 'INVOICE NO.' }}
+                            </label>
+                            <div class="input-group">
+                                @if(request('type') == 'purchase_order')
+                                    <span class="btn btn-primary d-flex align-items-center justify-content-center fw-bold" style="cursor: default; pointer-events: none; border-top-right-radius: 0; border-bottom-right-radius: 0; padding: 0 10px; font-size: 0.8rem;">
+                                        <span>PO</span>
+                                    </span>
+                                @else
+                                    <span class="btn btn-primary d-flex align-items-center justify-content-center fw-bold" style="cursor: default; pointer-events: none; border-top-right-radius: 0; border-bottom-right-radius: 0; padding: 0 8px; font-size: 0.8rem;">
+                                        <span id="activePrefixLabel">{{ $activePrefix ?? 'PINV' }}</span>
+                                    </span>
+                                @endif
+                                <input type="text" class="form-control input-readonly text-center fw-bold" name="invoice_no" value="{{ $nextInvoice ?? 'NEW' }}" readonly>
+                            </div>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label fw-bold mb-1 text-muted small">Vendor Inv#</label>
-                            <input type="text" class="form-control" name="purchase_order_no" placeholder="Manual Ref">
+                            <input type="text" class="form-control" name="vendor_bill_no" placeholder="Manual Ref">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold mb-1 text-muted small">Select Vendor</label>
@@ -451,7 +468,7 @@
                         </div>
                     </div>
 
-                    <input type="hidden" name="warehouse_id" value="{{ $Warehouse->first()->id ?? 1 }}">
+                    <input type="hidden" name="warehouse_id" value="1">
                 </div>
 
                 {{-- PURCHASE ITEMS (FULL WIDTH) --}}
@@ -499,35 +516,37 @@
 
                 {{-- Totals + Summary --}}
                 <div class="row g-3 mt-1">
-                    <div class="col-lg-7">
-                        <div class="card-panel shadow-sm">
-                            <div class="section-title mb-3">Payment / Receipt Voucher</div>
-                            <div id="paymentWrapper" class="border rounded p-3 bg-light mb-3">
-                                <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
-                                    <select class="form-select rv-account" name="payment_account_id[]"
-                                        style="max-width: 300px; flex-grow: 1;">
-                                        @foreach ($accounts as $acc)
-                                            <option value="{{ $acc->id }}" {{ (str_contains(strtolower($acc->title), 'cash') || $loop->first) ? 'selected' : '' }}>{{ $acc->title }}</option>
-                                        @endforeach
-                                    </select>
-                                    <input type="number" class="form-control text-end payment-amount"
-                                        name="payment_amount[]" placeholder="Amount" style="width:140px">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPayment">
-                                        <i class="bi bi-plus"></i> Add
-                                    </button>
+                    @if($type !== 'purchase_order')
+                        <div class="col-lg-7">
+                            <div class="card-panel shadow-sm">
+                                <div class="section-title mb-3">Payment / Receipt Voucher</div>
+                                <div id="paymentWrapper" class="border rounded p-3 bg-light mb-3">
+                                    <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
+                                        <select class="form-select rv-account" name="payment_account_id[]"
+                                            style="max-width: 300px; flex-grow: 1;">
+                                            @foreach ($accounts as $acc)
+                                                <option value="{{ $acc->id }}" {{ (str_contains(strtolower($acc->title), 'cash') || $loop->first) ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                            @endforeach
+                                        </select>
+                                        <input type="number" class="form-control text-end payment-amount"
+                                            name="payment_amount[]" placeholder="Amount" style="width:140px">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPayment">
+                                            <i class="bi bi-plus"></i> Add
+                                        </button>
+                                    </div>
+                                    <!-- Additional rows will be appended here -->
                                 </div>
-                                <!-- Additional rows will be appended here -->
-                            </div>
-                            <div class="text-end">
-                                <span class="me-2 fw-bold text-muted">Total Paid:</span>
-                                <span class="fw-bold fs-6 text-success" id="totalPaid">0.00</span>
+                                <div class="text-end">
+                                    <span class="me-2 fw-bold text-muted">Total Paid:</span>
+                                    <span class="fw-bold fs-6 text-success" id="totalPaid">0.00</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    @endif
 
-                    <div class="col-lg-5">
+                    <div class="{{ $type === 'purchase_order' ? 'col-lg-6 mx-auto' : 'col-lg-5' }}">
                         <div class="bg-white shadow-sm rounded-3 p-3 h-100 border">
-                            <div class="section-title mb-3">Summary</div>
+                            <div class="section-title mb-3">{{ $type === 'purchase_order' ? 'Order Summary' : 'Summary' }}</div>
                             <div class="p-3 bg-light rounded-3 border">
                                 <div class="row py-1 align-items-center">
                                     <div class="col-7 text-muted fw-medium">Total Qty</div>
@@ -538,15 +557,15 @@
                                     <div class="col-5 text-end fw-bold"><span id="tSub">0.00</span></div>
                                 </div>
                                 <div class="row py-1 align-items-center">
-                                <div class="col-7 text-muted fw-medium">Bill Discount</div>
-                                <div class="col-5 text-end d-flex gap-1">
-                                    <input type="number" class="form-control text-end form-control-sm"
-                                        id="billDiscountPct" placeholder="%" style="width: 70px;" step="0.01">
-                                    <input type="number" class="form-control text-end form-control-sm"
-                                        id="billDiscount" value="0" step="0.01">
-                                    <input type="hidden" name="discount" id="discountInput" value="0">
+                                    <div class="col-7 text-muted fw-medium">{{ $type === 'purchase_order' ? 'Order Discount' : 'Bill Discount' }}</div>
+                                    <div class="col-5 text-end d-flex gap-1">
+                                        <input type="number" class="form-control text-end form-control-sm"
+                                            id="billDiscountPct" placeholder="%" style="width: 70px;" step="0.01">
+                                        <input type="number" class="form-control text-end form-control-sm"
+                                            id="billDiscount" value="0" step="0.01">
+                                        <input type="hidden" name="discount" id="discountInput" value="0">
+                                    </div>
                                 </div>
-                            </div>
                                 <div class="row py-1 align-items-center">
                                     <div class="col-7 text-muted fw-medium">Extra Cost</div>
                                     <div class="col-5 text-end">
@@ -554,19 +573,27 @@
                                             name="extra_cost" id="extraCost" value="0">
                                     </div>
                                 </div>
-                                <div class="row py-1 align-items-center">
-                                    <div class="col-7 text-danger fw-medium">Previous Balance</div>
-                                    <div class="col-5 text-end text-danger fw-bold"><span id="tPrev">0.00</span></div>
-                                </div>
-                                <hr class="my-2 border-secondary">
-                                <div class="row py-2">
-                                    <div class="col-6 fw-bold fs-5 text-primary">Current Bill</div>
-                                    <div class="col-6 text-end fw-bold fs-5 text-primary"><span id="tPayable">0.00</span></div>
-                                </div>
-                                <div class="row py-2 bg-warning-subtle rounded-2">
-                                    <div class="col-6 fw-bold fs-5 text-dark">Total Payable</div>
-                                    <div class="col-6 text-end fw-bold fs-5 text-dark"><span id="tTotalPayable">0.00</span></div>
-                                </div>
+                                @if($type !== 'purchase_order')
+                                    <div class="row py-1 align-items-center">
+                                        <div class="col-7 text-danger fw-medium">Previous Balance</div>
+                                        <div class="col-5 text-end text-danger fw-bold"><span id="tPrev">0.00</span></div>
+                                    </div>
+                                    <hr class="my-2 border-secondary">
+                                    <div class="row py-2">
+                                        <div class="col-6 fw-bold fs-5 text-primary">Current Bill</div>
+                                        <div class="col-6 text-end fw-bold fs-5 text-primary"><span id="tPayable">0.00</span></div>
+                                    </div>
+                                    <div class="row py-2 bg-warning-subtle rounded-2">
+                                        <div class="col-6 fw-bold fs-5 text-dark">Total Payable</div>
+                                        <div class="col-6 text-end fw-bold fs-5 text-dark"><span id="tTotalPayable">0.00</span></div>
+                                    </div>
+                                @else
+                                    <hr class="my-2 border-secondary">
+                                    <div class="row py-2 bg-primary-subtle rounded-2">
+                                        <div class="col-6 fw-bold fs-5 text-primary">Total Order Amount</div>
+                                        <div class="col-6 text-end fw-bold fs-5 text-primary"><span id="tPayable">0.00</span></div>
+                                    </div>
+                                @endif
                                 <input type="hidden" name="net_amount" id="netAmountInput" value="0">
                                 <input type="hidden" name="subtotal" id="subtotalInput" value="0">
                             </div>
@@ -581,14 +608,20 @@
                         onclick="window.location.reload()">
                         <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
                     </button>
-                    {{-- New Save Only Button --}}
-                    <button type="button" class="btn btn-action-primary bg-info border-info text-white" id="btnSaveOnly">
-                        <i class="bi bi-save me-1"></i> Save Purchase
-                    </button>
-                    {{-- Existing Submit (Confirm) --}}
-                    <button type="button" class="btn btn-action-primary bg-success border-success text-white" id="btnConfirm">
-                        <i class="bi bi-check-circle me-1"></i> Confirm Purchase
-                    </button>
+                    @if($type === 'purchase_order')
+                        <button type="button" class="btn btn-action-primary bg-primary border-primary text-white px-4 fw-bold shadow-sm" id="btnConfirm">
+                            <i class="bi bi-check-circle me-1"></i> Save Purchase Order
+                        </button>
+                    @else
+                        {{-- New Save Only Button --}}
+                        <button type="button" class="btn btn-action-primary bg-info border-info text-white" id="btnSaveOnly">
+                            <i class="bi bi-save me-1"></i> Save Purchase
+                        </button>
+                        {{-- Existing Submit (Confirm) --}}
+                        <button type="button" class="btn btn-action-primary bg-success border-success text-white" id="btnConfirm">
+                            <i class="bi bi-check-circle me-1"></i> Confirm Purchase
+                        </button>
+                    @endif
                 </div>
             </form>
         </div>
@@ -798,19 +831,28 @@
                 });
             });
 
-            // 2. Confirm (Approved)
+            // 2. Confirm / Save Purchase Order
+            const isPurchaseOrder = "{{ $type }}" === "purchase_order";
+
             $('#btnConfirm').click(function(e) {
                 e.preventDefault();
                 normalizeDiscountInput();
 
+                let confirmTitle = isPurchaseOrder ? 'Save Purchase Order?' : 'Confirm Purchase?';
+                let confirmText = isPurchaseOrder 
+                    ? 'Save this purchase order.' 
+                    : 'This will update stock and accounts. You cannot revert this directly.';
+                let btnColor = isPurchaseOrder ? '#2563eb' : '#198754';
+                let btnConfirmText = isPurchaseOrder ? 'Yes, Save Order!' : 'Yes, Confirm it!';
+
                 Swal.fire({
-                    title: 'Confirm Purchase?',
-                    text: "This will update stock and accounts. You cannot revert this directly.",
-                    icon: 'warning',
+                    title: confirmTitle,
+                    text: confirmText,
+                    icon: isPurchaseOrder ? 'question' : 'warning',
                     showCancelButton: true,
-                    confirmButtonColor: '#198754',
+                    confirmButtonColor: btnColor,
                     cancelButtonColor: '#d33',
-                    confirmButtonText: 'Yes, Confirm it!'
+                    confirmButtonText: btnConfirmText
                 }).then((result) => {
                     if (result.isConfirmed) {
                         let $btn = $('#btnConfirm');
@@ -818,33 +860,34 @@
                             '<span class="spinner-border spinner-border-sm me-2"></span>Processing...'
                         );
 
-                        $('#action').val('approved'); // Set action
+                        $('#action').val(isPurchaseOrder ? 'purchase_order' : 'approved');
 
                         $.ajax({
                             url: "{{ route('store.Purchase') }}",
                             method: "POST",
                             data: $('#purchaseForm').serialize(),
                             success: function(response) {
-                                // Open Invoice in New Tab
+                                // Open Invoice in New Tab only if invoice_url is provided
                                 if (response.invoice_url) {
                                     window.open(response.invoice_url, '_blank');
                                 }
 
                                 Swal.fire({
                                     icon: 'success',
-                                    title: 'Confirmed!',
-                                    text: 'Purchase confirmed and processed successfully.',
+                                    title: response.message || (isPurchaseOrder ? 'Order Saved!' : 'Confirmed!'),
+                                    text: isPurchaseOrder ? 'Purchase Order saved successfully.' : 'Purchase confirmed and processed successfully.',
                                     timer: 1500,
                                     showConfirmButton: false
                                 }).then(() => {
-                                    window.location.href = response
-                                        .redirect_url ||
-                                        "{{ route('Purchase.home') }}";
+                                    window.location.href = response.redirect_url ||
+                                        (isPurchaseOrder ? "{{ route('purchase_orders.index') }}" : "{{ route('Purchase.home') }}");
                                 });
                             },
                             error: function(xhr) {
                                 $btn.prop('disabled', false).html(
-                                    '<i class="bi bi-check-circle"></i> Confirm Purchase'
+                                    isPurchaseOrder 
+                                        ? '<i class="bi bi-check-circle me-1"></i> Save Purchase Order' 
+                                        : '<i class="bi bi-check-circle me-1"></i> Confirm Purchase'
                                 );
                                 let msg = 'Something went wrong.';
                                 if (xhr.responseJSON && xhr.responseJSON.message) msg =

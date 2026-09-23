@@ -249,12 +249,16 @@ class BalanceService
             $this->ensureVendorOpeningBalance($vendor);
         }
 
+        $dateStr = \Carbon\Carbon::parse($date)->format('Y-m-d');
         $apId = $this->getAccountsPayableId();
 
         $balance = JournalEntry::where('party_type', \App\Models\Vendor::class)
             ->where('party_id', $vendorId)
             ->where('account_id', $apId)
-            ->where('entry_date', '<', $date)
+            ->where(function ($q) use ($dateStr) {
+                $q->whereDate('entry_date', '<', $dateStr)
+                  ->orWhere('entry_date', '<', $dateStr);
+            })
             ->selectRaw('COALESCE(SUM(credit) - SUM(debit), 0) as balance')
             ->value('balance') ?? 0;
 
@@ -289,7 +293,7 @@ class BalanceService
         // 4. Total Payables (Money we owe vendors)
         // Calculate from Journal Entries since we just implemented it
         $payables = JournalEntry::where('party_type', \App\Models\Vendor::class)
-            ->selectRaw('SUM(credit) - SUM(debit) as balance')
+            ->selectRaw('COALESCE(SUM(credit) - SUM(debit), 0) as balance')
             ->value('balance') ?? 0;
 
         return [
@@ -309,42 +313,68 @@ class BalanceService
     {
         $vendor = \App\Models\Vendor::find($vendorId);
         if (! $vendor) {
-            return ['vendor' => null, 'opening_balance' => 0, 'transactions' => []];
+            return ['vendor' => null, 'opening_balance' => 0, 'closing_balance' => 0, 'transactions' => []];
         }
 
-        $openingBalance = $this->getVendorBalanceBeforeDate($vendorId, $startDate);
+        $startDateStr = \Carbon\Carbon::parse($startDate)->format('Y-m-d');
+        $endDateStr = \Carbon\Carbon::parse($endDate)->format('Y-m-d');
+        $startDay = \Carbon\Carbon::parse($startDate)->startOfDay()->format('Y-m-d H:i:s');
+        $endDay = \Carbon\Carbon::parse($endDate)->endOfDay()->format('Y-m-d H:i:s');
 
-        // Purchases in range (Increase payable - they go in Debit column = money we owe)
+        $openingBalance = $this->getVendorBalanceBeforeDate($vendorId, $startDateStr);
+
+        // Purchases in range (Increase payable - they go in Credit column = money we owe vendor)
+        // Include direct purchases, approved/received/posted purchase invoices, while excluding draft purchase orders
         $purchases = DB::table('purchases')
             ->where('vendor_id', $vendorId)
-            ->whereIn('status_purchase', ['approved', 'Returned'])
-            ->whereBetween('purchase_date', [$startDate, $endDate])
+            ->where(function ($q) {
+                $q->whereIn('status_purchase', ['approved', 'Approved', 'posted', 'Posted', 'received', 'Received', 'partial', 'Partial', 'Returned', 'returned'])
+                  ->orWhere(function ($sq) {
+                      $sq->where('purchase_type', '!=', 'purchase_order')
+                         ->where('status_purchase', '!=', 'draft');
+                  });
+            })
+            ->where(function ($q) use ($startDateStr, $endDateStr, $startDay, $endDay) {
+                $q->whereBetween('purchase_date', [$startDateStr, $endDateStr])
+                  ->orWhereBetween('purchase_date', [$startDay, $endDay])
+                  ->orWhere(function ($sq) use ($startDateStr, $endDateStr) {
+                      $sq->whereDate('purchase_date', '>=', $startDateStr)
+                         ->whereDate('purchase_date', '<=', $endDateStr);
+                  });
+            })
             ->select('id', 'invoice_no', 'net_amount', 'purchase_date')
             ->get()
             ->map(fn($p) => [
                 'source_type' => 'Purchase',
                 'source_id'   => $p->id,
-                'date'        => $p->purchase_date,
-                'description' => 'Purchase Invoice #' . $p->invoice_no,
+                'date'        => $p->purchase_date ? \Carbon\Carbon::parse($p->purchase_date)->format('Y-m-d') : now()->format('Y-m-d'),
+                'description' => 'Purchase Invoice #' . ($p->invoice_no ?? 'PINV-' . str_pad($p->id, 4, '0', STR_PAD_LEFT)),
                 'debit'       => 0,
                 'credit'      => (float) $p->net_amount, // Cr = we owe vendor more
-                'sort_date'   => $p->purchase_date,
+                'sort_date'   => $p->purchase_date ? \Carbon\Carbon::parse($p->purchase_date)->format('Y-m-d') : now()->format('Y-m-d'),
             ]);
 
         // Purchase Returns in range (Reduce payable)
         $returns = DB::table('purchase_returns')
             ->where('vendor_id', $vendorId)
-            ->whereBetween('return_date', [$startDate, $endDate])
+            ->where(function ($q) use ($startDateStr, $endDateStr, $startDay, $endDay) {
+                $q->whereBetween('return_date', [$startDateStr, $endDateStr])
+                  ->orWhereBetween('return_date', [$startDay, $endDay])
+                  ->orWhere(function ($sq) use ($startDateStr, $endDateStr) {
+                      $sq->whereDate('return_date', '>=', $startDateStr)
+                         ->whereDate('return_date', '<=', $endDateStr);
+                  });
+            })
             ->select('id', 'return_invoice', 'net_amount', 'return_date')
             ->get()
             ->map(fn($r) => [
                 'source_type' => 'PurchaseReturn',
                 'source_id'   => $r->id,
-                'date'        => $r->return_date,
-                'description' => 'Purchase Return #' . $r->return_invoice,
+                'date'        => $r->return_date ? \Carbon\Carbon::parse($r->return_date)->format('Y-m-d') : now()->format('Y-m-d'),
+                'description' => 'Purchase Return #' . ($r->return_invoice ?? 'PRET-' . str_pad($r->id, 4, '0', STR_PAD_LEFT)),
                 'debit'       => (float) $r->net_amount, // Dr = reduces what we owe
                 'credit'      => 0,
-                'sort_date'   => $r->return_date,
+                'sort_date'   => $r->return_date ? \Carbon\Carbon::parse($r->return_date)->format('Y-m-d') : now()->format('Y-m-d'),
             ]);
 
         // Payments in range: AP debit journal entries against this vendor (excluding duplicate purchase/return voucher entries)
@@ -354,18 +384,25 @@ class BalanceService
             ->where('account_id', $apId)
             ->whereNot('description', 'like', 'Payable to Vendor%')
             ->whereNot('description', 'like', 'Debit Note for Return%')
-            ->whereBetween('entry_date', [$startDate, $endDate])
+            ->where(function ($q) use ($startDateStr, $endDateStr, $startDay, $endDay) {
+                $q->whereBetween('entry_date', [$startDateStr, $endDateStr])
+                  ->orWhereBetween('entry_date', [$startDay, $endDay])
+                  ->orWhere(function ($sq) use ($startDateStr, $endDateStr) {
+                      $sq->whereDate('entry_date', '>=', $startDateStr)
+                         ->whereDate('entry_date', '<=', $endDateStr);
+                  });
+            })
             ->orderBy('entry_date')
             ->orderBy('id')
             ->get()
             ->map(fn($e) => [
                 'source_type' => $e->source_type,
                 'source_id'   => $e->source_id,
-                'date'        => $e->entry_date,
+                'date'        => $e->entry_date instanceof \Carbon\Carbon ? $e->entry_date->format('Y-m-d') : (string)$e->entry_date,
                 'description' => $e->description,
                 'debit'       => (float) $e->debit,   // Dr = reduces what we owe
                 'credit'      => (float) $e->credit,  // Cr = increases what we owe (e.g. refunds/adjustments)
-                'sort_date'   => $e->entry_date,
+                'sort_date'   => $e->entry_date instanceof \Carbon\Carbon ? $e->entry_date->format('Y-m-d') : (string)$e->entry_date,
             ]);
 
         // Merge & sort

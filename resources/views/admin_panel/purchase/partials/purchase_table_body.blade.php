@@ -8,7 +8,25 @@
         <td class="text-nowrap">
             {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}
         </td>
-        <td class="font-monospace text-dark">{{ $purchase->invoice_no }}</td>
+        <td class="font-monospace text-dark">
+            <span class="fw-bold">{{ $purchase->invoice_no }}</span>
+            @if($purchase->goodsReceivingNotes && $purchase->goodsReceivingNotes->count() > 0)
+                <div class="mt-1 d-flex flex-wrap gap-1">
+                    @foreach($purchase->goodsReceivingNotes as $grn)
+                        <a href="{{ route('purchases.grn.print', $grn->id) }}" target="_blank" class="badge bg-light text-primary border border-primary text-decoration-none px-1 py-0" style="font-size: 10px;" title="View GRN">
+                            <i class="fas fa-boxes"></i> {{ $grn->grn_number }}
+                        </a>
+                    @endforeach
+                </div>
+            @endif
+            @if($purchase->parent_po_id)
+                <div class="mt-1">
+                    <span class="badge bg-light text-secondary border px-1 py-0" style="font-size: 10px;">
+                        <i class="fas fa-file-contract"></i> PO: {{ optional($purchase->parentOrder)->invoice_no ?: ('PO-' . str_pad($purchase->parent_po_id, 4, '0', STR_PAD_LEFT)) }}
+                    </span>
+                </div>
+            @endif
+        </td>
         <td class="font-monospace text-dark small">{{ $purchase->note ?? '-' }}</td>
         <td>
             @if ($purchase->status_purchase == 'draft')

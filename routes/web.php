@@ -19,6 +19,8 @@ use App\Http\Controllers\ProductBookingController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\GoodsReceivingNoteController;
+use App\Http\Controllers\DirectGRNController;
 use App\Http\Controllers\ReportingController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SaleController;
@@ -319,6 +321,20 @@ Route::middleware('auth')->group(function () {
     Route::get('purchase/return/{id}/view', [PurchaseController::class, 'viewReturn'])->name('purchase.return.view');
     Route::get('purchase/return/{id}', [PurchaseController::class, 'showReturnForm'])->name('purchase.return.show');
     Route::post('purchase/return/store', [PurchaseController::class, 'storeReturn'])->name('purchase.return.store');
+
+    // Goods Receiving Note (GRN / Purchase DC) Routes
+    Route::get('/purchases/{id}/grns', [GoodsReceivingNoteController::class, 'index'])->middleware('permission:purchases.view')->name('purchases.grn.index');
+    Route::get('/purchases/{id}/grn/create', [GoodsReceivingNoteController::class, 'create'])->middleware('permission:purchases.create')->name('purchases.grn.create');
+    Route::post('/purchases/{id}/grn', [GoodsReceivingNoteController::class, 'store'])->middleware('permission:purchases.create')->name('purchases.grn.store');
+    Route::get('/grn/{id}/print', [GoodsReceivingNoteController::class, 'print'])->middleware('permission:purchases.view')->name('purchases.grn.print');
+    Route::post('/grn/{id}/generate-invoice', [GoodsReceivingNoteController::class, 'generateInvoiceForGrn'])->middleware('permission:purchases.create')->name('purchases.grn.generate_invoice');
+
+    // Direct GRN & Consolidation Routes
+    Route::get('/direct-grn', [DirectGRNController::class, 'index'])->middleware('permission:purchases.view')->name('direct-grn.index');
+    Route::get('/direct-grn/create', [DirectGRNController::class, 'create'])->middleware('permission:purchases.create')->name('direct-grn.create');
+    Route::post('/direct-grn/store', [DirectGRNController::class, 'store'])->middleware('permission:purchases.create')->name('direct-grn.store');
+    Route::match(['get', 'post'], '/direct-grn/consolidate/preview', [DirectGRNController::class, 'consolidatePreview'])->middleware('permission:purchases.create')->name('direct-grn.consolidate.preview');
+    Route::post('/direct-grn/consolidate/store', [DirectGRNController::class, 'consolidateStore'])->middleware('permission:purchases.create')->name('direct-grn.consolidate.store');
 
     // Inward Gatepass Routes
     Route::get('/InwardGatepass', [InwardgatepassController::class, 'index'])->middleware('permission:inward.gatepass.view')->name('InwardGatepass.home');

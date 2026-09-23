@@ -2055,7 +2055,17 @@ class ReportingController extends Controller
                 ->pluck('id')
                 ->toArray();
 
-            $allIds = array_unique(array_merge($vendorIds, $obVendorIds));
+            // Also include all vendors with purchases
+            $purchVendorIds = DB::table('purchases')
+                ->where('purchase_type', '!=', 'purchase_order')
+                ->where('status_purchase', '!=', 'draft')
+                ->distinct()
+                ->pluck('vendor_id')
+                ->toArray();
+
+            $allVendorMasterIds = \App\Models\Vendor::pluck('id')->toArray();
+
+            $allIds = array_unique(array_merge($vendorIds, $obVendorIds, $purchVendorIds, $allVendorMasterIds));
 
             $allTransactions = [];
             $totalOpening = 0;
@@ -2063,6 +2073,9 @@ class ReportingController extends Controller
 
             foreach ($allIds as $vid) {
                 $ledgerData = $balanceService->getVendorLedger($vid, $start, $end);
+                if (empty($ledgerData['vendor'])) {
+                    continue;
+                }
                 $vendorName = $ledgerData['vendor']->name ?? 'Unknown';
                 $totalOpening += $ledgerData['opening_balance'];
 
@@ -2078,11 +2091,13 @@ class ReportingController extends Controller
                     }
 
                     $ref = '-';
-                    if (preg_match('/PUR-(\S+)/', $desc, $matches)) {
-                        $ref = 'PUR-' . $matches[1];
-                    } elseif (preg_match('/Payment #(\S+)/', $desc, $matches)) {
+                    if (preg_match('/(PINV-\S+|PUR-\S+|PO-\S+|TAX-\S+|INV-\S+|PRET-\S+)/i', $desc, $matches)) {
+                        $ref = strtoupper($matches[1]);
+                    } elseif (preg_match('/Purchase\s+(?:Invoice\s+)?#(\S+)/i', $desc, $matches)) {
                         $ref = $matches[1];
-                    } elseif (preg_match('/Purchase #(\S+)/', $desc, $matches)) {
+                    } elseif (preg_match('/Purchase\s+Return\s+#(\S+)/i', $desc, $matches)) {
+                        $ref = $matches[1];
+                    } elseif (preg_match('/Payment\s+#(\S+)/i', $desc, $matches)) {
                         $ref = $matches[1];
                     }
 
@@ -2151,11 +2166,13 @@ class ReportingController extends Controller
             }
 
             $ref = '-';
-            if (preg_match('/PUR-(\S+)/', $desc, $matches)) {
-                $ref = 'PUR-' . $matches[1];
-            } elseif (preg_match('/Payment #(\S+)/', $desc, $matches)) {
+            if (preg_match('/(PINV-\S+|PUR-\S+|PO-\S+|TAX-\S+|INV-\S+|PRET-\S+)/i', $desc, $matches)) {
+                $ref = strtoupper($matches[1]);
+            } elseif (preg_match('/Purchase\s+(?:Invoice\s+)?#(\S+)/i', $desc, $matches)) {
                 $ref = $matches[1];
-            } elseif (preg_match('/Purchase #(\S+)/', $desc, $matches)) {
+            } elseif (preg_match('/Purchase\s+Return\s+#(\S+)/i', $desc, $matches)) {
+                $ref = $matches[1];
+            } elseif (preg_match('/Payment\s+#(\S+)/i', $desc, $matches)) {
                 $ref = $matches[1];
             }
 

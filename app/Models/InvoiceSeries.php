@@ -32,30 +32,52 @@ class InvoiceSeries extends Model
             $padding = $defaultSeries->padding ?? 4;
             $nextNumSeries = $defaultSeries->next_number ?? 1;
         } else {
-            $defaultPad = in_array($pref, ['TAX', 'CO']) ? 3 : 4;
+            $defaultPad = in_array($pref, ['TAX', 'CO', 'PTAX', 'PCO']) ? 3 : 4;
             $padding = $series ? ($series->padding ?? $defaultPad) : $defaultPad;
             $nextNumSeries = $series->next_number ?? 1;
         }
 
-        // Find highest existing invoice number in sales table for this prefix
+        $numFromRecords = 0;
+
+        // Check Sales table
         $lastSale = Sale::where('invoice_no', 'LIKE', $pref . '-%')
             ->orderBy('id', 'desc')
             ->first();
-
-        $numFromSale = 0;
         if ($lastSale && $lastSale->invoice_no) {
             if (preg_match('/' . preg_quote($pref, '/') . '-(\d+)/i', $lastSale->invoice_no, $matches)) {
-                $numFromSale = (int) $matches[1];
+                $numFromRecords = max($numFromRecords, (int) $matches[1]);
             }
         }
 
-        $nextNum = max((int) $nextNumSeries, $numFromSale + 1);
+        // Check Purchases table
+        $lastPurchase = Purchase::where('invoice_no', 'LIKE', $pref . '-%')
+            ->orderBy('id', 'desc')
+            ->first();
+        if ($lastPurchase && $lastPurchase->invoice_no) {
+            if (preg_match('/' . preg_quote($pref, '/') . '-(\d+)/i', $lastPurchase->invoice_no, $matches)) {
+                $numFromRecords = max($numFromRecords, (int) $matches[1]);
+            }
+        }
+
+        // Check Goods Receiving Notes table
+        if ($pref === 'GRN' || str_starts_with($pref, 'GRN')) {
+            $lastGrn = GoodsReceivingNote::where('grn_number', 'LIKE', $pref . '-%')
+                ->orderBy('id', 'desc')
+                ->first();
+            if ($lastGrn && $lastGrn->grn_number) {
+                if (preg_match('/' . preg_quote($pref, '/') . '-(\d+)/i', $lastGrn->grn_number, $matches)) {
+                    $numFromRecords = max($numFromRecords, (int) $matches[1]);
+                }
+            }
+        }
+
+        $nextNum = max((int) $nextNumSeries, $numFromRecords + 1);
 
         return $pref . '-' . str_pad($nextNum, $padding, '0', STR_PAD_LEFT);
     }
 
     /**
-     * Increment series counter after sale creation if applicable
+     * Increment series counter after sale/purchase creation if applicable
      */
     public static function incrementCounterForInvoice($invoiceNo)
     {

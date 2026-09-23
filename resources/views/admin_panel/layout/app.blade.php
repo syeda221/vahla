@@ -880,11 +880,14 @@
                                                         </li>
                                                     @endcan
                                                     @can('purchases.view')
-                                                        <li><a href="{{ route('Purchase.home') }}"><i
-                                                                    class="fas fa-shopping-cart"></i> Purchase</a>
-                                                        </li>
                                                         <li><a href="{{ route('purchase_orders.index') }}"><i
                                                                     class="fas fa-file-contract"></i> Purchase Orders</a>
+                                                        </li>
+                                                        <li><a href="{{ route('direct-grn.index') }}"><i
+                                                                    class="fas fa-dolly-flatbed"></i> Goods Receiving (GRN)</a>
+                                                        </li>
+                                                        <li><a href="{{ route('Purchase.home') }}"><i
+                                                                    class="fas fa-shopping-cart"></i> Purchase Bills</a>
                                                         </li>
                                                     @endcan
                                                     @can('purchase_pos.create')

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Purchase Receipt - {{ $purchase->invoice_no }}</title>
+    <title>{{ $purchase->purchase_type === 'purchase_order' ? 'Purchase Order' : 'Purchase Receipt' }} - {{ $purchase->invoice_no }}</title>
     <style>
         @media print {
             body {
@@ -124,7 +124,7 @@
 
 <body>
 
-    <a href="javascript:window.print()" class="btn-print no-print">PRINT RECEIPT</a>
+    <a href="javascript:window.print()" class="btn-print no-print">PRINT {{ $purchase->purchase_type === 'purchase_order' ? 'PURCHASE ORDER' : 'RECEIPT' }}</a>
 
     <div class="header">
         <div class="company-name">{{ \App\Models\Setting::get('company_name', 'prowave technogies') }}</div>
@@ -135,7 +135,7 @@
     <div class="divider"></div>
 
     <div class="info-row">
-        <span>Inv #: {{ $purchase->invoice_no }}</span>
+        <span>{{ $purchase->purchase_type === 'purchase_order' ? 'PO #:' : 'Inv #:' }} {{ $purchase->invoice_no }}</span>
         <span>{{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}</span>
     </div>
     <div class="info-row">
