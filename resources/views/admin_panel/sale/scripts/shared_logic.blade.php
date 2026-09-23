@@ -670,6 +670,14 @@
                             }).then(() => {
                                 window.location.href = res.redirect_url || "{{ route('sale.index') }}";
                             });
+                        } else if ($('#action').val() === 'sales_order' || $('#sale_type').val() === 'sales_order') {
+                            Swal.fire({
+                                title: 'Saved',
+                                text: 'Sales Order created successfully!',
+                                icon: 'success'
+                            }).then(() => {
+                                window.location.href = res.redirect_url || "{{ route('sales_orders.index') }}";
+                            });
                         }
                         resolve(res);
                     } else {
@@ -1520,7 +1528,13 @@
 
         // Buttons: Sale (Post)
         $('#btnPosted, #btnHeaderPosted').off('click').on('click', function() {
-            $('#action').val('sale');
+            if ($('#sale_type').val() === 'quotation') {
+                $('#action').val('quotation');
+            } else if ($('#sale_type').val() === 'sales_order') {
+                $('#action').val('sales_order');
+            } else {
+                $('#action').val('sale');
+            }
             cleanupEmptyRows();
             updateGrandTotals();
             refreshPostedState();
@@ -1540,7 +1554,7 @@
             const invoiceNet = toNum($('#totalBalance').val());
             const paidNow = toNum($('#receiptsTotal').text());
 
-            if (isWalkin) {
+            if (isWalkin && $('#sale_type').val() !== 'quotation' && $('#sale_type').val() !== 'sales_order') {
                 // For walk-in, they must pay 100% upfront (with a small floating point tolerance)
                 if (paidNow < (invoiceNet - 0.05)) {
                     Swal.fire({
