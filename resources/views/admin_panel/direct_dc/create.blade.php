@@ -56,7 +56,7 @@
                             </div>
                             <div class="col-md-4 form-group mb-2">
                                 <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;">DC Number</label>
-                                <input type="text" name="dc_number" class="form-control bg-light text-muted" value="{{ $nextDcNumber }}" required readonly>
+                                <input type="text" name="dc_number" class="form-control font-monospace fw-bold" value="{{ $nextDcNumber }}" placeholder="e.g. DDC-0001" required title="Aap custom DC number bhi enter kar sakte hain">
                             </div>
                             <input type="hidden" name="warehouse_id" value="{{ auth()->user()->warehouse_id ?? 1 }}">
                             <div class="col-md-12 form-group mb-2">

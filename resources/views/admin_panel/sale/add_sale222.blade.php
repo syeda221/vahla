@@ -717,7 +717,7 @@
                                     </ul>
                                 @endif
 
-                                <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $nextInvoiceNumber }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                                <input type="text" class="form-control text-center fw-bold" name="Invoice_no" id="inputInvoiceNo" value="{{ $nextInvoiceNumber }}" placeholder="e.g. SO-0001" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;" title="Aap custom document/invoice number bhi enter kar sakte hain">
 
                                 <button class="btn btn-refresh" 
                                         type="button" 

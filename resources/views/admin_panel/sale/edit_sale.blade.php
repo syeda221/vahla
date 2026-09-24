@@ -532,11 +532,17 @@
 
             <form id="saleForm" autocomplete="off">
                 @csrf
-                <input type="hidden" id="booking_id" name="booking_id" value="{{ $sale->id }}">
-                <input type="hidden" id="action" name="action" value="sale">
+                @if(request()->has('convert_to_sale') || request()->has('convert_to_so'))
+                    <input type="hidden" name="parent_quotation_id" value="{{ $sale->id }}">
+                    <input type="hidden" id="action" name="action" value="{{ request()->has('convert_to_sale') ? 'sale' : 'sales_order' }}">
+                    <input type="hidden" id="sale_type" name="sale_type" value="{{ request()->has('convert_to_sale') ? 'direct_sale' : 'sales_order' }}">
+                @else
+                    <input type="hidden" id="booking_id" name="booking_id" value="{{ $sale->id }}">
+                    <input type="hidden" id="action" name="action" value="sale">
+                    <input type="hidden" id="sale_type" name="sale_type" value="{{ $sale->sale_type ?? 'direct_sale' }}">
+                @endif
                 <input type="hidden" name="cash" value="{{ $sale->cash ?? 0 }}">
                 <input type="hidden" id="totalBalance" value="{{ $sale->total_net ?? 0 }}">
-                <input type="hidden" id="sale_type" name="sale_type" value="{{ $sale->sale_type ?? 'direct_sale' }}">
 
                 {{-- TOP HEADER BAR --}}
                 <div class="d-flex justify-content-between align-items-center mb-2 px-1">

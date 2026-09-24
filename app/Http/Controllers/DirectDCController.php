@@ -65,6 +65,8 @@ class DirectDCController extends Controller
                 'created_by' => auth()->id()
             ]);
 
+            \App\Models\InvoiceSeries::incrementCounterForInvoice($validated['dc_number']);
+
             $warehouseId = $validated['warehouse_id'];
             $srMovements = [];
 

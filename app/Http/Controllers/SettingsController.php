@@ -18,9 +18,12 @@ class SettingsController extends Controller
             abort(403, 'Unauthorized action. You do not have permission to view ERP Settings.');
         }
 
+        \App\Models\InvoiceSeries::ensureStandardSeries();
         $settings = Setting::getAllGrouped();
+        $allSeries = \App\Models\InvoiceSeries::orderBy('id', 'asc')->get();
+        $standardDefs = \App\Models\InvoiceSeries::standardDefinitions();
         
-        return view('admin_panel.settings.index', compact('settings'));
+        return view('admin_panel.settings.index', compact('settings', 'allSeries', 'standardDefs'));
     }
 
     /**
@@ -55,6 +58,46 @@ class SettingsController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Settings updated successfully',
+        ]);
+    }
+
+    /**
+     * Batch update document & invoice series
+     */
+    public function updateInvoiceSeries(Request $request)
+    {
+        if (!auth()->user()->hasAnyPermission(['settings.edit', 'settings.update'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized action. You do not have permission to edit series settings.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'series' => 'required|array',
+            'series.*.prefix' => 'required|string',
+            'series.*.next_number' => 'required|numeric|min:1',
+            'series.*.padding' => 'nullable|numeric|min:1|max:10',
+        ]);
+
+        foreach ($validated['series'] as $sData) {
+            $prefix = strtoupper(trim($sData['prefix']));
+            $nextNum = (int) $sData['next_number'];
+            $padding = (int) ($sData['padding'] ?? 4);
+
+            \App\Models\InvoiceSeries::updateOrCreate(
+                ['prefix' => $prefix],
+                [
+                    'next_number' => $nextNum,
+                    'padding' => $padding,
+                    'updated_at' => now(),
+                ]
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document & Invoice Series updated successfully!',
         ]);
     }
 

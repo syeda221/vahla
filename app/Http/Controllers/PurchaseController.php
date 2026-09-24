@@ -798,10 +798,19 @@ class PurchaseController extends Controller
 
         $purchaseType = $request->input('purchase_type') ?: (request('type') === 'purchase_order' ? 'purchase_order' : 'direct_purchase');
 
-        // Wrap in transaction...
         $purchase = DB::transaction(function () use ($validated, $request, $gatepass, $purchaseType) {
             $prefix = $request->input('purchase_prefix') ?: ($purchaseType === 'purchase_order' ? 'PO' : 'PINV');
-            $invoiceNo = $validated['invoice_no'] ?: \App\Models\InvoiceSeries::generateNextNo($prefix);
+            $rawInvoiceNo = $validated['invoice_no'] ?? null;
+            $invoiceNo = \App\Models\InvoiceSeries::normalizeNumber($rawInvoiceNo, $prefix);
+
+            // Check for duplicates
+            $exists = Purchase::where('invoice_no', $invoiceNo)->exists();
+            if ($exists) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'invoice_no' => "Purchase Number '{$invoiceNo}' already exists. Please choose a different number.",
+                ]);
+            }
+
             \App\Models\InvoiceSeries::incrementCounterForInvoice($invoiceNo);
 
             $branchId = (int) ($validated['branch_id'] ?? 1);
@@ -2272,8 +2281,8 @@ class PurchaseController extends Controller
             DB::beginTransaction();
 
             // 1. Generate Return Invoice #
-            $lastReturn = PurchaseReturn::latest()->first();
-            $nextInvoice = 'PRTN-'.str_pad(optional($lastReturn)->id + 1 ?? 1, 5, '0', STR_PAD_LEFT);
+            $nextInvoice = \App\Models\InvoiceSeries::generateNextNo('PRET');
+            \App\Models\InvoiceSeries::incrementCounterForInvoice($nextInvoice);
 
             // 2. Create Purchase Return Record
             $purchase = $request->purchase_id ? Purchase::find($request->purchase_id) : null;

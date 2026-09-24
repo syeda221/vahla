@@ -46,6 +46,7 @@ class DirectGRNController extends Controller
             'product_id.*' => 'required|exists:products,id',
             'qty' => 'required|array',
             'price' => 'nullable|array',
+            'grn_number' => 'nullable|string',
             'warehouse_id' => 'nullable|exists:warehouses,id',
             'remarks' => 'nullable|string',
             'carrier_info' => 'nullable|string',
@@ -53,7 +54,15 @@ class DirectGRNController extends Controller
 
         DB::beginTransaction();
         try {
-            $grnNumber = InvoiceSeries::generateNextNo('DGRN');
+            $rawGrnNo = $request->input('grn_number');
+            $grnNumber = InvoiceSeries::normalizeNumber($rawGrnNo, 'DGRN');
+
+            if (GoodsReceivingNote::where('grn_number', $grnNumber)->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'grn_number' => "GRN Number '{$grnNumber}' already exists.",
+                ]);
+            }
+
             InvoiceSeries::incrementCounterForInvoice($grnNumber);
 
             $warehouseId = (int) ($validated['warehouse_id'] ?? 1);

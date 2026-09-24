@@ -50,6 +50,11 @@
                                     <i class="fas fa-calculator"></i> Accounting
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="series-tab" data-toggle="tab" href="#series" role="tab">
+                                    <i class="fas fa-barcode"></i> Document Series & Numbering
+                                </a>
+                            </li>
                         </ul>
 
                         @php
@@ -144,9 +149,72 @@
                                         @endforeach
                                     @endif
                                 </div>
+
+                                <!-- Document Series Tab -->
+                                <div class="tab-pane fade" id="series" role="tabpanel">
+                                    <div class="alert alert-info py-2 mb-3">
+                                        <i class="fas fa-info-circle"></i>
+                                        <strong>Document & Invoice Series Configuration:</strong> Yahan se aap tamam modules (Sales Orders, Invoices, Purchase Orders, Quotations, Returns, Delivery Challans, Direct GRN waghaira) ka starting number aur format set kar sakte hain. Agar aap creation form par direct custom number likhenge to system agla number wahan se automatically resume karega.
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-hover align-middle">
+                                            <thead class="thead-light">
+                                                <tr>
+                                                    <th style="width: 25%;">Document Type</th>
+                                                    <th style="width: 15%; text-align: center;">Prefix</th>
+                                                    <th style="width: 20%;">Next Number (Starting No)</th>
+                                                    <th style="width: 20%;">Digit Padding</th>
+                                                    <th style="width: 20%; text-align: center;">Live Preview</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @if(isset($allSeries))
+                                                    @foreach($allSeries as $idx => $s)
+                                                        @php
+                                                            $def = $standardDefs[$s->prefix] ?? null;
+                                                            $label = $def ? $def['name'] : ($s->description ?: $s->prefix);
+                                                            $pad = $s->padding ?? 4;
+                                                            $next = $s->next_number ?? 1;
+                                                            $preview = $s->prefix . '-' . str_pad($next, $pad, '0', STR_PAD_LEFT);
+                                                        @endphp
+                                                        <tr class="series-row" data-prefix="{{ $s->prefix }}">
+                                                            <td>
+                                                                <span class="font-weight-bold">{{ $label }}</span>
+                                                            </td>
+                                                            <td class="text-center">
+                                                                <span class="badge badge-primary px-2 py-1 font-weight-bold" style="font-size: 13px;">{{ $s->prefix }}</span>
+                                                                <input type="hidden" class="series-prefix-input" value="{{ $s->prefix }}">
+                                                            </td>
+                                                            <td>
+                                                                <input type="number" min="1" class="form-control series-next-input" value="{{ $next }}" {{ !$canEditSettings ? 'disabled' : '' }}>
+                                                            </td>
+                                                            <td>
+                                                                <select class="form-control series-pad-select" {{ !$canEditSettings ? 'disabled' : '' }}>
+                                                                    @for($p = 1; $p <= 6; $p++)
+                                                                        <option value="{{ $p }}" {{ $pad == $p ? 'selected' : '' }}>{{ $p }} digits (e.g. {{ str_pad(1, $p, '0', STR_PAD_LEFT) }})</option>
+                                                                    @endfor
+                                                                </select>
+                                                            </td>
+                                                            <td class="text-center">
+                                                                <span class="badge badge-success px-3 py-2 series-preview-badge" style="font-size: 14px; letter-spacing: 0.5px;">{{ $preview }}</span>
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                @endif
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    @if($canEditSettings)
+                                        <div class="mt-3">
+                                            <button type="button" id="btnSaveSeries" class="btn btn-success px-4">
+                                                <i class="fas fa-save"></i> Save Numbering Series
+                                            </button>
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
 
-                            <div class="mt-4">
+                            <div class="mt-4" id="mainSettingsSaveWrapper">
                                 @if($canEditSettings)
                                     <button type="submit" class="btn btn-primary">
                                         <i class="fas fa-save"></i> Save Settings
@@ -167,6 +235,78 @@
     @push('scripts')
         <script>
             $(document).ready(function() {
+                // Live preview updater for series
+                function updateSeriesPreview(row) {
+                    let prefix = $(row).find('.series-prefix-input').val();
+                    let nextNum = parseInt($(row).find('.series-next-input').val()) || 1;
+                    let pad = parseInt($(row).find('.series-pad-select').val()) || 4;
+                    let padded = String(nextNum).padStart(pad, '0');
+                    $(row).find('.series-preview-badge').text(prefix + '-' + padded);
+                }
+
+                $(document).on('input change', '.series-next-input, .series-pad-select', function() {
+                    let row = $(this).closest('.series-row');
+                    updateSeriesPreview(row);
+                });
+
+                // Tab change toggle save button visibility
+                $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+                    if ($(e.target).attr('href') === '#series') {
+                        $('#mainSettingsSaveWrapper').hide();
+                    } else {
+                        $('#mainSettingsSaveWrapper').show();
+                    }
+                });
+
+                // Save Series Batch
+                $('#btnSaveSeries').on('click', function(e) {
+                    e.preventDefault();
+                    let seriesData = [];
+                    $('.series-row').each(function() {
+                        let prefix = $(this).find('.series-prefix-input').val();
+                        let nextNum = $(this).find('.series-next-input').val();
+                        let pad = $(this).find('.series-pad-select').val();
+                        if (prefix && nextNum) {
+                            seriesData.push({
+                                prefix: prefix,
+                                next_number: nextNum,
+                                padding: pad
+                            });
+                        }
+                    });
+
+                    let $btn = $(this);
+                    $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+
+                    $.ajax({
+                        url: '{{ route('settings.invoice_series.update') }}',
+                        method: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}',
+                            series: seriesData
+                        },
+                        success: function(response) {
+                            $btn.prop('disabled', false).html('<i class="fas fa-save"></i> Save Numbering Series');
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Saved!',
+                                text: response.message || 'Document series updated successfully!',
+                                timer: 2000
+                            });
+                        },
+                        error: function(xhr) {
+                            $btn.prop('disabled', false).html('<i class="fas fa-save"></i> Save Numbering Series');
+                            let msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to save document series.';
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error!',
+                                text: msg
+                            });
+                        }
+                    });
+                });
+
+                // General Settings Form Submit
                 $('#settingsForm').on('submit', function(e) {
                     e.preventDefault();
                     let formData = new FormData(this);

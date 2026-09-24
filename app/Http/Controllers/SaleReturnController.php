@@ -242,11 +242,8 @@ class SaleReturnController extends Controller
 
         try {
             // Generate Return Invoice Number
-            $lastReturnId = SaleReturn::max('id') ?? 0;
-            do {
-                $lastReturnId++;
-                $nextInvoice = 'SR-' . str_pad($lastReturnId, 4, '0', STR_PAD_LEFT);
-            } while (SaleReturn::where('return_invoice', $nextInvoice)->exists());
+            $nextInvoice = \App\Models\InvoiceSeries::generateNextNo('SR');
+            \App\Models\InvoiceSeries::incrementCounterForInvoice($nextInvoice);
 
             // Resolve Customer ID (fallback to Walking Customer if empty/null)
             $customerId = $validated['customer_id'] ?? null;

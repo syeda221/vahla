@@ -71,7 +71,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="meta-label">GRN Number</label>
-                            <input type="text" class="form-control bg-light text-muted font-monospace fw-bold" value="{{ $nextGrnNumber }}" readonly>
+                            <input type="text" name="grn_number" id="inputGrnNumber" class="form-control font-monospace fw-bold" value="{{ $nextGrnNumber }}" placeholder="e.g. DGRN-0001" title="Aap custom GRN number bhi enter kar sakte hain">
                         </div>
                         <div class="col-md-6">
                             <label class="meta-label">Carrier / Truck / Bilty Info</label>

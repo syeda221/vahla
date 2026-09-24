@@ -1241,42 +1241,21 @@ class SaleController extends Controller
             if ($isNew) {
                 // Check if user provided manual invoice number or selected series
                 $invInput = $request->input('Invoice_no') ?: $request->input('invoice_no');
-                
                 $tType = $request->sale_type ?? 'direct_sale';
                 $tStatus = $request->sale_status ?? 'completed';
 
-                if ($tType === 'quotation') {
-                    $targetNo = (!empty($invInput) && \Illuminate\Support\Str::startsWith($invInput, 'QUO-')) ? trim($invInput) : \App\Models\InvoiceSeries::generateNextNo('QUO');
-                    $exists = Sale::where('invoice_no', $targetNo)->exists();
-                    if ($exists) {
-                        $targetNo = \App\Models\InvoiceSeries::generateNextNo('QUO');
-                    }
-                    $sale->invoice_no = $targetNo;
-                } elseif ($tType === 'sales_order' && $tStatus !== 'posted') {
-                    $targetNo = (!empty($invInput) && \Illuminate\Support\Str::startsWith($invInput, 'SO-')) ? trim($invInput) : \App\Models\InvoiceSeries::generateNextNo('SO');
-                    $exists = Sale::where('invoice_no', $targetNo)->exists();
-                    if ($exists) {
-                        $targetNo = \App\Models\InvoiceSeries::generateNextNo('SO');
-                    }
-                    $sale->invoice_no = $targetNo;
-                } else {
-                    if (!empty($invInput)) {
-                        $manualInvoice = trim($invInput);
+                $defaultPref = ($tType === 'quotation') ? 'QUO' : (($tType === 'sales_order') ? 'SO' : 'INV');
+                $targetNo = \App\Models\InvoiceSeries::normalizeNumber($invInput, $defaultPref);
 
-                        // Check for duplicates
-                        $exists = Sale::where('invoice_no', $manualInvoice)->exists();
-                        if ($exists) {
-                            throw \Illuminate\Validation\ValidationException::withMessages([
-                                'invoice_no' => "Invoice number '{$manualInvoice}' already exists. Please use a different number or click refresh.",
-                            ]);
-                        }
-
-                        $sale->invoice_no = $manualInvoice;
-                    } else {
-                        // Auto-generate unique invoice number
-                        $sale->invoice_no = Sale::generateInvoiceNo();
-                    }
+                // Check for duplicates
+                $exists = Sale::where('invoice_no', $targetNo)->exists();
+                if ($exists) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'invoice_no' => "Number '{$targetNo}' already exists. Please choose a different number or click refresh.",
+                    ]);
                 }
+
+                $sale->invoice_no = $targetNo;
             }
 
             // We will calculate totals from verified items

@@ -414,7 +414,7 @@
                                         <span id="activePrefixLabel">{{ $activePrefix ?? 'PINV' }}</span>
                                     </span>
                                 @endif
-                                <input type="text" class="form-control input-readonly text-center fw-bold" name="invoice_no" value="{{ $nextInvoice ?? 'NEW' }}" readonly>
+                                <input type="text" class="form-control text-center fw-bold" id="inputPurchaseInvoiceNo" name="invoice_no" value="{{ $nextInvoice ?? '' }}" placeholder="e.g. {{ request('type') == 'purchase_order' ? 'PO-0001' : 'PINV-0001' }}" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;" title="Aap custom number bhi enter kar sakte hain">
                             </div>
                         </div>
                         <div class="col-md-2">
