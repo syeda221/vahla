@@ -580,24 +580,86 @@
                         <!-- Invoice No / Quotation No -->
                         <div class="col-sm-6 col-md-3 col-lg-2">
                             <label class="meta-label">
-                                <i class="{{ request()->has('convert_to_so') ? 'fas fa-shopping-bag' : ($sale->sale_type === 'quotation' ? 'fas fa-file-contract' : 'fas fa-receipt') }} text-primary"></i> 
-                                {{ request()->has('convert_to_so') ? 'SO NO.' : ($sale->sale_type === 'quotation' ? 'QUOTATION NO.' : ($sale->sale_type === 'sales_order' ? 'SO NO.' : 'INVOICE NO.')) }}
+                                <i class="{{ request()->has('convert_to_so') ? 'fas fa-shopping-bag' : (request()->has('convert_to_sale') ? 'fas fa-receipt' : ($sale->sale_type === 'quotation' ? 'fas fa-file-contract' : 'fas fa-receipt')) }} text-primary"></i> 
+                                {{ request()->has('convert_to_so') ? 'SO NO.' : (request()->has('convert_to_sale') ? 'INVOICE NO.' : ($sale->sale_type === 'quotation' ? 'QUOTATION NO.' : ($sale->sale_type === 'sales_order' ? 'SO NO.' : 'INVOICE NO.'))) }}
                             </label>
-                            @php
-                                $displayDocNo = $sale->invoice_no;
-                                if (request()->has('convert_to_so')) {
-                                    $displayDocNo = 'SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
-                                } elseif (!$displayDocNo) {
-                                    if ($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted') {
+                            @if(request()->has('convert_to_sale'))
+                                <div class="input-group input-group-sm invoice-group">
+                                    <button class="btn btn-prefix dropdown-toggle d-flex align-items-center gap-1" 
+                                            type="button" 
+                                            id="btnInvoicePrefix" 
+                                            data-toggle="dropdown"
+                                            data-bs-toggle="dropdown" 
+                                            aria-haspopup="true" 
+                                            aria-expanded="false"
+                                            title="Click to choose series">
+                                        <span id="activePrefixLabel">{{ $activePrefix ?? 'INV' }}</span>
+                                        <i class="fas fa-caret-down" style="font-size: 0.72rem; opacity: 0.85;"></i>
+                                    </button>
+                                    <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownInvoiceSeriesList" aria-labelledby="btnInvoicePrefix" style="min-width: 220px; font-size: 0.82rem; z-index: 1050;">
+                                        <li class="dropdown-header py-1 text-uppercase fw-bold text-muted small" style="font-size: 10px; letter-spacing: 0.5px;">Choose Series</li>
+                                        @php
+                                            $curPref = $activePrefix ?? 'INV';
+                                            $allowedSeries = [
+                                                'INV' => ['label' => 'Standard Invoice', 'padding' => 4],
+                                                'TAX' => ['label' => 'Tax Invoice', 'padding' => 3],
+                                                'CO'  => ['label' => 'Company Invoice', 'padding' => 3],
+                                            ];
+                                        @endphp
+                                        @foreach($allowedSeries as $p => $meta)
+                                            @php
+                                                $sObj = isset($allSeries) ? $allSeries->firstWhere('prefix', $p) : null;
+                                                $nextNo = $sObj ? $sObj->next_number : 1;
+                                                $pad = $sObj ? $sObj->padding : $meta['padding'];
+                                                $isActive = ($curPref == $p);
+                                            @endphp
+                                            <li>
+                                                <a class="dropdown-item fw-bold py-2 px-3 d-flex align-items-center justify-content-between {{ $isActive ? 'text-primary active bg-light' : 'text-dark' }}" 
+                                                   href="javascript:void(0)" 
+                                                   data-prefix="{{ $p }}" 
+                                                   data-next="{{ $nextNo }}" 
+                                                   data-padding="{{ $pad }}">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        @if($isActive) 
+                                                            <i class="fas fa-check-circle text-primary"></i> 
+                                                        @else
+                                                            <i class="far fa-circle text-muted" style="font-size: 11px;"></i>
+                                                        @endif
+                                                        <div>
+                                                            <span class="badge bg-primary text-white font-monospace px-2 py-1 me-1">{{ $p }}</span>
+                                                            <span class="small fw-semibold">{{ $meta['label'] }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span class="text-muted small font-monospace">({{ $pad }}d)</span>
+                                                </a>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                    <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ \App\Models\InvoiceSeries::generateNextNo($activePrefix ?? 'INV') }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                                    <button class="btn btn-refresh" 
+                                            type="button" 
+                                            id="btnRefreshInvoiceNo" 
+                                            title="Regenerate Invoice Number">
+                                        <i class="fas fa-sync-alt" id="iconRefreshInvoice"></i>
+                                    </button>
+                                </div>
+                            @else
+                                @php
+                                    $displayDocNo = $sale->invoice_no;
+                                    if (request()->has('convert_to_so')) {
                                         $displayDocNo = 'SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
-                                    } elseif ($sale->sale_type === 'quotation') {
-                                        $displayDocNo = 'QUO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
-                                    } else {
-                                        $displayDocNo = '#' . $sale->id;
+                                    } elseif (!$displayDocNo) {
+                                        if ($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted') {
+                                            $displayDocNo = 'SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
+                                        } elseif ($sale->sale_type === 'quotation') {
+                                            $displayDocNo = 'QUO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
+                                        } else {
+                                            $displayDocNo = '#' . $sale->id;
+                                        }
                                     }
-                                }
-                            @endphp
-                            <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $displayDocNo }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                                @endphp
+                                <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $displayDocNo }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                            @endif
                         </div>
 
                         <!-- Date -->
@@ -1633,6 +1695,63 @@
                         showAlert('error', msg);
                     }
                 });
+            });
+
+            // ══════════════════════════════════════════════════════════════
+            // INVOICE SERIES MANAGEMENT LOGIC
+            // ══════════════════════════════════════════════════════════════
+            let currentInvoicePrefix = '{{ $activePrefix ?? "INV" }}';
+
+            function fetchNextInvoiceNo(prefix) {
+                $('#iconRefreshInvoice').addClass('fa-spin text-primary');
+                $.ajax({
+                    url: "{{ route('invoice_series.generate_no') }}",
+                    type: "GET",
+                    data: { prefix: prefix },
+                    success: function(res) {
+                        if (res.invoice_no) {
+                            $('#inputInvoiceNo').val(res.invoice_no);
+                        }
+                    },
+                    complete: function() {
+                        setTimeout(() => {
+                            $('#iconRefreshInvoice').removeClass('fa-spin text-primary');
+                        }, 400);
+                    }
+                });
+            }
+
+            // Dropdown Item Click Handler
+            $(document).on('click', '#dropdownInvoiceSeriesList a[data-prefix]', function(e) {
+                e.preventDefault();
+                let prefix = $(this).data('prefix');
+                if (!prefix) return;
+
+                currentInvoicePrefix = prefix;
+                $('#activePrefixLabel').text(prefix);
+
+                // Update active highlight and radio circle icons in dropdown
+                $('#dropdownInvoiceSeriesList a[data-prefix]').removeClass('text-primary active bg-light').addClass('text-dark');
+                $('#dropdownInvoiceSeriesList a[data-prefix]').find('.fa-check-circle')
+                    .removeClass('fas fa-check-circle text-primary')
+                    .addClass('far fa-circle text-muted')
+                    .css('font-size', '11px');
+
+                $(this).removeClass('text-dark').addClass('text-primary active bg-light');
+                $(this).find('.fa-circle')
+                    .removeClass('far fa-circle text-muted')
+                    .addClass('fas fa-check-circle text-primary')
+                    .css('font-size', '');
+
+                // Hide dropdown menu
+                $('#dropdownInvoiceSeriesList').removeClass('show');
+
+                fetchNextInvoiceNo(prefix);
+            });
+
+            // Refresh Invoice No Handler
+            $(document).on('click', '#btnRefreshInvoiceNo', function() {
+                fetchNextInvoiceNo(currentInvoicePrefix);
             });
 
             setTimeout(() => {
