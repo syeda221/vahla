@@ -312,10 +312,11 @@
                             <table class="table table-bordered align-middle mb-0" id="voucherTable">
                                 <thead>
                                     <tr>
-                                        <th style="width: 25%;">Type</th>
-                                        <th style="width: 35%;">Party / Account</th>
-                                        <th style="width: 25%;">Amount</th>
-                                        <th style="width: 15%;">Action</th>
+                                        <th style="width: 20%;">Type</th>
+                                        <th style="width: 28%;">Party / Account</th>
+                                        <th style="width: 28%;">Against Bill / Inv (Optional)</th>
+                                        <th style="width: 14%;">Amount</th>
+                                        <th style="width: 10%;">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -337,6 +338,11 @@
                                             </select>
                                         </td>
                                         <td>
+                                            <select name="selected_purchase_id[]" class="pv-input rowBillSelect">
+                                                <option value="">-- General Payment (On Account) --</option>
+                                            </select>
+                                        </td>
+                                        <td>
                                             <input type="number" name="amount[]"
                                                 class="pv-input text-end fw-bold amount" placeholder="0.00"
                                                 style="font-size: 1rem;">
@@ -350,7 +356,7 @@
                                 </tbody>
                                 <tfoot>
                                     <tr>
-                                        <td colspan="2" class="text-end fw-bold" style="font-size: 1rem;">Total Amount:</td>
+                                        <td colspan="3" class="text-end fw-bold" style="font-size: 1rem;">Total Amount:</td>
                                         <td>
                                             <input type="text" name="total_amount"
                                                 class="pv-input text-end fw-bold" id="totalAmount" readonly
@@ -455,7 +461,9 @@
                 let type = $(this).val();
                 let $row = $(this).closest('tr');
                 let $select = $row.find('.rowParty');
+                let $billSelect = $row.find('.rowBillSelect');
 
+                $billSelect.empty().append('<option value="">-- General Payment (On Account) --</option>');
                 $select.html('<option value="">Loading...</option>').trigger('change');
 
                 if (type === 'vendor' || type === 'customer' || type === 'walkin') {
@@ -480,6 +488,61 @@
                     });
                 } else {
                     $select.empty().append('<option value="" disabled selected>Select Party</option>').trigger('change');
+                }
+            });
+
+            // When party is selected, load unpaid bills / invoices
+            $(document).on('change', '.rowParty', function() {
+                let partyId = $(this).val();
+                let $row = $(this).closest('tr');
+                let type = $row.find('.rowType').val();
+                let $billSelect = $row.find('.rowBillSelect');
+
+                $billSelect.empty().append('<option value="">-- General Payment (On Account) --</option>');
+
+                if (!partyId) return;
+
+                if (type === 'vendor') {
+                    $.get('{{ url("/vouchers/vendor-unpaid-bills") }}/' + partyId, function(res) {
+                        if (res && res.success && res.bills && res.bills.length > 0) {
+                            res.bills.forEach(function(bill) {
+                                $billSelect.append(
+                                    `<option value="${bill.id}" data-due="${bill.raw_due}" data-billno="${bill.bill_no}">
+                                        ${bill.bill_no} | Date: ${bill.date} | Total: Rs. ${bill.total_net} | Due: Rs. ${bill.due}
+                                    </option>`
+                                );
+                            });
+                        }
+                    });
+                } else if (type === 'customer' || type === 'walkin') {
+                    $.get('{{ url("/vouchers/customer-unpaid-invoices") }}/' + partyId, function(res) {
+                        if (res && res.success && res.invoices && res.invoices.length > 0) {
+                            res.invoices.forEach(function(inv) {
+                                $billSelect.append(
+                                    `<option value="${inv.id}" data-due="${inv.raw_due}" data-billno="${inv.invoice_no}">
+                                        ${inv.invoice_no} | Date: ${inv.date} | Total: Rs. ${inv.total_net} | Due: Rs. ${inv.due}
+                                    </option>`
+                                );
+                            });
+                        }
+                    });
+                }
+            });
+
+            // When bill/invoice is selected in row, auto fill amount
+            $(document).on('change', '.rowBillSelect', function() {
+                let $selected = $(this).find(':selected');
+                let due = parseFloat($selected.data('due')) || 0;
+                let billNo = $selected.data('billno') || '';
+                let $row = $(this).closest('tr');
+
+                if ($(this).val() && due > 0) {
+                    $row.find('.amount').val(due.toFixed(2));
+                    calculateTotal();
+
+                    if (!$('#remarks').val() && billNo) {
+                        $('#remarks').val('Payment against ' + billNo);
+                    }
                 }
             });
 
@@ -524,6 +587,11 @@
                         <td>
                             <select name="vendor_id[]" class="pv-input rowParty">
                                 <option value="" disabled selected>Select Party</option>
+                            </select>
+                        </td>
+                        <td>
+                            <select name="selected_purchase_id[]" class="pv-input rowBillSelect">
+                                <option value="">-- General Payment (On Account) --</option>
                             </select>
                         </td>
                         <td>

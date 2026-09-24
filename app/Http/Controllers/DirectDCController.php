@@ -602,10 +602,17 @@ class DirectDCController extends Controller
             }
             $invoiceDate = $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d');
 
-            // Assign Invoice Number according to selected prefix (INV, TAX, CO)
+            // Assign Invoice Number according to user input or selected prefix (INV, TAX, CO)
             $chosenPrefix = $request->input('prefix');
             $prefix = in_array(strtoupper($chosenPrefix), ['TAX', 'CO', 'INV']) ? strtoupper($chosenPrefix) : 'INV';
-            $sale->invoice_no = \App\Models\InvoiceSeries::generateNextNo($prefix);
+            $invInput = $request->input('invoice_no') ?: $request->input('Invoice_no');
+
+            if ($invInput) {
+                $sale->invoice_no = \App\Models\InvoiceSeries::normalizeNumber($invInput, $prefix);
+            } else {
+                $sale->invoice_no = \App\Models\InvoiceSeries::generateNextNo($prefix);
+            }
+            \App\Models\InvoiceSeries::incrementCounterForInvoice($sale->invoice_no);
             
             // Collect items and aggregate totals
             $totalBillAmount = 0;

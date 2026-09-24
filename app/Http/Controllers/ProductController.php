@@ -6,9 +6,11 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Stock;
+use App\Models\StockAdjustment;
 use App\Models\StockMovement;
 use App\Models\Subcategory;
 use App\Models\Unit;
+use App\Models\Warehouse;
 use App\Models\WarehouseStock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -501,8 +503,470 @@ class ProductController extends Controller
         $products   = $query->latest()->paginate(20)->withQueryString();
         $categories = Category::orderBy('name')->get();
         $brands     = Brand::orderBy('name')->get();
+        $warehouses = Warehouse::orderBy('warehouse_name')->get();
+        $units      = Unit::orderBy('name')->get();
 
-        return view('admin_panel.product.index', compact('products', 'categories', 'brands'));
+        return view('admin_panel.product.index', compact('products', 'categories', 'brands', 'warehouses', 'units'));
+    }
+
+    public function quickEditData($id)
+    {
+        $product = Product::with([
+            'category_relation',
+            'sub_category_relation',
+            'brand',
+            'unit',
+            'warehouseStocks.warehouse',
+        ])->find($id);
+
+        if (!$product) {
+            return response()->json(['error' => 'Product not found'], 404);
+        }
+
+        $warehouses = Warehouse::orderBy('warehouse_name')->get();
+        $categories = Category::orderBy('name')->get();
+        $subcategories = $product->category_id 
+            ? Subcategory::where('category_id', $product->category_id)->orderBy('name')->get()
+            : Subcategory::orderBy('name')->get();
+        $brands = Brand::orderBy('name')->get();
+        $units  = Unit::orderBy('name')->get();
+
+        // Warehouse stock mapping
+        $whStockMap = [];
+        $ppb = $product->pieces_per_box > 0 ? (float)$product->pieces_per_box : 1;
+        foreach ($warehouses as $wh) {
+            $ws = $product->warehouseStocks->firstWhere('warehouse_id', $wh->id);
+            $totalP = (float)($ws->total_pieces ?? 0);
+            $whStockMap[$wh->id] = [
+                'warehouse_id'   => $wh->id,
+                'warehouse_name' => $wh->warehouse_name,
+                'total_pieces'   => $totalP,
+                'boxes_quantity' => floor($totalP / $ppb),
+            ];
+        }
+
+        $totalStockPieces = (float)$product->warehouseStocks->sum('total_pieces');
+        $ppb = $product->pieces_per_box > 0 ? (float)$product->pieces_per_box : 1;
+        $totalBoxes = floor($totalStockPieces / $ppb);
+        $totalLoose = $totalStockPieces % $ppb;
+
+        // Determine product unit
+        $productUnitName = $product->unit->name ?? match($product->size_mode) {
+            'by_kg' => 'Kg',
+            'by_gm' => 'Gm',
+            'by_ton' => 'Ton',
+            'by_meter' => 'Mtr',
+            'by_feet' => 'Ft',
+            'by_cartons' => 'Carton',
+            'by_size' => 'M²',
+            default => 'Pcs',
+        };
+
+        // Parse variants & calculate their specific stocks
+        $variants = [];
+        if (!empty($product->color)) {
+            $raw = $product->color;
+            if (is_string($raw)) {
+                $decoded = json_decode($raw, true);
+                if (is_string($decoded)) {
+                    $decoded = json_decode($decoded, true) ?? $decoded;
+                }
+            } else {
+                $decoded = $raw;
+            }
+            if (is_array($decoded) && count($decoded) > 0) {
+                $variantLiveMap = $this->getVariantLiveStockMap($product);
+                $rawList = isset($decoded['name']) || isset($decoded['color']) ? (isset($decoded[0]) ? $decoded : [$decoded]) : array_values($decoded);
+                foreach ($rawList as $idx => $v) {
+                    $vName = $v['name'] ?? $v['variant_name'] ?? $product->item_name;
+                    $vSize = $v['size'] ?? $v['variant_size'] ?? '-';
+                    $vColor = $v['color'] ?? $v['variant_color'] ?? '-';
+                    $vInitial = (float)($v['stock'] ?? $v['variant_stock'] ?? 0);
+                    $vSale = (float)($v['sale_price'] ?? $v['variant_sale_price'] ?? 0);
+                    $vPurch = (float)($v['purch_price'] ?? $v['purchase_price'] ?? $v['variant_purchase_price'] ?? 0);
+                    $vAlert = (float)($v['alert'] ?? $v['variant_alert_qty'] ?? 0);
+                    $convFactor = isset($v['conv_factor']) ? (float)$v['conv_factor'] : 1.0;
+                    $vWeight = $v['weight_per_piece'] ?? '';
+                    $isBase = !empty($v['is_base_variant']) || ($product->size_mode === 'by_kg' && $convFactor == 1.0);
+                    $vUnit = $v['unit'] ?? ($product->size_mode === 'by_kg' ? ($isBase ? 'Kg' : 'Pcs') : $productUnitName);
+
+                    $vCurrentStock = $variantLiveMap[$idx] ?? $vInitial;
+
+                    // Build user-friendly variant label
+                    if ($vColor !== '-' && $vColor !== '' && $vSize !== '-' && $vSize !== '') {
+                        $vLabel = "{$vColor} / {$vSize}";
+                    } elseif ($vColor !== '-' && $vColor !== '') {
+                        $vLabel = $vColor;
+                    } elseif ($vSize !== '-' && $vSize !== '') {
+                        $vLabel = $vSize;
+                    } elseif ($product->size_mode === 'by_kg') {
+                        if ($isBase) {
+                            $vLabel = 'Kg (Base)';
+                        } elseif ($vWeight && (float)$vWeight > 0) {
+                            $vLabel = ((float)$vWeight >= 1000 ? ((float)$vWeight/1000) . 'kg' : (float)$vWeight . 'g') . ' Pcs';
+                        } elseif ($vUnit) {
+                            $vLabel = $vUnit;
+                        } else {
+                            $vLabel = 'Piece';
+                        }
+                    } elseif ($vUnit) {
+                        $vLabel = $vUnit;
+                    } elseif (!empty($vName) && $vName !== $product->item_name) {
+                        $vLabel = $vName;
+                    } else {
+                        $vLabel = 'Variant ' . ($idx + 1);
+                    }
+
+                    $variants[] = [
+                        'index'            => $idx,
+                        'variant_key'      => ($vName . '|' . $vSize . '|' . $vColor),
+                        'name'             => $vName,
+                        'label'            => $vLabel,
+                        'size'             => $vSize,
+                        'color'            => $vColor,
+                        'initial_stock'    => $vInitial,
+                        'current_stock'    => $vCurrentStock,
+                        'sale_price'       => $vSale,
+                        'purch_price'      => $vPurch,
+                        'alert'            => $vAlert,
+                        'conv_factor'      => $convFactor,
+                        'weight_per_piece' => $vWeight,
+                        'is_base_variant'  => $isBase ? 1 : 0,
+                        'unit'             => $vUnit,
+                    ];
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'product' => [
+                'id'                       => $product->id,
+                'item_name'                => $product->item_name,
+                'item_code'                => $product->item_code,
+                'barcode_path'             => $product->barcode_path,
+                'category_id'              => $product->category_id,
+                'sub_category_id'          => $product->sub_category_id,
+                'brand_id'                 => $product->brand_id,
+                'unit_id'                  => $product->unit_id,
+                'unit_name'                => $productUnitName,
+                'size_mode'                => $product->size_mode,
+                'pieces_per_box'           => $product->pieces_per_box,
+                'height'                   => $product->height,
+                'width'                    => $product->width,
+                'alert_carton_quantity'    => $product->alert_carton_quantity,
+                'purchase_price_per_piece' => (float)$product->purchase_price_per_piece,
+                'sale_price_per_piece'     => (float)$product->sale_price_per_piece,
+                'purchase_price_per_box'   => (float)$product->purchase_price_per_box,
+                'sale_price_per_box'       => (float)$product->sale_price_per_box,
+                'purchase_price_per_m2'    => (float)$product->purchase_price_per_m2,
+                'price_per_m2'             => (float)$product->price_per_m2,
+                'wholesale_price'          => (float)($product->wholesale_price ?? 0),
+                'total_pieces'             => $totalStockPieces,
+                'total_boxes'              => $totalBoxes,
+                'total_loose'              => $totalLoose,
+                'ppb'                      => $ppb,
+                'variants'                 => $variants,
+            ],
+            'warehouses'       => $warehouses,
+            'warehouse_stocks' => $whStockMap,
+            'categories'       => $categories,
+            'subcategories'    => $subcategories,
+            'brands'           => $brands,
+            'units'            => $units,
+        ]);
+    }
+
+    public function quickUpdate(Request $request, $id)
+    {
+        $product = Product::with(['warehouseStocks', 'unit', 'category_relation', 'brand'])->findOrFail($id);
+
+        $request->validate([
+            'item_name'             => 'required|string|max:255',
+            'category_id'           => 'nullable|exists:categories,id',
+            'sub_category_id'       => 'nullable|exists:subcategories,id',
+            'brand_id'              => 'nullable|exists:brands,id',
+            'unit_id'               => 'nullable|exists:units,id',
+            'alert_carton_quantity' => 'nullable|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Update master product info
+            $product->item_name = $request->item_name;
+            if ($request->has('category_id')) $product->category_id = $request->category_id;
+            if ($request->has('sub_category_id')) $product->sub_category_id = $request->sub_category_id;
+            if ($request->has('brand_id')) $product->brand_id = $request->brand_id;
+            if ($request->has('unit_id')) $product->unit_id = $request->unit_id;
+            if ($request->has('alert_carton_quantity')) $product->alert_carton_quantity = $request->alert_carton_quantity;
+
+            // Update pricing
+            if ($product->size_mode === 'by_size') {
+                if ($request->has('purchase_price_per_m2')) $product->purchase_price_per_m2 = (float)$request->purchase_price_per_m2;
+                if ($request->has('price_per_m2')) $product->price_per_m2 = (float)$request->price_per_m2;
+            } else {
+                if ($request->has('purchase_price_per_piece')) $product->purchase_price_per_piece = (float)$request->purchase_price_per_piece;
+                if ($request->has('sale_price_per_piece')) $product->sale_price_per_piece = (float)$request->sale_price_per_piece;
+                if ($request->has('purchase_price_per_box')) $product->purchase_price_per_box = (float)$request->purchase_price_per_box;
+                if ($request->has('sale_price_per_box')) $product->sale_price_per_box = (float)$request->sale_price_per_box;
+            }
+            if ($request->has('wholesale_price')) $product->wholesale_price = (float)$request->wholesale_price;
+
+            $stockAdjusted = false;
+            $adjMessage = '';
+            $warehouseId = $request->filled('adjust_warehouse_id') ? (int)$request->adjust_warehouse_id : ($product->warehouseStocks->first()->warehouse_id ?? 1);
+            $reason = $request->adjustment_reason ?: 'Quick Edit Stock Adjustment';
+
+            // Check if variants are submitted
+            $hasVariantStockInputs = false;
+            $variantStockDelta = 0;
+
+            // Load existing stored variants from product->color for accurate delta calculation
+            $existingVariants = [];
+            if (!empty($product->color)) {
+                $rawC = $product->color;
+                if (is_string($rawC)) {
+                    $decC = json_decode($rawC, true);
+                    if (is_string($decC)) $decC = json_decode($decC, true) ?? $decC;
+                } else {
+                    $decC = $rawC;
+                }
+                if (is_array($decC)) {
+                    $existingVariants = isset($decC['name']) || isset($decC['color']) ? (isset($decC[0]) ? $decC : [$decC]) : array_values($decC);
+                }
+            }
+
+            if ($request->has('variants') && is_array($request->variants)) {
+                $rawVariants = $request->variants;
+                
+                foreach ($rawVariants as $vIdx => &$vItem) {
+                    $origStoredStock = (float)($existingVariants[$vIdx]['stock'] ?? ($existingVariants[$vIdx]['variant_stock'] ?? 0));
+
+                    if (isset($vItem['new_stock']) && $vItem['new_stock'] !== '') {
+                        $vNewStock = (float)$vItem['new_stock'];
+                        $vOldStock = isset($vItem['current_stock']) ? (float)$vItem['current_stock'] : $origStoredStock;
+                        $vDiff = $vNewStock - $vOldStock;
+
+                        // Delta is added to the stored base/initial stock
+                        $vItem['stock'] = $origStoredStock + $vDiff;
+                        
+                        $hasVariantStockInputs = true;
+                        if ($product->size_mode === 'by_kg') {
+                            $cf = isset($vItem['conv_factor']) ? (float)$vItem['conv_factor'] : 1.0;
+                            if ($cf == 1 || !empty($vItem['is_base_variant'])) {
+                                $variantStockDelta = $vDiff;
+                            }
+                        } else {
+                            $variantStockDelta += $vDiff;
+                        }
+
+                        // Log variant adjustment if difference exists
+                        if ($vNewStock != $vOldStock) {
+                            StockAdjustment::create([
+                                'user_id'      => Auth::id(),
+                                'warehouse_id' => $warehouseId,
+                                'product_id'   => $product->id,
+                                'variant_key'  => ($vItem['name'] ?? '') . '|' . ($vItem['size'] ?? '') . '|' . ($vItem['color'] ?? ''),
+                                'variant_name' => ($vItem['name'] ?? '') . ' (' . ($vItem['color'] ?? '') . ')',
+                                'type'         => 'set',
+                                'qty'          => abs($vDiff),
+                                'old_stock'    => $vOldStock,
+                                'new_stock'    => $vNewStock,
+                                'reason'       => $reason . " [Variant: {$vItem['name']} Adjusted {$vOldStock} -> {$vNewStock}]",
+                            ]);
+                            $stockAdjusted = true;
+                        }
+                    } else {
+                        $vItem['stock'] = $origStoredStock;
+                    }
+
+                    if (isset($vItem['sale_price']) && $vItem['sale_price'] !== '') {
+                        $vItem['sale_price'] = (float)$vItem['sale_price'];
+                    }
+                    if (isset($vItem['purch_price']) && $vItem['purch_price'] !== '') {
+                        $vItem['purch_price'] = (float)$vItem['purch_price'];
+                    }
+
+                    // Sync primary/base variant rates to master product
+                    if (!empty($vItem['is_base_variant']) || $vIdx === 0) {
+                        if (isset($vItem['sale_price']) && $vItem['sale_price'] !== '') {
+                            $product->sale_price_per_piece = (float)$vItem['sale_price'];
+                        }
+                        if (isset($vItem['purch_price']) && $vItem['purch_price'] !== '') {
+                            $product->purchase_price_per_piece = (float)$vItem['purch_price'];
+                        }
+                    }
+                }
+                $product->color = json_encode($rawVariants);
+            }
+
+            $product->save();
+
+            // Apply Total Stock Adjustment to WarehouseStock
+            $whStock = WarehouseStock::firstOrCreate(
+                ['warehouse_id' => $warehouseId, 'product_id' => $product->id],
+                ['quantity' => 0, 'total_pieces' => 0]
+            );
+
+            $oldTotalStock = (float)$whStock->total_pieces;
+
+            if ($hasVariantStockInputs) {
+                $newTotalStock = max(0, $oldTotalStock + $variantStockDelta);
+            } elseif ($request->filled('new_stock_qty')) {
+                $newTotalStock = (float)$request->new_stock_qty;
+            } else {
+                $newTotalStock = $oldTotalStock;
+            }
+
+            if ($newTotalStock != $oldTotalStock) {
+                $diff = $newTotalStock - $oldTotalStock;
+
+                // Update warehouse stock
+                $whStock->total_pieces = max(0, $newTotalStock);
+                $whStock->quantity = $whStock->total_pieces;
+                $whStock->save();
+
+                // If not already logged variant-by-variant
+                if (!$hasVariantStockInputs) {
+                    StockAdjustment::create([
+                        'user_id'      => Auth::id(),
+                        'warehouse_id' => $warehouseId,
+                        'product_id'   => $product->id,
+                        'variant_key'  => $request->variant_key ?? null,
+                        'variant_name' => $request->variant_name ?? null,
+                        'type'         => 'set',
+                        'qty'          => abs($diff),
+                        'old_stock'    => $oldTotalStock,
+                        'new_stock'    => $newTotalStock,
+                        'reason'       => $reason . " (Adjusted from {$oldTotalStock} to {$newTotalStock} pcs)",
+                    ]);
+                    $stockAdjusted = true;
+                }
+
+                $adjMessage = $diff > 0 ? "+{$diff} added to stock" : "{$diff} deducted from stock";
+            }
+
+            DB::commit();
+
+            // Refresh fresh calculations for response
+            $product->load(['category_relation', 'sub_category_relation', 'brand', 'unit', 'warehouseStocks']);
+            $stockPieces = (float)$product->warehouseStocks->sum('total_pieces');
+            $ppb = $product->pieces_per_box > 0 ? (float)$product->pieces_per_box : 1;
+
+            $productUnitName = $product->unit->name ?? match($product->size_mode) {
+                'by_kg' => 'Kg',
+                'by_gm' => 'Gm',
+                'by_ton' => 'Ton',
+                'by_meter' => 'Mtr',
+                'by_feet' => 'Ft',
+                'by_cartons' => 'Carton',
+                'by_size' => 'M²',
+                default => 'Pcs',
+            };
+
+            if (($product->size_mode === 'by_cartons' || $product->size_mode === 'by_size') && $ppb > 1) {
+                $boxes = floor($stockPieces / $ppb);
+                $loose = $stockPieces % $ppb;
+                $stockDisplay = $loose > 0 ? "{$boxes}.{$loose}" : "{$boxes}";
+                $stockUnit    = $loose > 0 ? 'Box.Loose' : 'Boxes';
+            } else {
+                $stockDisplay = (float)$stockPieces == (int)$stockPieces ? (int)$stockPieces : rtrim(rtrim(number_format($stockPieces, 2), '0'), '.');
+                $stockUnit    = $productUnitName;
+            }
+            $stockClass = $stockPieces == 0 ? 'zero' : (($product->alert_carton_quantity && $stockPieces <= $product->alert_carton_quantity) ? 'low' : '');
+
+            if ($product->size_mode === 'by_size') {
+                $m2 = ($product->height * $product->width) / 10000;
+                $tradePrice  = $m2 * (float)$product->purchase_price_per_m2;
+                $retailPrice = $m2 * (float)$product->price_per_m2;
+            } else {
+                $tradePrice  = (float)$product->purchase_price_per_piece;
+                $retailPrice = (float)$product->sale_price_per_piece ?: (float)$product->sale_price_per_box;
+            }
+
+            // Generate fresh variant preview HTML
+            $variantsPreviewHtml = '';
+            if (!empty($product->color)) {
+                $decVariants = json_decode($product->color, true);
+                if (is_array($decVariants) && count($decVariants) > 0) {
+                    $vList = isset($decVariants['name']) || isset($decVariants['color']) ? (isset($decVariants[0]) ? $decVariants : [$decVariants]) : array_values($decVariants);
+                    foreach ($vList as $vIdx => $vObj) {
+                        $vColorVal = $vObj['color'] ?? $vObj['variant_color'] ?? '';
+                        $vSizeVal  = $vObj['size'] ?? $vObj['variant_size'] ?? '';
+                        $vUnitVal  = $vObj['unit'] ?? $vObj['variant_unit'] ?? '';
+                        $vWeight   = $vObj['weight_per_piece'] ?? '';
+                        $isBase    = !empty($vObj['is_base_variant']) || ($product->size_mode === 'by_kg' && isset($vObj['conv_factor']) && (float)$vObj['conv_factor'] == 1);
+
+                        if ($vColorVal !== '-' && $vColorVal !== '' && $vSizeVal !== '-' && $vSizeVal !== '') {
+                            $vLbl = "{$vColorVal} / {$vSizeVal}";
+                        } elseif ($vColorVal !== '-' && $vColorVal !== '') {
+                            $vLbl = $vColorVal;
+                        } elseif ($vSizeVal !== '-' && $vSizeVal !== '') {
+                            $vLbl = $vSizeVal;
+                        } elseif ($product->size_mode === 'by_kg') {
+                            if ($isBase) {
+                                $vLbl = 'Kg (Base)';
+                            } elseif ($vWeight && (float)$vWeight > 0) {
+                                $vLbl = ((float)$vWeight >= 1000 ? ((float)$vWeight/1000) . 'kg' : (float)$vWeight . 'g') . ' Pcs';
+                            } elseif ($vUnitVal) {
+                                $vLbl = $vUnitVal;
+                            } else {
+                                $vLbl = 'Piece';
+                            }
+                        } elseif ($vUnitVal) {
+                            $vLbl = $vUnitVal;
+                        } elseif (!empty($vObj['name']) && $vObj['name'] !== $product->item_name) {
+                            $vLbl = $vObj['name'];
+                        } else {
+                            $vLbl = 'Var ' . ($vIdx + 1);
+                        }
+
+                        $vQ = (float)($vObj['stock'] ?? 0);
+                        if ($product->size_mode === 'by_kg' && isset($vObj['conv_factor']) && (float)$vObj['conv_factor'] > 0) {
+                            $cf = (float)$vObj['conv_factor'];
+                            $vQ = $cf == 1 ? $stockPieces : (int)floor($stockPieces / $cf);
+                        }
+                        $vQDisplay = (float)$vQ == (int)$vQ ? (int)$vQ : rtrim(rtrim(number_format($vQ, 2), '0'), '.');
+                        $colorStyle = $vQ > 0 ? '#059669' : '#dc2626';
+
+                        $vUnitSuffix = '';
+                        if ($product->size_mode === 'by_kg') {
+                            $vUnitSuffix = $isBase ? ' Kg' : ' Pcs';
+                        } elseif (!empty($vUnitVal)) {
+                            $vUnitSuffix = ' ' . $vUnitVal;
+                        }
+
+                        $variantsPreviewHtml .= "<span style=\"background:#f1f5f9; border:1px solid #e2e8f0; border-radius:4px; padding:2px 6px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:3px;\"><span style=\"color:#475569;\">{$vLbl}:</span> <strong style=\"color:{$colorStyle};\">{$vQDisplay}{$vUnitSuffix}</strong></span> ";
+                    }
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product updated successfully!' . ($stockAdjusted ? ' (' . $adjMessage . ')' : ''),
+                'data' => [
+                    'id'                     => $product->id,
+                    'item_name'              => $product->item_name,
+                    'item_code'              => $product->item_code,
+                    'category_name'          => $product->category_relation->name ?? '',
+                    'sub_category_name'      => $product->sub_category_relation->name ?? '',
+                    'brand_name'             => $product->brand->name ?? '',
+                    'stock_display'          => $stockDisplay,
+                    'stock_unit'             => $stockUnit,
+                    'stock_class'            => $stockClass,
+                    'trade_price'            => 'Rs. ' . number_format($tradePrice, 2),
+                    'retail_price'           => 'Rs. ' . number_format($retailPrice, 2),
+                    'variants_preview_html'  => $variantsPreviewHtml,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update product: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function productview($id)
@@ -1815,6 +2279,201 @@ class ProductController extends Controller
             'is_active' => $product->is_active,
             'message'   => $product->is_active ? 'Product activated successfully.' : 'Product deactivated successfully.',
         ]);
+    }
+
+    /**
+     * Compute current live stocks for each variant of a product based on opening stock, purchases, sales, returns and adjustments.
+     */
+    public function getVariantLiveStockMap($product)
+    {
+        $stockPieces = (float)$product->warehouseStocks->sum('total_pieces');
+        $rawVariants = [];
+        if (!empty($product->color)) {
+            $raw = $product->color;
+            if (is_string($raw)) {
+                $decoded = json_decode($raw, true);
+                if (is_string($decoded)) $decoded = json_decode($decoded, true) ?? $decoded;
+            } else {
+                $decoded = $raw;
+            }
+            if (is_array($decoded) && count($decoded) > 0) {
+                $rawVariants = isset($decoded['name']) || isset($decoded['color']) ? (isset($decoded[0]) ? $decoded : [$decoded]) : array_values($decoded);
+            }
+        }
+
+        if (empty($rawVariants)) {
+            return [];
+        }
+
+        if ($product->size_mode === 'by_kg') {
+            $liveMap = [];
+            foreach ($rawVariants as $idx => $v) {
+                $conv = isset($v['conv_factor']) ? (float)$v['conv_factor'] : 1.0;
+                $isBase = !empty($v['is_base_variant']) || $conv == 1;
+                if ($isBase || $conv <= 0) {
+                    $liveMap[$idx] = max(0, $stockPieces);
+                } else {
+                    $liveMap[$idx] = (int) floor(round(max(0, $stockPieces) / $conv, 4));
+                }
+            }
+            return $liveMap;
+        }
+
+        // Fetch all sales, web sales, and DC items
+        $salesList = DB::table('sale_items')
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->where('sale_items.product_id', $product->id)
+            ->whereIn('sales.sale_status', ['posted', 'returned'])
+            ->where('sales.sale_type', '!=', 'sales_order')
+            ->select('sale_items.total_pieces', 'sale_items.color')
+            ->get();
+
+        $webSalesList = DB::table('ecommerce_order_items as eoi')
+            ->join('ecommerce_orders as eo', 'eo.id', '=', 'eoi.ecommerce_order_id')
+            ->where('eoi.product_id', $product->id)
+            ->where('eo.is_stock_deducted', 1)
+            ->select('eoi.quantity as total_pieces', 'eoi.color', 'eoi.size')
+            ->get();
+
+        $salesListArray = $salesList->toArray();
+        foreach ($webSalesList as $wItem) {
+            $salesListArray[] = (object) [
+                'total_pieces' => $wItem->total_pieces,
+                'color' => json_encode(['color' => $wItem->color ?: '-', 'size' => $wItem->size ?: '-'])
+            ];
+        }
+
+        $dcList = DB::table('delivery_challan_items as dci')
+            ->join('delivery_challans as dc', 'dc.id', '=', 'dci.delivery_challan_id')
+            ->leftJoin('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
+            ->leftJoin('sales', 'sales.id', '=', 'dc.sale_id')
+            ->where('dci.product_id', $product->id)
+            ->where(function($q) {
+                $q->whereNull('dc.sale_id')->orWhere('sales.sale_type', '=', 'sales_order');
+            })
+            ->select('dci.delivered_qty as total_pieces', DB::raw('COALESCE(dci.color, si.color) as color'))
+            ->get();
+        foreach ($dcList as $dcItem) {
+            $salesListArray[] = (object) [
+                'total_pieces' => $dcItem->total_pieces,
+                'color' => $dcItem->color
+            ];
+        }
+        $salesList = collect($salesListArray);
+
+        // Fetch sale returns
+        $returnsList = DB::table('sale_return_items as sri')
+            ->join('sale_returns as sr', 'sr.id', '=', 'sri.sale_return_id')
+            ->where('sri.product_id', $product->id)
+            ->select('sri.qty', 'sri.color', 'sr.sale_id')
+            ->get();
+
+        $saleIds = $returnsList->pluck('sale_id')->unique()->toArray();
+        $saleItemsMap = [];
+        if (!empty($saleIds)) {
+            $siList = DB::table('sale_items')
+                ->whereIn('sale_id', $saleIds)
+                ->where('product_id', $product->id)
+                ->select('sale_id', 'color')
+                ->get();
+            foreach ($siList as $si) {
+                $saleItemsMap[$si->sale_id][] = $si->color;
+            }
+        }
+
+        // Fetch approved purchases
+        $purchasesList = DB::table('purchase_items as pi')
+            ->join('purchases as pur', 'pur.id', '=', 'pi.purchase_id')
+            ->where('pi.product_id', $product->id)
+            ->whereIn('pur.status_purchase', ['approved', 'Returned', 'Partial'])
+            ->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.color')
+            ->get();
+
+        // Fetch purchase returns
+        $purchaseReturnsList = DB::table('purchase_return_items as pri')
+            ->where('pri.product_id', $product->id)
+            ->select('pri.qty', 'pri.color')
+            ->get();
+
+        $liveMap = [];
+        $ppb = $product->pieces_per_box > 0 ? (float)$product->pieces_per_box : 1;
+
+        foreach ($rawVariants as $idx => $v) {
+            $vUnitName = $v['unit'] ?? ($product->unit->name ?? 'Pcs');
+            $isCartonMode = ($product->size_mode === 'by_cartons' || strtolower($vUnitName) === 'carton');
+            $vPpb = $ppb;
+            if ($isCartonMode) {
+                $vConv = (float)($v['conv_factor'] ?? 0);
+                if ($vConv > 0) $vPpb = $vConv;
+            }
+
+            $vRawStock = (string)($v['stock'] ?? '0');
+            if ($isCartonMode && $vPpb >= 1) {
+                if (strpos($vRawStock, '.') !== false) {
+                    $parts = explode('.', $vRawStock);
+                    $initial = ((int)($parts[0] ?? 0) * $vPpb) + (int)($parts[1] ?? 0);
+                } else {
+                    $initial = (float)$vRawStock * $vPpb;
+                }
+            } else {
+                $initial = (float)$vRawStock;
+            }
+
+            $purchased = 0;
+            foreach ($purchasesList as $pItem) {
+                if ($this->matchSaleItemToVariant($pItem, $v)) {
+                    $pUnit = strtolower(trim($pItem->unit ?? ''));
+                    $itemPPB = (float)($pItem->pieces_per_box > 0 ? $pItem->pieces_per_box : $vPpb);
+                    if ($itemPPB <= 0) $itemPPB = 1;
+
+                    if (in_array($pUnit, ['carton', 'ctn', 'box'])) {
+                        if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
+                            $pPieces = (((int)$pItem->boxes_qty) * $itemPPB) + (int)$pItem->loose_qty;
+                        } else {
+                            [$b, $l] = \App\Http\Controllers\PurchaseController::parseCartonQty($pItem->qty);
+                            $pPieces = ($b * $itemPPB) + $l;
+                        }
+                    } elseif (in_array($pUnit, ['gm', 'g'])) {
+                        $pPieces = ((float)$pItem->qty) / 1000.0;
+                    } else {
+                        $pPieces = (float)$pItem->qty;
+                    }
+                    $purchased += $pPieces;
+                }
+            }
+
+            $pReturned = 0;
+            foreach ($purchaseReturnsList as $prItem) {
+                if ($this->matchSaleItemToVariant($prItem, $v)) {
+                    $pReturned += (float)$prItem->qty;
+                }
+            }
+
+            $sold = 0;
+            foreach ($salesList as $sItem) {
+                if ($this->matchSaleItemToVariant($sItem, $v)) {
+                    $sold += (float)$sItem->total_pieces;
+                }
+            }
+
+            $returnedQty = 0;
+            foreach ($returnsList as $rItem) {
+                $rColor = $rItem->color;
+                if (empty($rColor)) {
+                    $saleColors = $saleItemsMap[$rItem->sale_id] ?? [];
+                    $rColor = !empty($saleColors) ? $saleColors[0] : '';
+                }
+                $rItemCopy = (object)['qty' => $rItem->qty, 'color' => $rColor];
+                if ($this->matchSaleItemToVariant($rItemCopy, $v)) {
+                    $returnedQty += (float)$rItem->qty;
+                }
+            }
+
+            $vLive = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned);
+            $liveMap[$idx] = $vLive;
+        }
+
+        return $liveMap;
     }
 
     /**

@@ -1893,10 +1893,28 @@ class ReportingController extends Controller
                     }
 
                     $ref = '-';
-                    if (preg_match('/Invoice #(\S+)/', $desc, $matches)) {
-                        $ref = $matches[1];
-                    } elseif (preg_match('/Receipt #(\S+)/', $desc, $matches)) {
-                        $ref = $matches[1];
+                    if (preg_match('/(INV-[\w-]+|SO-[\w-]+|PINV-[\w-]+|PUR-[\w-]+|PO-[\w-]+|TAX-[\w-]+|PRET-[\w-]+|RVID-[\w-]+|PVID-[\w-]+|RV-[\w-]+|PV-[\w-]+|JV-[\w-]+)/i', $desc, $matches)) {
+                        $ref = strtoupper(rtrim($matches[1], '],.)'));
+                    } elseif (preg_match('/(?:Invoice|Receipt|Bill|Payment|Ref)[\s:#]+([A-Za-z0-9\-_]+)/i', $desc, $matches)) {
+                        $ref = strtoupper(rtrim($matches[1], '],.)'));
+                    } elseif (preg_match('/Invoice\s+#(\S+)/i', $desc, $matches)) {
+                        $ref = rtrim($matches[1], '],.)');
+                    } elseif (preg_match('/Receipt\s+#(\S+)/i', $desc, $matches)) {
+                        $ref = rtrim($matches[1], '],.)');
+                    }
+
+                    if ($ref === '-' && !empty($row['source_type']) && !empty($row['source_id'])) {
+                        if (in_array($row['source_type'], ['VoucherMaster', \App\Models\VoucherMaster::class, 'App\Models\VoucherMaster'])) {
+                            $vm = \App\Models\VoucherMaster::find($row['source_id']);
+                            if ($vm && $vm->voucher_no) {
+                                $ref = $vm->voucher_no;
+                            }
+                        } elseif (in_array($row['source_type'], ['ReceiptsVoucher', \App\Models\ReceiptsVoucher::class])) {
+                            $rv = \App\Models\ReceiptsVoucher::find($row['source_id']);
+                            if ($rv && $rv->rvid) {
+                                $ref = $rv->rvid;
+                            }
+                        }
                     }
 
                     $entryDate = $row['date'];
@@ -1965,10 +1983,28 @@ class ReportingController extends Controller
             }
 
             $ref = '-';
-            if (preg_match('/Invoice #(\S+)/', $desc, $matches)) {
-                $ref = $matches[1];
-            } elseif (preg_match('/Receipt #(\S+)/', $desc, $matches)) {
-                $ref = $matches[1];
+            if (preg_match('/(INV-[\w-]+|SO-[\w-]+|PINV-[\w-]+|PUR-[\w-]+|PO-[\w-]+|TAX-[\w-]+|PRET-[\w-]+|RVID-[\w-]+|PVID-[\w-]+|RV-[\w-]+|PV-[\w-]+|JV-[\w-]+)/i', $desc, $matches)) {
+                $ref = strtoupper(rtrim($matches[1], '],.)'));
+            } elseif (preg_match('/(?:Invoice|Receipt|Bill|Payment|Ref)[\s:#]+([A-Za-z0-9\-_]+)/i', $desc, $matches)) {
+                $ref = strtoupper(rtrim($matches[1], '],.)'));
+            } elseif (preg_match('/Invoice\s+#(\S+)/i', $desc, $matches)) {
+                $ref = rtrim($matches[1], '],.)');
+            } elseif (preg_match('/Receipt\s+#(\S+)/i', $desc, $matches)) {
+                $ref = rtrim($matches[1], '],.)');
+            }
+
+            if ($ref === '-' && !empty($row['source_type']) && !empty($row['source_id'])) {
+                if (in_array($row['source_type'], ['VoucherMaster', \App\Models\VoucherMaster::class, 'App\Models\VoucherMaster'])) {
+                    $vm = \App\Models\VoucherMaster::find($row['source_id']);
+                    if ($vm && $vm->voucher_no) {
+                        $ref = $vm->voucher_no;
+                    }
+                } elseif (in_array($row['source_type'], ['ReceiptsVoucher', \App\Models\ReceiptsVoucher::class])) {
+                    $rv = \App\Models\ReceiptsVoucher::find($row['source_id']);
+                    if ($rv && $rv->rvid) {
+                        $ref = $rv->rvid;
+                    }
+                }
             }
 
             $entryDate = $row['date'];
@@ -2081,24 +2117,48 @@ class ReportingController extends Controller
 
                 foreach ($ledgerData['transactions'] as $row) {
                     $desc = $row['description'] ?? '';
+                    $sourceType = $row['source_type'] ?? null;
+                    $sourceId = $row['source_id'] ?? null;
+                    $voucherRef = null;
+
+                    if ($sourceType && in_array($sourceType, ['VoucherMaster', \App\Models\VoucherMaster::class, 'App\Models\VoucherMaster'])) {
+                        $vm = \App\Models\VoucherMaster::find($sourceId);
+                        if ($vm) {
+                            if (!empty($vm->remarks) && ($desc === 'Payment to vendor' || empty($desc) || strpos($desc, 'Payment to') === 0)) {
+                                $desc = $vm->remarks;
+                            }
+                            if (!empty($vm->voucher_no)) {
+                                $voucherRef = $vm->voucher_no;
+                            }
+                        }
+                    }
 
                     $accountName = '';
-                    if ($row['debit'] > 0 && ($row['source_type'] ?? null)) {
-                        $accountName = $this->getPaymentAccountName($row['source_type'], $row['source_id']);
+                    if ($row['debit'] > 0 && $sourceType) {
+                        $accountName = $this->getPaymentAccountName($sourceType, $sourceId);
                     }
                     if ($accountName) {
                         $desc .= ' [A/C: ' . $accountName . ']';
                     }
 
                     $ref = '-';
-                    if (preg_match('/(PINV-\S+|PUR-\S+|PO-\S+|TAX-\S+|INV-\S+|PRET-\S+)/i', $desc, $matches)) {
-                        $ref = strtoupper($matches[1]);
-                    } elseif (preg_match('/Purchase\s+(?:Invoice\s+)?#(\S+)/i', $desc, $matches)) {
-                        $ref = $matches[1];
-                    } elseif (preg_match('/Purchase\s+Return\s+#(\S+)/i', $desc, $matches)) {
-                        $ref = $matches[1];
-                    } elseif (preg_match('/Payment\s+#(\S+)/i', $desc, $matches)) {
-                        $ref = $matches[1];
+                    if (preg_match('/(PINV-[\w-]+|PUR-[\w-]+|PO-[\w-]+|TAX-[\w-]+|INV-[\w-]+|SO-[\w-]+|PRET-[\w-]+|PVID-[\w-]+|RVID-[\w-]+|PA-[\w-]+|PV-[\w-]+|RV-[\w-]+|JV-[\w-]+)/i', $desc, $matches)) {
+                        $ref = strtoupper(rtrim($matches[1], '],.)'));
+                    } elseif (preg_match('/(?:Bill|Invoice|Receipt|Ref)[\s:#]+([A-Za-z0-9\-_]+)/i', $desc, $matches)) {
+                        $ref = strtoupper(rtrim($matches[1], '],.)'));
+                    } elseif (preg_match('/(?:Purchase\s+Invoice|Purchase\s+Return|Payment\s+Voucher|Receipt\s+Voucher)[\s:#]+([A-Za-z0-9\-_]+)/i', $desc, $matches)) {
+                        $ref = strtoupper(rtrim($matches[1], '],.)'));
+                    }
+
+                    if ($ref === '-') {
+                        if ($voucherRef) {
+                            $ref = $voucherRef;
+                        } elseif ($sourceType && in_array($sourceType, ['PaymentVoucher', \App\Models\PaymentVoucher::class])) {
+                            $pv = \App\Models\PaymentVoucher::find($sourceId);
+                            if ($pv && $pv->pvid) {
+                                $ref = $pv->pvid;
+                            }
+                        }
                     }
 
                     $entryDate = $row['date'];
@@ -2156,24 +2216,48 @@ class ReportingController extends Controller
 
         $transactions = collect($ledgerData['transactions'])->map(function ($row) {
             $desc = $row['description'] ?? '';
+            $sourceType = $row['source_type'] ?? null;
+            $sourceId = $row['source_id'] ?? null;
+            $voucherRef = null;
+
+            if ($sourceType && in_array($sourceType, ['VoucherMaster', \App\Models\VoucherMaster::class, 'App\Models\VoucherMaster'])) {
+                $vm = \App\Models\VoucherMaster::find($sourceId);
+                if ($vm) {
+                    if (!empty($vm->remarks) && ($desc === 'Payment to vendor' || empty($desc) || strpos($desc, 'Payment to') === 0)) {
+                        $desc = $vm->remarks;
+                    }
+                    if (!empty($vm->voucher_no)) {
+                        $voucherRef = $vm->voucher_no;
+                    }
+                }
+            }
 
             $accountName = '';
-            if ($row['debit'] > 0 && ($row['source_type'] ?? null)) {
-                $accountName = $this->getPaymentAccountName($row['source_type'], $row['source_id']);
+            if ($row['debit'] > 0 && $sourceType) {
+                $accountName = $this->getPaymentAccountName($sourceType, $sourceId);
             }
             if ($accountName) {
                 $desc .= ' [A/C: ' . $accountName . ']';
             }
 
             $ref = '-';
-            if (preg_match('/(PINV-\S+|PUR-\S+|PO-\S+|TAX-\S+|INV-\S+|PRET-\S+)/i', $desc, $matches)) {
-                $ref = strtoupper($matches[1]);
-            } elseif (preg_match('/Purchase\s+(?:Invoice\s+)?#(\S+)/i', $desc, $matches)) {
-                $ref = $matches[1];
-            } elseif (preg_match('/Purchase\s+Return\s+#(\S+)/i', $desc, $matches)) {
-                $ref = $matches[1];
-            } elseif (preg_match('/Payment\s+#(\S+)/i', $desc, $matches)) {
-                $ref = $matches[1];
+            if (preg_match('/(PINV-[\w-]+|PUR-[\w-]+|PO-[\w-]+|TAX-[\w-]+|INV-[\w-]+|SO-[\w-]+|PRET-[\w-]+|PVID-[\w-]+|RVID-[\w-]+|PA-[\w-]+|PV-[\w-]+|RV-[\w-]+|JV-[\w-]+)/i', $desc, $matches)) {
+                $ref = strtoupper(rtrim($matches[1], '],.)'));
+            } elseif (preg_match('/(?:Bill|Invoice|Receipt|Ref)[\s:#]+([A-Za-z0-9\-_]+)/i', $desc, $matches)) {
+                $ref = strtoupper(rtrim($matches[1], '],.)'));
+            } elseif (preg_match('/(?:Purchase\s+Invoice|Purchase\s+Return|Payment\s+Voucher|Receipt\s+Voucher)[\s:#]+([A-Za-z0-9\-_]+)/i', $desc, $matches)) {
+                $ref = strtoupper(rtrim($matches[1], '],.)'));
+            }
+
+            if ($ref === '-') {
+                if ($voucherRef) {
+                    $ref = $voucherRef;
+                } elseif ($sourceType && in_array($sourceType, ['PaymentVoucher', \App\Models\PaymentVoucher::class])) {
+                    $pv = \App\Models\PaymentVoucher::find($sourceId);
+                    if ($pv && $pv->pvid) {
+                        $ref = $pv->pvid;
+                    }
+                }
             }
 
             $entryDate = $row['date'];

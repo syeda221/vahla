@@ -212,7 +212,7 @@ class TransactionService
                 'account_id' => $apAccountId,
                 'debit' => $totalPaid,
                 'credit' => 0,
-                'narration' => "Payment to Vendor {$vendorName}",
+                'narration' => "Payment for Purchase #{$purchase->invoice_no}" . ($vendorName ? " (Vendor: {$vendorName})" : ""),
             ];
 
             // 3. Voucher Header

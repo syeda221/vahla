@@ -296,8 +296,13 @@ class DeliveryChallanController extends Controller
 
             $chosenPrefix = request('prefix');
             $activePrefix = in_array(strtoupper($chosenPrefix), ['TAX', 'CO', 'INV']) ? strtoupper($chosenPrefix) : 'INV';
+            $invInput = request('invoice_no') ?: request('Invoice_no');
             
-            $generatedNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+            if ($invInput) {
+                $generatedNo = \App\Models\InvoiceSeries::normalizeNumber($invInput, $activePrefix);
+            } else {
+                $generatedNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+            }
             $sale->invoice_no = $generatedNo;
             $sale->parent_quotation_id = $dc->sale_id;
             $sale->reference = 'Invoice for DC: ' . $dc->dc_number;

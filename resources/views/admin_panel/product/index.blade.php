@@ -299,6 +299,8 @@
     .btn-act-barcode:hover { background: var(--erp-success); color: #fff; }
     .btn-act-deact   { background: var(--erp-danger-lt); color: var(--erp-danger); border-color: #fecaca; }
     .btn-act-deact:hover   { background: var(--erp-danger); color: #fff; }
+    .btn-act-quick   { background: #fffbeb; color: #d97706; border-color: #fde68a; font-weight:700; }
+    .btn-act-quick:hover   { background: #f59e0b; color: #fff; border-color: #f59e0b; }
     .btn-act-act     { background: var(--erp-success-lt); color: var(--erp-success); border-color: #a7f3d0; }
     .btn-act-act:hover     { background: var(--erp-success); color: #fff; }
 
@@ -310,7 +312,7 @@
 
     /* ── Actions column – force min-width so buttons never wrap ── */
     #productTable th:last-child,
-    #productTable td:last-child { min-width: 190px; }
+    #productTable td:last-child { min-width: 240px; }
 
     /* ── Select checkbox ── */
     input[type="checkbox"].row-check { width: 16px; height: 16px; accent-color: var(--erp-primary); cursor: pointer; }
@@ -634,14 +636,26 @@
                             @php
                                 $stockPieces = (float) ($product->warehouse_stocks_sum_total_pieces ?? 0);
                                 $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
+
+                                $productUnitName = $product->unit->name ?? match($product->size_mode) {
+                                    'by_kg' => 'Kg',
+                                    'by_gm' => 'Gm',
+                                    'by_ton' => 'Ton',
+                                    'by_meter' => 'Mtr',
+                                    'by_feet' => 'Ft',
+                                    'by_cartons' => 'Carton',
+                                    'by_size' => 'M²',
+                                    default => 'Pcs',
+                                };
+
                                 if (($product->size_mode === 'by_cartons' || $product->size_mode === 'by_size') && $ppb > 1) {
                                     $boxes = floor($stockPieces / $ppb);
                                     $loose = $stockPieces % $ppb;
                                     $stockDisplay = $loose > 0 ? "{$boxes}.{$loose}" : "{$boxes}";
                                     $stockUnit    = $loose > 0 ? 'Box.Loose' : 'Boxes';
                                 } else {
-                                    $stockDisplay = $stockPieces;
-                                    $stockUnit    = 'Pcs';
+                                    $stockDisplay = (float)$stockPieces == (int)$stockPieces ? (int)$stockPieces : rtrim(rtrim(number_format($stockPieces, 2), '0'), '.');
+                                    $stockUnit    = $productUnitName;
                                 }
                                 $stockClass = $stockPieces == 0 ? 'zero' : (($product->alert_carton_quantity && $stockPieces <= $product->alert_carton_quantity) ? 'low' : '');
 
@@ -652,6 +666,20 @@
                                 } else {
                                     $tradePrice  = (float)$product->purchase_price_per_piece;
                                     $retailPrice = (float)$product->sale_price_per_piece ?: (float)$product->sale_price_per_box;
+                                }
+
+                                $rowVariants = [];
+                                if (!empty($product->color)) {
+                                    $rawC = $product->color;
+                                    if (is_string($rawC)) {
+                                        $decodedC = json_decode($rawC, true);
+                                        if (is_string($decodedC)) $decodedC = json_decode($decodedC, true) ?? $decodedC;
+                                    } else {
+                                        $decodedC = $rawC;
+                                    }
+                                    if (is_array($decodedC) && count($decodedC) > 0) {
+                                        $rowVariants = isset($decodedC['name']) || isset($decodedC['color']) ? (isset($decodedC[0]) ? $decodedC : [$decodedC]) : array_values($decodedC);
+                                    }
                                 }
                             @endphp
                             <tr id="product-row-{{ $product->id }}" class="{{ $product->is_active ? '' : 'row-inactive' }}">
@@ -665,27 +693,85 @@
                                         <div class="no-img-badge"><i class="fas fa-image"></i></div>
                                     @endif
                                 </td>
-                                <td class="td-item-details">
-                                    <div class="item-name">{{ $product->item_name }}</div>
-                                    <div class="item-meta">
-                                        <span class="item-code">{{ $product->item_code }}</span>
+                                <td class="td-item-details" id="td-item-details-{{ $product->id }}">
+                                    <div class="item-name" id="p-name-{{ $product->id }}">{{ $product->item_name }}</div>
+                                    <div class="item-meta" id="p-meta-{{ $product->id }}">
+                                        <span class="item-code" id="p-code-{{ $product->id }}">{{ $product->item_code }}</span>
                                         @if($product->category_relation)
-                                            <span class="meta-chip"><i class="fas fa-list" style="font-size:.6rem;"></i> {{ $product->category_relation->name }}</span>
+                                            <span class="meta-chip" id="p-cat-{{ $product->id }}"><i class="fas fa-folder" style="font-size:.6rem;"></i> {{ $product->category_relation->name }}@if($product->sub_category_relation) &rsaquo; {{ $product->sub_category_relation->name }}@endif</span>
                                         @endif
                                         @if($product->brand)
-                                            <span class="meta-chip"><i class="fas fa-trademark" style="font-size:.6rem;"></i> {{ $product->brand->name }}</span>
+                                            <span class="meta-chip" id="p-brand-{{ $product->id }}"><i class="fas fa-trademark" style="font-size:.6rem;"></i> {{ $product->brand->name }}</span>
                                         @endif
                                     </div>
                                 </td>
-                                <td>
-                                    <span class="stock-badge {{ $stockClass }}">
-                                        <i class="fas fa-cubes" style="font-size:.65rem;"></i>
-                                        {{ $stockDisplay }}
-                                        <span class="stock-unit">{{ $stockUnit }}</span>
-                                    </span>
+                                <td id="td-stock-{{ $product->id }}">
+                                    <div style="display:flex; flex-direction:column; gap:4px;">
+                                        <div>
+                                            <span class="stock-badge {{ $stockClass }}" id="p-stock-badge-{{ $product->id }}">
+                                                <i class="fas fa-cubes" style="font-size:.65rem;"></i>
+                                                <span class="stock-num">{{ $stockDisplay }}</span>
+                                                <span class="stock-unit">{{ $stockUnit }}</span>
+                                            </span>
+                                        </div>
+                                        <div class="variant-stock-preview" id="p-var-preview-{{ $product->id }}" style="display:flex; flex-wrap:wrap; gap:3px; max-width:240px; font-size:.68rem;">
+                                            @foreach($rowVariants as $vIdx => $v)
+                                                @php
+                                                    $vColorVal = $v['color'] ?? $v['variant_color'] ?? '';
+                                                    $vSizeVal  = $v['size'] ?? $v['variant_size'] ?? '';
+                                                    $vUnitVal  = $v['unit'] ?? $v['variant_unit'] ?? '';
+                                                    $vWeight   = $v['weight_per_piece'] ?? '';
+                                                    $isBase    = !empty($v['is_base_variant']) || ($product->size_mode === 'by_kg' && isset($v['conv_factor']) && (float)$v['conv_factor'] == 1);
+
+                                                    if ($vColorVal !== '-' && $vColorVal !== '' && $vSizeVal !== '-' && $vSizeVal !== '') {
+                                                        $vLbl = "{$vColorVal} / {$vSizeVal}";
+                                                    } elseif ($vColorVal !== '-' && $vColorVal !== '') {
+                                                        $vLbl = $vColorVal;
+                                                    } elseif ($vSizeVal !== '-' && $vSizeVal !== '') {
+                                                        $vLbl = $vSizeVal;
+                                                    } elseif ($product->size_mode === 'by_kg') {
+                                                        if ($isBase) {
+                                                            $vLbl = 'Kg (Base)';
+                                                        } elseif ($vWeight && (float)$vWeight > 0) {
+                                                            $vLbl = ((float)$vWeight >= 1000 ? ((float)$vWeight/1000) . 'kg' : (float)$vWeight . 'g') . ' Pcs';
+                                                        } elseif ($vUnitVal) {
+                                                            $vLbl = $vUnitVal;
+                                                        } else {
+                                                            $vLbl = 'Piece';
+                                                        }
+                                                    } elseif ($vUnitVal) {
+                                                        $vLbl = $vUnitVal;
+                                                    } elseif (!empty($v['name']) && $v['name'] !== $product->item_name) {
+                                                        $vLbl = $v['name'];
+                                                    } else {
+                                                        $vLbl = 'Var ' . ($vIdx + 1);
+                                                    }
+
+                                                    $vQ = (float)($v['stock'] ?? $v['variant_stock'] ?? 0);
+                                                    if ($product->size_mode === 'by_kg' && isset($v['conv_factor']) && (float)$v['conv_factor'] > 0) {
+                                                        $cf = (float)$v['conv_factor'];
+                                                        $vQ = $cf == 1 ? $stockPieces : (int)floor($stockPieces / $cf);
+                                                    }
+                                                    $vQDisplay = (float)$vQ == (int)$vQ ? (int)$vQ : rtrim(rtrim(number_format($vQ, 2), '0'), '.');
+                                                    $colorStyle = $vQ > 0 ? '#059669' : '#dc2626';
+
+                                                    $vUnitSuffix = '';
+                                                    if ($product->size_mode === 'by_kg') {
+                                                        $vUnitSuffix = $isBase ? ' Kg' : ' Pcs';
+                                                    } elseif (!empty($vUnitVal)) {
+                                                        $vUnitSuffix = ' ' . $vUnitVal;
+                                                    }
+                                                @endphp
+                                                <span style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:4px; padding:2px 6px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:3px;">
+                                                    <span style="color:#475569;">{{ $vLbl }}:</span>
+                                                    <strong style="color:{{ $colorStyle }};">{{ $vQDisplay }}{{ $vUnitSuffix }}</strong>
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    </div>
                                 </td>
-                                <td class="price-purchase">Rs. {{ number_format($tradePrice, 2) }}</td>
-                                <td class="price-sale">Rs. {{ number_format($retailPrice, 2) }}</td>
+                                <td class="price-purchase" id="p-trade-price-{{ $product->id }}">Rs. {{ number_format($tradePrice, 2) }}</td>
+                                <td class="price-sale" id="p-retail-price-{{ $product->id }}">Rs. {{ number_format($retailPrice, 2) }}</td>
                                 <td>
                                     @if($product->is_active)
                                         <span class="status-active" id="status-badge-{{ $product->id }}">Active</span>
@@ -695,13 +781,19 @@
                                 </td>
                                 <td>
                                     <div class="action-group">
+                                        @if (auth()->user()->can('products.edit') || auth()->user()->email === 'admin@admin.com')
+                                            <button type="button" class="btn-act btn-act-quick quickEditProductBtn"
+                                                data-id="{{ $product->id }}" title="⚡ Quick Edit & Adjust Stock">
+                                                <i class="fas fa-bolt"></i> Quick Edit
+                                            </button>
+                                        @endif
                                         <button type="button" class="btn-act btn-act-view viewProductBtn"
                                             data-id="{{ $product->id }}" title="View Details">
                                             <i class="fas fa-eye"></i> View
                                         </button>
                                         @if (auth()->user()->can('products.edit') || auth()->user()->email === 'admin@admin.com')
                                             <a href="{{ route('products.edit', $product->id) }}"
-                                                class="btn-act btn-act-edit" title="Edit Product">
+                                                class="btn-act btn-act-edit" title="Edit Full Product">
                                                 <i class="fas fa-pencil-alt"></i> Edit
                                             </a>
                                         @endif
@@ -733,14 +825,26 @@
                 @php
                     $stockPieces = (float) ($product->warehouse_stocks_sum_total_pieces ?? 0);
                     $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
+
+                    $productUnitName = $product->unit->name ?? match($product->size_mode) {
+                        'by_kg' => 'Kg',
+                        'by_gm' => 'Gm',
+                        'by_ton' => 'Ton',
+                        'by_meter' => 'Mtr',
+                        'by_feet' => 'Ft',
+                        'by_cartons' => 'Carton',
+                        'by_size' => 'M²',
+                        default => 'Pcs',
+                    };
+
                     if (($product->size_mode === 'by_cartons' || $product->size_mode === 'by_size') && $ppb > 1) {
                         $boxes = floor($stockPieces / $ppb);
                         $loose = $stockPieces % $ppb;
                         $stockDisplay = $loose > 0 ? "{$boxes}.{$loose}" : "{$boxes}";
                         $stockUnit    = $loose > 0 ? 'Box.Loose' : 'Boxes';
                     } else {
-                        $stockDisplay = $stockPieces;
-                        $stockUnit    = 'Pcs';
+                        $stockDisplay = (float)$stockPieces == (int)$stockPieces ? (int)$stockPieces : rtrim(rtrim(number_format($stockPieces, 2), '0'), '.');
+                        $stockUnit    = $productUnitName;
                     }
                     $stockClass = $stockPieces == 0 ? 'zero' : (($product->alert_carton_quantity && $stockPieces <= $product->alert_carton_quantity) ? 'low' : '');
 
@@ -795,6 +899,11 @@
                         </div>
                     </div>
                     <div class="prod-mcard-actions">
+                        @if (auth()->user()->can('products.edit') || auth()->user()->email === 'admin@admin.com')
+                            <button type="button" class="btn-act btn-act-quick quickEditProductBtn" data-id="{{ $product->id }}">
+                                <i class="fas fa-bolt"></i> Quick Edit
+                            </button>
+                        @endif
                         <button type="button" class="btn-act btn-act-view viewProductBtn" data-id="{{ $product->id }}">
                             <i class="fas fa-eye"></i> View
                         </button>
@@ -948,6 +1057,224 @@
 </div>
 
 
+
+{{-- ══════════════════════════════════════════════════════════════
+     QUICK EDIT & STOCK ADJUST MODAL
+══════════════════════════════════════════════════════════════ --}}
+<div class="modal fade" id="quickEditModal" tabindex="-1" role="dialog" aria-labelledby="quickEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:16px; overflow:hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #4f46e5, #6366f1); color:#fff; border-bottom: none; padding: 16px 22px;">
+                <div>
+                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2" id="quickEditModalLabel" style="font-size:1.1rem; color:#fff;">
+                        <i class="fas fa-bolt" style="color:#fcd34d;"></i> Quick Edit &amp; Stock Adjustment
+                    </h5>
+                    <div class="d-flex align-items-center gap-2 mt-1" style="font-size:.8rem; color:rgba(255,255,255,0.85);">
+                        <span id="qe_item_title" class="fw-bold text-white">Loading...</span>
+                        <span>•</span>
+                        <code id="qe_item_code" class="text-white" style="background:rgba(255,255,255,0.2); padding:1px 6px; border-radius:4px;">-</code>
+                    </div>
+                </div>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="opacity:.9; text-shadow:none; font-size:1.4rem;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-4" style="background:#f8fafc; max-height:calc(85vh - 120px); overflow-y:auto;">
+                <div id="qeLoadingSpinner" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <p class="text-muted small mt-2">Loading product data &amp; live stock...</p>
+                </div>
+
+                <form id="quickEditForm" class="d-none">
+                    <input type="hidden" id="qe_product_id" name="product_id">
+                    <input type="hidden" id="qe_size_mode" name="size_mode">
+
+                    {{-- SECTION 1: Master Details --}}
+                    <div class="card mb-3 border-0 shadow-sm" style="border-radius:12px; background:#fff;">
+                        <div class="card-header bg-white border-bottom py-2 px-3">
+                            <span class="fw-bold" style="font-size:.8rem; color:#475569; text-transform:uppercase; letter-spacing:.5px;">
+                                <i class="fas fa-info-circle text-primary me-1"></i> Product Information
+                            </span>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">Item Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control form-control-sm" id="qe_item_name" name="item_name" required>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">Category</label>
+                                    <select class="form-select form-control form-control-sm" id="qe_category_id" name="category_id">
+                                        <option value="">Select Category</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">Sub-Category</label>
+                                    <select class="form-select form-control form-control-sm" id="qe_sub_category_id" name="sub_category_id">
+                                        <option value="">Select Sub-Category</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">Brand</label>
+                                    <select class="form-select form-control form-control-sm" id="qe_brand_id" name="brand_id">
+                                        <option value="">Select Brand</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">Unit</label>
+                                    <div class="form-control form-control-sm bg-light text-dark fw-bold d-flex align-items-center justify-content-between" style="border-color:#cbd5e1; height:31px; cursor:not-allowed;" title="Unit cannot be modified in Quick Edit">
+                                        <span id="qe_unit_display_text" class="d-flex align-items-center gap-1"><i class="fas fa-balance-scale text-primary" style="font-size:.75rem;"></i> <span>Pcs</span></span>
+                                        <span class="badge bg-secondary-subtle text-muted" style="font-size:.65rem; border:1px solid #cbd5e1;"><i class="fas fa-lock me-1"></i>Locked</span>
+                                    </div>
+                                    <input type="hidden" id="qe_unit_id" name="unit_id" value="">
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    <label class="form-label small fw-bold text-muted mb-1">Low Stock Alert Qty</label>
+                                    <input type="number" step="any" min="0" class="form-control form-control-sm" id="qe_alert_quantity" name="alert_carton_quantity" placeholder="e.g. 5">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- SECTION 2: Pricing (Commented out - pricing is handled directly per variant/stock below) --}}
+                    {{--
+                    <div class="card mb-3 border-0 shadow-sm" style="border-radius:12px; background:#fff;">
+                        <div class="card-header bg-white border-bottom py-2 px-3 d-flex justify-content-between align-items-center">
+                            <span class="fw-bold" style="font-size:.8rem; color:#475569; text-transform:uppercase; letter-spacing:.5px;">
+                                <i class="fas fa-tags text-success me-1"></i> Pricing &amp; Rates
+                            </span>
+                            <span id="qe_margin_badge" class="badge" style="font-size:.75rem; background:#ecfdf5; color:#059669; border:1px solid #a7f3d0;">Margin: 0%</span>
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="row g-3" id="qe_standard_prices">
+                                <div class="col-md-4 col-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">Purchase Price (Cost) <span class="badge bg-light text-muted border qe-price-unit-badge">/ Pcs</span></label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light">Rs.</span>
+                                        <input type="number" step="any" min="0" class="form-control qe-price-input" id="qe_purchase_price_per_piece" name="purchase_price_per_piece">
+                                    </div>
+                                </div>
+                                <div class="col-md-4 col-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">Sale Price (Retail) <span class="badge bg-light text-muted border qe-price-unit-badge">/ Pcs</span></label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light">Rs.</span>
+                                        <input type="number" step="any" min="0" class="form-control qe-price-input" id="qe_sale_price_per_piece" name="sale_price_per_piece">
+                                    </div>
+                                </div>
+                                <div class="col-md-4 col-12">
+                                    <label class="form-label small fw-bold text-muted mb-1">Wholesale Price <span class="badge bg-light text-muted border qe-price-unit-badge">/ Pcs</span></label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light">Rs.</span>
+                                        <input type="number" step="any" min="0" class="form-control" id="qe_wholesale_price" name="wholesale_price">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-3 d-none" id="qe_size_prices">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">Purchase Price (Per M²)</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light">Rs.</span>
+                                        <input type="number" step="any" min="0" class="form-control qe-price-input" id="qe_purchase_price_per_m2" name="purchase_price_per_m2">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">Sale Price (Per M²)</label>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-light">Rs.</span>
+                                        <input type="number" step="any" min="0" class="form-control qe-price-input" id="qe_price_per_m2" name="price_per_m2">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    --}}
+
+                    {{-- SECTION 3: Live Stock Adjustment & Variants (Audit-Safe) --}}
+                    <div class="card mb-3 border-0 shadow-sm" style="border-radius:12px; background:#fff; border-left: 4px solid #f59e0b !important;">
+                        <div class="card-header bg-white border-bottom py-2 px-3 d-flex justify-content-between align-items-center">
+                            <span class="fw-bold" style="font-size:.8rem; color:#b45309; text-transform:uppercase; letter-spacing:.5px;">
+                                <i class="fas fa-cubes text-warning me-1"></i> Stock Adjustment (Physical Count Audit)
+                            </span>
+                            <span class="badge" style="font-size:.72rem; background:#fffbeb; color:#d97706; border:1px solid #fde68a;">Safe Audit Log</span>
+                        </div>
+                        <div class="card-body p-3" style="background:#fffdf7;">
+                            <div class="alert alert-warning py-2 px-3 mb-3 d-flex align-items-center gap-2" style="font-size:.78rem; border-radius:8px; background:#fffbeb; border:1px solid #fde68a; color:#92400e;">
+                                <i class="fas fa-shield-alt text-warning fs-6 flex-shrink-0"></i>
+                                <div>
+                                    Yahan se actual physical stock enter karein. Agar current stock se different hoga to system <strong>Stock Adjustment</strong> record banayega aur Inventory Ledger update karega.
+                                </div>
+                            </div>
+                            
+                            <input type="hidden" id="qe_adjust_warehouse_id" name="adjust_warehouse_id" value="1">
+
+                            {{-- SINGLE PRODUCT STOCK INPUT (Shown if no variants) --}}
+                            <div id="qe_single_stock_wrap" class="row g-3">
+                                <div class="col-md-6 col-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">Current System Stock</label>
+                                    <div class="form-control form-control-sm bg-light fw-bold text-dark d-flex align-items-center justify-content-between" style="border-color:#cbd5e1;" id="qe_current_stock_display">
+                                        <span>0</span> <small class="text-muted">Pcs</small>
+                                    </div>
+                                    <input type="hidden" id="qe_current_stock_val" value="0">
+                                </div>
+                                <div class="col-md-6 col-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">New Actual Stock (Pcs)</label>
+                                    <input type="number" step="any" min="0" class="form-control form-control-sm fw-bold border-warning" id="qe_new_stock_qty" name="new_stock_qty" placeholder="Enter physical count">
+                                </div>
+                                <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2 pt-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="small text-muted fw-semibold">Adjustment Result:</span>
+                                        <span id="qe_diff_badge" class="badge" style="font-size:.8rem; padding:4px 10px; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;">0 (No change)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- MULTI-VARIANT STOCK TABLE (Shown if product has variants) --}}
+                            <div id="qe_variant_stock_wrap" class="d-none">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small fw-bold text-dark"><i class="fas fa-layer-group text-primary me-1"></i> Variant-Wise Specific Stock &amp; Rates:</span>
+                                    <span class="badge" id="qe_var_total_diff_badge" style="font-size:.78rem; padding:3px 8px; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;">Sum: 0 (No change)</span>
+                                </div>
+                                <div class="table-responsive rounded border bg-white mb-2">
+                                    <table class="table table-sm table-hover align-middle mb-0 text-center" style="font-size:.78rem;">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th class="text-start ps-3" style="min-width:140px;">Variant Details</th>
+                                                <th style="min-width:70px;">Current</th>
+                                                <th style="min-width:90px;" class="bg-warning-subtle text-dark">New Actual Stock</th>
+                                                <th style="min-width:85px;">Diff (+/-)</th>
+                                                <th style="min-width:90px;">Sale Price</th>
+                                                <th style="min-width:90px;">Cost Price</th>
+                                                <th style="min-width:75px;">Alert Qty</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="qe_variant_stock_tbody">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-1">
+                                <div class="col-12">
+                                    <label class="form-label small fw-bold text-muted mb-1">Adjustment Reason / Audit Notes</label>
+                                    <input type="text" class="form-control form-control-sm" id="qe_adjustment_reason" name="adjustment_reason" placeholder="e.g. Physical Count Audit, Damaged Stock, Re-counting" value="Physical Count Adjustment via Quick Edit">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+            <div class="modal-footer bg-white py-2 px-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-light btn-sm px-3" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary btn-sm px-4 fw-bold" id="saveQuickEditBtn">
+                    <i class="fas fa-save me-1"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @endsection
 
@@ -1164,6 +1491,446 @@ $(document).ready(function () {
         } else {
             $('#subCategorySelect').html('<option value="">Select Sub-Category</option>');
         }
+    });
+
+    // ══════════════════════════════════════════════════════════════
+    //  QUICK EDIT & STOCK ADJUST MODAL JAVASCRIPT
+    // ══════════════════════════════════════════════════════════════
+    let qeWarehouseStocksMap = {};
+    let qeCurrentVariants = [];
+    let qeProductUnit = 'Pcs';
+
+    function updateStockDiffBadge() {
+        let curr = parseFloat($('#qe_current_stock_val').val()) || 0;
+        let newQtyStr = $('#qe_new_stock_qty').val();
+        let badge = $('#qe_diff_badge');
+
+        if (newQtyStr === '' || isNaN(newQtyStr)) {
+            badge.css({ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1' })
+                 .html('0 (No change)');
+            return;
+        }
+
+        let newQty = parseFloat(newQtyStr);
+        let diff = Math.round((newQty - curr) * 100) / 100;
+
+        if (diff > 0) {
+            badge.css({ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' })
+                 .html('<i class="fas fa-arrow-up me-1"></i> +' + diff + ' ' + qeProductUnit + ' (Stock will be ADDED)');
+        } else if (diff < 0) {
+            badge.css({ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' })
+                 .html('<i class="fas fa-arrow-down me-1"></i> ' + diff + ' ' + qeProductUnit + ' (Stock will be DEDUCTED)');
+        } else {
+            badge.css({ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1' })
+                 .html('0 (No change)');
+        }
+    }
+
+    function recalculateVariantStocks(sourceInput) {
+        let sizeMode = $('#qe_size_mode').val();
+        let totalCurrent = 0;
+        let totalNew = 0;
+
+        if (sizeMode === 'by_kg') {
+            if (sourceInput) {
+                let changedRow = $(sourceInput).closest('.qe-var-row');
+                let isBase = changedRow.data('isbase') == 1;
+                let conv = parseFloat(changedRow.data('conv')) || 1;
+                let enteredVal = parseFloat($(sourceInput).val()) || 0;
+                let baseKg = isBase ? enteredVal : (conv > 0 ? enteredVal * conv : 0);
+
+                $('.qe-var-row').each(function () {
+                    let row = $(this);
+                    let rowIsBase = row.data('isbase') == 1;
+                    let rowConv = parseFloat(row.data('conv')) || 1;
+                    let input = row.find('.qe-var-stock-input');
+
+                    if (row[0] !== changedRow[0]) {
+                        if (rowIsBase) {
+                            input.val(baseKg);
+                        } else {
+                            input.val(rowConv > 0 ? Math.floor(baseKg / rowConv) : 0);
+                        }
+                    }
+                });
+            }
+
+            $('.qe-var-row').each(function () {
+                let row = $(this);
+                let currStock = parseFloat(row.data('curr')) || 0;
+                let isBase = row.data('isbase') == 1;
+                let vUnit = row.data('unit') || (isBase ? 'Kg' : 'Pcs');
+                let newStockVal = row.find('.qe-var-stock-input').val();
+                let newStock = newStockVal === '' || isNaN(newStockVal) ? currStock : parseFloat(newStockVal);
+                let diffBadge = row.find('.qe-var-diff-badge');
+
+                if (isBase) {
+                    totalCurrent = currStock;
+                    totalNew = newStock;
+                }
+
+                let diff = Math.round((newStock - currStock) * 100) / 100;
+                if (diff > 0) {
+                    diffBadge.css({ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' })
+                              .text('+' + diff + ' ' + vUnit);
+                } else if (diff < 0) {
+                    diffBadge.css({ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' })
+                              .text(diff + ' ' + vUnit);
+                } else {
+                    diffBadge.css({ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1' })
+                              .text('0');
+                }
+            });
+
+            let totalDiff = Math.round((totalNew - totalCurrent) * 100) / 100;
+            let diffText = totalDiff > 0 ? `+${totalDiff} Kg (Added)` : (totalDiff < 0 ? `${totalDiff} Kg (Deducted)` : '0 (No change)');
+            let badgeColor = totalDiff > 0 ? '#ecfdf5' : (totalDiff < 0 ? '#fef2f2' : '#f1f5f9');
+            let textColor = totalDiff > 0 ? '#047857' : (totalDiff < 0 ? '#b91c1c' : '#64748b');
+            let borderColor = totalDiff > 0 ? '#a7f3d0' : (totalDiff < 0 ? '#fecaca' : '#cbd5e1');
+
+            $('#qe_var_total_diff_badge').css({ background: badgeColor, color: textColor, border: '1px solid ' + borderColor })
+                                         .html(`Total Weight: <strong>${totalNew}</strong> Kg | Net Diff: <strong>${diffText}</strong>`);
+
+            $('#qe_wh_total_badge').text(`${totalNew} Kg`);
+
+        } else {
+            $('.qe-var-row').each(function () {
+                let row = $(this);
+                let currStock = parseFloat(row.data('curr')) || 0;
+                let newStockInput = row.find('.qe-var-stock-input');
+                let diffBadge = row.find('.qe-var-diff-badge');
+
+                let newStockVal = newStockInput.val();
+                let newStock = newStockVal === '' || isNaN(newStockVal) ? currStock : parseFloat(newStockVal);
+
+                totalCurrent += currStock;
+                totalNew += newStock;
+
+                let diff = Math.round((newStock - currStock) * 100) / 100;
+                if (diff > 0) {
+                    diffBadge.css({ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' })
+                              .text('+' + diff);
+                } else if (diff < 0) {
+                    diffBadge.css({ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' })
+                              .text(diff);
+                } else {
+                    diffBadge.css({ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1' })
+                              .text('0');
+                }
+            });
+
+            let totalDiff = Math.round((totalNew - totalCurrent) * 100) / 100;
+            let diffText = totalDiff > 0 ? `+${totalDiff} ${qeProductUnit} (Added)` : (totalDiff < 0 ? `${totalDiff} ${qeProductUnit} (Deducted)` : '0 (No change)');
+            let badgeColor = totalDiff > 0 ? '#ecfdf5' : (totalDiff < 0 ? '#fef2f2' : '#f1f5f9');
+            let textColor = totalDiff > 0 ? '#047857' : (totalDiff < 0 ? '#b91c1c' : '#64748b');
+            let borderColor = totalDiff > 0 ? '#a7f3d0' : (totalDiff < 0 ? '#fecaca' : '#cbd5e1');
+
+            $('#qe_var_total_diff_badge').css({ background: badgeColor, color: textColor, border: '1px solid ' + borderColor })
+                                         .html(`Total Stock: <strong>${totalNew}</strong> ${qeProductUnit} | Net Diff: <strong>${diffText}</strong>`);
+
+            $('#qe_wh_total_badge').text(`${totalNew} ${qeProductUnit}`);
+        }
+    }
+
+    function updateMarginBadge() {
+        let sizeMode = $('#qe_size_mode').val();
+        let purch = 0, sale = 0;
+        if (sizeMode === 'by_size') {
+            purch = parseFloat($('#qe_purchase_price_per_m2').val()) || 0;
+            sale  = parseFloat($('#qe_price_per_m2').val()) || 0;
+        } else {
+            purch = parseFloat($('#qe_purchase_price_per_piece').val()) || 0;
+            sale  = parseFloat($('#qe_sale_price_per_piece').val()) || 0;
+        }
+
+        let badge = $('#qe_margin_badge');
+        if (sale > 0 && purch >= 0) {
+            let margin = ((sale - purch) / sale) * 100;
+            let marginFormatted = margin.toFixed(1) + '%';
+            if (margin >= 0) {
+                badge.css({ background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' })
+                     .text('Margin: ' + marginFormatted);
+            } else {
+                badge.css({ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' })
+                     .text('Loss: ' + marginFormatted);
+            }
+        } else {
+            badge.css({ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1' })
+                 .text('Margin: 0%');
+        }
+    }
+
+    // ── Open Quick Edit Modal ──
+    $(document).on('click', '.quickEditProductBtn', function () {
+        let productId = $(this).data('id');
+        $('#quickEditForm').addClass('d-none');
+        $('#qeLoadingSpinner').removeClass('d-none');
+        $('#quickEditModal').modal('show');
+
+        $.ajax({
+            url: '/product/quick-edit-data/' + productId,
+            type: 'GET',
+            success: function (res) {
+                if (!res.success) {
+                    Swal.fire('Error', res.error || 'Failed to load product data', 'error');
+                    $('#quickEditModal').modal('hide');
+                    return;
+                }
+
+                let p = res.product;
+                qeWarehouseStocksMap = res.warehouse_stocks || {};
+                qeCurrentVariants = p.variants || [];
+                qeProductUnit = p.unit_name || 'Pcs';
+
+                $('#qe_product_id').val(p.id);
+                $('#qe_size_mode').val(p.size_mode || 'std');
+                $('#qe_item_title').text(p.item_name || 'Product');
+                $('#qe_item_code').text(p.item_code || '-');
+                $('#qe_item_name').val(p.item_name || '');
+                $('#qe_alert_quantity').val(p.alert_carton_quantity != null ? p.alert_carton_quantity : '');
+
+                // Populate Categories
+                let catSelect = $('#qe_category_id').empty().append('<option value="">Select Category</option>');
+                (res.categories || []).forEach(c => {
+                    catSelect.append(`<option value="${c.id}" ${c.id == p.category_id ? 'selected' : ''}>${c.name}</option>`);
+                });
+
+                // Populate Subcategories
+                let subSelect = $('#qe_sub_category_id').empty().append('<option value="">Select Sub-Category</option>');
+                (res.subcategories || []).forEach(s => {
+                    subSelect.append(`<option value="${s.id}" ${s.id == p.sub_category_id ? 'selected' : ''}>${s.name}</option>`);
+                });
+
+                // Populate Brands
+                let brandSelect = $('#qe_brand_id').empty().append('<option value="">Select Brand</option>');
+                (res.brands || []).forEach(b => {
+                    brandSelect.append(`<option value="${b.id}" ${b.id == p.brand_id ? 'selected' : ''}>${b.name}</option>`);
+                });
+
+                // Set Locked Unit Display & Hidden Field
+                $('#qe_unit_id').val(p.unit_id || '');
+                $('#qe_unit_display_text span').text(qeProductUnit);
+
+                // Update Price Badges (/ Kg or / Pcs or / m²)
+                $('.qe-price-unit-badge').text('/ ' + (p.size_mode === 'by_size' ? 'm²' : qeProductUnit));
+
+                // Set Default Warehouse ID (Main Warehouse)
+                let selectedWhId = (res.warehouses && res.warehouses.length > 0) ? res.warehouses[0].id : 1;
+                $('#qe_adjust_warehouse_id').val(selectedWhId);
+
+                // Price Fields
+                if (p.size_mode === 'by_size') {
+                    $('#qe_size_prices').removeClass('d-none');
+                    $('#qe_standard_prices').addClass('d-none');
+                    $('#qe_purchase_price_per_m2').val(p.purchase_price_per_m2 || 0);
+                    $('#qe_price_per_m2').val(p.price_per_m2 || 0);
+                } else {
+                    $('#qe_standard_prices').removeClass('d-none');
+                    $('#qe_size_prices').addClass('d-none');
+                    $('#qe_purchase_price_per_piece').val(p.purchase_price_per_piece || 0);
+                    $('#qe_sale_price_per_piece').val(p.sale_price_per_piece || p.sale_price_per_box || 0);
+                    $('#qe_wholesale_price').val(p.wholesale_price || 0);
+                }
+
+                // Setup Initial Warehouse Stock Display
+                let initialWhStock = qeWarehouseStocksMap[selectedWhId] ? qeWarehouseStocksMap[selectedWhId].total_pieces : (p.total_pieces || 0);
+                $('#qe_current_stock_display').html(`<span>${initialWhStock}</span> <small class="text-muted">${qeProductUnit}</small>`);
+                $('#qe_current_stock_val').val(initialWhStock);
+                $('#qe_new_stock_qty').val(initialWhStock);
+
+                // Check Single vs Variant Mode
+                if (qeCurrentVariants && qeCurrentVariants.length > 0) {
+                    $('#qe_single_stock_wrap').addClass('d-none');
+                    $('#qe_variant_stock_wrap').removeClass('d-none');
+
+                    let varTbody = $('#qe_variant_stock_tbody').empty();
+                    qeCurrentVariants.forEach((v, idx) => {
+                        let vName = v.name || p.item_name;
+                        let vLabel = v.label || (v.color && v.color !== '-' ? v.color : (v.unit || 'Variant ' + (idx + 1)));
+                        let vColor = v.color || '-';
+                        let vSize  = v.size || '-';
+                        let vStock = parseFloat(v.current_stock || v.initial_stock || 0);
+                        let vSale  = parseFloat(v.sale_price || 0);
+                        let vPurch = parseFloat(v.purch_price || 0);
+                        let vAlert = v.alert !== undefined ? v.alert : '';
+                        let conv   = parseFloat(v.conv_factor || 1);
+                        let isBase = v.is_base_variant == 1 || (p.size_mode === 'by_kg' && conv == 1);
+                        let vUnit  = v.unit || (p.size_mode === 'by_kg' ? (isBase ? 'Kg' : 'Pcs') : qeProductUnit);
+
+                        let metaExtra = '';
+                        if (p.size_mode === 'by_kg') {
+                            if (isBase) {
+                                metaExtra = `<span class="badge bg-primary-subtle text-primary border" style="font-size:.65rem;">Base (1 Kg)</span>`;
+                            } else if (v.weight_per_piece) {
+                                metaExtra = `<span class="badge bg-light text-muted border" style="font-size:.65rem;">${v.weight_per_piece}g / piece</span>`;
+                            }
+                        } else if (vColor !== '-' || vSize !== '-') {
+                            metaExtra = `<span class="badge bg-light text-muted border" style="font-size:.65rem;">${vColor} / ${vSize}</span>`;
+                        }
+
+                        varTbody.append(`
+                            <tr class="qe-var-row" data-index="${idx}" data-curr="${vStock}" data-conv="${conv}" data-isbase="${isBase ? 1 : 0}" data-unit="${vUnit}">
+                                <td class="text-start ps-3">
+                                    <div class="fw-bold text-dark">${vLabel}</div>
+                                    <div class="item-meta mt-1">${metaExtra}</div>
+                                    <input type="hidden" name="variants[${idx}][name]" value="${vName}">
+                                    <input type="hidden" name="variants[${idx}][color]" value="${vColor}">
+                                    <input type="hidden" name="variants[${idx}][size]" value="${vSize}">
+                                    <input type="hidden" name="variants[${idx}][conv_factor]" value="${conv}">
+                                    <input type="hidden" name="variants[${idx}][unit]" value="${vUnit}">
+                                    <input type="hidden" name="variants[${idx}][is_base_variant]" value="${isBase ? 1 : 0}">
+                                    <input type="hidden" name="variants[${idx}][weight_per_piece]" value="${v.weight_per_piece || ''}">
+                                    <input type="hidden" name="variants[${idx}][current_stock]" value="${vStock}">
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary-subtle text-dark border px-2 py-1">${vStock} ${vUnit}</span>
+                                </td>
+                                <td class="bg-warning-subtle" style="min-width:115px;">
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" step="any" min="0" class="form-control form-control-sm text-center fw-bold border-warning qe-var-stock-input" name="variants[${idx}][new_stock]" value="${vStock}">
+                                        <span class="input-group-text bg-light text-muted px-1" style="font-size:.7rem;">${vUnit}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge qe-var-diff-badge" style="font-size:.72rem; padding:3px 6px; background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;">0</span>
+                                </td>
+                                <td>
+                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center" name="variants[${idx}][sale_price]" value="${vSale}">
+                                </td>
+                                <td>
+                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center" name="variants[${idx}][purch_price]" value="${vPurch}">
+                                </td>
+                                <td>
+                                    <input type="number" step="any" min="0" class="form-control form-control-sm text-center" name="variants[${idx}][alert]" value="${vAlert}">
+                                </td>
+                            </tr>
+                        `);
+                    });
+
+                    recalculateVariantStocks();
+                } else {
+                    $('#qe_variant_stock_wrap').addClass('d-none');
+                    $('#qe_single_stock_wrap').removeClass('d-none');
+                    updateStockDiffBadge();
+                }
+
+                updateMarginBadge();
+                $('#qeLoadingSpinner').addClass('d-none');
+                $('#quickEditForm').removeClass('d-none');
+            },
+            error: function () {
+                $('#qeLoadingSpinner').addClass('d-none');
+                Swal.fire('Error', 'Could not load product details.', 'error');
+                $('#quickEditModal').modal('hide');
+            }
+        });
+    });
+
+
+    // ── Single Stock input keyup/change ──
+    $(document).on('input change', '#qe_new_stock_qty', function () {
+        updateStockDiffBadge();
+    });
+
+    // ── Variant Stock input keyup/change (Sums all variant quantities) ──
+    $(document).on('input change', '.qe-var-stock-input', function () {
+        recalculateVariantStocks(this);
+    });
+
+    // ── Modal Category change -> Load Subcategories ──
+    $('#qe_category_id').on('change', function () {
+        let catId = $(this).val();
+        let subSelect = $('#qe_sub_category_id').empty().append('<option value="">Select Sub-Category</option>');
+        if (catId) {
+            $.get('/get-subcategories/' + catId, { category_id: catId }, function (data) {
+                $.each(data, function (k, sub) {
+                    subSelect.append(`<option value="${sub.id}">${sub.name}</option>`);
+                });
+            });
+        }
+    });
+
+    // ── Live Margin update on price inputs ──
+    $(document).on('input change', '.qe-price-input', function () {
+        updateMarginBadge();
+    });
+
+    // ── Save Quick Edit Form ──
+    $('#saveQuickEditBtn').on('click', function () {
+        let productId = $('#qe_product_id').val();
+        if (!productId) return;
+
+        let btn = $(this);
+        let origBtnHtml = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+
+        let formData = $('#quickEditForm').serializeArray();
+        formData.push({ name: '_token', value: '{{ csrf_token() }}' });
+
+        $.ajax({
+            url: '/product/quick-update/' + productId,
+            type: 'POST',
+            data: $.param(formData),
+            success: function (res) {
+                btn.prop('disabled', false).html(origBtnHtml);
+                if (!res.success) {
+                    Swal.fire('Error', res.message || 'Failed to update product', 'error');
+                    return;
+                }
+
+                $('#quickEditModal').modal('hide');
+
+                // Update Table Row Dynamically
+                let d = res.data;
+                if (d) {
+                    let nameEl = $(`#p-name-${productId}`);
+                    let metaEl = $(`#p-meta-${productId}`);
+                    let stockBadgeEl = $(`#p-stock-badge-${productId}`);
+                    let varPreviewEl = $(`#p-var-preview-${productId}`);
+                    let tradePriceEl = $(`#p-trade-price-${productId}`);
+                    let retailPriceEl = $(`#p-retail-price-${productId}`);
+
+                    if (nameEl.length) nameEl.text(d.item_name);
+                    if (metaEl.length) {
+                        let metaHtml = `<span class="item-code" id="p-code-${productId}">${d.item_code}</span>`;
+                        if (d.category_name) {
+                            metaHtml += `<span class="meta-chip" id="p-cat-${productId}"><i class="fas fa-folder" style="font-size:.6rem;"></i> ${d.category_name}${d.sub_category_name ? ' &rsaquo; ' + d.sub_category_name : ''}</span>`;
+                        }
+                        if (d.brand_name) {
+                            metaHtml += `<span class="meta-chip" id="p-brand-${productId}"><i class="fas fa-trademark" style="font-size:.6rem;"></i> ${d.brand_name}</span>`;
+                        }
+                        metaEl.html(metaHtml);
+                    }
+                    if (stockBadgeEl.length) {
+                        stockBadgeEl.attr('class', 'stock-badge ' + (d.stock_class || ''));
+                        stockBadgeEl.html(`<i class="fas fa-cubes" style="font-size:.65rem;"></i> <span class="stock-num">${d.stock_display}</span> <span class="stock-unit">${d.stock_unit}</span>`);
+                    }
+                    if (varPreviewEl.length && d.variants_preview_html) {
+                        varPreviewEl.html(d.variants_preview_html);
+                    }
+                    if (tradePriceEl.length) tradePriceEl.text(d.trade_price);
+                    if (retailPriceEl.length) retailPriceEl.text(d.retail_price);
+                }
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: res.message,
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+            },
+            error: function (xhr) {
+                btn.prop('disabled', false).html(origBtnHtml);
+                let msg = 'Failed to update product.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                Swal.fire('Error', msg, 'error');
+            }
+        });
     });
 
 });  // ── end $(document).ready ──

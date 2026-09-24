@@ -203,7 +203,7 @@
                 <span class="text-muted">Rs. 0.00</span>
             @endif
         </td>
-        <td class="text-end text-success fw-bold font-monospace">
+        <td class="text-end text-dark fw-bold font-monospace">
             @if (isset($isExchange) && $isExchange)
                 @if ($collected > 0)
                     Rs. {{ number_format($collected, 2) }}
@@ -217,6 +217,52 @@
                 Rs. {{ number_format($sale->total_net, 2) }}
             @endif
         </td>
+
+        @php
+            $saleNet = (float) $sale->total_net;
+            $salePaid = max(0, (float) ($sale->cash ?? 0) + (float) ($sale->card ?? 0));
+            $saleChange = (float) ($sale->change ?? 0);
+            if ($saleChange > 0) {
+                $salePaid = max(0, $salePaid - $saleChange);
+            }
+            $salePaid = min($saleNet, $salePaid);
+            $saleDue = max(0, $saleNet - $salePaid);
+        @endphp
+
+        {{-- Paid Column --}}
+        <td class="text-end font-monospace">
+            @if ($sale->sale_type === 'quotation')
+                <span class="text-muted">-</span>
+            @elseif ($salePaid > 0.001)
+                <span class="text-success fw-bold">Rs. {{ number_format($salePaid, 2) }}</span>
+            @else
+                <span class="text-muted">Rs. 0.00</span>
+            @endif
+        </td>
+
+        {{-- Due Column --}}
+        <td class="text-end font-monospace">
+            @if ($sale->sale_type === 'quotation')
+                <span class="text-muted">-</span>
+            @elseif ($saleDue <= 0.001 && $saleNet > 0)
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">
+                    <i class="fas fa-check-circle me-1"></i>Paid
+                </span>
+            @elseif ($salePaid > 0.001 && $saleDue > 0.001)
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2 py-1 mb-1" style="font-size: 10px;">
+                    <i class="fas fa-clock me-1"></i>Partial
+                </span>
+                <div class="text-danger fw-bold" style="font-size: 11px;">Rs. {{ number_format($saleDue, 2) }}</div>
+            @elseif ($saleDue > 0.001)
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1 mb-1" style="font-size: 10px;">
+                    <i class="fas fa-exclamation-circle me-1"></i>Unpaid
+                </span>
+                <div class="text-danger fw-bold" style="font-size: 11px;">Rs. {{ number_format($saleDue, 2) }}</div>
+            @else
+                <span class="text-muted">Rs. 0.00</span>
+            @endif
+        </td>
+
         <td class="text-nowrap small text-muted">
             {{ $sale->created_at->format('d/m/Y') }}
         </td>
@@ -255,7 +301,7 @@
                                         <button type="submit" class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold confirm-booking-btn">
                                             <i class="fas fa-check-circle fa-fw text-success"></i> 
                                             @if($sale->sale_status === 'draft')
-                                                Confirm Sale
+                                                 Confirm Sale
                                             @elseif($sale->sale_status === 'booked' && !$sale->is_booking)
                                                 Convert to Sale
                                             @else
@@ -266,6 +312,14 @@
                                 </li>
                             @endif
                         @endcan
+                    @endif
+
+                    @if ($saleDue > 0.001 && $sale->customer_id && ($sale->sale_type === 'direct_sale' || empty($sale->sale_type) || ($sale->sale_type === 'sales_order' && $sale->sale_status === 'posted')))
+                        <li>
+                            <a class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold" href="{{ route('vouchers.create') }}?tab=payment_in&customer_id={{ $sale->customer_id }}&invoice_id={{ $sale->id }}">
+                                <i class="fas fa-hand-holding-usd text-success fa-fw"></i> Receive Payment
+                            </a>
+                        </li>
                     @endif
 
                     <li><hr class="dropdown-divider"></li>

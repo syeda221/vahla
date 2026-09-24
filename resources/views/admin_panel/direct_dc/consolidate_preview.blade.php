@@ -313,7 +313,7 @@
                             </ul>
 
                             <input type="hidden" name="prefix" id="inputConsolidatePrefix" value="INV">
-                            <input type="text" class="form-control text-center fw-bold input-readonly" id="displayConsolidateInvoiceNo" value="{{ $sList['INV']['next_no'] }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;">
+                            <input type="text" class="form-control text-center fw-bold bg-white" name="invoice_no" id="displayConsolidateInvoiceNo" value="{{ $sList['INV']['next_no'] }}" placeholder="e.g. INV-0001" style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;" title="Aap custom invoice number bhi enter kar sakte hain">
 
                             <button class="btn btn-refresh" 
                                     type="button" 

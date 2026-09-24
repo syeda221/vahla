@@ -950,6 +950,11 @@
                                                         <li><a href="{{ route('customer-types.index') }}"><i class="fas fa-tags"></i>
                                                                 Customer Types</a></li>
                                                     @endcan
+                                                    @can('receipts.voucher.view')
+                                                        <li><a href="{{ route('all_recepit_vochers') }}"><i
+                                                                    class="fas fa-file-invoice-dollar"></i>
+                                                                Receipt Voucher</a></li>
+                                                    @endcan
                                                     {{--
                                                     @can('zones.view')
                                                         <li><a href="{{ url('zone') }}"><i class="fas fa-map-marker-alt"></i>
@@ -958,11 +963,6 @@
                                                     @can('sales.officers.view')
                                                         <li><a href="{{ url('sales-officers') }}"><i class="fas fa-user-tie"></i>
                                                                 Sales Officer</a></li>
-                                                    @endcan
-                                                    @can('receipts.voucher.view')
-                                                        <li><a href="{{ route('all_recepit_vochers') }}"><i
-                                                                    class="fas fa-file-invoice-dollar"></i>
-                                                                Receipt Voucher</a></li>
                                                     @endcan
                                                     --}}
                                                 </ul>
@@ -1003,24 +1003,22 @@
                                             <li><a href="{{ route('expense_categories.index') }}"><i
                                                         class="fa-solid fa-list-check"></i> Expense Categories</a></li>
                                         @endcan
-                                        {{--
                                         @can('receipts.voucher.view')
                                             <li><a href="{{ route('all_recepit_vochers') }}"><i
                                                         class="fa-solid fa-wallet"></i> Receipts Voucher</a></li>
                                         @endcan
-                                        --}}
-                                        @can('journal.voucher.view')
+                                        {{-- @can('journal.voucher.view')
                                             <li><a href="{{ route('vouchers.index', 'journal voucher') }}"><i
                                                         class="fa-solid fa-wallet"></i> Journal Voucher</a></li>
-                                        @endcan
+                                        @endcan --}}
                                         @can('payment.voucher.view')
                                             <li><a href="{{ route('all_Payment_vochers') }}"><i
                                                         class="fa-solid fa-wallet"></i> Payment Voucher</a></li>
                                         @endcan
-                                        @can('income.voucher.view')
+                                        {{-- @can('income.voucher.view')
                                             <li><a href="{{ route('vouchers.index', 'income voucher') }}"><i
                                                         class="fa-solid fa-wallet"></i> Income Voucher</a></li>
-                                        @endcan
+                                        @endcan --}}
                                     </ul>
                                 </div>
                             @endcanany

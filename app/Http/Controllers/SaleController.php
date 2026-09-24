@@ -99,10 +99,26 @@ class SaleController extends Controller
     private function getSalesDataAndRespond($query, Request $request, $pageType)
     {
         $sales = $query->get();
+        $totalPaid = 0;
+        $totalDue = 0;
+        foreach ($sales as $s) {
+            if ($s->sale_type !== 'quotation') {
+                $sNet = (float) $s->total_net;
+                $sPaid = max(0, (float) ($s->cash ?? 0) + (float) ($s->card ?? 0));
+                if ((float) ($s->change ?? 0) > 0) {
+                    $sPaid = max(0, $sPaid - (float) $s->change);
+                }
+                $sPaid = min($sNet, $sPaid);
+                $totalPaid += $sPaid;
+                $totalDue += max(0, $sNet - $sPaid);
+            }
+        }
 
         $stats = [
             'total_count' => $sales->count(),
             'total_net' => (float) $sales->sum('total_net'),
+            'total_paid' => (float) $totalPaid,
+            'total_due' => (float) $totalDue,
             'total_discount' => (float) $sales->sum('total_extradiscount'),
             'posted_count' => $sales->where('sale_status', 'posted')->count(),
             'draft_count' => $sales->where('sale_status', 'draft')->count(),
@@ -1238,13 +1254,11 @@ class SaleController extends Controller
                 $sale->due_date = null;
             }
 
-            if ($isNew) {
-                // Check if user provided manual invoice number or selected series
-                $invInput = $request->input('Invoice_no') ?: $request->input('invoice_no');
-                $tType = $request->sale_type ?? 'direct_sale';
-                $tStatus = $request->sale_status ?? 'completed';
+            $invInput = $request->input('Invoice_no') ?: $request->input('invoice_no');
+            $tType = $request->sale_type ?? ($sale->sale_type ?? 'direct_sale');
+            $defaultPref = ($tType === 'quotation') ? 'QUO' : (($tType === 'sales_order') ? 'SO' : 'INV');
 
-                $defaultPref = ($tType === 'quotation') ? 'QUO' : (($tType === 'sales_order') ? 'SO' : 'INV');
+            if ($isNew) {
                 $targetNo = \App\Models\InvoiceSeries::normalizeNumber($invInput, $defaultPref);
 
                 // Check for duplicates
@@ -1256,6 +1270,17 @@ class SaleController extends Controller
                 }
 
                 $sale->invoice_no = $targetNo;
+            } else {
+                if ($invInput && $invInput !== $sale->invoice_no) {
+                    $targetNo = \App\Models\InvoiceSeries::normalizeNumber($invInput, $defaultPref);
+                    $exists = Sale::where('invoice_no', $targetNo)->where('id', '!=', $sale->id)->exists();
+                    if ($exists) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'invoice_no' => "Number '{$targetNo}' already exists on another record. Please choose a different number.",
+                        ]);
+                    }
+                    $sale->invoice_no = $targetNo;
+                }
             }
 
             // We will calculate totals from verified items
@@ -1989,7 +2014,12 @@ class SaleController extends Controller
                     $newOrder->delivery_status = 'pending';
                     $newOrder->parent_quotation_id = $sale->id;
                     
-                    $newOrder->invoice_no = \App\Models\InvoiceSeries::generateNextNo('SO');
+                    $soInput = $request->input('Invoice_no') ?: $request->input('invoice_no');
+                    if ($soInput) {
+                        $newOrder->invoice_no = \App\Models\InvoiceSeries::normalizeNumber($soInput, 'SO');
+                    } else {
+                        $newOrder->invoice_no = \App\Models\InvoiceSeries::generateNextNo('SO');
+                    }
                     \App\Models\InvoiceSeries::incrementCounterForInvoice($newOrder->invoice_no);
                     
                     $newOrder->save();
@@ -2031,10 +2061,16 @@ class SaleController extends Controller
                 $newSale->sale_status = 'posted';
                 $newSale->parent_quotation_id = $sale->id;
                 
-                $seriesList = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
-                $defaultSeries = $seriesList->where('is_default', 1)->first() ?: $seriesList->first();
-                $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
-                $newSale->invoice_no = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+                $invInput = $request->input('Invoice_no') ?: $request->input('invoice_no');
+                $chosenPrefix = $request->input('prefix') ?: 'INV';
+                if ($invInput) {
+                    $newSale->invoice_no = \App\Models\InvoiceSeries::normalizeNumber($invInput, $chosenPrefix);
+                } else {
+                    $seriesList = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
+                    $defaultSeries = $seriesList->where('is_default', 1)->first() ?: $seriesList->first();
+                    $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+                    $newSale->invoice_no = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+                }
                 \App\Models\InvoiceSeries::incrementCounterForInvoice($newSale->invoice_no);
                 
                 $newSale->save();

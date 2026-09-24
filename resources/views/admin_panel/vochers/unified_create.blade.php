@@ -535,6 +535,19 @@
                                         @endforeach
                                     </select>
                                 </div>
+                    </div>
+
+                    {{-- Unpaid Sale Invoice Selection (Optional) --}}
+                    <div class="row g-3 mb-3" id="pi_invoice_wrapper" style="display:none;">
+                        <div class="col-md-12">
+                            <div class="p-2 px-3 rounded-3" style="background: #eff6ff; border: 1px dashed #93c5fd;">
+                                <label class="form-label mb-1 text-primary fw-bold">
+                                    <i class="fas fa-file-invoice me-1"></i> Receive Against Specific Sale Invoice:
+                                    <span class="badge bg-primary ms-2" id="pi_invoice_count" style="display:none;"></span>
+                                </label>
+                                <select name="selected_invoice_id" id="pi_invoice_select" class="form-select">
+                                    <option value="">-- General Payment (On Account / No Invoice Selected) --</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -620,6 +633,21 @@
                                         @endforeach
                                     </select>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Unpaid Bill / Invoice Selection (Optional) --}}
+                    <div class="row g-3 mb-3" id="po_bill_wrapper" style="display:none;">
+                        <div class="col-md-12">
+                            <div class="p-2 px-3 rounded-3" style="background: #fff1f2; border: 1px dashed #fca5a5;">
+                                <label class="form-label mb-1 text-danger fw-bold">
+                                    <i class="fas fa-file-invoice-dollar me-1"></i> Pay Against Specific Purchase Bill:
+                                    <span class="badge bg-danger ms-2" id="po_bill_count" style="display:none;"></span>
+                                </label>
+                                <select name="selected_purchase_id[]" id="po_bill_select" class="form-select">
+                                    <option value="">-- General Payment (On Account / No Bill Selected) --</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -850,6 +878,61 @@
             $('#expenseCategoryModal').modal('show');
         });
 
+        // ============== PAYMENT IN: UNPAID INVOICES ==============
+        function loadPaymentInInvoices(customerId) {
+            var $wrapper = $('#pi_invoice_wrapper');
+            var $select = $('#pi_invoice_select');
+            var $badge = $('#pi_invoice_count');
+
+            $select.empty().append('<option value="">-- General Payment (On Account / No Invoice Selected) --</option>');
+
+            var partyType = $('.pi-party-type:checked').val();
+            if (!customerId || partyType !== 'customer') {
+                $wrapper.hide();
+                $badge.hide();
+                return;
+            }
+
+            $.get('{{ url("/vouchers/customer-unpaid-invoices") }}/' + customerId, function(res) {
+                if (res && res.success && res.invoices && res.invoices.length > 0) {
+                    $badge.text(res.invoices.length + ' Unpaid Invoice(s)').show();
+                    $wrapper.slideDown(200);
+
+                    res.invoices.forEach(function(inv) {
+                        $select.append(
+                            `<option value="${inv.id}" data-due="${inv.raw_due}" data-invno="${inv.invoice_no}">
+                                ${inv.invoice_no} | Date: ${inv.date} | Total: Rs. ${inv.total_net} | Paid: Rs. ${inv.paid} | Due: Rs. ${inv.due}
+                            </option>`
+                        );
+                    });
+                } else {
+                    $wrapper.hide();
+                    $badge.hide();
+                }
+            }).fail(function() {
+                $wrapper.hide();
+                $badge.hide();
+            });
+        }
+
+        $(document).on('change', '#pi_customer_select', function() {
+            var customerId = $(this).val();
+            loadPaymentInInvoices(customerId);
+        });
+
+        $(document).on('change', '#pi_invoice_select', function() {
+            var $selected = $(this).find(':selected');
+            var due = parseFloat($selected.data('due')) || 0;
+            var invNo = $selected.data('invno') || '';
+
+            if ($(this).val() && due > 0) {
+                $('#pi_amount').val(due.toFixed(2));
+                $('#pi_total_amount').val(due.toFixed(2));
+                var partyName = $('#pi_customer_select option:selected').text().trim();
+                $('#form-payment_in input[name="remarks"]').val(`Receipt against Invoice ${invNo}` + (partyName ? ` (${partyName})` : ''));
+            }
+        });
+
         // ============== PAYMENT IN: PARTY TYPE TOGGLE ==============
         $(document).on('change', '.pi-party-type', function() {
             var val = $(this).val();
@@ -858,13 +941,86 @@
                 $('#pi_vendor_wrapper').hide();
                 $('#pi_customer_select').prop('disabled', false).prop('required', true).attr('name', 'vendor_id');
                 $('#pi_vendor_select').prop('disabled', true).prop('required', false).attr('name', 'vendor_id_disabled');
+                loadPaymentInInvoices($('#pi_customer_select').val());
             } else {
                 $('#pi_customer_wrapper').hide();
                 $('#pi_vendor_wrapper').show();
                 $('#pi_customer_select').prop('disabled', true).prop('required', false).attr('name', 'vendor_id_disabled');
                 $('#pi_vendor_select').prop('disabled', false).prop('required', true).attr('name', 'vendor_id');
+                $('#pi_invoice_wrapper').hide();
+                $('#pi_invoice_select').empty().append('<option value="">-- General Payment (On Account / No Invoice Selected) --</option>');
             }
             initSelect2();
+        });
+
+        // ============== PAYMENT OUT: UNPAID BILLS ==============
+        function loadPaymentOutBills(partyId, partyType) {
+            var $wrapper = $('#po_bill_wrapper');
+            var $select = $('#po_bill_select');
+            var $badge = $('#po_bill_count');
+
+            $select.empty().append('<option value="">-- General Payment (On Account / No Bill Selected) --</option>');
+
+            if (!partyId) {
+                $wrapper.hide();
+                $badge.hide();
+                return;
+            }
+
+            var endpoint = (partyType === 'vendor') 
+                ? '{{ url("/vouchers/vendor-unpaid-bills") }}/' + partyId
+                : '{{ url("/vouchers/customer-unpaid-invoices") }}/' + partyId;
+
+            $.get(endpoint, function(res) {
+                var items = (partyType === 'vendor') ? (res.bills || []) : (res.invoices || []);
+                if (res && res.success && items.length > 0) {
+                    var labelText = (partyType === 'vendor') ? 'Unpaid Bill(s)' : 'Unpaid Invoice(s)';
+                    $badge.text(items.length + ' ' + labelText).show();
+                    $wrapper.slideDown(200);
+
+                    items.forEach(function(item) {
+                        var itemNo = item.invoice_no || item.bill_no;
+                        var itemDue = item.raw_due;
+                        var itemTotal = item.total_net || item.net_amount;
+                        $select.append(
+                            `<option value="${item.id}" data-due="${itemDue}" data-billno="${itemNo}">
+                                ${itemNo} | Date: ${item.date} | Total: Rs. ${itemTotal} | Paid: Rs. ${item.paid} | Due: Rs. ${item.due}
+                            </option>`
+                        );
+                    });
+                } else {
+                    $wrapper.hide();
+                    $badge.hide();
+                }
+            }).fail(function() {
+                $wrapper.hide();
+                $badge.hide();
+            });
+        }
+
+        $(document).on('change', '#po_vendor_select', function() {
+            var vendorId = $(this).val();
+            loadPaymentOutBills(vendorId, 'vendor');
+        });
+
+        $(document).on('change', '#po_customer_select', function() {
+            var customerId = $(this).val();
+            loadPaymentOutBills(customerId, 'customer');
+        });
+
+        $(document).on('change', '#po_bill_select', function() {
+            var $selected = $(this).find(':selected');
+            var due = parseFloat($selected.data('due')) || 0;
+            var billNo = $selected.data('billno') || '';
+
+            if ($(this).val() && due > 0) {
+                $('#po_amount').val(due.toFixed(2));
+                $('#po_total_amount').val(due.toFixed(2));
+                var isVendor = ($('#po_vendor_type').val() === 'vendor');
+                var partyName = isVendor ? $('#po_vendor_select option:selected').text().trim() : $('#po_customer_select option:selected').text().trim();
+                var docLabel = isVendor ? 'Bill' : 'Invoice';
+                $('#form-payment_out input[name="remarks"]').val(`Payment against ${docLabel} ${billNo}` + (partyName ? ` (${partyName})` : ''));
+            }
         });
 
         // ============== PAYMENT OUT: PARTY TYPE TOGGLE ==============
@@ -876,11 +1032,13 @@
                 $('#po_customer_wrapper').hide();
                 $('#po_vendor_select').prop('disabled', false).prop('required', true).attr('name', 'vendor_id[]');
                 $('#po_customer_select').prop('disabled', true).prop('required', false).attr('name', 'vendor_id_disabled[]');
+                loadPaymentOutBills($('#po_vendor_select').val(), 'vendor');
             } else {
                 $('#po_vendor_wrapper').hide();
                 $('#po_customer_wrapper').show();
                 $('#po_vendor_select').prop('disabled', true).prop('required', false).attr('name', 'vendor_id_disabled[]');
                 $('#po_customer_select').prop('disabled', false).prop('required', true).attr('name', 'vendor_id[]');
+                loadPaymentOutBills($('#po_customer_select').val(), 'customer');
             }
             initSelect2();
         });
@@ -1124,6 +1282,38 @@
         initSelect2();
         calcExpenseTotal();
         $('#form-expense select[name="vendor_id"]').trigger('change');
+
+        // Check URL Parameters for pre-selection (e.g. from Sales/Purchases list)
+        var urlParams = new URLSearchParams(window.location.search);
+        var paramTab = urlParams.get('tab');
+        var paramCustomer = urlParams.get('customer_id');
+        var paramInvoice = urlParams.get('invoice_id');
+        var paramVendor = urlParams.get('vendor_id');
+        var paramBill = urlParams.get('bill_id');
+
+        if (paramTab && formTitles[paramTab]) {
+            $('#voucherTypeSelector .voucher-type-btn[data-type="' + paramTab + '"]').trigger('click');
+        }
+        if (paramCustomer) {
+            if (paramTab === 'payment_in' || !paramTab) {
+                $('#pi_customer_select').val(paramCustomer).trigger('change');
+                if (paramInvoice) {
+                    setTimeout(function() {
+                        $('#pi_invoice_select').val(paramInvoice).trigger('change');
+                    }, 500);
+                }
+            }
+        }
+        if (paramVendor) {
+            if (paramTab === 'payment_out') {
+                $('#po_vendor_select').val(paramVendor).trigger('change');
+                if (paramBill) {
+                    setTimeout(function() {
+                        $('#po_bill_select').val(paramBill).trigger('change');
+                    }, 500);
+                }
+            }
+        }
     }
 
     if (document.readyState === 'complete' || document.readyState === 'interactive') {

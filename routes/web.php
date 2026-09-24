@@ -155,6 +155,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/products/bulk-update', [ProductController::class, 'bulkUpdate'])->middleware('permission:products.edit')->name('products.bulk-update');
     Route::post('/product/{id}/toggle-active', [ProductController::class, 'toggleActive'])->middleware('permission:products.edit')->name('product.toggle.active');
 
+    Route::get('/product/quick-edit-data/{id}', [ProductController::class, 'quickEditData'])->middleware('permission:products.edit')->name('product.quick_edit_data');
+    Route::post('/product/quick-update/{id}', [ProductController::class, 'quickUpdate'])->middleware('permission:products.edit')->name('product.quick_update');
     Route::post('/product/validate-form', [ProductController::class, 'validateForm'])->name('product.validate');
     Route::get('/products/{id}/edit', [ProductController::class, 'edit'])->middleware('permission:products.edit')->name('products.edit');
     Route::get('/generate-barcode-image', [ProductController::class, 'generateBarcode'])->name('generate-barcode-image');
@@ -490,6 +492,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/getOpeningBalance/{type}/{id}', [VoucherController::class, 'getOpeningBalance']);
     Route::get('/party-list', [VoucherController::class, 'partyList'])->name('party.list');
     Route::get('/receipt-vouchers/fetch', [VoucherController::class, 'fetchReceiptVouchers'])->name('receipt_vouchers.fetch');
+    Route::get('/vouchers/customer-unpaid-invoices/{customerId}', [VoucherController::class, 'getCustomerUnpaidInvoices'])->name('vouchers.customer_unpaid_invoices');
+    Route::get('/vouchers/vendor-unpaid-bills/{vendorId}', [VoucherController::class, 'getVendorUnpaidBills'])->name('vouchers.vendor_unpaid_bills');
 
     Route::post('/accounts-head/store', [AccountsHeadController::class, 'storeHead'])->name('account-heads.store');
     Route::post('/accounts/store', [AccountsHeadController::class, 'storeAccount'])->name('accounts.store');

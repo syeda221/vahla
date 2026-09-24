@@ -641,7 +641,7 @@
                                             </li>
                                         @endforeach
                                     </ul>
-                                    <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ \App\Models\InvoiceSeries::generateNextNo($activePrefix ?? 'INV') }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                                    <input type="text" class="form-control text-center fw-bold bg-white" name="Invoice_no" id="inputInvoiceNo" value="{{ \App\Models\InvoiceSeries::generateNextNo($activePrefix ?? 'INV') }}" placeholder="e.g. INV-0001" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;" title="Aap custom invoice number enter kar sakte hain">
                                     <button class="btn btn-refresh" 
                                             type="button" 
                                             id="btnRefreshInvoiceNo" 
@@ -649,12 +649,23 @@
                                         <i class="fas fa-sync-alt" id="iconRefreshInvoice"></i>
                                     </button>
                                 </div>
+                            @elseif(request()->has('convert_to_so'))
+                                <div class="input-group input-group-sm invoice-group">
+                                    <span class="btn btn-prefix d-flex align-items-center justify-content-center fw-bold" style="cursor: default; pointer-events: none; border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                                        <span id="activePrefixLabel">SO</span>
+                                    </span>
+                                    <input type="text" class="form-control text-center fw-bold bg-white" name="Invoice_no" id="inputInvoiceNo" value="{{ \App\Models\InvoiceSeries::generateNextNo('SO') }}" placeholder="e.g. SO-0001" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;" title="Aap custom Sales Order number enter kar sakte hain">
+                                    <button class="btn btn-refresh" 
+                                            type="button" 
+                                            id="btnRefreshInvoiceNo" 
+                                            title="Regenerate Order Number">
+                                        <i class="fas fa-sync-alt" id="iconRefreshInvoice"></i>
+                                    </button>
+                                </div>
                             @else
                                 @php
                                     $displayDocNo = $sale->invoice_no;
-                                    if (request()->has('convert_to_so')) {
-                                        $displayDocNo = 'SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
-                                    } elseif (!$displayDocNo) {
+                                    if (!$displayDocNo) {
                                         if ($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted') {
                                             $displayDocNo = 'SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
                                         } elseif ($sale->sale_type === 'quotation') {
@@ -664,7 +675,12 @@
                                         }
                                     }
                                 @endphp
-                                <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $displayDocNo }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
+                                <div class="input-group input-group-sm invoice-group">
+                                    <span class="btn btn-prefix d-flex align-items-center justify-content-center fw-bold" style="cursor: default; pointer-events: none; border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                                        <span id="activePrefixLabel">{{ $sale->sale_type === 'quotation' ? 'QUO' : ($sale->sale_type === 'sales_order' ? 'SO' : 'INV') }}</span>
+                                    </span>
+                                    <input type="text" class="form-control text-center fw-bold bg-white" name="Invoice_no" id="inputInvoiceNo" value="{{ $displayDocNo }}" placeholder="Document #" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;" title="Aap document number change kar sakte hain">
+                                </div>
                             @endif
                         </div>
 
@@ -1705,8 +1721,7 @@
 
             // ══════════════════════════════════════════════════════════════
             // INVOICE SERIES MANAGEMENT LOGIC
-            // ══════════════════════════════════════════════════════════════
-            let currentInvoicePrefix = '{{ $activePrefix ?? "INV" }}';
+            let currentInvoicePrefix = '{{ request()->has("convert_to_so") ? "SO" : ($activePrefix ?? "INV") }}';
 
             function fetchNextInvoiceNo(prefix) {
                 $('#iconRefreshInvoice').addClass('fa-spin text-primary');

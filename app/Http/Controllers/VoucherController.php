@@ -519,6 +519,25 @@ class VoucherController extends Controller
                         }
                     }
 
+                    // ✅ Check if specific Sale Invoice was selected
+                    $selectedInvoiceId = $request->input('selected_invoice_id');
+                    $invNo = null;
+                    if (!empty($selectedInvoiceId)) {
+                        $sale = \App\Models\Sale::find($selectedInvoiceId);
+                        if ($sale) {
+                            $invNo = $sale->invoice_no ?: ('INV-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT));
+                        }
+                    }
+
+                    if (!empty($invNo)) {
+                        $receiptNarration = "Receipt against Invoice #{$invNo} (Ref: {$rvid})";
+                        if (!empty($request->remarks)) {
+                            $receiptNarration = $request->remarks . " - " . $receiptNarration;
+                        }
+                    } else {
+                        $receiptNarration = !empty($request->remarks) ? $request->remarks . " (Ref: {$rvid})" : "Receipt Voucher (Ref: {$rvid})";
+                    }
+
                     // CREDIT SIDE (Customer/AR) - Total Amount
                     $totalAmt = (float) $request->total_amount;
                     if ($totalAmt > 0) {
@@ -526,7 +545,7 @@ class VoucherController extends Controller
                             'account_id' => $creditAccountId,
                             'debit' => 0,
                             'credit' => $totalAmt,
-                            'narration' => 'Receipt from '.$request->vendor_type,
+                            'narration' => $receiptNarration,
                         ];
                     }
 
@@ -538,7 +557,7 @@ class VoucherController extends Controller
                             'status' => 'posted',
                             'party_type' => $partyType,
                             'party_id' => $request->vendor_id,
-                            'remarks' => $request->remarks." (Ref: $rvid)",
+                            'remarks' => $receiptNarration,
                         ], $v2Lines, auth()->id());
 
                         \Log::info('V2 Voucher Created Successfully.');
@@ -555,8 +574,15 @@ class VoucherController extends Controller
                                 'previous_balance' => $prevBal,
                                 'opening_balance'  => 0,
                                 'closing_balance'  => $prevBal - $totalAmt, // Payment received → balance reduces
-                                'description'      => 'Receipt Voucher '.$rvid,
+                                'description'      => !empty($invNo) ? "Receipt Voucher {$rvid} (Invoice: {$invNo})" : "Receipt Voucher {$rvid}",
                             ]);
+                        }
+
+                        // ✅ Update specific Sale Invoice if selected
+                        if (!empty($selectedInvoiceId) && $totalAmt > 0 && isset($sale) && $sale) {
+                            $sale->cash = (float) ($sale->cash ?? 0) + $totalAmt;
+                            $sale->save();
+                            \Log::info("Sale Invoice ID {$sale->id} updated with payment of {$totalAmt}. New cash: {$sale->cash}");
                         }
 
                     } else {
@@ -715,12 +741,35 @@ class VoucherController extends Controller
                             $controlAccountId = $partyId;
                         }
 
+                        $selectedPurchaseId = is_array($request->selected_purchase_id) 
+                            ? ($request->selected_purchase_id[$idx] ?? reset($request->selected_purchase_id)) 
+                            : ($request->selected_purchase_id ?? null);
+                        $billNo = null;
+                        if (!empty($selectedPurchaseId)) {
+                            $purch = \App\Models\Purchase::find($selectedPurchaseId);
+                            if ($purch) {
+                                $billNo = $purch->invoice_no ?: ($purch->vendor_bill_no ?: ('PINV-' . str_pad($purch->id, 4, '0', STR_PAD_LEFT)));
+                            }
+                        }
+
+                        $manualNarration = $request->narration_text[$idx] ?? null;
+                        if (!empty($billNo)) {
+                            $rowNarration = "Payment against Bill #{$billNo} (Ref: {$pvid})";
+                            if (!empty($manualNarration)) {
+                                $rowNarration = $manualNarration . " - " . $rowNarration;
+                            } elseif (!empty($request->remarks)) {
+                                $rowNarration = $request->remarks . " - " . $rowNarration;
+                            }
+                        } else {
+                            $rowNarration = !empty($manualNarration) ? $manualNarration . " (Ref: {$pvid})" : (!empty($request->remarks) ? $request->remarks . " (Ref: {$pvid})" : "Payment Voucher (Ref: {$pvid})");
+                        }
+
                         if ($controlAccountId) {
                             $v2Lines[] = [
                                 'account_id' => $controlAccountId,
                                 'debit' => $amt,
                                 'credit' => 0,
-                                'narration' => $request->narration_text[$idx] ?? "Payment to " . $type,
+                                'narration' => $rowNarration,
                             ];
                         }
                     }
@@ -732,7 +781,7 @@ class VoucherController extends Controller
                         'account_id' => $request->header_account_id,
                         'debit' => 0,
                         'credit' => $totalAmount,
-                        'narration' => $request->remarks ?: "Payment from Cash/Bank",
+                        'narration' => $request->remarks ?: "Payment from Cash/Bank (Ref: {$pvid})",
                     ];
                 }
 
@@ -743,7 +792,7 @@ class VoucherController extends Controller
                         'status' => 'posted',
                         'party_type' => $partyType,
                         'party_id' => $firstRow ? $firstRow['id'] : null,
-                        'remarks' => $request->remarks." (Ref: $pvid)",
+                        'remarks' => $request->remarks ? $request->remarks." (Ref: $pvid)" : "Payment Voucher (Ref: $pvid)",
                     ], $v2Lines, auth()->id());
 
                     \Log::info('V2 Payment Voucher Created Successfully.');
@@ -765,6 +814,21 @@ class VoucherController extends Controller
                     }
 
                     if ($type === 'vendor') {
+                        $selectedPurchaseId = is_array($request->selected_purchase_id) 
+                            ? ($request->selected_purchase_id[$index] ?? reset($request->selected_purchase_id)) 
+                            : ($request->selected_purchase_id ?? null);
+                        $billNo = null;
+                        if (!empty($selectedPurchaseId)) {
+                            $purchase = \App\Models\Purchase::find($selectedPurchaseId);
+                            if ($purchase) {
+                                $billNo = $purchase->invoice_no ?: ($purchase->vendor_bill_no ?: ('PINV-' . str_pad($purchase->id, 4, '0', STR_PAD_LEFT)));
+                                $purchase->paid_amount = (float) ($purchase->paid_amount ?? 0) + $rowAmount;
+                                $purchase->due_amount = max(0, (float) $purchase->net_amount - (float) $purchase->paid_amount);
+                                $purchase->save();
+                                \Log::info("Purchase Bill ID {$purchase->id} updated with payment of {$rowAmount}. New paid: {$purchase->paid_amount}, Due: {$purchase->due_amount}");
+                            }
+                        }
+
                         $ledger = VendorLedger::where('vendor_id', $partyId)->latest()->first();
                         $bal = $ledger ? $ledger->closing_balance : 0;
                         VendorLedger::create([
@@ -773,9 +837,22 @@ class VoucherController extends Controller
                             'opening_balance'   => 0,
                             'previous_balance'  => $bal,
                             'closing_balance'   => $bal - $rowAmount, // ✅ MINUS: payment reduces vendor balance
+                            'description'       => !empty($billNo) ? "Payment Voucher {$pvid} (Bill: {$billNo})" : "Payment Voucher {$pvid}",
                         ]);
 
                     } elseif ($type === 'customer' || $type === 'walkin') {
+                        $selectedInvoiceId = is_array($request->selected_purchase_id) 
+                            ? ($request->selected_purchase_id[$index] ?? reset($request->selected_purchase_id)) 
+                            : ($request->selected_purchase_id ?? null);
+                        if (!empty($selectedInvoiceId)) {
+                            $sale = \App\Models\Sale::find($selectedInvoiceId);
+                            if ($sale) {
+                                $sale->cash = (float) ($sale->cash ?? 0) + $rowAmount;
+                                $sale->save();
+                                \Log::info("Sale ID {$sale->id} updated with payment of {$rowAmount}. New cash: {$sale->cash}");
+                            }
+                        }
+
                         $ledger = CustomerLedger::where('customer_id', $partyId)->latest()->first();
                         $bal = $ledger ? $ledger->closing_balance : 0;
                         CustomerLedger::create([
@@ -2319,6 +2396,80 @@ class VoucherController extends Controller
         $voucherTitle = 'JOURNAL VOUCHER';
 
         return view('admin_panel.vochers.print', compact('voucher', 'rows', 'party', 'previousBalance', 'voucherTitle'));
+    }
+
+    public function getCustomerUnpaidInvoices($customerId)
+    {
+        try {
+            $sales = \App\Models\Sale::where('customer_id', $customerId)
+                ->where(function ($q) {
+                    $q->whereNull('sale_type')->orWhere('sale_type', '!=', 'quotation');
+                })
+                ->orderByDesc('id')
+                ->get();
+
+            $invoices = [];
+            foreach ($sales as $sale) {
+                $totalNet = (float) $sale->total_net;
+                $paid = (float) ($sale->cash ?? 0) + (float) ($sale->card ?? 0);
+                $due = max(0, $totalNet - $paid);
+
+                if ($due > 0.01) {
+                    $invoices[] = [
+                        'id' => $sale->id,
+                        'invoice_no' => $sale->invoice_no ?: ('INV-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)),
+                        'date' => $sale->created_at ? $sale->created_at->format('Y-m-d') : '-',
+                        'total_net' => number_format($totalNet, 2),
+                        'paid' => number_format($paid, 2),
+                        'due' => number_format($due, 2),
+                        'raw_due' => round($due, 2),
+                    ];
+                }
+            }
+
+            return response()->json(['success' => true, 'invoices' => $invoices]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getVendorUnpaidBills($vendorId)
+    {
+        try {
+            $purchases = \App\Models\Purchase::where('vendor_id', $vendorId)
+                ->whereIn('purchase_type', ['purchase_invoice', 'direct_purchase'])
+                ->orderByDesc('id')
+                ->get();
+
+            $bills = [];
+            foreach ($purchases as $purchase) {
+                $net = (float) $purchase->net_amount;
+                $paid = (float) $purchase->paid_amount;
+                $due = (float) $purchase->due_amount;
+
+                // Fallback in case due_amount wasn't populated
+                if ($due <= 0 && ($net - $paid) > 0.01) {
+                    $due = max(0, $net - $paid);
+                }
+
+                if ($due > 0.01) {
+                    $billNo = $purchase->invoice_no ?: ($purchase->vendor_bill_no ?: ('BILL-' . str_pad($purchase->id, 4, '0', STR_PAD_LEFT)));
+                    $bills[] = [
+                        'id' => $purchase->id,
+                        'bill_no' => $billNo,
+                        'date' => $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : ($purchase->created_at ? $purchase->created_at->format('Y-m-d') : '-'),
+                        'total_net' => number_format($net, 2),
+                        'paid' => number_format($paid, 2),
+                        'due' => number_format($due, 2),
+                        'raw_due' => round($due, 2),
+                    ];
+                }
+            }
+
+            return response()->json(['success' => true, 'bills' => $bills]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }
 

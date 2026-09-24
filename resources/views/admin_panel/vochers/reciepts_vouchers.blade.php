@@ -279,14 +279,17 @@
                         </div>
 
                         <!-- Row 2: Party Selection -->
-                        <div class="rv-section-label">Received From</div>
-                        <div class="row g-3 mb-4">
+                        <div class="rv-section-label d-flex justify-content-between align-items-center">
+                            <span>Received From</span>
+                            <span id="invoiceCountBadge" class="badge bg-primary-subtle text-primary border" style="display: none; font-size: 0.8rem;"></span>
+                        </div>
+                        <div class="row g-3 mb-3">
                             <div class="col-md-3">
                                 <label class="rv-label">Type</label>
                                 <select name="vendor_type" class="rv-input" id="partyType">
                                     <option value="customer" selected>Customer</option>
                                     <option value="walkin">Walk-in</option>
-                                    <option value="vendor">Vendor</option>/
+                                    <option value="vendor">Vendor</option>
                                     @foreach ($AccountHeads as $head)
                                         <option value="{{ $head->id }}">{{ $head->name }}</option>
                                     @endforeach
@@ -302,11 +305,31 @@
                                 <label class="rv-label">Mobile</label>
                                 <input type="text" name="tel" id="tel" class="rv-input" style="background: #f1f5f9;" readonly>
                             </div>
-                             <div class="col-2">
-        <label class="rv-label">Current Balance</label>
-        <div id="balanceDisplay" class="balance-badge balance-dr p-2 text-center" style="width:100%;">20000.00 Dr</div>
-        <input type="hidden" id="openingBal">
-    </div>
+                            <div class="col-md-3">
+                                <label class="rv-label">Current Balance</label>
+                                <div id="balanceDisplay" class="balance-badge balance-dr p-2 text-center" style="width:100%;">0.00 Dr</div>
+                                <input type="hidden" id="openingBal">
+                            </div>
+                        </div>
+
+                        <!-- Row 2.5: Pay Against Unpaid Invoice (Optional) -->
+                        <div class="row g-3 mb-4" id="invoiceSelectionRow" style="display: none;">
+                            <div class="col-md-12">
+                                <div class="p-2 px-3 rounded-3" style="background: #f8fafc; border: 1px dashed #cbd5e1;">
+                                    <div class="row align-items-center g-2">
+                                        <div class="col-md-3">
+                                            <label class="rv-label mb-0 text-primary fw-bold">
+                                                <i class="bi bi-receipt me-1"></i> Pay Against Sale Invoice:
+                                            </label>
+                                        </div>
+                                        <div class="col-md-9">
+                                            <select name="selected_invoice_id" id="selectUnpaidInvoice" class="rv-input">
+                                                <option value="">-- General Payment (On Account / No Invoice Selected) --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Payment Rows -->
@@ -459,11 +482,67 @@
 
             initPartySelect2();
 
+            // Load customer's unpaid invoices
+            function loadCustomerInvoices(customerId) {
+                let $invoiceRow = $('#invoiceSelectionRow');
+                let $invoiceSelect = $('#selectUnpaidInvoice');
+                let $countBadge = $('#invoiceCountBadge');
+
+                $invoiceSelect.empty().append('<option value="">-- General Payment (On Account / No Invoice Selected) --</option>');
+
+                let pType = $('#partyType').val();
+                if (!customerId || (pType !== 'customer' && pType !== 'walkin')) {
+                    $invoiceRow.hide();
+                    $countBadge.hide();
+                    return;
+                }
+
+                $.get('{{ url("/vouchers/customer-unpaid-invoices") }}/' + customerId, function(res) {
+                    if (res && res.success && res.invoices && res.invoices.length > 0) {
+                        $countBadge.text(res.invoices.length + ' Unpaid Invoice(s)').show();
+                        $invoiceRow.slideDown(200);
+
+                        res.invoices.forEach(function(inv) {
+                            $invoiceSelect.append(
+                                `<option value="${inv.id}" data-due="${inv.raw_due}" data-invno="${inv.invoice_no}">
+                                    ${inv.invoice_no} | Date: ${inv.date} | Total: Rs. ${inv.total_net} | Paid: Rs. ${inv.paid} | Due: Rs. ${inv.due}
+                                </option>`
+                            );
+                        });
+                    } else {
+                        $invoiceRow.hide();
+                        $countBadge.hide();
+                    }
+                }).fail(function() {
+                    $invoiceRow.hide();
+                    $countBadge.hide();
+                });
+            }
+
+            // On selecting specific invoice, auto-fill amount & remarks
+            $('#selectUnpaidInvoice').on('change', function() {
+                let $selected = $(this).find(':selected');
+                let due = parseFloat($selected.data('due')) || 0;
+                let invNo = $selected.data('invno') || '';
+
+                if ($(this).val() && due > 0) {
+                    // Set amount in first row
+                    let $firstAmount = $('#voucherTable tbody tr:first .amount');
+                    $firstAmount.val(due.toFixed(2));
+                    calculateTotal();
+
+                    // Update remarks
+                    let currentPartyName = $('#partyId').select2('data')[0]?.party?.customer_name || '';
+                    $('#remarks').val(`Receipt against Invoice ${invNo}` + (currentPartyName ? ` from ${currentPartyName}` : ''));
+                }
+            });
+
             // Header Party Type Change → Reset & Clear
             $('#partyType').on('change', function() {
                 $('#partyId').val(null).trigger('change');
                 $('#tel').val('');
                 updateBalance(0);
+                loadCustomerInvoices(null);
             });
 
             // Party selected → load details & update balance
@@ -480,11 +559,15 @@
                 if (!$('#remarks').val() && partyName) {
                     $('#remarks').val('Receipt from ' + partyName);
                 }
+
+                // Load invoices for customer
+                loadCustomerInvoices(item.id);
             });
 
             $('#partyId').on('select2:clear', function() {
                 $('#tel').val('');
                 updateBalance(0);
+                loadCustomerInvoices(null);
             });
 
             function updateBalance(bal) {
