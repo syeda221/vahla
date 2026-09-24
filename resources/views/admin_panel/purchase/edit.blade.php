@@ -711,10 +711,19 @@
                     </div>
                 </div>
 
-                <div class="text-end mt-4">
-                    <button type="submit" class="btn btn-{{ $purchase->purchase_type === 'purchase_order' ? 'primary' : 'success' }} btn-submit-update px-5 fw-bold shadow-sm">
-                        <i class="bi bi-save me-2"></i> Update {{ $purchase->purchase_type === 'purchase_order' ? 'Purchase Order' : 'Purchase' }}
-                    </button>
+                <div class="text-end mt-4 d-flex justify-content-end gap-2">
+                    @if($purchase->status_purchase === 'draft' && $purchase->purchase_type !== 'purchase_order')
+                        <button type="submit" name="action" value="draft" class="btn btn-warning px-4 fw-bold shadow-sm">
+                            <i class="bi bi-save me-1"></i> Update Draft
+                        </button>
+                        <button type="submit" name="action" value="confirm" class="btn btn-success px-5 fw-bold shadow-sm">
+                            <i class="bi bi-check-circle me-1"></i> Save & Convert to Purchase
+                        </button>
+                    @else
+                        <button type="submit" class="btn btn-{{ $purchase->purchase_type === 'purchase_order' ? 'primary' : 'success' }} btn-submit-update px-5 fw-bold shadow-sm">
+                            <i class="bi bi-save me-2"></i> Update {{ $purchase->purchase_type === 'purchase_order' ? 'Purchase Order' : 'Purchase' }}
+                        </button>
+                    @endif
                 </div>
 
             </form>

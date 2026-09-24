@@ -563,6 +563,74 @@ class PurchaseController extends Controller
         } catch (\Exception $e) {
             \Log::error('Purchase Accounting Error: '.$e->getMessage());
         }
+
+        // 4. Auto Create GRN if not exists
+        $this->createAutoGrnForPurchase($purchase);
+    }
+
+    public function createAutoGrnForPurchase(Purchase $purchase)
+    {
+        if ($purchase->purchase_type === 'purchase_order') {
+            return null;
+        }
+
+        // Check if gatepass or GRN already exists
+        $hasGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
+        if ($hasGatepass) {
+            return null;
+        }
+
+        $existingGrn = \App\Models\GoodsReceivingNote::where('purchase_id', $purchase->id)->first();
+        if ($existingGrn) {
+            return $existingGrn;
+        }
+
+        $baseGrnNumber = $purchase->invoice_no . '-GRN';
+        $counter = 1;
+        $grnNumber = sprintf('%s%02d', $baseGrnNumber, $counter);
+        while (\App\Models\GoodsReceivingNote::where('grn_number', $grnNumber)->exists()) {
+            $counter++;
+            $grnNumber = sprintf('%s%02d', $baseGrnNumber, $counter);
+        }
+
+        $pDate = $purchase->purchase_date;
+        if ($pDate instanceof \Carbon\Carbon) {
+            $formattedDate = $pDate->format('Y-m-d');
+        } elseif (!empty($pDate)) {
+            $formattedDate = \Carbon\Carbon::parse($pDate)->format('Y-m-d');
+        } else {
+            $formattedDate = now()->format('Y-m-d');
+        }
+
+        $grn = \App\Models\GoodsReceivingNote::create([
+            'purchase_id' => $purchase->id,
+            'vendor_id' => $purchase->vendor_id,
+            'warehouse_id' => $purchase->warehouse_id,
+            'grn_number' => $grnNumber,
+            'grn_date' => $formattedDate,
+            'status' => 'received',
+            'is_invoiced' => 1,
+            'invoice_id' => $purchase->id,
+            'remarks' => 'Auto GRN for Direct Purchase #' . $purchase->invoice_no,
+            'created_by' => auth()->id() ?? 1,
+        ]);
+
+        $purchase->loadMissing('items');
+        foreach ($purchase->items as $pItem) {
+            \App\Models\GoodsReceivingNoteItem::create([
+                'goods_receiving_note_id' => $grn->id,
+                'purchase_item_id' => $pItem->id,
+                'product_id' => $pItem->product_id,
+                'warehouse_id' => $purchase->warehouse_id,
+                'received_qty' => $pItem->qty,
+                'boxes' => $pItem->boxes_qty ?: $pItem->qty,
+                'loose_pieces' => $pItem->loose_qty ?: 0,
+                'color' => $pItem->color,
+                'purchase_price' => $pItem->price,
+            ]);
+        }
+
+        return $grn;
     }
 
     public function confirm($id)
@@ -579,7 +647,10 @@ class PurchaseController extends Controller
             $this->approvePurchase($purchase);
 
             // Update status
-            $purchase->update(['status_purchase' => 'approved']);
+            $purchase->update([
+                'status_purchase' => 'approved',
+                'purchase_status' => 'posted',
+            ]);
         });
 
         if (request()->ajax()) {
@@ -882,39 +953,10 @@ class PurchaseController extends Controller
                 'due_amount' => $netAmount,
             ]);
 
-            // Only run approval (stock in + ledger) and auto-GRN if Direct Purchase
+            // Only run approval (stock in + ledger + auto-GRN) if Direct Purchase
             if ($purchaseType === 'direct_purchase' && $statusPurchase === 'approved') {
                 $purchase->load('items');
                 $this->approvePurchase($purchase);
-
-                // Auto Create GRN
-                $grnNumber = $purchase->invoice_no . '-GRN01';
-                $grn = \App\Models\GoodsReceivingNote::create([
-                    'purchase_id' => $purchase->id,
-                    'vendor_id' => $purchase->vendor_id,
-                    'warehouse_id' => $purchase->warehouse_id,
-                    'grn_number' => $grnNumber,
-                    'grn_date' => $purchase->purchase_date ? $purchase->purchase_date->format('Y-m-d') : now()->format('Y-m-d'),
-                    'status' => 'received',
-                    'is_invoiced' => 1,
-                    'invoice_id' => $purchase->id,
-                    'remarks' => 'Auto GRN for Direct Purchase #' . $purchase->invoice_no,
-                    'created_by' => auth()->id() ?? 1,
-                ]);
-
-                foreach ($purchase->items as $pItem) {
-                    \App\Models\GoodsReceivingNoteItem::create([
-                        'goods_receiving_note_id' => $grn->id,
-                        'purchase_item_id' => $pItem->id,
-                        'product_id' => $pItem->product_id,
-                        'warehouse_id' => $purchase->warehouse_id,
-                        'received_qty' => $pItem->qty,
-                        'boxes' => $pItem->boxes_qty ?: $pItem->qty,
-                        'loose_pieces' => $pItem->loose_qty ?: 0,
-                        'color' => $pItem->color,
-                        'purchase_price' => $pItem->price,
-                    ]);
-                }
 
                 // Process Payments
                 $paymentAccountIds = (array) ($request->input('payment_account_id') ?? []);
@@ -1405,7 +1447,7 @@ class PurchaseController extends Controller
             'payment_amount' => 'nullable|array',
         ]);
 
-        DB::transaction(function () use ($validated, $request, $id) {
+        $purchase = DB::transaction(function () use ($validated, $request, $id) {
             $purchase = Purchase::with(['items', 'vendor'])->findOrFail($id);
             $oldNetAmount = (float) $purchase->net_amount;
             $oldPaidAmount = (float) $purchase->paid_amount;
@@ -1697,8 +1739,8 @@ class PurchaseController extends Controller
                 'due_amount' => $dueAmount,
             ]);
 
-            // Stock movements & Warehouse stock updates and Accounting (Only for Direct Purchase / Invoices)
-            if ($purchase->purchase_type !== 'purchase_order') {
+            // Stock movements & Warehouse stock updates and Accounting (Only for Direct Purchase / Invoices that are NOT drafts)
+            if ($purchase->purchase_type !== 'purchase_order' && $purchase->status_purchase !== 'draft') {
                 $isLinkedToGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
 
                 if (! $isLinkedToGatepass) {
@@ -1873,10 +1915,30 @@ class PurchaseController extends Controller
                     }
                 }
             }
+
+            if ($request->action === 'confirm' && $purchase->status_purchase === 'draft') {
+                $purchase->update([
+                    'status_purchase' => 'approved',
+                    'purchase_status' => 'posted',
+                ]);
+                $this->approvePurchase($purchase);
+            }
+
+            return $purchase;
         });
 
+        $actionWord = ($request->action === 'confirm') ? 'converted & confirmed' : 'updated';
+        $msg = ($purchase->purchase_type === 'purchase_order' ? 'Purchase Order ' : 'Purchase ') . $purchase->invoice_no . ' ' . $actionWord . ' successfully!';
         $redirectRoute = $purchase->purchase_type === 'purchase_order' ? route('purchase_orders.index') : route('Purchase.home');
-        $msg = ($purchase->purchase_type === 'purchase_order' ? 'Purchase Order ' : 'Purchase ') . $purchase->invoice_no . ' updated successfully!';
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'redirect_url' => $redirectRoute,
+            ]);
+        }
+
         return redirect($redirectRoute)->with('success', $msg);
     }
 
@@ -1884,8 +1946,9 @@ class PurchaseController extends Controller
     {
         $purchase = Purchase::with('items')->findOrFail($id);
         $isPo = $purchase->purchase_type === 'purchase_order';
+        $isDraft = $purchase->status_purchase === 'draft';
 
-        DB::transaction(function () use ($purchase, $isPo) {
+        DB::transaction(function () use ($purchase, $isPo, $isDraft) {
             $oldNetAmount = $purchase->net_amount;
 
             $branchId = (int) ($purchase->branch_id ?? 1);
@@ -1894,7 +1957,7 @@ class PurchaseController extends Controller
             // linked to gatepass? then NO stock changes
             $isLinkedToGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
 
-            if (! $isLinkedToGatepass && ! $isPo) {
+            if (! $isLinkedToGatepass && ! $isPo && ! $isDraft) {
                 $movs = [];
                 $now = now();
 

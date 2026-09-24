@@ -135,10 +135,15 @@
                     @if ($purchase->status_purchase == 'draft')
                         @can('purchases.create')
                             <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-success fw-bold confirm-purchase-btn" href="{{ route('purchase.confirm', $purchase->id) }}">
+                                    <i class="fas fa-check-circle fa-fw text-success"></i> Convert to Purchase
+                                </a>
+                            </li>
+                            {{-- <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-primary" href="{{ route('add_inwardgatepass') }}?purchase_id={{ $purchase->id }}">
                                     <i class="fas fa-truck-loading fa-fw"></i> Receive Goods (GRN)
                                 </a>
-                            </li>
+                            </li> --}}
                         @endcan
                     @endif
 
