@@ -264,8 +264,19 @@ class DirectGRNController extends Controller
         $defaultPrefix = 'PINV';
         $nextInvoiceNo = InvoiceSeries::generateNextNo($defaultPrefix);
 
+        $cashAndBankHeadIds = \App\Models\AccountHead::whereRaw('LOWER(name) IN (?, ?)', ['cash', 'bank'])->pluck('id');
+        $accounts = \App\Models\Account::whereIn('head_id', $cashAndBankHeadIds)
+            ->where('status', 1)
+            ->orderBy('title')
+            ->get();
+
+        $seriesList = InvoiceSeries::whereIn('prefix', ['PINV', 'TAX', 'CO', 'PO'])->orderBy('id')->get();
+        if ($seriesList->isEmpty()) {
+            $seriesList = InvoiceSeries::orderBy('prefix')->get();
+        }
+
         return view('admin_panel.direct_grn.consolidate_preview', compact(
-            'grns', 'consolidatedItems', 'vendor', 'totalNet', 'grandTotal', 'prevBalance', 'netBalance', 'nextInvoiceNo'
+            'grns', 'consolidatedItems', 'vendor', 'totalNet', 'grandTotal', 'prevBalance', 'netBalance', 'nextInvoiceNo', 'accounts', 'seriesList', 'defaultPrefix'
         ));
     }
 
@@ -302,41 +313,70 @@ class DirectGRNController extends Controller
             return redirect()->route('direct-grn.index')->with('error', 'Validation Error: Different Purchase Orders ki GRNs ko aik sath consolidate nahi kar sakte! Sirf ek hi Purchase Order ki GRNs select karein.');
         }
 
+        $validated = $request->validate([
+            'invoice_no' => 'nullable|string',
+            'invoice_prefix' => 'nullable|string',
+            'invoice_date' => 'required|date',
+            'vendor_bill_no' => 'nullable|string',
+            'credit_days' => 'nullable|numeric|min:0',
+            'remarks' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.qty' => 'required|numeric|min:0.01',
+            'items.*.price' => 'required|numeric|min:0',
+            'items.*.discount' => 'nullable|numeric|min:0',
+            'items.*.color' => 'nullable|string',
+            'discount' => 'nullable|numeric|min:0',
+            'extra_cost' => 'nullable|numeric|min:0',
+            'paid_amount' => 'nullable|numeric|min:0',
+            'payment_account_id' => 'nullable|exists:accounts,id',
+        ]);
+
         DB::beginTransaction();
         try {
             $vendorId = $grns->first()->vendor_id;
-            $selectedPrefix = $request->input('invoice_prefix') ?: 'PINV';
-            $invoiceNo = InvoiceSeries::generateNextNo($selectedPrefix);
-            InvoiceSeries::incrementCounterForInvoice($invoiceNo);
+            $selectedPrefix = strtoupper(trim($request->input('invoice_prefix') ?: 'PINV'));
+            $rawInvoiceNo = $request->input('invoice_no');
+            $invoiceNo = InvoiceSeries::normalizeNumber($rawInvoiceNo, $selectedPrefix);
 
-            $invoiceDate = $request->input('invoice_date') ?: now()->format('Y-m-d');
-            $creditDays = (int) ($request->input('credit_days') ?? 0);
-            $vendorBillNo = $request->input('vendor_bill_no') ?? null;
-
-            $subtotal = 0;
-            $itemsToCreate = [];
-
-            foreach ($grns as $grn) {
-                foreach ($grn->items as $item) {
-                    $price = (float) $item->purchase_price;
-                    $lineTotal = (float) $item->received_qty * $price;
-                    $subtotal += $lineTotal;
-
-                    $itemsToCreate[] = [
-                        'product_id' => $item->product_id,
-                        'price' => $price,
-                        'qty' => $item->received_qty,
-                        'received_qty' => $item->received_qty,
-                        'item_discount' => 0,
-                        'line_total' => $lineTotal,
-                        'color' => $item->color,
-                    ];
-                }
+            if (Purchase::where('invoice_no', $invoiceNo)->exists()) {
+                throw new \Exception("Invoice Number '{$invoiceNo}' already exists! Please enter a unique invoice number.");
             }
 
+            InvoiceSeries::incrementCounterForInvoice($invoiceNo);
+
+            $invoiceDate = $validated['invoice_date'] ?: now()->format('Y-m-d');
+            $creditDays = (int) ($validated['credit_days'] ?? 0);
+            $vendorBillNo = $validated['vendor_bill_no'] ?? null;
+
+            $subtotal = 0;
+            $totalItemsDiscount = 0;
+            $itemsToCreate = [];
+
+            foreach ($validated['items'] as $itemData) {
+                $qty = (float) $itemData['qty'];
+                $price = (float) $itemData['price'];
+                $itemDiscount = (float) ($itemData['discount'] ?? 0);
+                $lineTotal = max(0, ($qty * $price) - $itemDiscount);
+
+                $subtotal += ($qty * $price);
+                $totalItemsDiscount += $itemDiscount;
+
+                $itemsToCreate[] = [
+                    'product_id' => $itemData['product_id'],
+                    'price' => $price,
+                    'qty' => $qty,
+                    'received_qty' => $qty,
+                    'item_discount' => $itemDiscount,
+                    'line_total' => $lineTotal,
+                    'color' => $itemData['color'] ?? null,
+                ];
+            }
+
+            $billDiscount = (float) ($request->input('discount') ?? 0);
+            $totalDiscount = $totalItemsDiscount + $billDiscount;
             $extraCost = (float) ($request->input('extra_cost') ?? 0);
-            $discount = (float) ($request->input('discount') ?? 0);
-            $netAmount = max(0, $subtotal + $extraCost - $discount);
+            $netAmount = max(0, $subtotal - $totalDiscount + $extraCost);
             $paidAmount = (float) ($request->input('paid_amount') ?? 0);
             $dueAmount = max(0, $netAmount - $paidAmount);
 
@@ -355,9 +395,9 @@ class DirectGRNController extends Controller
             $purchase->vendor_bill_no = $vendorBillNo;
             $purchase->purchase_date = $invoiceDate;
             $purchase->credit_days = $creditDays;
-            $purchase->note = "Consolidated Purchase Bill for GRNs: {$grnNumbersStr}";
+            $purchase->note = $request->input('remarks') ?: ("Consolidated Purchase Bill for GRNs: {$grnNumbersStr}");
             $purchase->subtotal = $subtotal;
-            $purchase->discount = $discount;
+            $purchase->discount = $totalDiscount;
             $purchase->extra_cost = $extraCost;
             $purchase->net_amount = $netAmount;
             $purchase->paid_amount = $paidAmount;
@@ -415,13 +455,32 @@ class DirectGRNController extends Controller
                 ]);
             }
 
+            // Create Accounting Voucher & Record Payment
+            try {
+                $transactionService = app(\App\Services\TransactionService::class);
+                if (method_exists($transactionService, 'createPurchaseVoucher')) {
+                    $transactionService->createPurchaseVoucher($purchase);
+                }
+                if ($paidAmount > 0 && !empty($validated['payment_account_id'])) {
+                    if (method_exists($transactionService, 'createPaymentForPurchase')) {
+                        $transactionService->createPaymentForPurchase(
+                            $purchase,
+                            [$validated['payment_account_id']],
+                            [$paidAmount]
+                        );
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Purchase Voucher Creation Notice: ' . $e->getMessage());
+            }
+
             DB::commit();
 
-            return redirect()->route('Purchase.home')->with('success', "Consolidated Purchase Bill {$purchase->invoice_no} created successfully!");
+            return redirect()->route('Purchase.home')->with('success', "Purchase Bill {$purchase->invoice_no} created successfully from GRN(s)!");
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Consolidate GRN Store Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Error generating consolidated bill: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Error generating consolidated bill: ' . $e->getMessage());
         }
     }
 }
