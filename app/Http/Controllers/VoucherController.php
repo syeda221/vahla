@@ -830,14 +830,13 @@ class VoucherController extends Controller
                         }
 
                         $ledger = VendorLedger::where('vendor_id', $partyId)->latest()->first();
-                        $bal = $ledger ? $ledger->closing_balance : 0;
+                        $bal = $ledger ? $ledger->closing_balance : (\App\Models\Vendor::find($partyId)->opening_balance ?? 0);
                         VendorLedger::create([
                             'vendor_id'         => $partyId,
                             'admin_or_user_id'  => auth()->id(),
                             'opening_balance'   => 0,
                             'previous_balance'  => $bal,
                             'closing_balance'   => $bal - $rowAmount, // ✅ MINUS: payment reduces vendor balance
-                            'description'       => !empty($billNo) ? "Payment Voucher {$pvid} (Bill: {$billNo})" : "Payment Voucher {$pvid}",
                         ]);
 
                     } elseif ($type === 'customer' || $type === 'walkin') {

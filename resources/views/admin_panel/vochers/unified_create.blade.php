@@ -535,16 +535,21 @@
                                         @endforeach
                                     </select>
                                 </div>
+                            </div>
+                        </div>
                     </div>
 
                     {{-- Unpaid Sale Invoice Selection (Optional) --}}
-                    <div class="row g-3 mb-3" id="pi_invoice_wrapper" style="display:none;">
+                    <div class="row g-3 mb-3" id="pi_invoice_wrapper">
                         <div class="col-md-12">
-                            <div class="p-2 px-3 rounded-3" style="background: #eff6ff; border: 1px dashed #93c5fd;">
-                                <label class="form-label mb-1 text-primary fw-bold">
-                                    <i class="fas fa-file-invoice me-1"></i> Receive Against Specific Sale Invoice:
-                                    <span class="badge bg-primary ms-2" id="pi_invoice_count" style="display:none;"></span>
-                                </label>
+                            <div class="p-3 rounded-3" style="background: #eff6ff; border: 1px solid #bfdbfe;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label mb-0 text-primary fw-bold" style="font-size: 13.5px;">
+                                        <i class="fas fa-file-invoice me-1"></i> Receive Against Specific Sale Invoice (Optional):
+                                    </label>
+                                    <span class="badge bg-primary" id="pi_invoice_count" style="display:none;"></span>
+                                </div>
+                                <p class="text-muted mb-2" style="font-size: 11.5px;">Select a customer above to view unpaid invoices, or leave on general payment.</p>
                                 <select name="selected_invoice_id" id="pi_invoice_select" class="form-select">
                                     <option value="">-- General Payment (On Account / No Invoice Selected) --</option>
                                 </select>
@@ -620,7 +625,7 @@
                                     <select name="vendor_id[]" id="po_vendor_select" class="form-select select2-vendor" required>
                                         <option value="">Search vendor...</option>
                                         @foreach($vendors as $v)
-                                        <option value="{{ $v->id }}">{{ $v->name }} @if(!empty($v->phone)) ({{ $v->phone }}) @endif</option>
+                                         <option value="{{ $v->id }}">{{ $v->name }} @if(!empty($v->phone)) ({{ $v->phone }}) @endif</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -638,13 +643,16 @@
                     </div>
 
                     {{-- Unpaid Bill / Invoice Selection (Optional) --}}
-                    <div class="row g-3 mb-3" id="po_bill_wrapper" style="display:none;">
+                    <div class="row g-3 mb-3" id="po_bill_wrapper">
                         <div class="col-md-12">
-                            <div class="p-2 px-3 rounded-3" style="background: #fff1f2; border: 1px dashed #fca5a5;">
-                                <label class="form-label mb-1 text-danger fw-bold">
-                                    <i class="fas fa-file-invoice-dollar me-1"></i> Pay Against Specific Purchase Bill:
-                                    <span class="badge bg-danger ms-2" id="po_bill_count" style="display:none;"></span>
-                                </label>
+                            <div class="p-3 rounded-3" style="background: #fff1f2; border: 1px solid #fecdd3;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <label class="form-label mb-0 text-danger fw-bold" style="font-size: 13.5px;">
+                                        <i class="fas fa-file-invoice-dollar me-1"></i> Pay Against Specific Purchase Bill / Invoice (Optional):
+                                    </label>
+                                    <span class="badge bg-danger" id="po_bill_count" style="display:none;"></span>
+                                </div>
+                                <p class="text-muted mb-2" style="font-size: 11.5px;">Select a vendor/customer above to view pending bills, or leave on general payment.</p>
                                 <select name="selected_purchase_id[]" id="po_bill_select" class="form-select">
                                     <option value="">-- General Payment (On Account / No Bill Selected) --</option>
                                 </select>
@@ -682,116 +690,113 @@
                 </form>
             </div>
 
-        </div>{{-- /voucher-form-card --}}
+            {{-- ==================== 4. PARTY TO PARTY ==================== --}}
+            <div class="voucher-form-section" id="form-party_to_party">
+                <form class="voucher-form" data-action="{{ route('store_party_to_party') }}" method="POST" novalidate>
+                    @csrf
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label">Transfer Date <span class="text-danger">*</span></label>
+                            <input type="date" name="entry_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Voucher ID</label>
+                            <input type="text" class="form-control" value="TVID-Auto" readonly>
+                        </div>
+                    </div>
 
-        {{-- ==================== 4. PARTY TO PARTY ==================== --}}
-        <div class="voucher-form-section" id="form-party_to_party" style="background:#fff; border:1px solid #d1d5db; border-radius:12px; padding:26px 30px; box-shadow:0 1px 3px rgba(0,0,0,0.08); margin-top:20px; display:none;">
-            <div class="card-title mb-4 pb-2" style="border-bottom:1px solid #d1d5db; font-weight:700; font-size:18px;">
-                <i class="fas fa-exchange-alt text-primary"></i> Party to Party Transfer
+                    <div class="row g-4 mb-4">
+                        {{-- Source Party --}}
+                        <div class="col-md-6">
+                            <div class="p-4" style="border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; border-left:4px solid #dc2626;">
+                                <div class="fw-bold text-danger mb-3" style="font-size:14px;"><i class="fas fa-minus-circle"></i> Source Party (Deduct From)</div>
+                                <div class="mb-3">
+                                    <label class="form-label">Party Type <span class="text-danger">*</span></label>
+                                    <div class="d-flex gap-4">
+                                        <div><input type="radio" name="source_type" id="src_customer" value="customer" class="p2p-src-type" checked> <label for="src_customer">Customer</label></div>
+                                        <div><input type="radio" name="source_type" id="src_vendor" value="vendor" class="p2p-src-type"> <label for="src_vendor">Vendor</label></div>
+                                    </div>
+                                </div>
+                                <div class="mb-3" id="src_customer_wrapper">
+                                    <label class="form-label">Select Source Customer <span class="text-danger">*</span></label>
+                                    <select name="source_id_cust" id="src_customer_select" class="form-select select2-customer">
+                                        <option value="">Search customer...</option>
+                                        @foreach($customers as $c)
+                                        <option value="{{ $c->id }}" data-bal="{{ $c->closing_balance ?? 0 }}">{{ $c->customer_name }} @if(!empty($c->mobile)) ({{ $c->mobile }}) @endif</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="mb-3" id="src_vendor_wrapper" style="display:none;">
+                                    <label class="form-label">Select Source Vendor <span class="text-danger">*</span></label>
+                                    <select name="source_id_vend" id="src_vendor_select" class="form-select select2-vendor" disabled>
+                                        <option value="">Search vendor...</option>
+                                        @foreach($vendors as $v)
+                                        <option value="{{ $v->id }}" data-bal="{{ $v->closing_balance ?? 0 }}">{{ $v->name }} @if(!empty($v->phone)) ({{ $v->phone }}) @endif</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="mt-2" style="font-size:13px; font-weight:600; background:#e2e8f0; padding:6px 12px; border-radius:6px; width:fit-content; display:none;" id="src_balance_container">
+                                    Current Balance: Rs. <span id="src_balance_display" class="text-danger">0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Destination Party --}}
+                        <div class="col-md-6">
+                            <div class="p-4" style="border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; border-left:4px solid #2563eb;">
+                                <div class="fw-bold text-primary mb-3" style="font-size:14px;"><i class="fas fa-plus-circle"></i> Destination Party (Transfer To)</div>
+                                <div class="mb-3">
+                                    <label class="form-label">Party Type <span class="text-danger">*</span></label>
+                                    <div class="d-flex gap-4">
+                                        <div><input type="radio" name="dest_type" id="dst_vendor" value="vendor" class="p2p-dst-type" checked> <label for="dst_vendor">Vendor</label></div>
+                                        <div><input type="radio" name="dest_type" id="dst_customer" value="customer" class="p2p-dst-type"> <label for="dst_customer">Customer</label></div>
+                                    </div>
+                                </div>
+                                <div class="mb-3" id="dst_vendor_wrapper">
+                                    <label class="form-label">Select Dest Vendor <span class="text-danger">*</span></label>
+                                    <select name="dest_id_vend" id="dst_vendor_select" class="form-select select2-vendor">
+                                        <option value="">Search vendor...</option>
+                                        @foreach($vendors as $v)
+                                        <option value="{{ $v->id }}" data-bal="{{ $v->closing_balance ?? 0 }}">{{ $v->name }} @if(!empty($v->phone)) ({{ $v->phone }}) @endif</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="mb-3" id="dst_customer_wrapper" style="display:none;">
+                                    <label class="form-label">Select Dest Customer <span class="text-danger">*</span></label>
+                                    <select name="dest_id_cust" id="dst_customer_select" class="form-select select2-customer" disabled>
+                                        <option value="">Search customer...</option>
+                                        @foreach($customers as $c)
+                                        <option value="{{ $c->id }}" data-bal="{{ $c->closing_balance ?? 0 }}">{{ $c->customer_name }} @if(!empty($c->mobile)) ({{ $c->mobile }}) @endif</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="mt-2" style="font-size:13px; font-weight:600; background:#e2e8f0; padding:6px 12px; border-radius:6px; width:fit-content; display:none;" id="dst_balance_container">
+                                    Current Balance: Rs. <span id="dst_balance_display" class="text-primary">0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label">Amount <span class="text-danger">*</span></label>
+                            <input type="number" name="amount" class="form-control" step="0.01" min="0.01" required placeholder="Enter amount">
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label">Remarks</label>
+                            <input type="text" name="remarks" class="form-control" placeholder="Any additional notes...">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-2">
+                        <button type="submit" class="btn btn-voucher">
+                            <i class="fas fa-check-circle me-1"></i> Process Transfer
+                        </button>
+                    </div>
+                </form>
             </div>
-            <form class="voucher-form" data-action="{{ route('store_party_to_party') }}" method="POST" novalidate>
-                @csrf
-                <div class="row g-3 mb-4">
-                    <div class="col-md-3">
-                        <label class="form-label">Transfer Date <span class="text-danger">*</span></label>
-                        <input type="date" name="entry_date" class="form-control" value="{{ date('Y-m-d') }}" required>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Voucher ID</label>
-                        <input type="text" class="form-control" value="TVID-Auto" readonly>
-                    </div>
-                </div>
 
-                <div class="row g-4 mb-4">
-                    {{-- Source Party --}}
-                    <div class="col-md-6">
-                        <div class="p-4" style="border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; border-left:4px solid #dc2626;">
-                            <div class="fw-bold text-danger mb-3" style="font-size:14px;"><i class="fas fa-minus-circle"></i> Source Party (Deduct From)</div>
-                            <div class="mb-3">
-                                <label class="form-label">Party Type <span class="text-danger">*</span></label>
-                                <div class="d-flex gap-4">
-                                    <div><input type="radio" name="source_type" id="src_customer" value="customer" class="p2p-src-type" checked> <label for="src_customer">Customer</label></div>
-                                    <div><input type="radio" name="source_type" id="src_vendor" value="vendor" class="p2p-src-type"> <label for="src_vendor">Vendor</label></div>
-                                </div>
-                            </div>
-                            <div class="mb-3" id="src_customer_wrapper">
-                                <label class="form-label">Select Source Customer <span class="text-danger">*</span></label>
-                                <select name="source_id_cust" id="src_customer_select" class="form-select select2-customer">
-                                    <option value="">Search customer...</option>
-                                    @foreach($customers as $c)
-                                    <option value="{{ $c->id }}" data-bal="{{ $c->closing_balance ?? 0 }}">{{ $c->customer_name }} @if(!empty($c->mobile)) ({{ $c->mobile }}) @endif</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="mb-3" id="src_vendor_wrapper" style="display:none;">
-                                <label class="form-label">Select Source Vendor <span class="text-danger">*</span></label>
-                                <select name="source_id_vend" id="src_vendor_select" class="form-select select2-vendor" disabled>
-                                    <option value="">Search vendor...</option>
-                                    @foreach($vendors as $v)
-                                    <option value="{{ $v->id }}" data-bal="{{ $v->closing_balance ?? 0 }}">{{ $v->name }} @if(!empty($v->phone)) ({{ $v->phone }}) @endif</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="mt-2" style="font-size:13px; font-weight:600; background:#e2e8f0; padding:6px 12px; border-radius:6px; width:fit-content; display:none;" id="src_balance_container">
-                                Current Balance: Rs. <span id="src_balance_display" class="text-danger">0.00</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Destination Party --}}
-                    <div class="col-md-6">
-                        <div class="p-4" style="border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; border-left:4px solid #2563eb;">
-                            <div class="fw-bold text-primary mb-3" style="font-size:14px;"><i class="fas fa-plus-circle"></i> Destination Party (Transfer To)</div>
-                            <div class="mb-3">
-                                <label class="form-label">Party Type <span class="text-danger">*</span></label>
-                                <div class="d-flex gap-4">
-                                    <div><input type="radio" name="dest_type" id="dst_vendor" value="vendor" class="p2p-dst-type" checked> <label for="dst_vendor">Vendor</label></div>
-                                    <div><input type="radio" name="dest_type" id="dst_customer" value="customer" class="p2p-dst-type"> <label for="dst_customer">Customer</label></div>
-                                </div>
-                            </div>
-                            <div class="mb-3" id="dst_vendor_wrapper">
-                                <label class="form-label">Select Dest Vendor <span class="text-danger">*</span></label>
-                                <select name="dest_id_vend" id="dst_vendor_select" class="form-select select2-vendor">
-                                    <option value="">Search vendor...</option>
-                                    @foreach($vendors as $v)
-                                    <option value="{{ $v->id }}" data-bal="{{ $v->closing_balance ?? 0 }}">{{ $v->name }} @if(!empty($v->phone)) ({{ $v->phone }}) @endif</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="mb-3" id="dst_customer_wrapper" style="display:none;">
-                                <label class="form-label">Select Dest Customer <span class="text-danger">*</span></label>
-                                <select name="dest_id_cust" id="dst_customer_select" class="form-select select2-customer" disabled>
-                                    <option value="">Search customer...</option>
-                                    @foreach($customers as $c)
-                                    <option value="{{ $c->id }}" data-bal="{{ $c->closing_balance ?? 0 }}">{{ $c->customer_name }} @if(!empty($c->mobile)) ({{ $c->mobile }}) @endif</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="mt-2" style="font-size:13px; font-weight:600; background:#e2e8f0; padding:6px 12px; border-radius:6px; width:fit-content; display:none;" id="dst_balance_container">
-                                Current Balance: Rs. <span id="dst_balance_display" class="text-primary">0.00</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row g-3 mb-4">
-                    <div class="col-md-3">
-                        <label class="form-label">Amount <span class="text-danger">*</span></label>
-                        <input type="number" name="amount" class="form-control" step="0.01" min="0.01" required placeholder="Enter amount">
-                    </div>
-                    <div class="col-md-9">
-                        <label class="form-label">Remarks</label>
-                        <input type="text" name="remarks" class="form-control" placeholder="Any additional notes...">
-                    </div>
-                </div>
-
-                <div class="d-flex justify-content-end mt-2">
-                    <button type="submit" class="btn btn-primary" style="padding:10px 24px; font-weight:600; border-radius:8px;">
-                        <i class="fas fa-check-circle me-1"></i> Process Transfer
-                    </button>
-                </div>
-            </form>
-        </div>
+        </div>{{-- /voucher-form-card --}}
     </div>
 </div>
 
@@ -880,23 +885,23 @@
 
         // ============== PAYMENT IN: UNPAID INVOICES ==============
         function loadPaymentInInvoices(customerId) {
-            var $wrapper = $('#pi_invoice_wrapper');
             var $select = $('#pi_invoice_select');
             var $badge = $('#pi_invoice_count');
 
-            $select.empty().append('<option value="">-- General Payment (On Account / No Invoice Selected) --</option>');
-
             var partyType = $('.pi-party-type:checked').val();
             if (!customerId || partyType !== 'customer') {
-                $wrapper.hide();
                 $badge.hide();
+                $select.empty().append('<option value="">-- General Payment (On Account / No Invoice Selected) --</option>');
                 return;
             }
 
+            $select.empty().append('<option value="">Loading unpaid invoices...</option>');
+            $badge.text('Fetching...').show();
+
             $.get('{{ url("/vouchers/customer-unpaid-invoices") }}/' + customerId, function(res) {
+                $select.empty().append('<option value="">-- General Payment (On Account / No Invoice Selected) --</option>');
                 if (res && res.success && res.invoices && res.invoices.length > 0) {
                     $badge.text(res.invoices.length + ' Unpaid Invoice(s)').show();
-                    $wrapper.slideDown(200);
 
                     res.invoices.forEach(function(inv) {
                         $select.append(
@@ -906,12 +911,12 @@
                         );
                     });
                 } else {
-                    $wrapper.hide();
-                    $badge.hide();
+                    $badge.text('0 Unpaid Invoices').show();
+                    $select.append('<option value="" disabled>-- No Unpaid Invoices Found --</option>');
                 }
             }).fail(function() {
-                $wrapper.hide();
                 $badge.hide();
+                $select.empty().append('<option value="">-- General Payment (On Account / No Invoice Selected) --</option>');
             });
         }
 
@@ -947,7 +952,7 @@
                 $('#pi_vendor_wrapper').show();
                 $('#pi_customer_select').prop('disabled', true).prop('required', false).attr('name', 'vendor_id_disabled');
                 $('#pi_vendor_select').prop('disabled', false).prop('required', true).attr('name', 'vendor_id');
-                $('#pi_invoice_wrapper').hide();
+                $('#pi_invoice_count').hide();
                 $('#pi_invoice_select').empty().append('<option value="">-- General Payment (On Account / No Invoice Selected) --</option>');
             }
             initSelect2();
@@ -955,28 +960,28 @@
 
         // ============== PAYMENT OUT: UNPAID BILLS ==============
         function loadPaymentOutBills(partyId, partyType) {
-            var $wrapper = $('#po_bill_wrapper');
             var $select = $('#po_bill_select');
             var $badge = $('#po_bill_count');
 
-            $select.empty().append('<option value="">-- General Payment (On Account / No Bill Selected) --</option>');
-
             if (!partyId) {
-                $wrapper.hide();
                 $badge.hide();
+                $select.empty().append('<option value="">-- General Payment (On Account / No Bill Selected) --</option>');
                 return;
             }
+
+            $select.empty().append('<option value="">Loading unpaid bills...</option>');
+            $badge.text('Fetching...').show();
 
             var endpoint = (partyType === 'vendor') 
                 ? '{{ url("/vouchers/vendor-unpaid-bills") }}/' + partyId
                 : '{{ url("/vouchers/customer-unpaid-invoices") }}/' + partyId;
 
             $.get(endpoint, function(res) {
+                $select.empty().append('<option value="">-- General Payment (On Account / No Bill Selected) --</option>');
                 var items = (partyType === 'vendor') ? (res.bills || []) : (res.invoices || []);
                 if (res && res.success && items.length > 0) {
                     var labelText = (partyType === 'vendor') ? 'Unpaid Bill(s)' : 'Unpaid Invoice(s)';
                     $badge.text(items.length + ' ' + labelText).show();
-                    $wrapper.slideDown(200);
 
                     items.forEach(function(item) {
                         var itemNo = item.invoice_no || item.bill_no;
@@ -989,12 +994,13 @@
                         );
                     });
                 } else {
-                    $wrapper.hide();
-                    $badge.hide();
+                    var labelText = (partyType === 'vendor') ? '0 Unpaid Bills' : '0 Unpaid Invoices';
+                    $badge.text(labelText).show();
+                    $select.append('<option value="" disabled>-- No Pending Bills Found --</option>');
                 }
             }).fail(function() {
-                $wrapper.hide();
                 $badge.hide();
+                $select.empty().append('<option value="">-- General Payment (On Account / No Bill Selected) --</option>');
             });
         }
 
