@@ -988,6 +988,10 @@
                                         @can('vouchers.create')
                                             <li><a href="{{ route('vouchers.create') }}"><i class="fa-solid fa-plus-circle"></i>
                                                     Create Voucher</a></li>
+                                            <li><a href="{{ route('vouchers.receive_payment') }}"><i class="fa-solid fa-file-invoice-dollar text-success"></i>
+                                                    Receive Payment</a></li>
+                                            <li><a href="{{ route('vouchers.make_payment') }}"><i class="fa-solid fa-money-bill-transfer text-primary"></i>
+                                                    Make Payment</a></li>
                                         @endcan
                                         @can('all.vouchers.view')
                                             <li><a href="{{ route('voucher.history') }}"><i class="fa-solid fa-list-check"></i>

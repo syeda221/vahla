@@ -617,61 +617,103 @@ class DirectDCController extends Controller
             // Collect items and aggregate totals
             $totalBillAmount = 0;
             $totalPieces = 0;
-            $mergedItems = [];
+            $saleItemsData = [];
             
-            foreach ($dcs as $dc) {
-                foreach ($dc->items as $item) {
-                    $itemData = $this->getItemDisplayData($item);
-                    $key = $item->product_id . '_' . $item->warehouse_id . '_' . ($item->color ?? 'base');
+            $inputItems = $request->input('items');
+            
+            if ($inputItems && is_array($inputItems)) {
+                foreach ($inputItems as $mi) {
+                    $displayQty = (float)($mi['display_qty'] ?? 0);
+                    if ($displayQty <= 0) continue;
                     
-                    if (!isset($mergedItems[$key])) {
-                        $mergedItems[$key] = [
-                            'product_id' => $item->product_id,
-                            'warehouse_id' => $item->warehouse_id,
-                            'display_qty' => 0,
-                            'price' => $itemData['rate'],
-                            'color' => $item->color,
-                            'disp_factor' => $itemData['disp_factor'],
-                            'size_mode' => $itemData['size_mode'],
-                        ];
+                    $rate = (float)($mi['price'] ?? 0);
+                    $discountAmt = (float)($mi['discount_amount'] ?? 0);
+                    
+                    $lineTotal = round(($displayQty * $rate) - $discountAmt, 2);
+                    if ($lineTotal < 0) $lineTotal = 0;
+                    
+                    $product = \App\Models\Product::find($mi['product_id']);
+                    $sizeMode = $product ? $product->size_mode : ($mi['size_mode'] ?? 'by_size');
+                    $dispFactor = (float)($mi['disp_factor'] ?? 1);
+                    if ($dispFactor <= 0) $dispFactor = 1;
+
+                    // For by_kg / by_gm, qty in sale_items is stored in base unit (Kg)
+                    if ($product && in_array($sizeMode, ['by_kg', 'by_gm'])) {
+                        $storedQty = $displayQty / $dispFactor;
+                    } else {
+                        $storedQty = $displayQty;
                     }
                     
-                    $mergedItems[$key]['display_qty'] += $itemData['display_qty'];
+                    $saleItemsData[] = [
+                        'product_id' => $mi['product_id'],
+                        'warehouse_id' => $mi['warehouse_id'] ?? 1,
+                        'color' => $mi['color'] ?? null,
+                        'qty' => $storedQty,
+                        'total_pieces' => $storedQty,
+                        'price' => $rate,
+                        'discount_amount' => $discountAmt,
+                        'discount_percent' => 0,
+                        'total' => $lineTotal,
+                        'delivered_qty' => $storedQty,
+                    ];
+                    
+                    $totalBillAmount += $lineTotal;
+                    $totalPieces += $displayQty;
                 }
-            }
-            
-            $saleItemsData = [];
-            foreach ($mergedItems as $mi) {
-                $displayQty = $mi['display_qty'];
-                $rate = $mi['price'];
-                $lineTotal = round($displayQty * $rate, 2);
+            } else {
+                // Fallback if JS/form failed
+                $mergedItems = [];
+                foreach ($dcs as $dc) {
+                    foreach ($dc->items as $item) {
+                        $itemData = $this->getItemDisplayData($item);
+                        $key = $item->product_id . '_' . $item->warehouse_id . '_' . ($item->color ?? 'base');
+                        
+                        if (!isset($mergedItems[$key])) {
+                            $mergedItems[$key] = [
+                                'product_id' => $item->product_id,
+                                'warehouse_id' => $item->warehouse_id,
+                                'display_qty' => 0,
+                                'price' => $itemData['rate'],
+                                'color' => $item->color,
+                                'disp_factor' => $itemData['disp_factor'],
+                                'size_mode' => $itemData['size_mode'],
+                            ];
+                        }
+                        $mergedItems[$key]['display_qty'] += $itemData['display_qty'];
+                    }
+                }
                 
-                $product = \App\Models\Product::find($mi['product_id']);
-                $sizeMode = $product ? $product->size_mode : $mi['size_mode'];
-                $dispFactor = $mi['disp_factor'] > 0 ? $mi['disp_factor'] : 1;
+                foreach ($mergedItems as $mi) {
+                    $displayQty = $mi['display_qty'];
+                    $rate = $mi['price'];
+                    $lineTotal = round($displayQty * $rate, 2);
+                    
+                    $product = \App\Models\Product::find($mi['product_id']);
+                    $sizeMode = $product ? $product->size_mode : $mi['size_mode'];
+                    $dispFactor = $mi['disp_factor'] > 0 ? $mi['disp_factor'] : 1;
 
-                // For by_kg / by_gm, qty in sale_items is stored in base unit (Kg)
-                if ($product && in_array($sizeMode, ['by_kg', 'by_gm'])) {
-                    $storedQty = $displayQty / $dispFactor;
-                } else {
-                    $storedQty = $displayQty;
+                    if ($product && in_array($sizeMode, ['by_kg', 'by_gm'])) {
+                        $storedQty = $displayQty / $dispFactor;
+                    } else {
+                        $storedQty = $displayQty;
+                    }
+                    
+                    $saleItemsData[] = [
+                        'product_id' => $mi['product_id'],
+                        'warehouse_id' => $mi['warehouse_id'],
+                        'color' => $mi['color'],
+                        'qty' => $storedQty,
+                        'total_pieces' => $storedQty,
+                        'price' => $rate,
+                        'discount_amount' => 0,
+                        'discount_percent' => 0,
+                        'total' => $lineTotal,
+                        'delivered_qty' => $storedQty,
+                    ];
+                    
+                    $totalBillAmount += $lineTotal;
+                    $totalPieces += $displayQty;
                 }
-                
-                $saleItemsData[] = [
-                    'product_id' => $mi['product_id'],
-                    'warehouse_id' => $mi['warehouse_id'],
-                    'color' => $mi['color'],
-                    'qty' => $storedQty,
-                    'total_pieces' => $storedQty,
-                    'price' => $rate,
-                    'discount_amount' => 0,
-                    'discount_percent' => 0,
-                    'total' => $lineTotal,
-                    'delivered_qty' => $storedQty,
-                ];
-                
-                $totalBillAmount += $lineTotal;
-                $totalPieces += $displayQty;
             }
 
             $firstOriginalSaleId = $dcs->pluck('sale_id')->filter()->first();

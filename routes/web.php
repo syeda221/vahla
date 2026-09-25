@@ -462,6 +462,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/narrations', [NarrationController::class, 'store'])->name('narrations.store')->middleware('permission:narrations.create');
     Route::delete('/narrations/{narration}', [NarrationController::class, 'destroy'])->name('narrations.destroy')->middleware('permission:narrations.delete');
     Route::get('/vouchers/create', [VoucherController::class, 'createUnified'])->middleware('permission:vouchers.create')->name('vouchers.create');
+    Route::get('/vouchers/receive-payment', [VoucherController::class, 'receivePayment'])->middleware('permission:vouchers.create|receipts.voucher.view')->name('vouchers.receive_payment');
+    Route::post('/vouchers/receive-payment/store', [VoucherController::class, 'storeReceivePayment'])->middleware('permission:vouchers.create|receipts.voucher.view')->name('vouchers.receive_payment.store');
+    Route::get('/vouchers/make-payment', [VoucherController::class, 'makePayment'])->middleware('permission:vouchers.create|payment.voucher.view')->name('vouchers.make_payment');
+    Route::post('/vouchers/make-payment/store', [VoucherController::class, 'storeMakePayment'])->middleware('permission:vouchers.create|payment.voucher.view')->name('vouchers.make_payment.store');
     Route::post('/vouchers/store-party-to-party', [VoucherController::class, 'store_party_to_party'])->middleware('permission:vouchers.create')->name('store_party_to_party');
     Route::get('/vouchers/get-party-balance', [VoucherController::class, 'getPartyBalance'])->name('vouchers.get_party_balance');
     Route::get('vouchers/{type}', [VoucherController::class, 'index'])->middleware('permission:vouchers.view|all.vouchers.view')->name('vouchers.index');

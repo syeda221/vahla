@@ -341,84 +341,94 @@
                     </div>
                 </div>
             </div>
+            </div>
+            
+            {{-- DELIVERIES ITEMS TABLE --}}
+            <div class="card-panel">
+                <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                    <span class="fw-bold text-dark" style="font-size: 0.82rem;">
+                        <i class="fas fa-boxes-stacked text-primary me-1"></i> Delivery Items to be Invoiced
+                    </span>
+                    <span class="badge bg-primary text-white font-monospace px-2 py-1" style="font-size: 0.75rem;">
+                        {{ count($mergedItems) }} {{ count($mergedItems) == 1 ? 'Item' : 'Items' }} &bull; Total Units: <span id="lblTotalUnits">{{ $totalPieces }}</span>
+                    </span>
+                </div>
+
+                <div class="table-responsive border rounded-2">
+                    <table class="table table-sm align-middle mb-0" style="font-size: 0.82rem;" id="tblItems">
+                        <thead style="background-color: #f1f5f9;">
+                            <tr>
+                                <th class="py-2 px-3 fw-bold text-secondary text-uppercase" style="font-size: 11px;">Item Description</th>
+                                <th class="py-2 px-3 text-center fw-bold text-secondary text-uppercase" style="font-size: 11px; width: 12%;">Delivered Qty</th>
+                                <th class="py-2 px-3 text-center fw-bold text-secondary text-uppercase" style="font-size: 11px; width: 8%;">Unit</th>
+                                <th class="py-2 px-3 text-end fw-bold text-secondary text-uppercase" style="font-size: 11px; width: 14%;">Unit Rate</th>
+                                <th class="py-2 px-3 text-end fw-bold text-secondary text-uppercase" style="font-size: 11px; width: 14%;">Discount</th>
+                                <th class="py-2 px-3 text-end fw-bold text-secondary text-uppercase" style="font-size: 11px; width: 16%;">Line Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($mergedItems as $key => $mi)
+                            @php 
+                                $amount = $mi['amount'] ?? ($mi['display_qty'] * $mi['price']);
+                                $displayQty = $mi['display_qty'] ?? $mi['delivered_qty'];
+                                $qtyText = ((float)$displayQty == (int)$displayQty) ? (int)$displayQty : number_format((float)$displayQty, 2);
+                                
+                                $vName = '';
+                                if(!empty($mi['color'])) {
+                                    $decoded = base64_decode($mi['color'], true);
+                                    $vData = $decoded !== false ? json_decode($decoded, true) : null;
+                                    if(!is_array($vData)) {
+                                        $vData = is_string($mi['color']) ? json_decode($mi['color'], true) : $mi['color'];
+                                    }
+                                    if(is_array($vData) && !empty($vData['name'])) {
+                                        $vName = ' <span class="badge bg-light text-secondary border px-2 py-0 ms-1">' . $vData['name'] . '</span>';
+                                    }
+                                }
+                            @endphp
+                            <tr class="item-row">
+                                <td class="px-3">
+                                    <div class="fw-bold text-dark">{{ $mi['product']->item_name ?? 'N/A' }}</div>
+                                    <div class="small text-muted">{!! $vName !!}</div>
+                                    <input type="hidden" name="items[{{ $key }}][product_id]" value="{{ $mi['product_id'] }}">
+                                    <input type="hidden" name="items[{{ $key }}][warehouse_id]" value="{{ $mi['warehouse_id'] }}">
+                                    <input type="hidden" name="items[{{ $key }}][color]" value="{{ $mi['color'] }}">
+                                    <input type="hidden" name="items[{{ $key }}][size_mode]" value="{{ $mi['size_mode'] }}">
+                                    <input type="hidden" name="items[{{ $key }}][disp_factor]" value="{{ $mi['disp_factor'] }}">
+                                </td>
+                                <td class="text-center fw-bold text-primary">
+                                    <input type="number" step="any" class="form-control form-control-sm text-center fw-bold font-monospace input-qty" name="items[{{ $key }}][display_qty]" value="{{ $displayQty }}" min="0">
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-light text-dark border px-2 py-1 small">
+                                        {{ $mi['unit'] ?? 'Pcs' }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <input type="number" step="any" class="form-control form-control-sm text-end font-monospace input-price" name="items[{{ $key }}][price]" value="{{ $mi['price'] }}" min="0">
+                                </td>
+                                <td class="text-end">
+                                    <input type="number" step="any" class="form-control form-control-sm text-end font-monospace text-danger input-discount" name="items[{{ $key }}][discount_amount]" value="0" min="0" placeholder="0.00">
+                                </td>
+                                <td class="text-end fw-bold font-monospace text-dark px-3 line-total">
+                                    {{ number_format($amount, 2) }}
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot style="background-color: #f8fafc; border-top: 2px solid #cbd5e1;">
+                            <tr>
+                                <td colspan="5" class="text-end fw-bold text-dark text-uppercase py-2 px-3" style="font-size: 0.85rem;">
+                                    Total Invoice Bill Amount:
+                                </td>
+                                <td class="text-end fw-bold font-monospace text-success fs-6 py-2 px-3" id="lblGrandTotal">
+                                    PKR {{ number_format($grandTotal, 2) }}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
         </form>
-
-        {{-- DELIVERIES ITEMS TABLE --}}
-        <div class="card-panel">
-            <div class="d-flex justify-content-between align-items-center mb-2 px-1">
-                <span class="fw-bold text-dark" style="font-size: 0.82rem;">
-                    <i class="fas fa-boxes-stacked text-primary me-1"></i> Delivery Items to be Invoiced
-                </span>
-                <span class="badge bg-primary text-white font-monospace px-2 py-1" style="font-size: 0.75rem;">
-                    {{ count($mergedItems) }} {{ count($mergedItems) == 1 ? 'Item' : 'Items' }} &bull; Total Units: {{ $totalPieces }}
-                </span>
-            </div>
-
-            <div class="table-responsive border rounded-2">
-                <table class="table table-sm align-middle mb-0" style="font-size: 0.82rem;">
-                    <thead style="background-color: #f1f5f9;">
-                        <tr>
-                            <th class="py-2 px-3 fw-bold text-secondary text-uppercase" style="font-size: 11px;">Item Description</th>
-                            <th class="py-2 px-3 text-center fw-bold text-secondary text-uppercase" style="font-size: 11px; width: 14%;">Delivered Qty</th>
-                            <th class="py-2 px-3 text-center fw-bold text-secondary text-uppercase" style="font-size: 11px; width: 10%;">Unit</th>
-                            <th class="py-2 px-3 text-end fw-bold text-secondary text-uppercase" style="font-size: 11px; width: 14%;">Unit Rate</th>
-                            <th class="py-2 px-3 text-end fw-bold text-secondary text-uppercase" style="font-size: 11px; width: 16%;">Line Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($mergedItems as $mi)
-                        @php 
-                            $amount = $mi['amount'] ?? ($mi['display_qty'] * $mi['price']);
-                            $displayQty = $mi['display_qty'] ?? $mi['delivered_qty'];
-                            $qtyText = ((float)$displayQty == (int)$displayQty) ? (int)$displayQty : number_format((float)$displayQty, 2);
-                            
-                            $vName = '';
-                            if(!empty($mi['color'])) {
-                                $decoded = base64_decode($mi['color'], true);
-                                $vData = $decoded !== false ? json_decode($decoded, true) : null;
-                                if(!is_array($vData)) {
-                                    $vData = is_string($mi['color']) ? json_decode($mi['color'], true) : $mi['color'];
-                                }
-                                if(is_array($vData) && !empty($vData['name'])) {
-                                    $vName = ' <span class="badge bg-light text-secondary border px-2 py-0 ms-1">' . $vData['name'] . '</span>';
-                                }
-                            }
-                        @endphp
-                        <tr>
-                            <td class="px-3">
-                                <div class="fw-bold text-dark">{{ $mi['product']->item_name ?? 'N/A' }}</div>
-                                <div class="small text-muted">{!! $vName !!}</div>
-                            </td>
-                            <td class="text-center fw-bold text-primary font-monospace">
-                                {{ $qtyText }}
-                            </td>
-                            <td class="text-center">
-                                <span class="badge bg-light text-dark border px-2 py-1 small">
-                                    {{ $mi['unit'] ?? 'Pcs' }}
-                                </span>
-                            </td>
-                            <td class="text-end font-monospace text-secondary">
-                                {{ number_format($mi['price'], 2) }}
-                            </td>
-                            <td class="text-end fw-bold font-monospace text-dark px-3">
-                                {{ number_format($amount, 2) }}
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                    <tfoot style="background-color: #f8fafc; border-top: 2px solid #cbd5e1;">
-                        <tr>
-                            <td colspan="4" class="text-end fw-bold text-dark text-uppercase py-2 px-3" style="font-size: 0.85rem;">
-                                Total Invoice Bill Amount:
-                            </td>
-                            <td class="text-end fw-bold font-monospace text-success fs-6 py-2 px-3">
-                                PKR {{ number_format($grandTotal, 2) }}
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -508,6 +518,48 @@
                 fetchNextNo(currentPrefix);
             });
         }
+    });
+
+    // Dynamic Calculation Logic
+    document.addEventListener('DOMContentLoaded', function() {
+        const table = document.getElementById('tblItems');
+        if (!table) return;
+
+        function updateTotals() {
+            let grandTotal = 0;
+            let totalUnits = 0;
+            const rows = table.querySelectorAll('.item-row');
+            
+            rows.forEach(row => {
+                const qtyInput = row.querySelector('.input-qty');
+                const priceInput = row.querySelector('.input-price');
+                const discountInput = row.querySelector('.input-discount');
+                const totalCell = row.querySelector('.line-total');
+                
+                const qty = parseFloat(qtyInput.value) || 0;
+                const price = parseFloat(priceInput.value) || 0;
+                const discount = parseFloat(discountInput.value) || 0;
+                
+                let amount = (qty * price) - discount;
+                if (amount < 0) amount = 0;
+                
+                totalCell.textContent = amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                
+                grandTotal += amount;
+                totalUnits += qty;
+            });
+            
+            document.getElementById('lblGrandTotal').textContent = 'PKR ' + grandTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('lblTotalUnits').textContent = totalUnits;
+        }
+
+        table.addEventListener('input', function(e) {
+            if (e.target.classList.contains('input-qty') || 
+                e.target.classList.contains('input-price') || 
+                e.target.classList.contains('input-discount')) {
+                updateTotals();
+            }
+        });
     });
 </script>
 @endsection
