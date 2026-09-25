@@ -875,6 +875,9 @@
                         success: function(res) {
                             if (res.invoice_no) {
                                 $('#nextNoBadge_' + pref).text(res.invoice_no);
+                                if ($('input[name="prefix"]:checked').val() === pref) {
+                                    $('#orderModalInvoiceNo').val(res.invoice_no);
+                                }
                             }
                         }
                     });
@@ -885,6 +888,14 @@
                 } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
                     var m = bootstrap.Modal.getInstance(document.getElementById('modalGenerateOrderInvoice')) || new bootstrap.Modal(document.getElementById('modalGenerateOrderInvoice'));
                     m.show();
+                }
+            });
+
+            $(document).on('change', 'input[name="prefix"]', function() {
+                var pref = $(this).val();
+                var nextNo = $('#nextNoBadge_' + pref).text().trim();
+                if (nextNo) {
+                    $('#orderModalInvoiceNo').val(nextNo);
                 }
             });
         });
@@ -959,6 +970,14 @@
                                     </span>
                                 </label>
                             </div>
+                        </div>
+
+                        <!-- Editable Invoice No -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-secondary mb-1">
+                                <i class="fas fa-receipt text-primary me-1"></i> Invoice Number
+                            </label>
+                            <input type="text" name="invoice_no" id="orderModalInvoiceNo" class="form-control form-control-sm font-monospace fw-bold bg-white text-dark" placeholder="e.g. INV-0001" value="{{ \App\Models\InvoiceSeries::generateNextNo('INV') }}" title="Aap custom invoice number enter kar sakte hain">
                         </div>
 
                         <!-- Invoice Date Picker (supports backdating!) -->

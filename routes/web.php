@@ -161,6 +161,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/products/{id}/edit', [ProductController::class, 'edit'])->middleware('permission:products.edit')->name('products.edit');
     Route::get('/generate-barcode-image', [ProductController::class, 'generateBarcode'])->name('generate-barcode-image');
 
+    // ── Product Pricing & Valuation (Spreadsheet / Inline Edit) ──
+    Route::get('/products/pricing-valuation', [App\Http\Controllers\ProductPricingController::class, 'index'])
+        ->middleware('permission:products.view')->name('products.pricing_valuation');
+    Route::post('/products/pricing/inline-update', [App\Http\Controllers\ProductPricingController::class, 'inlineUpdate'])
+        ->middleware('permission:products.edit')->name('products.pricing.inline_update');
+
     // ── Product Import / Export ──
     Route::get('/products/export',   [App\Http\Controllers\ProductImportExportController::class, 'export'])
         ->middleware('permission:products.view')->name('products.export');

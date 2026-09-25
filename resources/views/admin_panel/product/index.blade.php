@@ -497,6 +497,9 @@
                 <p class="page-sub">Manage, filter and bulk-edit your entire product inventory</p>
             </div>
             <div class="erp-hdr-actions">
+                <a href="{{ route('products.pricing_valuation') }}" class="btn-hdr btn-hdr-outline" style="border-color: #6366f1; color: #6366f1; background: #eef2ff;" title="Spreadsheet view to edit prices & view valuation">
+                    <i class="fas fa-calculator"></i> Pricing & Stock Valuation
+                </a>
                 <a href="{{ route('products.template') }}" class="btn-hdr btn-hdr-outline" title="Download blank CSV template">
                     <i class="fas fa-file-csv"></i> Template
                 </a>

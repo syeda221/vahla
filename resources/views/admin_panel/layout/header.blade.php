@@ -317,6 +317,10 @@
                                                         href="{{ route('product') }}"><i
                                                             class="menu_icon icon-basket"></i><span>Products</span></a>
                                                 </li>
+                                                <li class="nav-item"><a class="nav-link"
+                                                        href="{{ route('products.pricing_valuation') }}"><i
+                                                            class="menu_icon icon-calculator"></i><span>Pricing & Valuation</span></a>
+                                                </li>
                                             @endif
                                             <li class="nav-item"><a class="nav-link"
                                                     href="{{ route('purchase_orders.index') }}"><i
