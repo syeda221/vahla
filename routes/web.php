@@ -480,6 +480,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/report/product-variants/{productId}', [ReportingController::class, 'getProductVariants'])->middleware('permission:item.stock.report.view')->name('report.product_variants');
     Route::get('/report/item-stock-history/{productId}', [ReportingController::class, 'fetchProductHistory'])->middleware('permission:item.stock.report.view')->name('report.item_stock.history');
 
+    Route::get('/report/inventory-demand', [ReportingController::class, 'inventory_demand_report'])->name('report.inventory_demand');
+    Route::post('/report/inventory-demand/fetch', [ReportingController::class, 'fetchInventoryDemand'])->name('report.inventory_demand.fetch');
+
     Route::get('report/purchase', [ReportingController::class, 'purchase_report'])->middleware('permission:purchase.report.view')->name('report.purchase');
     Route::post('report/purchase/fetch', [ReportingController::class, 'fetchPurchaseReport'])->middleware('permission:purchase.report.view')->name('report.purchase.fetch');
 

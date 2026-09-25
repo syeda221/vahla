@@ -1028,8 +1028,10 @@
                                                     Executive Report</a></li>
                                         @endcan
                                         @can('item.stock.report.view')
-                                            <li><a href="{{ route('report.item_stock') }}"><i class="fa-solid fa-users"></i>
+                                            <li><a href="{{ route('report.item_stock') }}"><i class="fa-solid fa-boxes-stacked"></i>
                                                     Item Stock Report</a></li>
+                                            <li><a href="{{ route('report.inventory_demand') }}"><i class="fa-solid fa-list-check text-primary"></i>
+                                                    Inventory Demand Report</a></li>
                                         @endcan
                                         @can('purchase.report.view')
                                             <li><a href="{{ route('report.purchase') }}"><i class="fa-solid fa-users"></i>
@@ -1548,6 +1550,8 @@
         });
     </script>
     @stack('scripts')
+    @yield('scripts')
+    @yield('js')
 </body>
 
 </html>

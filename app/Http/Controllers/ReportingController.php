@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Warehouse;
 use App\Models\Unit;
+use App\Models\Brand;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -28,6 +29,125 @@ class ReportingController extends Controller
             ->get();
 
         return view('admin_panel.Reporting.onhand', compact('rows'));
+    }
+
+    public function inventory_demand_report()
+    {
+        $user = auth()->user();
+        $categories = Category::orderBy('name')->get();
+        $brands     = Brand::orderBy('name')->get();
+        $units      = Unit::orderBy('name')->get();
+
+        if ($user && ($user->email === 'admin@admin.com' || $user->hasRole('Super Admin') || $user->hasRole('Admin') || $user->can('warehouse.view') || $user->can('warehouse.stock.view'))) {
+            $warehouses = Warehouse::orderBy('warehouse_name')->get();
+        } else {
+            $warehouses = collect();
+        }
+
+        return view('admin_panel.reporting.inventory_demand_report', compact('categories', 'brands', 'warehouses', 'units'));
+    }
+
+    public function fetchInventoryDemand(Request $request)
+    {
+        $brandId     = $request->brand_id ?: $request->company_id;
+        $categoryId  = $request->category_id;
+        $warehouseId = $request->warehouse_id;
+        $demandOnly  = $request->has('demand_only') ? (bool)$request->demand_only : true;
+        $search      = $request->search;
+
+        $query = Product::with(['warehouseStocks', 'unit', 'category_relation', 'brand']);
+
+        if ($brandId && $brandId !== 'all') {
+            $query->where('brand_id', $brandId);
+        }
+        if ($categoryId && $categoryId !== 'all') {
+            $query->where('category_id', $categoryId);
+        }
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('item_name', 'like', "%{$search}%")
+                  ->orWhere('item_code', 'like', "%{$search}%");
+            });
+        }
+
+        $products = $query->orderBy('item_name')->get();
+
+        $rows = [];
+        $totalItemsCount   = 0;
+        $totalDemandItems  = 0;
+        $totalStockDeficit = 0;
+        $totalDemandQty    = 0;
+        $totalCostAmount   = 0;
+
+        foreach ($products as $product) {
+            // Calculate current stock from warehouse stocks
+            if ($warehouseId && $warehouseId !== 'all') {
+                $stock = (float) $product->warehouseStocks->where('warehouse_id', $warehouseId)->sum('total_pieces');
+            } else {
+                $stock = (float) $product->warehouseStocks->sum('total_pieces');
+            }
+
+            // Min Qty (Alert Qty set on product create/edit)
+            $minQty = (float) ($product->alert_quantity ?? 0);
+
+            // Required / Demand Qty = Max(0, Min Qty - Stock)
+            $reqQty = max(0, $minQty - $stock);
+
+            // If demand_only is checked and this item does not need replenishment, skip
+            if ($demandOnly && $reqQty <= 0) {
+                continue;
+            }
+
+            // Purchase Price / Unit Cost
+            $purchPrice = 0;
+            if ($product->size_mode === 'by_size' || $product->size_mode === 'by_m2') {
+                $m2PerPiece = (float) ($product->pieces_per_m2 ?? 0);
+                $purchPerM2 = (float) ($product->purchase_price_per_m2 ?? 0);
+                $purchPrice = $m2PerPiece * $purchPerM2;
+            } else {
+                $purchPrice = (float) ($product->purchase_price_per_piece ?? 0);
+            }
+
+            $costAmount = round($reqQty * $purchPrice, 2);
+
+            $rows[] = [
+                'id'          => $product->id,
+                'code'        => $product->item_code ?: '0',
+                'item_name'   => $product->item_name,
+                'category'    => $product->category_relation->name ?? '-',
+                'company'     => $product->brand->name ?? '-',
+                'unit'        => $product->unit->name ?? 'Pcs',
+                'stock'       => round($stock, 2),
+                'p_price'     => round($purchPrice, 2),
+                'min_qty'     => round($minQty, 2),
+                'req_qty'     => round($reqQty, 2),
+                'cost_amount' => $costAmount,
+                'status'      => $stock <= 0 ? 'out_of_stock' : ($stock < $minQty ? 'low_stock' : 'adequate'),
+            ];
+
+            $totalItemsCount++;
+            if ($reqQty > 0) {
+                $totalDemandItems++;
+            }
+            if ($stock < 0) {
+                $totalStockDeficit += abs($stock);
+            }
+            $totalDemandQty  += $reqQty;
+            $totalCostAmount += $costAmount;
+        }
+
+        return response()->json([
+            'success' => true,
+            'rows'    => $rows,
+            'summary' => [
+                'total_items'        => $totalItemsCount,
+                'demand_items_count' => $totalDemandItems,
+                'total_deficit'      => round($totalStockDeficit, 2),
+                'total_demand_qty'   => round($totalDemandQty, 2),
+                'total_cost_amount'  => round($totalCostAmount, 2),
+            ],
+            'generated_on' => now()->format('d-m-Y H:i:s'),
+        ]);
     }
 
     public function item_stock_report()
