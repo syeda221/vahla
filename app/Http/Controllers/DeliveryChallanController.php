@@ -398,4 +398,125 @@ class DeliveryChallanController extends Controller
             return redirect()->back()->with('error', 'Error generating invoice: ' . $e->getMessage());
         }
     }
+
+    public function destroy($id)
+    {
+        $dc = DeliveryChallan::with(['items.product', 'sale.items'])->findOrFail($id);
+
+        // 1. Invoiced Check
+        $isInvoiced = $dc->is_invoiced == 1 
+            || !empty($dc->invoice_id) 
+            || ($dc->sale && in_array($dc->sale->sale_status, ['posted', 'returned']));
+
+        if ($isInvoiced) {
+            $msg = 'Cannot delete! An invoice has already been generated for this Delivery Challan.';
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
+
+        DB::beginTransaction();
+        try {
+            // 2. Stock Rollback (Restore stock that was deducted by this DC)
+            foreach ($dc->items as $item) {
+                $warehouseId = $item->warehouse_id ?? 1;
+                $productId = $item->product_id;
+
+                if ($productId) {
+                    $product = $item->product;
+                    $productMode = $product ? $product->size_mode : 'by_pieces';
+                    $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+                    if ($ppb <= 0) $ppb = 1;
+
+                    $qty = (float) ($item->boxes ?? 0);
+                    $loose = (float) ($item->loose_pieces ?? 0);
+
+                    if ($productMode === 'by_kg' || $productMode === 'by_gm') {
+                        $totalPieces = $qty + ($loose / 1000);
+                        if ($item->color) {
+                            try {
+                                $decoded = base64_decode($item->color, true);
+                                $vData = $decoded !== false ? json_decode($decoded, true) : null;
+                                if (!is_array($vData)) {
+                                    $vData = is_string($item->color) ? json_decode($item->color, true) : $item->color;
+                                }
+                                if (is_array($vData) && isset($vData['conv_factor']) && (float)$vData['conv_factor'] > 0) {
+                                    $totalPieces = $totalPieces * (float)$vData['conv_factor'];
+                                }
+                            } catch (\Exception $e) {}
+                        }
+                    } elseif ($productMode === 'by_cartons' || $productMode === 'by_size') {
+                        $totalPieces = ($qty * $ppb) + $loose;
+                    } else {
+                        $totalPieces = $item->delivered_qty > 0 ? (float)$item->delivered_qty : $qty;
+                    }
+
+                    // Restore stock in WarehouseStock
+                    $stock = WarehouseStock::where('warehouse_id', $warehouseId)
+                        ->where('product_id', $productId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($stock) {
+                        $stock->total_pieces += $totalPieces;
+                        $stock->quantity = $stock->total_pieces / $ppb;
+                        $stock->save();
+                    }
+                }
+            }
+
+            // 3. Delete related stock movements
+            StockMovement::where('ref_id', $dc->id)
+                ->whereIn('ref_type', ['DELIVERY_CHALLAN', 'direct_dc', 'dc', 'DIRECT_DELIVERY_CHALLAN'])
+                ->delete();
+
+            // 4. Cascade delete linked Sales Order & Quotation (if single DC or all DCs deleted and not invoiced)
+            $parentSaleId = $dc->sale_id;
+            
+            // Delete DC items & DC record
+            $dc->items()->delete();
+            $dc->delete();
+
+            if ($parentSaleId) {
+                $otherDcsCount = DeliveryChallan::where('sale_id', $parentSaleId)->count();
+                $parentSale = Sale::with('items')->find($parentSaleId);
+
+                if ($parentSale) {
+                    if ($otherDcsCount === 0) {
+                        // Delete parent Sales Order and linked Quotation
+                        $parentQuoId = $parentSale->parent_quotation_id;
+                        $parentSale->items()->delete();
+                        $parentSale->delete();
+
+                        if ($parentQuoId) {
+                            $parentQuo = Sale::with('items')->find($parentQuoId);
+                            if ($parentQuo) {
+                                $parentQuo->items()->delete();
+                                $parentQuo->delete();
+                            }
+                        }
+                    } else {
+                        // Recalculate remaining delivery status for remaining DCs
+                        $parentSale->recalculateDeliveryStatus();
+                    }
+                }
+            }
+
+            DB::commit();
+
+            $msg = "Delivery Challan #{$dc->dc_number} and linked order/quotation deleted, and warehouse stock restored successfully.";
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => $msg]);
+            }
+            return redirect()->back()->with('success', $msg);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $msg = 'Error deleting Delivery Challan: ' . $e->getMessage();
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 500);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
+    }
 }

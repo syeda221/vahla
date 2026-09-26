@@ -809,6 +809,68 @@
                 });
             });
 
+            // Delete Quotation / Sales Order / Sale with SweetAlert
+            $(document).on('click', '.btn-delete-sale', function(e) {
+                e.preventDefault();
+                let url = $(this).data('url');
+                let docType = $(this).data('type') || 'Record';
+                let docNo = $(this).data('no') || '';
+
+                Swal.fire({
+                    title: "Delete " + docType + "?",
+                    text: "Are you sure you want to delete this " + docType + " (" + docNo + ")? Any un-invoiced linked Delivery Challans / Quotations will also be removed and warehouse stock will be restored. This action cannot be undone.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#dc3545",
+                    cancelButtonColor: "#6c757d",
+                    confirmButtonText: "Yes, Delete It!",
+                    cancelButtonText: "Cancel"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Processing...',
+                            text: 'Deleting record and updating stock...',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        $.ajax({
+                            url: url,
+                            type: 'DELETE',
+                            data: {
+                                _token: '{{ csrf_token() }}'
+                            },
+                            success: function(response) {
+                                Swal.fire({
+                                    title: 'Deleted!',
+                                    text: response.message || (docType + ' deleted successfully.'),
+                                    icon: 'success',
+                                    timer: 1800,
+                                    showConfirmButton: true
+                                }).then(() => {
+                                    window.location.reload();
+                                });
+                            },
+                            error: function(xhr) {
+                                let errMsg = 'Something went wrong while deleting.';
+                                if (xhr.responseJSON && xhr.responseJSON.message) {
+                                    errMsg = xhr.responseJSON.message;
+                                }
+                                Swal.fire({
+                                    title: 'Cannot Delete!',
+                                    text: errMsg,
+                                    icon: 'error',
+                                    confirmButtonColor: '#3085d6',
+                                    confirmButtonText: 'OK'
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+
             // 360 Order Trail Modal Handler
             $(document).on('click', '.btn-order-trail', function(e) {
                 e.preventDefault();

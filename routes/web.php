@@ -195,6 +195,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/direct-dc/store', [App\Http\Controllers\DirectDCController::class, 'store'])->name('direct-dc.store');
     Route::get('/direct-dc/{id}/edit', [App\Http\Controllers\DirectDCController::class, 'edit'])->name('direct-dc.edit');
     Route::post('/direct-dc/{id}/update', [App\Http\Controllers\DirectDCController::class, 'update'])->name('direct-dc.update');
+    Route::delete('/direct-dc/{id}', [App\Http\Controllers\DirectDCController::class, 'destroy'])->name('direct-dc.destroy');
     Route::get('/direct-dc-consolidate', [App\Http\Controllers\DirectDCController::class, 'consolidateIndex'])->name('direct-dc.consolidate');
     Route::get('/direct-dc/api/fetch-dcs/{customer_id}', [App\Http\Controllers\DirectDCController::class, 'fetchCustomerDCs']);
     Route::match(['get', 'post'], '/direct-dc-consolidate/preview', [App\Http\Controllers\DirectDCController::class, 'consolidatePreview'])->name('direct-dc.consolidate.preview');
@@ -336,11 +337,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/purchases/{id}/grn', [GoodsReceivingNoteController::class, 'store'])->middleware('permission:purchases.create')->name('purchases.grn.store');
     Route::get('/grn/{id}/print', [GoodsReceivingNoteController::class, 'print'])->middleware('permission:purchases.view')->name('purchases.grn.print');
     Route::post('/grn/{id}/generate-invoice', [GoodsReceivingNoteController::class, 'generateInvoiceForGrn'])->middleware('permission:purchases.create')->name('purchases.grn.generate_invoice');
+    Route::delete('/grn/{id}', [GoodsReceivingNoteController::class, 'destroy'])->middleware('permission:purchases.delete|purchases.create')->name('purchases.grn.destroy');
 
     // Direct GRN & Consolidation Routes
     Route::get('/direct-grn', [DirectGRNController::class, 'index'])->middleware('permission:purchases.view')->name('direct-grn.index');
     Route::get('/direct-grn/create', [DirectGRNController::class, 'create'])->middleware('permission:purchases.create')->name('direct-grn.create');
     Route::post('/direct-grn/store', [DirectGRNController::class, 'store'])->middleware('permission:purchases.create')->name('direct-grn.store');
+    Route::delete('/direct-grn/{id}', [DirectGRNController::class, 'destroy'])->middleware('permission:purchases.delete|purchases.create')->name('direct-grn.destroy');
     Route::match(['get', 'post'], '/direct-grn/consolidate/preview', [DirectGRNController::class, 'consolidatePreview'])->middleware('permission:purchases.create')->name('direct-grn.consolidate.preview');
     Route::post('/direct-grn/consolidate/store', [DirectGRNController::class, 'consolidateStore'])->middleware('permission:purchases.create')->name('direct-grn.consolidate.store');
 
@@ -417,7 +420,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/{id}/dc-list', [App\Http\Controllers\DeliveryChallanController::class, 'index'])->middleware('permission:sales.view')->name('sales.dc_list');
     Route::get('/dc/{id}/print', [App\Http\Controllers\DeliveryChallanController::class, 'print'])->middleware('permission:sales.view')->name('sales.dc_print');
     Route::post('/dc/{id}/generate-invoice', [App\Http\Controllers\DeliveryChallanController::class, 'generateInvoiceForDc'])->middleware('permission:sales.create')->name('sales.dc_generate_invoice');
+    Route::delete('/dc/{id}', [App\Http\Controllers\DeliveryChallanController::class, 'destroy'])->middleware('permission:sales.delete|sales.create')->name('sales.dc_destroy');
     Route::post('/sales/{id}/generate-invoice', [SaleController::class, 'generateInvoice'])->middleware('permission:sales.create')->name('sales.generate_invoice');
+    Route::delete('/sales/{id}', [SaleController::class, 'destroy'])->middleware('permission:sales.delete|sales.create')->name('sales.destroy');
     Route::get('/sales-order/{id}/trail', [SaleController::class, 'orderTrail'])->middleware('permission:sales.view')->name('sales_orders.trail');
 
     // web.php

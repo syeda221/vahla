@@ -1051,9 +1051,11 @@
                     @endif
 
                     <div class="d-flex align-items-center gap-2">
+                        @if(!in_array($saleType, ['quotation', 'sales_order']))
                         <button type="button" class="btn btn-draft-complete d-flex align-items-center gap-2" id="btnSaveDraft2" title="Save as Draft">
                             <i class="fas fa-file-alt"></i> Draft
                         </button>
+                        @endif
                         <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
                             <i class="fas fa-check-circle"></i> {{ $btnText }}
                         </button>

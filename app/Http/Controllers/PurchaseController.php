@@ -14,6 +14,7 @@ use App\Models\Vendor;
 use App\Models\VendorLedger;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -1953,53 +1954,103 @@ class PurchaseController extends Controller
 
     public function destroy($id)
     {
-        $purchase = Purchase::with('items')->findOrFail($id);
+        $purchase = Purchase::with(['items', 'goodsReceivingNotes.items.product'])->findOrFail($id);
         $isPo = $purchase->purchase_type === 'purchase_order';
         $isDraft = $purchase->status_purchase === 'draft';
 
-        DB::transaction(function () use ($purchase, $isPo, $isDraft) {
-            $oldNetAmount = $purchase->net_amount;
+        // 1. Purchase Order Checks: Block deletion ONLY if an invoice has actually been generated
+        if ($isPo) {
+            $hasInvoicedGrn = $purchase->goodsReceivingNotes->filter(function ($g) {
+                return $g->is_invoiced == 1 || !empty($g->invoice_id);
+            })->count() > 0;
+            $hasChildInvoice = Purchase::where('parent_po_id', $purchase->id)->exists();
 
-            $branchId = (int) ($purchase->branch_id ?? 1);
-            $warehouseId = (int) ($purchase->warehouse_id);
-
-            // linked to gatepass? then NO stock changes
-            $isLinkedToGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
-
-            if (! $isLinkedToGatepass && ! $isPo && ! $isDraft) {
-                $movs = [];
-                $now = now();
-
-                foreach ($purchase->items as $it) {
-                    $pid = (int) $it->product_id;
-                    $qty = (float) $it->qty;
-
-                    $movs[] = [
-                        'product_id' => $pid,
-                        'type' => 'out',
-                        'qty' => $qty,
-                        'ref_type' => 'PURCHASE_DELETE',
-                        'ref_id' => $purchase->id,
-                        'note' => 'Delete purchase (reverse)',
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ];
-
-                    // stocks rollback
-                    $this->upsertStocks($pid, -$qty, $branchId, $warehouseId);
+            if ($hasInvoicedGrn || $hasChildInvoice) {
+                $msg = 'Cannot delete! A purchase bill/invoice has already been generated for this Purchase Order.';
+                if (request()->ajax() || request()->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
                 }
-
-                if (! empty($movs)) {
-                    DB::table('stock_movements')->insert($movs);
-                }
+                return redirect()->back()->with('error', $msg);
             }
+        }
 
-            $purchase->items()->delete();
-            $purchase->delete();
-        });
+        try {
+            DB::transaction(function () use ($purchase, $isPo, $isDraft) {
+                $oldNetAmount = $purchase->net_amount;
 
-        $msg = ($isPo ? 'Purchase Order ' : 'Purchase ') . 'deleted successfully.';
-        return redirect()->back()->with('success', $msg);
+                $branchId = (int) ($purchase->branch_id ?? 1);
+                $warehouseId = (int) ($purchase->warehouse_id);
+
+                // linked to gatepass? then NO stock changes
+                $isLinkedToGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
+
+                // If PO with uninvoiced GRNs, rollback stock and delete GRNs
+                if ($isPo && $purchase->goodsReceivingNotes->count() > 0) {
+                    foreach ($purchase->goodsReceivingNotes as $grn) {
+                        foreach ($grn->items as $gItem) {
+                            if ($gItem->product_id) {
+                                $product = $gItem->product;
+                                $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+                                $stock = WarehouseStock::where('warehouse_id', $gItem->warehouse_id ?? $warehouseId)
+                                    ->where('product_id', $gItem->product_id)
+                                    ->first();
+                                if ($stock) {
+                                    $stock->total_pieces -= (float) $gItem->received_qty;
+                                    $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
+                                    $stock->save();
+                                }
+                            }
+                        }
+                        StockMovement::where('ref_id', $grn->id)->whereIn('ref_type', ['GRN', 'direct_grn'])->delete();
+                        $grn->items()->delete();
+                        $grn->delete();
+                    }
+                }
+
+                if (! $isLinkedToGatepass && ! $isPo && ! $isDraft) {
+                    $movs = [];
+                    $now = now();
+
+                    foreach ($purchase->items as $it) {
+                        $pid = (int) $it->product_id;
+                        $qty = (float) $it->qty;
+
+                        $movs[] = [
+                            'product_id' => $pid,
+                            'type' => 'out',
+                            'qty' => $qty,
+                            'ref_type' => 'PURCHASE_DELETE',
+                            'ref_id' => $purchase->id,
+                            'note' => 'Delete purchase (reverse)',
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+
+                        // stocks rollback
+                        $this->upsertStocks($pid, -$qty, $branchId, $warehouseId);
+                    }
+
+                    if (! empty($movs)) {
+                        DB::table('stock_movements')->insert($movs);
+                    }
+                }
+
+                $purchase->items()->delete();
+                $purchase->delete();
+            });
+
+            $msg = ($isPo ? 'Purchase Order (and linked GRNs) ' : 'Purchase ') . 'deleted successfully.';
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => $msg]);
+            }
+            return redirect()->back()->with('success', $msg);
+        } catch (\Exception $e) {
+            $msg = 'Error deleting record: ' . $e->getMessage();
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 500);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
     }
 
     public function Invoice($id)

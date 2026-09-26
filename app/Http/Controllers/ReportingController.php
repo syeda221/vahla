@@ -238,10 +238,16 @@ class ReportingController extends Controller
                         ->join('delivery_challans as dc', 'dc.id', '=', 'dci.delivery_challan_id')
                         ->leftJoin('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
                         ->leftJoin('sales', 'sales.id', '=', 'dc.sale_id')
+                        ->leftJoin('sales as s_inv', 's_inv.id', '=', 'dc.invoice_id')
                         ->where('dci.product_id', $p->id ?? $product->id)
                         ->where(function($q) {
                             $q->whereNull('dc.sale_id')
                               ->orWhere('sales.sale_type', '=', 'sales_order');
+                        })
+                        ->where(function($q) {
+                            $q->where('dc.is_invoiced', 0)
+                              ->orWhereNull('dc.invoice_id')
+                              ->orWhere('s_inv.sale_type', '=', 'sales_order');
                         })
                         ->select('dci.delivered_qty as total_pieces', DB::raw('COALESCE(dci.color, si.color) as color'))
                         ->get();
@@ -933,10 +939,16 @@ class ReportingController extends Controller
                     ->join('delivery_challans as dc', 'dc.id', '=', 'dci.delivery_challan_id')
                     ->leftJoin('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
                     ->leftJoin('sales', 'sales.id', '=', 'dc.sale_id')
+                    ->leftJoin('sales as s_inv', 's_inv.id', '=', 'dc.invoice_id')
                     ->where('dci.product_id', $p->id ?? $product->id)
                     ->where(function($q) {
                         $q->whereNull('dc.sale_id')
                           ->orWhere('sales.sale_type', '=', 'sales_order');
+                    })
+                    ->where(function($q) {
+                        $q->where('dc.is_invoiced', 0)
+                          ->orWhereNull('dc.invoice_id')
+                          ->orWhere('s_inv.sale_type', '=', 'sales_order');
                     })
                     ->select('dci.delivered_qty as total_pieces', DB::raw('COALESCE(dci.color, si.color) as color'))
                     ->get();

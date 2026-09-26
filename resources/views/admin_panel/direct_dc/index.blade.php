@@ -140,6 +140,13 @@
                                             <div class="d-flex align-items-center justify-content-center gap-2">
                                                 @if(!$isInvoiced)
                                                     <a href="{{ route('direct-dc.edit', $dc->id) }}" class="btn btn-sm btn-outline-info rounded-pill px-3 shadow-sm"><i class="fas fa-edit"></i> Edit</a>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm btn-delete-dc" data-id="{{ $dc->id }}" data-no="{{ $dc->dc_number }}" data-url="{{ route('direct-dc.destroy', $dc->id) }}" title="Delete Delivery Challan">
+                                                        <i class="fas fa-trash-alt"></i> Delete
+                                                    </button>
+                                                @else
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-sm btn-invoiced-alert" title="Already Invoiced">
+                                                        <i class="fas fa-lock"></i> Invoiced
+                                                    </button>
                                                 @endif
                                                 <a href="{{ route('sales.dc_print', $dc->id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" target="_blank"><i class="fas fa-print"></i> Print</a>
                                             </div>
@@ -274,6 +281,79 @@ $(document).ready(function() {
             scrollTop: $('.highlight-uninvoiced-dc').first().offset().top - 150
         }, 500);
     }
+
+    // Invoiced DC Alert Handler
+    $(document).on('click', '.btn-invoiced-alert', function(e) {
+        e.preventDefault();
+        Swal.fire({
+            title: "Cannot Delete!",
+            text: "An invoice has already been generated for this Delivery Challan, so it cannot be deleted.",
+            icon: "warning",
+            confirmButtonColor: "#3085d6",
+            confirmButtonText: "OK"
+        });
+    });
+
+    // Delete DC Handler
+    $(document).on('click', '.btn-delete-dc', function(e) {
+        e.preventDefault();
+        let url = $(this).data('url');
+        let dcNo = $(this).data('no') || 'Delivery Challan';
+
+        Swal.fire({
+            title: "Delete Delivery Challan?",
+            text: "Are you sure you want to delete " + dcNo + "? Deducted stock will be restored to the warehouse and any linked un-invoiced order / quotation will be deleted. This action cannot be undone.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#dc3545",
+            cancelButtonColor: "#6c757d",
+            confirmButtonText: "Yes, Delete & Restore Stock!",
+            cancelButtonText: "Cancel"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Deleting Delivery Challan and restoring warehouse stock...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                $.ajax({
+                    url: url,
+                    type: 'DELETE',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        Swal.fire({
+                            title: 'Deleted!',
+                            text: response.message || 'Delivery Challan deleted and stock restored successfully.',
+                            icon: 'success',
+                            timer: 1800,
+                            showConfirmButton: true
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    },
+                    error: function(xhr) {
+                        let errMsg = 'Error deleting Delivery Challan.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errMsg = xhr.responseJSON.message;
+                        }
+                        Swal.fire({
+                            title: 'Cannot Delete!',
+                            text: errMsg,
+                            icon: 'error',
+                            confirmButtonColor: '#3085d6',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                });
+            }
+        });
+    });
 });
 </script>
 @endsection

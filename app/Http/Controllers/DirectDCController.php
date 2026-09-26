@@ -803,4 +803,9 @@ class DirectDCController extends Controller
             return redirect()->back()->with('error', 'Consolidation failed: ' . $e->getMessage());
         }
     }
+
+    public function destroy($id)
+    {
+        return app(\App\Http\Controllers\DeliveryChallanController::class)->destroy($id);
+    }
 }

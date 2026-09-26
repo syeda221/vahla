@@ -483,4 +483,9 @@ class DirectGRNController extends Controller
             return redirect()->back()->withInput()->with('error', 'Error generating consolidated bill: ' . $e->getMessage());
         }
     }
+
+    public function destroy($id)
+    {
+        return app(\App\Http\Controllers\GoodsReceivingNoteController::class)->destroy($id);
+    }
 }

@@ -352,11 +352,7 @@
                                     </a>
                                 </li>
                             @endif
-                            <li>
-                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc_thermal', $sale->id) }}" target="_blank">
-                                    <i class="fas fa-print text-secondary fa-fw"></i> Thermal DC
-                                </a>
-                            </li>
+                            {{-- Thermal DC Removed --}}
                         @endif
 
                         @if ($sale->sale_type === 'quotation')
@@ -430,6 +426,40 @@
                                     <i class="fas fa-undo fa-fw"></i> Return Sale
                                 </a>
                             </li>
+                        @endcan
+                    @endif
+
+                    @php
+                        $docTypeLabel = $sale->sale_type === 'quotation' ? 'Quotation' : ($sale->sale_type === 'sales_order' ? 'Sales Order' : 'Sale Invoice');
+                        $docNumberDisplay = $sale->invoice_no ?: ('#' . $sale->id);
+                    @endphp
+                    @if ($sale->sale_type === 'quotation' || $sale->sale_type === 'sales_order')
+                        @can('sales.delete')
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <button type="button" 
+                                        class="dropdown-item d-flex align-items-center gap-2 py-2 text-danger btn-delete-sale" 
+                                        data-id="{{ $sale->id }}" 
+                                        data-type="{{ $docTypeLabel }}"
+                                        data-no="{{ $docNumberDisplay }}"
+                                        data-url="{{ route('sales.destroy', $sale->id) }}">
+                                    <i class="fas fa-trash-alt fa-fw text-danger"></i> Delete {{ $docTypeLabel }}
+                                </button>
+                            </li>
+                        @else
+                            @can('sales.create')
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <button type="button" 
+                                            class="dropdown-item d-flex align-items-center gap-2 py-2 text-danger btn-delete-sale" 
+                                            data-id="{{ $sale->id }}" 
+                                            data-type="{{ $docTypeLabel }}"
+                                            data-no="{{ $docNumberDisplay }}"
+                                            data-url="{{ route('sales.destroy', $sale->id) }}">
+                                        <i class="fas fa-trash-alt fa-fw text-danger"></i> Delete {{ $docTypeLabel }}
+                                    </button>
+                                </li>
+                            @endcan
                         @endcan
                     @endif
                 </ul>

@@ -352,4 +352,130 @@ class GoodsReceivingNoteController extends Controller
             return redirect()->back()->with('error', 'Error generating purchase invoice: ' . $e->getMessage());
         }
     }
+
+    public function destroy($id)
+    {
+        $grn = GoodsReceivingNote::with(['items.product', 'purchase.items'])->findOrFail($id);
+
+        // 1. Invoiced Check
+        $isInvoiced = $grn->is_invoiced == 1 
+            || !empty($grn->invoice_id);
+
+        if ($isInvoiced) {
+            $msg = 'Cannot delete! A purchase bill/invoice has already been generated for this Goods Receiving Note.';
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
+
+        DB::beginTransaction();
+        try {
+            // 2. Stock Rollback (Deduct stock that was added by this GRN)
+            foreach ($grn->items as $item) {
+                $warehouseId = $item->warehouse_id ?? ($grn->warehouse_id ?? 1);
+                $productId = $item->product_id;
+                $receivedQty = (float) $item->received_qty;
+
+                if ($productId && $receivedQty > 0) {
+                    $product = $item->product;
+                    $ppb = (float) ($item->boxes > 0 ? $item->boxes : ($product->pieces_per_box ?? 1));
+                    if ($ppb <= 0) $ppb = 1;
+
+                    $pSizeMode = $product->size_mode ?? '';
+                    $unit = strtolower(trim(optional(optional($product)->unit)->name ?? ''));
+                    $convFactor = 1.0;
+
+                    if (!empty($item->color)) {
+                        $b64Decoded = base64_decode($item->color, true);
+                        $json = $b64Decoded !== false ? json_decode($b64Decoded, true) : null;
+                        if (!is_array($json)) {
+                            $json = json_decode($item->color, true);
+                        }
+                        if (is_array($json)) {
+                            if (isset($json['conv_factor']) && (float)$json['conv_factor'] > 0) {
+                                $convFactor = (float) $json['conv_factor'];
+                            } elseif (isset($json['weight_per_piece']) && (float)$json['weight_per_piece'] > 0) {
+                                $convFactor = (float) $json['weight_per_piece'] / 1000.0;
+                            }
+                            if (isset($json['unit']) && $json['unit'] !== '') {
+                                $unit = strtolower(trim($json['unit']));
+                            }
+                        }
+                    }
+
+                    if ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams') {
+                        $baseQty = $receivedQty / 1000.0;
+                    } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box' || ($pSizeMode === 'by_cartons')) {
+                        $baseQty = $receivedQty * $ppb;
+                    } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm') {
+                        if ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece' || ($convFactor > 0 && $convFactor != 1.0)) {
+                            $baseQty = $receivedQty * $convFactor;
+                        } else {
+                            $baseQty = $receivedQty;
+                        }
+                    } elseif ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece') {
+                        $baseQty = $receivedQty;
+                    } else {
+                        $baseQty = $receivedQty * $convFactor;
+                    }
+
+                    // Deduct from WarehouseStock
+                    $stock = WarehouseStock::where('warehouse_id', $warehouseId)
+                        ->where('product_id', $productId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($stock) {
+                        $stock->total_pieces -= $baseQty;
+                        $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
+                        $stock->save();
+                    }
+                }
+            }
+
+            // 3. Delete related stock movements
+            StockMovement::where('ref_id', $grn->id)
+                ->whereIn('ref_type', ['GRN', 'direct_grn'])
+                ->delete();
+
+            // 4. Cascade delete linked Purchase Order (if single GRN or all GRNs deleted and not invoiced)
+            $parentPoId = $grn->purchase_id;
+
+            // Delete GRN items & GRN record
+            $grn->items()->delete();
+            $grn->delete();
+
+            if ($parentPoId) {
+                $otherGrnsCount = GoodsReceivingNote::where('purchase_id', $parentPoId)->count();
+                $parentPo = Purchase::with('items')->find($parentPoId);
+
+                if ($parentPo) {
+                    if ($otherGrnsCount === 0) {
+                        // Delete parent Purchase Order
+                        $parentPo->items()->delete();
+                        $parentPo->delete();
+                    } else {
+                        // Recalculate receiving status for remaining GRNs
+                        $parentPo->recalculateReceivingStatus();
+                    }
+                }
+            }
+
+            DB::commit();
+
+            $msg = "Goods Receiving Note #{$grn->grn_number} and linked Purchase Order deleted, and warehouse stock reverted successfully.";
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => $msg]);
+            }
+            return redirect()->back()->with('success', $msg);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $msg = 'Error deleting Goods Receiving Note: ' . $e->getMessage();
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 500);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
+    }
 }

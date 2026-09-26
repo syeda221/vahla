@@ -105,12 +105,19 @@
                                         {{ $grn->carrier_info ?: ($grn->remarks ?: '--') }}
                                     </td>
                                     <td class="pe-3 text-end">
-                                        <div class="d-flex justify-content-end gap-2">
+                                        <div class="d-flex justify-content-end gap-1">
                                             @if(!$grn->is_invoiced)
                                                 <a href="{{ route('direct-grn.index', ['highlight_grn' => $grn->id, 'purchase_id' => $purchase->id]) }}" 
                                                    class="btn btn-sm btn-success fw-bold px-2 py-1">
-                                                    <i class="fas fa-file-invoice-dollar me-1"></i> Generate Bill
+                                                    <i class="fas fa-file-invoice-dollar me-1"></i> Bill
                                                 </a>
+                                                <button type="button" class="btn btn-sm btn-outline-danger fw-bold px-2 py-1 btn-delete-grn" data-id="{{ $grn->id }}" data-no="{{ $grn->grn_number }}" data-url="{{ route('purchases.grn.destroy', $grn->id) }}" title="Delete GRN">
+                                                    <i class="fas fa-trash-alt"></i> Delete
+                                                </button>
+                                            @else
+                                                <button type="button" class="btn btn-sm btn-outline-secondary fw-bold px-2 py-1 btn-invoiced-grn-alert" title="Already Invoiced">
+                                                    <i class="fas fa-lock"></i> Invoiced
+                                                </button>
                                             @endif
                                             <a href="{{ route('purchases.grn.print', $grn->id) }}" target="_blank" class="btn btn-sm btn-outline-secondary px-2 py-1 fw-bold" title="Print GRN Slip">
                                                 <i class="fas fa-print"></i> Print
@@ -126,4 +133,83 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('js')
+<script>
+$(document).ready(function() {
+    // Invoiced GRN Alert
+    $(document).on('click', '.btn-invoiced-grn-alert', function(e) {
+        e.preventDefault();
+        Swal.fire({
+            title: "Cannot Delete!",
+            text: "A purchase bill / invoice has already been generated for this Goods Receiving Note (GRN), so it cannot be deleted.",
+            icon: "warning",
+            confirmButtonColor: "#3085d6",
+            confirmButtonText: "OK"
+        });
+    });
+
+    // Delete GRN
+    $(document).on('click', '.btn-delete-grn', function(e) {
+        e.preventDefault();
+        let url = $(this).data('url');
+        let grnNo = $(this).data('no') || 'GRN';
+
+        Swal.fire({
+            title: "Delete GRN?",
+            text: "Are you sure you want to delete " + grnNo + "? Added warehouse stock will be reverted/deducted and any linked un-invoiced Purchase Order will be deleted. This action cannot be undone.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#dc3545",
+            cancelButtonColor: "#6c757d",
+            confirmButtonText: "Yes, Delete & Revert Stock!",
+            cancelButtonText: "Cancel"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Deleting Goods Receiving Note and deducting warehouse stock...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                $.ajax({
+                    url: url,
+                    type: 'DELETE',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        Swal.fire({
+                            title: 'Deleted!',
+                            text: response.message || 'GRN deleted and stock reverted successfully.',
+                            icon: 'success',
+                            timer: 1800,
+                            showConfirmButton: true
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    },
+                    error: function(xhr) {
+                        let errMsg = 'Error deleting GRN.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errMsg = xhr.responseJSON.message;
+                        }
+                        Swal.fire({
+                            title: 'Cannot Delete!',
+                            text: errMsg,
+                            icon: 'error',
+                            confirmButtonColor: '#3085d6',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                });
+            }
+        });
+    });
+});
+</script>
 @endsection

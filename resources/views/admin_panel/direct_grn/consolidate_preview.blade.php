@@ -189,26 +189,20 @@
                         <input type="text" class="form-control input-readonly fw-bold" value="{{ optional($vendor)->name ?: 'Vendor #' . optional($vendor)->id }}" readonly title="{{ optional($vendor)->name }}">
                     </div>
 
-                    <!-- Invoice Series & Number (Fully Editable) -->
+                    <!-- Invoice Number (Editable) -->
                     <div class="col-sm-6 col-md-3">
                         <label class="meta-label">
-                            <i class="fas fa-receipt text-primary"></i> Invoice Series &amp; No.
+                            <i class="fas fa-receipt text-primary"></i> Invoice #
                         </label>
-                        <div class="input-group input-group-sm">
-                            <select class="form-select fw-bold bg-light text-primary" name="invoice_prefix" id="invoicePrefixSelect" style="max-width: 90px;">
-                                @foreach($seriesList as $ser)
-                                    <option value="{{ $ser->prefix }}" {{ ($ser->prefix === ($defaultPrefix ?? 'PINV')) ? 'selected' : '' }}>{{ $ser->prefix }}</option>
-                                @endforeach
-                            </select>
-                            <input type="text" 
-                                   id="inputInvoiceNo" 
-                                   name="invoice_no"
-                                   class="form-control text-center font-monospace fw-bold bg-white text-dark" 
-                                   value="{{ $nextInvoiceNo }}" 
-                                   placeholder="e.g. PINV-0001"
-                                   title="Aap custom invoice number bhi enter kar sakte hain"
-                                   required>
-                        </div>
+                        <input type="hidden" name="invoice_prefix" value="PINV">
+                        <input type="text" 
+                               id="inputInvoiceNo" 
+                               name="invoice_no"
+                               class="form-control text-center font-monospace fw-bold bg-white text-dark" 
+                               value="{{ $nextInvoiceNo }}" 
+                               placeholder="e.g. PINV-0001"
+                               title="Aap custom invoice number bhi enter kar sakte hain"
+                               required>
                     </div>
 
                     <!-- Bill Date -->
@@ -516,21 +510,6 @@
                 }
                 return false;
             }
-        });
-
-        // Invoice Prefix Change Listener
-        $('#invoicePrefixSelect').on('change', function() {
-            let pref = $(this).val();
-            $.ajax({
-                url: "{{ route('invoice_series.generate_no') }}",
-                type: 'GET',
-                data: { prefix: pref },
-                success: function(res) {
-                    if (res && res.invoice_no) {
-                        $('#inputInvoiceNo').val(res.invoice_no);
-                    }
-                }
-            });
         });
 
         // Initial Calculation

@@ -295,6 +295,17 @@
                                                     <i class="fas fa-print fa-fw text-info"></i> Print Purchase Order
                                                 </a>
                                             </li>
+
+                                            <li><hr class="dropdown-divider my-1"></li>
+                                            <li>
+                                                <button type="button" 
+                                                        class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger btn-delete-po" 
+                                                        data-id="{{ $po->id }}" 
+                                                        data-no="{{ $po->invoice_no ?: ('PO-' . str_pad($po->id, 4, '0', STR_PAD_LEFT)) }}"
+                                                        data-url="{{ route('purchase.destroy', $po->id) }}">
+                                                    <i class="fas fa-trash-alt fa-fw text-danger"></i> Delete Purchase Order
+                                                </button>
+                                            </li>
                                         </ul>
                                     </div>
                                 </td>
@@ -316,4 +327,71 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('js')
+<script>
+$(document).ready(function() {
+    // Delete Purchase Order
+    $(document).on('click', '.btn-delete-po', function(e) {
+        e.preventDefault();
+        let url = $(this).data('url');
+        let poNo = $(this).data('no') || 'Purchase Order';
+
+        Swal.fire({
+            title: "Delete Purchase Order?",
+            text: "Are you sure you want to delete " + poNo + "? Any un-invoiced linked Goods Receiving Notes (GRNs) will also be deleted and warehouse stock will be reverted. This action cannot be undone.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#dc3545",
+            cancelButtonColor: "#6c757d",
+            confirmButtonText: "Yes, Delete It!",
+            cancelButtonText: "Cancel"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Deleting Purchase Order and updating stock...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                $.ajax({
+                    url: url,
+                    type: 'DELETE',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        Swal.fire({
+                            title: 'Deleted!',
+                            text: response.message || 'Purchase Order deleted successfully.',
+                            icon: 'success',
+                            timer: 1800,
+                            showConfirmButton: true
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    },
+                    error: function(xhr) {
+                        let errMsg = 'Error deleting Purchase Order.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errMsg = xhr.responseJSON.message;
+                        }
+                        Swal.fire({
+                            title: 'Cannot Delete!',
+                            text: errMsg,
+                            icon: 'error',
+                            confirmButtonColor: '#3085d6',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                });
+            }
+        });
+    });
+});
+</script>
 @endsection

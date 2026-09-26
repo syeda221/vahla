@@ -15,6 +15,7 @@ use App\Models\DeliveryChallanItem;
 use App\Models\Stock;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -147,7 +148,13 @@ class SaleController extends Controller
                   ->orWhereNull('sale_type')
                   ->orWhere(function($sq) {
                       $sq->where('sale_type', 'sales_order')
-                         ->whereIn('sale_status', ['posted', 'returned']);
+                         ->whereIn('sale_status', ['posted', 'returned'])
+                         ->whereNotIn('id', function($sub) {
+                             $sub->select('sale_id')
+                                 ->from('delivery_challans')
+                                 ->whereNotNull('invoice_id')
+                                 ->whereColumn('invoice_id', '!=', 'delivery_challans.sale_id');
+                         });
                   });
             });
         
@@ -1808,7 +1815,18 @@ class SaleController extends Controller
                 \Log::info('Proceeding to Auto-Receipt & Ledger logic for Sale #'.$sale->invoice_no);
 
                 // 1. DEDUCT STOCK FROM WAREHOUSE
-                $this->handleStockImpact($sale, 'out');
+                // Only deduct if this is a direct sale OR if it doesn't already have confirmed DCs.
+                $hasInvoicedDCs = \App\Models\DeliveryChallan::where(function($q) use ($sale) {
+                        $q->where('sale_id', $sale->id)->orWhere('invoice_id', $sale->id);
+                    })
+                    ->where('status', 'confirmed')
+                    ->exists();
+                
+                if (!$hasInvoicedDCs) {
+                    $this->handleStockImpact($sale, 'out');
+                } else {
+                    \Log::info("Sale #{$sale->invoice_no} already has DCs. Skipping stock deduction to prevent double deduction.");
+                }
 
                 $totalReturnVal = $totalReturnAmountForNet ?? 0;
                 $isExchange = $totalReturnVal > 0;
@@ -2530,7 +2548,17 @@ class SaleController extends Controller
     private function rollbackPostedSale(Sale $sale)
     {
         // 1. Restore Stock
-        $this->handleStockImpact($sale, 'in');
+        $hasInvoicedDCs = \App\Models\DeliveryChallan::where(function($q) use ($sale) {
+                $q->where('sale_id', $sale->id)->orWhere('invoice_id', $sale->id);
+            })
+            ->where('status', 'confirmed')
+            ->exists();
+        
+        if (!$hasInvoicedDCs) {
+            $this->handleStockImpact($sale, 'in');
+        } else {
+            \Log::info("Sale #{$sale->invoice_no} has DCs. Skipping stock rollback.");
+        }
 
         // NOTE: We intentionally do NOT delete the previous 'sale'/'sale_in' stock movements here.
         // Stock movements are an append-only audit trail. Deleting the original deduction while
@@ -2879,5 +2907,172 @@ class SaleController extends Controller
             'deliveryPct',
             'invoicedPct'
         ));
+    }
+
+    public function destroy($id)
+    {
+        $sale = Sale::with(['items', 'deliveryChallans.items.product'])->findOrFail($id);
+
+        // 1. Quotation check
+        if ($sale->sale_type === 'quotation') {
+            $convertedOrders = Sale::with('deliveryChallans')->where('parent_quotation_id', $sale->id)->get();
+            foreach ($convertedOrders as $co) {
+                if ($co->sale_status === 'posted' || $co->deliveryChallans->where('is_invoiced', 1)->count() > 0) {
+                    $msg = 'Cannot delete! This quotation has already been converted into an invoiced order.';
+                    if (request()->ajax() || request()->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => $msg], 422);
+                    }
+                    return redirect()->back()->with('error', $msg);
+                }
+            }
+        }
+
+        // 2. Sales Order check
+        if ($sale->sale_type === 'sales_order') {
+            $hasInvoicedDc = $sale->deliveryChallans->where('is_invoiced', 1)->count() > 0;
+            if ($sale->sale_status === 'posted' || $hasInvoicedDc) {
+                $msg = 'Cannot delete! An invoice has already been generated for this Sales Order.';
+                if (request()->ajax() || request()->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+                return redirect()->back()->with('error', $msg);
+            }
+        }
+
+        // 3. Direct Sale / Invoice check
+        if ($sale->sale_type === 'direct_sale' || $sale->sale_type === null) {
+            if ($sale->returns()->exists()) {
+                $msg = 'Cannot delete! A return record exists for this Sale Invoice.';
+                if (request()->ajax() || request()->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+                return redirect()->back()->with('error', $msg);
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            // If Quotation, cascade delete linked uninvoiced Sales Orders and their DCs
+            if ($sale->sale_type === 'quotation') {
+                $convertedOrders = Sale::with(['items', 'deliveryChallans.items.product'])->where('parent_quotation_id', $sale->id)->get();
+                foreach ($convertedOrders as $co) {
+                    foreach ($co->deliveryChallans as $cdc) {
+                        // Rollback stock for each DC
+                        foreach ($cdc->items as $dci) {
+                            if ($dci->product_id) {
+                                $product = $dci->product;
+                                $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+                                $stock = WarehouseStock::where('warehouse_id', $dci->warehouse_id ?? 1)->where('product_id', $dci->product_id)->first();
+                                if ($stock) {
+                                    $stock->total_pieces += (float) ($dci->delivered_qty > 0 ? $dci->delivered_qty : $dci->boxes);
+                                    $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
+                                    $stock->save();
+                                }
+                            }
+                        }
+                        StockMovement::where('ref_id', $cdc->id)->whereIn('ref_type', ['DELIVERY_CHALLAN', 'direct_dc', 'dc', 'DIRECT_DELIVERY_CHALLAN'])->delete();
+                        $cdc->items()->delete();
+                        $cdc->delete();
+                    }
+                    $co->items()->delete();
+                    $co->delete();
+                }
+            }
+
+            // If Sales Order, rollback & delete linked uninvoiced DCs and cascade delete parent Quotation
+            if ($sale->sale_type === 'sales_order') {
+                foreach ($sale->deliveryChallans as $sdc) {
+                    foreach ($sdc->items as $sdci) {
+                        if ($sdci->product_id) {
+                            $product = $sdci->product;
+                            $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+                            $stock = WarehouseStock::where('warehouse_id', $sdci->warehouse_id ?? 1)->where('product_id', $sdci->product_id)->first();
+                            if ($stock) {
+                                $stock->total_pieces += (float) ($sdci->delivered_qty > 0 ? $sdci->delivered_qty : $sdci->boxes);
+                                $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
+                                $stock->save();
+                            }
+                        }
+                    }
+                    StockMovement::where('ref_id', $sdc->id)->whereIn('ref_type', ['DELIVERY_CHALLAN', 'direct_dc', 'dc', 'DIRECT_DELIVERY_CHALLAN'])->delete();
+                    $sdc->items()->delete();
+                    $sdc->delete();
+                }
+
+                if ($sale->parent_quotation_id) {
+                    $parentQuo = Sale::with('items')->find($sale->parent_quotation_id);
+                    if ($parentQuo) {
+                        $parentQuo->items()->delete();
+                        $parentQuo->delete();
+                    }
+                }
+            }
+
+            // If it's a posted direct sale (not quotation or unposted SO), rollback stock
+            if ($sale->sale_type !== 'quotation' && $sale->sale_type !== 'sales_order' && $sale->sale_status === 'posted') {
+                $warehouseId = (int) ($sale->warehouse_id ?? 1);
+                $movs = [];
+                $now = now();
+
+                foreach ($sale->items as $it) {
+                    $pid = (int) $it->product_id;
+                    $qtyPieces = (float) ($it->total_pieces > 0 ? $it->total_pieces : $it->qty);
+
+                    if ($pid > 0 && $qtyPieces > 0) {
+                        $movs[] = [
+                            'product_id' => $pid,
+                            'type' => 'in',
+                            'qty' => $qtyPieces,
+                            'ref_type' => 'SALE_DELETE',
+                            'ref_id' => $sale->id,
+                            'note' => 'Delete sale invoice (reverse)',
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+
+                        $product = $it->product;
+                        $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+                        $stock = WarehouseStock::where('warehouse_id', $warehouseId)->where('product_id', $pid)->first();
+                        if ($stock) {
+                            $stock->total_pieces += $qtyPieces;
+                            $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
+                            $stock->save();
+                        }
+                    }
+                }
+
+                if (!empty($movs)) {
+                    DB::table('stock_movements')->insert($movs);
+                }
+
+                // Reverse customer ledger / voucher if applicable
+                $voucher = \App\Models\VoucherMaster::where('remarks', "Auto-Receipt for Sale Invoice #{$sale->invoice_no}")->first();
+                if ($voucher) {
+                    $voucher->journalEntries()->delete();
+                    $voucher->details()->delete();
+                    $voucher->delete();
+                }
+            }
+
+            $sale->items()->delete();
+            $sale->delete();
+
+            DB::commit();
+
+            $typeName = ($sale->sale_type === 'quotation') ? 'Quotation' : (($sale->sale_type === 'sales_order') ? 'Sales Order (and linked DCs/quotation)' : 'Sale');
+            $msg = "{$typeName} deleted successfully.";
+
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => $msg]);
+            }
+            return redirect()->back()->with('success', $msg);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $msg = 'Error deleting record: ' . $e->getMessage();
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 500);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
     }
 }
