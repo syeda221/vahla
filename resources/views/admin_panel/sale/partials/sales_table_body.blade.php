@@ -298,7 +298,12 @@
                                 <li>
                                     <form action="{{ route('sales.confirm', $sale->id) }}" method="POST" class="confirm-booking-form">
                                         @csrf
-                                        <button type="submit" class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold confirm-booking-btn">
+                                        <button type="submit" 
+                                                class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold confirm-booking-btn"
+                                                data-confirm="true"
+                                                data-confirm-title="Confirm &amp; Convert?"
+                                                data-confirm-text="Are you sure you want to proceed and confirm/convert this record?"
+                                                data-confirm-btn="<i class='fas fa-check-circle me-1'></i> Yes, Confirm">
                                             <i class="fas fa-check-circle fa-fw text-success"></i> 
                                             @if($sale->sale_status === 'draft')
                                                  Confirm Sale

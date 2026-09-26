@@ -1066,26 +1066,31 @@ $(document).ready(function() {
             return;
         }
 
+        let vendorName = $('#vendorId').find(':selected').text().trim();
         let clickedBtn = $(document.activeElement);
         let actionVal = clickedBtn.val() || 'save_and_print';
-
-        let $submitBtns = $('#btnSubmitSave, #btnSubmitPrint');
-        $submitBtns.prop('disabled', true);
-
         let formData = $(this).serialize();
 
-        Swal.fire({
-            title: 'Posting Payment...',
-            text: 'Settling purchase bills and updating vendor ledger.',
-            allowOutsideClick: false,
-            didOpen: () => { Swal.showLoading(); }
-        });
+        window.showConfirmPopup({
+            title: 'Pay & Settle Bills?',
+            text: `Are you sure you want to disburse PKR ${totalAmt.toLocaleString('en-US', {minimumFractionDigits: 2})} to ${vendorName} and settle purchase bills?`,
+            confirmBtnText: '<i class="fa-solid fa-check-circle me-1"></i> Yes, Post Payment'
+        }, function() {
+            let $submitBtns = $('#btnSubmitSave, #btnSubmitPrint');
+            $submitBtns.prop('disabled', true);
 
-        $.ajax({
-            url: "{{ route('vouchers.make_payment.store') }}",
-            type: "POST",
-            data: formData,
-            dataType: "json",
+            Swal.fire({
+                title: 'Posting Payment...',
+                text: 'Settling purchase bills and updating vendor ledger.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: "{{ route('vouchers.make_payment.store') }}",
+                type: "POST",
+                data: formData,
+                dataType: "json",
             success: function(response) {
                 if (response.success) {
                     Swal.fire({

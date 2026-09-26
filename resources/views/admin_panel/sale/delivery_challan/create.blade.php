@@ -178,7 +178,14 @@
                                 </div>
                                 <div class="col-md-4 text-end mt-3 mt-md-0">
                                     <a href="{{ route('sale.index') }}" class="btn btn-light border fw-bold me-2 px-4">Cancel</a>
-                                    <button type="submit" class="btn btn-primary fw-bold px-4 shadow-sm"><i class="fas fa-save me-1"></i> Confirm DC</button>
+                                    <button type="submit" 
+                                            class="btn btn-primary fw-bold px-4 shadow-sm"
+                                            data-confirm="true"
+                                            data-confirm-title="Confirm Delivery Challan?"
+                                            data-confirm-text="Are you sure you want to dispatch and generate this Delivery Challan?"
+                                            data-confirm-btn="<i class='fas fa-truck me-1'></i> Yes, Generate DC">
+                                        <i class="fas fa-save me-1"></i> Confirm DC
+                                    </button>
                                 </div>
                             </div>
                         </div>

@@ -141,8 +141,13 @@
                 
                 <div class="d-flex justify-content-between align-items-center">
                     <a href="{{ route('direct-grn.index') }}" class="btn btn-outline-secondary px-4 fw-bold">Cancel</a>
-                    <button type="submit" class="btn btn-success px-5 fw-bold shadow-sm">
-                        <i class="fas fa-check-circle me-1"></i> Save Direct GRN & Add Stock
+                    <button type="submit" 
+                            class="btn btn-success px-5 fw-bold shadow-sm"
+                            data-confirm="true"
+                            data-confirm-title="Save Direct GRN?"
+                            data-confirm-text="Are you sure you want to save this Direct GRN and increase warehouse stock?"
+                            data-confirm-btn="<i class='fas fa-check-circle me-1'></i> Yes, Save &amp; Add Stock">
+                        <i class="fas fa-check-circle me-1"></i> Save Direct GRN &amp; Add Stock
                     </button>
                 </div>
             </form>

@@ -500,7 +500,13 @@
                                         <input type="text" name="total_amount" class="total-summary-value" id="totalAmount" readonly value="0.00">
                                     </div>
                                 </div>
-                                <button type="submit" class="btn btn-primary fw-bold shadow-sm d-inline-flex align-items-center" style="height: 44px; padding: 0 24px; border-radius: 6px; font-size: 0.9rem;">
+                                <button type="submit" 
+                                        class="btn btn-primary fw-bold shadow-sm d-inline-flex align-items-center" 
+                                        data-confirm="true"
+                                        data-confirm-title="Save Expense Voucher?"
+                                        data-confirm-text="Are you sure you want to record this Expense Voucher?"
+                                        data-confirm-btn="<i class='bi bi-check-circle-fill me-1'></i> Yes, Save Expense"
+                                        style="height: 44px; padding: 0 24px; border-radius: 6px; font-size: 0.9rem;">
                                     <i class="bi bi-check-circle-fill me-2" style="margin-right: 8px;"></i> Save Expense
                                 </button>
                             </div>

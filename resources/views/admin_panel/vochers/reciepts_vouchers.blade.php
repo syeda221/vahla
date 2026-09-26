@@ -685,34 +685,41 @@
                     return;
                 }
 
-                let $btn = $('#btnSavePrint');
-                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving...');
+                let form = this;
+                window.showConfirmPopup({
+                    title: 'Save Receipt Voucher?',
+                    text: `Are you sure you want to save this Receipt Voucher for PKR ${totalAmt.toLocaleString('en-US', {minimumFractionDigits: 2})}?`,
+                    confirmBtnText: '<i class="bi bi-printer me-1"></i> Yes, Save Voucher'
+                }, function() {
+                    let $btn = $('#btnSavePrint');
+                    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving...');
 
-                $.ajax({
-                    url: $(this).attr('action'),
-                    type: 'POST',
-                    data: $(this).serialize(),
-                    dataType: 'json',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    success: function(res) {
-                        if (res && res.success) {
-                            // Redirect directly to the thermal invoice print page
-                            window.location.href = res.print_url;
-                        } else {
+                    $.ajax({
+                        url: $(form).attr('action'),
+                        type: 'POST',
+                        data: $(form).serialize(),
+                        dataType: 'json',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        success: function(res) {
+                            if (res && res.success) {
+                                // Redirect directly to the thermal invoice print page
+                                window.location.href = res.print_url;
+                            } else {
+                                $btn.prop('disabled', false).html('<i class="bi bi-printer me-1"></i> Save (Print)');
+                                Swal.fire('Error', res.message || 'Failed to save voucher.', 'error');
+                            }
+                        },
+                        error: function(xhr) {
                             $btn.prop('disabled', false).html('<i class="bi bi-printer me-1"></i> Save (Print)');
-                            Swal.fire('Error', res.message || 'Failed to save voucher.', 'error');
+                            let msg = 'Failed to save voucher.';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                msg = xhr.responseJSON.message;
+                            }
+                            Swal.fire('Error', msg, 'error');
                         }
-                    },
-                    error: function(xhr) {
-                        $btn.prop('disabled', false).html('<i class="bi bi-printer me-1"></i> Save (Print)');
-                        let msg = 'Failed to save voucher.';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            msg = xhr.responseJSON.message;
-                        }
-                        Swal.fire('Error', msg, 'error');
-                    }
+                    });
                 });
             });
         });

@@ -248,7 +248,12 @@
                                 <a href="{{ route('all_Payment_vochers') }}" class="btn btn-pv-secondary">
                                     <i class="bi bi-list-ul me-1"></i> All Vouchers
                                 </a>
-                                <button type="submit" class="btn btn-pv-primary">
+                                <button type="submit" 
+                                        class="btn btn-pv-primary"
+                                        data-confirm="true"
+                                        data-confirm-title="Save Payment Voucher?"
+                                        data-confirm-text="Are you sure you want to save and post this Payment Voucher?"
+                                        data-confirm-btn="<i class='bi bi-check-lg me-1'></i> Yes, Save Voucher">
                                     <i class="bi bi-check-lg me-1"></i> Save Voucher
                                 </button>
                             </div>

@@ -486,8 +486,11 @@
             recalculateBillTotals();
         });
 
-        // Form Validation on Submit
+        // Form Validation & Confirmation on Submit
+        let isConfirmed = false;
         $('#formConsolidateInvoice').on('submit', function(e) {
+            if (isConfirmed) return true;
+
             if ($('#itemsTableBody tr.item-row').length === 0) {
                 e.preventDefault();
                 alert('Please keep at least one item in the bill.');
@@ -510,6 +513,17 @@
                 }
                 return false;
             }
+
+            e.preventDefault();
+            window.showConfirmPopup({
+                title: 'Generate Purchase Bill?',
+                text: 'Are you sure you want to generate and post this Purchase Bill from selected GRN(s)?',
+                confirmBtnText: '<i class="fas fa-check-circle me-1"></i> Yes, Generate Bill'
+            }, function() {
+                isConfirmed = true;
+                $('#formConsolidateInvoice button[type="submit"]').prop('disabled', true);
+                $('#formConsolidateInvoice').submit();
+            });
         });
 
         // Initial Calculation

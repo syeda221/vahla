@@ -1066,26 +1066,31 @@ $(document).ready(function() {
             return;
         }
 
+        let custName = $('#customerId').find(':selected').text().trim();
         let clickedBtn = $(document.activeElement);
         let actionVal = clickedBtn.val() || 'save_and_print';
-
-        let $submitBtns = $('#btnSubmitSave, #btnSubmitPrint');
-        $submitBtns.prop('disabled', true);
-
         let formData = $(this).serialize();
 
-        Swal.fire({
-            title: 'Posting Payment...',
-            text: 'Settling invoices and updating customer ledger.',
-            allowOutsideClick: false,
-            didOpen: () => { Swal.showLoading(); }
-        });
+        window.showConfirmPopup({
+            title: 'Receive & Settle Payment?',
+            text: `Are you sure you want to receive PKR ${totalAmt.toLocaleString('en-US', {minimumFractionDigits: 2})} from ${custName} and settle invoice dues?`,
+            confirmBtnText: '<i class="fa-solid fa-check-circle me-1"></i> Yes, Post Payment'
+        }, function() {
+            let $submitBtns = $('#btnSubmitSave, #btnSubmitPrint');
+            $submitBtns.prop('disabled', true);
 
-        $.ajax({
-            url: "{{ route('vouchers.receive_payment.store') }}",
-            type: "POST",
-            data: formData,
-            dataType: "json",
+            Swal.fire({
+                title: 'Posting Payment...',
+                text: 'Settling invoices and updating customer ledger.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: "{{ route('vouchers.receive_payment.store') }}",
+                type: "POST",
+                data: formData,
+                dataType: "json",
             success: function(response) {
                 if (response.success) {
                     Swal.fire({

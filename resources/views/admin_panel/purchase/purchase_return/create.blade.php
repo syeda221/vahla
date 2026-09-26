@@ -582,7 +582,12 @@
                                 </div>
 
                                 <div class="mt-3 d-grid gap-2">
-                                    <button type="submit" class="btn btn-erp-primary btn-lg shadow-sm">
+                                    <button type="submit" 
+                                            class="btn btn-erp-primary btn-lg shadow-sm"
+                                            data-confirm="true"
+                                            data-confirm-title="Process Purchase Return?"
+                                            data-confirm-text="Are you sure you want to process this Purchase Return and update vendor ledger and inventory?"
+                                            data-confirm-btn="<i class='fas fa-check-circle me-1'></i> Yes, Process Return">
                                         <i class="fas fa-check-circle me-2"></i> Process Purchase Return
                                     </button>
                                 </div>

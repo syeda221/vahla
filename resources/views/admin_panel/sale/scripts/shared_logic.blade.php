@@ -1523,7 +1523,13 @@
             }
 
             $('#action').val('draft');
-            ensureSaved();
+            window.showConfirmPopup({
+                title: 'Save as Draft?',
+                text: 'Are you sure you want to save this document as a Draft?',
+                confirmBtnText: '<i class="fas fa-file-alt me-1"></i> Yes, Save Draft'
+            }, function() {
+                ensureSaved();
+            });
         });
 
         // Buttons: Booking (Save)
@@ -1542,7 +1548,13 @@
                 return;
             }
             $('#action').val('booking');
-            ensureSaved();
+            window.showConfirmPopup({
+                title: 'Save Booking?',
+                text: 'Are you sure you want to save this booking order?',
+                confirmBtnText: '<i class="fas fa-check me-1"></i> Yes, Save Booking'
+            }, function() {
+                ensureSaved();
+            });
         });
 
         // Buttons: Quotation
@@ -1561,11 +1573,17 @@
                 return;
             }
             $('#action').val('quotation');
-            ensureSaved();
+            window.showConfirmPopup({
+                title: 'Save Quotation?',
+                text: 'Are you sure you want to save this Quotation?',
+                confirmBtnText: '<i class="fas fa-file-invoice me-1"></i> Yes, Save Quotation'
+            }, function() {
+                ensureSaved();
+            });
         });
 
         // Buttons: Sale (Post)
-        $('#btnPosted, #btnHeaderPosted').off('click').on('click', function() {
+        $('#btnPosted, #btnHeaderPosted, #btnSaveAndComplete, #btnSaveAndComplete2').off('click').on('click', function() {
             if ($('#sale_type').val() === 'quotation') {
                 $('#action').val('quotation');
             } else if ($('#sale_type').val() === 'sales_order') {
@@ -1592,6 +1610,7 @@
             const invoiceNet = toNum($('#totalBalance').val());
             const paidNow = toNum($('#receiptsTotal').text());
             const isConvertToSale = $('input[name="convert_to_sale"]').val() === '1' || (new URLSearchParams(window.location.search).get('convert_to_sale') === '1');
+            const isConvertToSO = $('input[name="convert_to_so"]').val() === '1' || (new URLSearchParams(window.location.search).get('convert_to_so') === '1');
             const currentSaleType = isConvertToSale ? 'direct_sale' : ($('#sale_type').val() || (new URLSearchParams(window.location.search).get('type')) || '');
 
             if (isWalkin && currentSaleType !== 'quotation' && currentSaleType !== 'sales_order') {
@@ -1608,20 +1627,13 @@
             }
 
             // Credit Limit Check
-            // Credit Limit Check
             const rangeBal = toNum($('#rangeBalance').val());
             if (rangeBal > 0) {
                 const prevBal = toNum($('#previousBalance').val());
-
-                // Invoice Net Amount (Subtotal - Extra Discount)
                 const invoiceNet = toNum($('#totalBalance').val());
-                // Amount Paid Now
                 const paidNow = toNum($('#receiptsTotal').text());
-
-                // Projected Balance: Previous + New Debt - Payment
                 const projectedBalance = prevBal + invoiceNet - paidNow;
 
-                // Validate
                 if (projectedBalance > rangeBal) {
                     Swal.fire({
                         icon: 'error',
@@ -1638,15 +1650,44 @@
                 return;
             }
 
-            ensureSaved().then(function(res) {
-                Swal.fire({
-                    title: 'Success!',
-                    text: (res && res.msg) ? res.msg : 'Sale saved successfully',
-                    icon: 'success',
-                    timer: 1500,
-                    showConfirmButton: false
+            // Determine Title and Confirmation Text
+            let confirmTitle = 'Confirm & Post Sale?';
+            let confirmText = 'Are you sure you want to complete and post this Sale Invoice?';
+            let confirmBtnText = '<i class="fas fa-check-circle me-1"></i> Yes, Post Sale';
+
+            if (isConvertToSO) {
+                confirmTitle = 'Convert to Sales Order?';
+                confirmText = 'Are you sure you want to convert this Quotation into a Sales Order?';
+                confirmBtnText = '<i class="fas fa-check-circle me-1"></i> Yes, Convert to SO';
+            } else if (isConvertToSale) {
+                confirmTitle = 'Convert & Post Sale?';
+                confirmText = 'Are you sure you want to convert and post this into a Sale Invoice?';
+                confirmBtnText = '<i class="fas fa-check-circle me-1"></i> Yes, Post Sale';
+            } else if (currentSaleType === 'quotation') {
+                confirmTitle = 'Save Quotation?';
+                confirmText = 'Are you sure you want to save this Quotation?';
+                confirmBtnText = '<i class="fas fa-file-invoice me-1"></i> Yes, Save Quotation';
+            } else if (currentSaleType === 'sales_order') {
+                confirmTitle = 'Save Sales Order?';
+                confirmText = 'Are you sure you want to save this Sales Order?';
+                confirmBtnText = '<i class="fas fa-shopping-cart me-1"></i> Yes, Save Sales Order';
+            }
+
+            window.showConfirmPopup({
+                title: confirmTitle,
+                text: confirmText,
+                confirmBtnText: confirmBtnText
+            }, function() {
+                ensureSaved().then(function(res) {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: (res && res.msg) ? res.msg : 'Saved successfully',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    setTimeout(() => window.location.href = (res && res.redirect_url) ? res.redirect_url : "{{ route('sale.index') }}", 1500);
                 });
-                setTimeout(() => window.location.href = (res && res.redirect_url) ? res.redirect_url : "{{ route('sale.index') }}", 1500);
             });
         });
 

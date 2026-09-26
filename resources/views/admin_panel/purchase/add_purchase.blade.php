@@ -439,9 +439,25 @@
             }
         });
 
-        // Sirf button click pe submit
+        // Sirf button click pe confirm popup aur submit
         submitBtn.addEventListener("click", function() {
-            form.submit();
+            const isPO = new URLSearchParams(window.location.search).get('type') === 'purchase_order';
+            const title = isPO ? 'Save Purchase Order?' : 'Save Purchase Bill?';
+            const text = isPO ? 'Are you sure you want to save this Purchase Order?' : 'Are you sure you want to save and post this Purchase Bill?';
+            const confirmBtnText = isPO ? '<i class="fas fa-shopping-cart me-1"></i> Yes, Save PO' : '<i class="fas fa-check-circle me-1"></i> Yes, Save Purchase';
+
+            if (typeof window.showConfirmPopup === 'function') {
+                window.showConfirmPopup({
+                    title: title,
+                    text: text,
+                    confirmBtnText: confirmBtnText
+                }, function() {
+                    submitBtn.disabled = true;
+                    form.submit();
+                });
+            } else {
+                form.submit();
+            }
         });
     });
 </script>

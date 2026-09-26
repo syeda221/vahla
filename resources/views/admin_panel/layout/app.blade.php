@@ -1338,7 +1338,7 @@
     {{-- SweetAlert2 JS - Local (all.min.js includes CSS+JS bundled) --}}
     <script src="{{ asset('assets/vendors/sweetalert2/js/sweetalert2.all.min.js') }}"></script>
 
-    <!-- Global Delete Function -->
+    <!-- Global Universal Confirm & Delete Helpers -->
     <script>
         function logoutAndDeleteFunction(button) {
             var url = button.getAttribute('data-url');
@@ -1357,6 +1357,79 @@
                 }
             });
         }
+
+        /**
+         * Global Universal Confirmation Popup (SweetAlert2)
+         * @param {Object} options - { title, text, html, icon, confirmBtnText, cancelBtnText, confirmBtnColor }
+         * @param {Function} onConfirm - Callback if confirmed
+         */
+        window.showConfirmPopup = function(options, onConfirm) {
+            options = options || {};
+            var title = options.title || 'Are you sure?';
+            var text = options.text || 'Do you want to proceed with this action?';
+            var html = options.html || undefined;
+            var icon = options.icon || 'question';
+            var confirmBtnText = options.confirmBtnText || '<i class="fas fa-check me-1"></i> Yes, Proceed';
+            var cancelBtnText = options.cancelBtnText || '<i class="fas fa-times me-1"></i> Cancel';
+            var confirmBtnColor = options.confirmBtnColor || '#10b981';
+
+            Swal.fire({
+                title: title,
+                text: html ? undefined : text,
+                html: html,
+                icon: icon,
+                showCancelButton: true,
+                confirmButtonColor: confirmBtnColor,
+                cancelButtonColor: '#64748b',
+                confirmButtonText: confirmBtnText,
+                cancelButtonText: cancelBtnText,
+                reverseButtons: true,
+                allowOutsideClick: false,
+                customClass: {
+                    confirmButton: 'btn btn-success px-4 py-2 fw-bold shadow-sm',
+                    cancelButton: 'btn btn-secondary px-3 py-2 fw-bold me-2'
+                },
+                buttonsStyling: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    if (typeof onConfirm === 'function') {
+                        onConfirm();
+                    }
+                }
+            });
+        };
+
+        // Universal Declarative Confirmation for [data-confirm="true"] or .btn-confirm-action
+        $(document).on('click', '[data-confirm="true"], .btn-confirm-action', function(e) {
+            var $btn = $(this);
+            if ($btn.data('confirmed') === 'yes') {
+                return true; // Already confirmed, let it proceed
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            var title = $btn.data('confirm-title') || 'Are you sure?';
+            var text = $btn.data('confirm-text') || 'Do you want to proceed with this action?';
+            var btnText = $btn.data('confirm-btn') || '<i class="fas fa-check me-1"></i> Yes, Proceed';
+
+            window.showConfirmPopup({
+                title: title,
+                text: text,
+                confirmBtnText: btnText
+            }, function() {
+                $btn.data('confirmed', 'yes');
+                if ($btn.is(':submit') || $btn.closest('form').length) {
+                    var $form = $btn.closest('form');
+                    $btn.prop('disabled', true);
+                    $form.submit();
+                } else if ($btn.attr('href')) {
+                    window.location.href = $btn.attr('href');
+                } else {
+                    $btn.trigger('click');
+                }
+            });
+        });
     </script>
 
     @yield('js')

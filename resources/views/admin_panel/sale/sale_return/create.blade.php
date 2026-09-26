@@ -577,10 +577,14 @@
 
 
                                 <div class="mt-4 d-grid gap-2">
-                                    <button type="submit" class="btn btn-erp-primary btn-lg shadow-sm">
+                                    <button type="submit" 
+                                            class="btn btn-erp-primary btn-lg shadow-sm"
+                                            data-confirm="true"
+                                            data-confirm-title="Process Sale Return?"
+                                            data-confirm-text="Are you sure you want to process this Sale Return and update inventory and customer ledger?"
+                                            data-confirm-btn="<i class='fas fa-check-circle me-1'></i> Yes, Process Return">
                                         <i class="fas fa-check-circle me-2"></i> Process Sale Return
                                     </button>
-
                                 </div>
                             </div>
                         </div>
