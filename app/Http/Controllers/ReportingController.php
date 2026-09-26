@@ -2076,14 +2076,17 @@ class ReportingController extends Controller
                     }
 
                     $allTransactions[] = [
-                        'sort_date' => $sortDate,
-                        'date' => $formattedDate,
-                        'invoice' => $ref,
-                        'description' => $desc,
-                        'vendor_name' => $vendorName,
-                        'debit' => $row['debit'] ?? 0,
-                        'credit' => $row['credit'] ?? 0,
-                        'balance' => $row['balance'] ?? 0,
+                        'sort_date'         => $sortDate,
+                        'date'              => $formattedDate,
+                        'invoice'           => $ref,
+                        'invoice_no'        => $row['invoice_no'] ?? ($ref !== '-' ? $ref : null),
+                        'vendor_invoice_no' => $row['vendor_invoice_no'] ?? null,
+                        'source_type'       => $row['source_type'] ?? null,
+                        'description'       => $desc,
+                        'vendor_name'       => $vendorName,
+                        'debit'             => $row['debit'] ?? 0,
+                        'credit'            => $row['credit'] ?? 0,
+                        'balance'           => $row['balance'] ?? 0,
                     ];
                 }
 
@@ -2147,12 +2150,15 @@ class ReportingController extends Controller
             }
 
             return [
-                'date' => $formattedDate,
-                'invoice' => $ref,
-                'description' => $desc,
-                'debit' => $row['debit'] ?? 0,
-                'credit' => $row['credit'] ?? 0,
-                'balance' => $row['balance'] ?? 0,
+                'date'              => $formattedDate,
+                'invoice'           => $ref,
+                'invoice_no'        => $row['invoice_no'] ?? ($ref !== '-' ? $ref : null),
+                'vendor_invoice_no' => $row['vendor_invoice_no'] ?? null,
+                'source_type'       => $row['source_type'] ?? null,
+                'description'       => $desc,
+                'debit'             => $row['debit'] ?? 0,
+                'credit'            => $row['credit'] ?? 0,
+                'balance'           => $row['balance'] ?? 0,
             ];
         });
 

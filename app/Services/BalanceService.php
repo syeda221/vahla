@@ -335,13 +335,15 @@ class BalanceService
             ->select('id', 'invoice_no', 'purchase_order_no', 'net_amount', 'purchase_date')
             ->get()
             ->map(fn($p) => [
-                'source_type' => 'Purchase',
-                'source_id'   => $p->id,
-                'date'        => $p->purchase_date,
-                'description' => 'Purchase Invoice #' . $p->invoice_no . ($p->purchase_order_no ? ' (Vendor Inv#: ' . $p->purchase_order_no . ')' : ''),
-                'debit'       => 0,
-                'credit'      => (float) $p->net_amount, // Cr = we owe vendor more
-                'sort_date'   => $p->purchase_date,
+                'source_type'       => 'Purchase',
+                'source_id'         => $p->id,
+                'date'              => $p->purchase_date,
+                'invoice_no'        => $p->invoice_no,
+                'vendor_invoice_no' => $p->purchase_order_no,
+                'description'       => 'Purchase Invoice #' . $p->invoice_no . ($p->purchase_order_no ? ' (Vendor Inv#: ' . $p->purchase_order_no . ')' : ''),
+                'debit'             => 0,
+                'credit'            => (float) $p->net_amount, // Cr = we owe vendor more
+                'sort_date'         => $p->purchase_date,
             ]);
 
         // Purchase Returns in range (Reduce payable)
@@ -351,13 +353,15 @@ class BalanceService
             ->select('id', 'return_invoice', 'net_amount', 'return_date')
             ->get()
             ->map(fn($r) => [
-                'source_type' => 'PurchaseReturn',
-                'source_id'   => $r->id,
-                'date'        => $r->return_date,
-                'description' => 'Purchase Return #' . $r->return_invoice,
-                'debit'       => (float) $r->net_amount, // Dr = reduces what we owe
-                'credit'      => 0,
-                'sort_date'   => $r->return_date,
+                'source_type'       => 'PurchaseReturn',
+                'source_id'         => $r->id,
+                'date'              => $r->return_date,
+                'invoice_no'        => $r->return_invoice,
+                'vendor_invoice_no' => null,
+                'description'       => 'Purchase Return #' . $r->return_invoice,
+                'debit'             => (float) $r->net_amount, // Dr = reduces what we owe
+                'credit'            => 0,
+                'sort_date'         => $r->return_date,
             ]);
 
         // Payments in range: AP debit journal entries against this vendor (excluding duplicate purchase/return voucher entries)
@@ -372,13 +376,15 @@ class BalanceService
             ->orderBy('id')
             ->get()
             ->map(fn($e) => [
-                'source_type' => $e->source_type,
-                'source_id'   => $e->source_id,
-                'date'        => $e->entry_date,
-                'description' => $e->description,
-                'debit'       => (float) $e->debit,   // Dr = reduces what we owe
-                'credit'      => (float) $e->credit,  // Cr = increases what we owe (e.g. refunds/adjustments)
-                'sort_date'   => $e->entry_date,
+                'source_type'       => $e->source_type,
+                'source_id'         => $e->source_id,
+                'date'              => $e->entry_date,
+                'invoice_no'        => null,
+                'vendor_invoice_no' => null,
+                'description'       => $e->description,
+                'debit'             => (float) $e->debit,   // Dr = reduces what we owe
+                'credit'            => (float) $e->credit,  // Cr = increases what we owe (e.g. refunds/adjustments)
+                'sort_date'         => $e->entry_date,
             ]);
 
         // Merge & sort

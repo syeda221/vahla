@@ -401,15 +401,13 @@
             <table class="print-table">
                 <thead>
                     <tr>
-                        <th class="text-left" style="width: 8%;">Date</th>
-                        <th class="text-left" style="width: 15%;">Details</th>
-                        <th style="width: 15%;">Bank Name</th>
-                        <th class="text-left" style="width: 20%;">Ref No.</th>
-                        <th style="width: 10%;">V No.</th>
-                        <th style="width: 7%;">Quantity</th>
-                        <th class="text-right" style="width: 8%;">Debit</th>
-                        <th class="text-right" style="width: 8%;">Credit</th>
-                        <th class="text-right" style="width: 9%;">Balance</th>
+                        <th class="text-left" style="width: 10%;">Date</th>
+                        <th class="text-left" style="width: 15%;">Type</th>
+                        <th class="text-left" style="width: 14%;">Invoice No.</th>
+                        <th class="text-left" style="width: 25%;">Details</th>
+                        <th class="text-right" style="width: 12%;">Debit</th>
+                        <th class="text-right" style="width: 12%;">Credit</th>
+                        <th class="text-right" style="width: 12%;">Balance</th>
                     </tr>
                 </thead>
                 <tbody id="printLedgerBody">
@@ -653,8 +651,6 @@
                             <td class="text-left fw-bold">Opening Balance</td>
                             <td class="text-center fw-bold">-</td>
                             <td class="text-left fw-bold">Opening Balance (B/F)</td>
-                            <td class="text-center fw-bold">-</td>
-                            <td class="text-center fw-bold">0</td>
                             <td class="text-right fw-bold">-</td>
                             <td class="text-right fw-bold">-</td>
                             <td class="text-right fw-bold">${parseFloat(res.opening_balance).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
@@ -667,44 +663,39 @@
                         let bal = parseFloat(t.balance);
 
                         // Extract details and bank from description/ref
-                        let details = 'Journal Entry';
-                        let bankName = '';
+                        let type = 'Journal Entry';
                         let refDesc = t.description || '';
                         
                         if (refDesc.toLowerCase().includes('payment') || refDesc.toLowerCase().includes('receipt')) {
-                            details = 'Payment Received';
+                            type = 'Payment Received';
                         } else if (refDesc.toLowerCase().includes('sale invoice')) {
-                            details = 'Sale Invoice';
+                            type = 'Sale Invoice';
                         }
                         
                         // Look for A/C: bank name
                         let acMatch = refDesc.match(/\[A\/C:\s*([^\]]+)\]/);
                         if (acMatch) {
-                            bankName = acMatch[1].toUpperCase();
                             refDesc = refDesc.replace(acMatch[0], '').trim();
-                        } else {
-                            if (details !== 'Sale Invoice') {
-                                bankName = (t.customer_name && t.customer_name !== '-') ? t.customer_name.toUpperCase() : '';
-                            }
                         }
 
-                        // Format date to DD/MM/YYYY
+                        // Format date to DD-MMM-YYYY
                         let dStr = t.date;
                         if (t.sort_date) {
                             let dObj = new Date(t.sort_date);
                             if (!isNaN(dObj)) {
-                                dStr = ('0' + dObj.getDate()).slice(-2) + '/' + ('0' + (dObj.getMonth()+1)).slice(-2) + '/' + dObj.getFullYear();
+                                let months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                                dStr = ('0' + dObj.getDate()).slice(-2) + '-' + months[dObj.getMonth()] + '-' + dObj.getFullYear();
                             }
                         }
+
+                        let invNo = (t.invoice && t.invoice !== '-') ? t.invoice : '-';
 
                         printHtml += `
                             <tr>
                                 <td class="text-left">${dStr}</td>
-                                <td class="text-left">${details}</td>
-                                <td class="text-center">${bankName}</td>
+                                <td class="text-left">${type}</td>
+                                <td class="text-left font-monospace">${invNo}</td>
                                 <td class="text-left">${refDesc}</td>
-                                <td class="text-center">${t.invoice ?? '-'}</td>
-                                <td class="text-center">0</td>
                                 <td class="text-right">${debit > 0 ? debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
                                 <td class="text-right">${credit > 0 ? credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
                                 <td class="text-right">${bal.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
@@ -714,8 +705,7 @@
 
                     printHtml += `
                         <tr>
-                            <td colspan="5" class="text-right fw-bold"></td>
-                            <td class="text-center fw-bold">0</td>
+                            <td colspan="4" class="text-right fw-bold">Total:</td>
                             <td class="text-right fw-bold">${totalDebit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                             <td class="text-right fw-bold">${totalCredit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
                             <td class="text-right fw-bold">${lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
