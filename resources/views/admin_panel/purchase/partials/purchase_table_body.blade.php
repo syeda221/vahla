@@ -127,12 +127,12 @@
                     @if ($purchase->status_purchase != 'draft')
                         @can('purchases.view')
                             <li>
-                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.invoice', $purchase->id) }}">
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.invoice', $purchase->id) }}" target="_blank">
                                     <i class="fas fa-file-invoice text-info fa-fw"></i> View Invoice
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.receipt', $purchase->id) }}">
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.receipt', $purchase->id) }}" target="_blank">
                                     <i class="fas fa-receipt text-secondary fa-fw"></i> View Receipt
                                 </a>
                             </li>
