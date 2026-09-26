@@ -265,6 +265,7 @@
             <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="newVoucherDropdown" style="border-radius:12px; font-size:13px; font-weight:600; padding:8px;">
                 <li><a class="dropdown-item py-2 rounded-2 fw-bold text-primary" href="{{ route('vouchers.create') }}"><i class="fas fa-plus-circle text-primary me-2"></i> Create Voucher (Unified)</a></li>
                 <li><a class="dropdown-item py-2 rounded-2" href="{{ route('vouchers.create') }}?type=party_transfer"><i class="fas fa-right-left text-primary me-2"></i> Add Party to Party Transfer</a></li>
+                <li><a class="dropdown-item py-2 rounded-2" href="{{ route('vouchers.create') }}?type=internal_transfer"><i class="fas fa-money-bill-transfer text-primary me-2"></i> Add Internal Transfer</a></li>
                 <li><hr class="dropdown-divider my-1"></li>
                 @can('expense.voucher.create')
                     <li><a class="dropdown-item py-2 rounded-2" href="{{ route('expense_vochers') }}"><i class="fas fa-file-invoice text-danger me-2"></i> Add Expense Voucher</a></li>
@@ -318,6 +319,7 @@
         <button class="filter-card-btn" data-type="payment_in"><i class="fas fa-arrow-right text-success me-1"></i> Payment In (Receipts)</button>
         <button class="filter-card-btn" data-type="payment_out"><i class="fas fa-arrow-left text-warning me-1"></i> Payment Out (Payments)</button>
         <button class="filter-card-btn" data-type="party_transfer"><i class="fas fa-right-left text-primary me-1"></i> Party Transfer</button>
+        <button class="filter-card-btn" data-type="internal_transfer"><i class="fas fa-money-bill-transfer text-info me-1"></i> Internal Transfer</button>
     </div>
 
     {{-- Advanced Filters --}}
@@ -449,6 +451,7 @@ $(function() {
                     else if (r.source === 'payment_in') badge = 'bg-success text-white';
                     else if (r.source === 'payment_out') badge = 'bg-warning text-dark';
                     else if (r.source === 'party_transfer') badge = 'bg-primary text-white';
+                    else if (r.source === 'internal_transfer') badge = 'bg-info text-dark';
                     return '<span class="badge ' + badge + '">' + (v || '-') + '</span>';
                 }
             },

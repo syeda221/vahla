@@ -208,7 +208,11 @@
             <div>Ph: {{ \App\Models\Setting::get('company_phone', '0327-9226901') }}</div>
         </div>
 
-        <div class="receipt-title">PARTY TRANSFER VOUCHER</div>
+        @php
+            $isInternal = ($partyTransfer->voucher_type === 'contra') || str_contains($partyTransfer->voucher_no, 'ITV') || (isset($partyTransfer->remarks) && str_contains($partyTransfer->remarks, 'Internal Transfer'));
+            $voucherTitle = $isInternal ? 'INTERNAL TRANSFER VOUCHER' : 'PARTY TRANSFER VOUCHER';
+        @endphp
+        <div class="receipt-title">{{ $voucherTitle }}</div>
         <div class="divider"></div>
 
         <!-- Meta Info -->

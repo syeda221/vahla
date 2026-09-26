@@ -169,9 +169,9 @@ class VoucherController extends Controller
     {
         \Log::info('Print Voucher Requested. ID: '.$id);
 
-        // 0. Party Transfer (Journal type) — Party to Party Voucher
+        // 0. Party Transfer / Internal Transfer (Journal & Contra type)
         $partyTransfer = \App\Models\VoucherMaster::where('id', $id)
-            ->where('voucher_type', \App\Models\VoucherMaster::TYPE_JOURNAL)
+            ->whereIn('voucher_type', [\App\Models\VoucherMaster::TYPE_JOURNAL, \App\Models\VoucherMaster::TYPE_CONTRA, 'transfer'])
             ->first();
 
         if ($partyTransfer) {
@@ -179,16 +179,16 @@ class VoucherController extends Controller
 
             $sourceName = '';
             $destName = '';
-            if ($partyTransfer->remarks && str_contains($partyTransfer->remarks, 'Party Transfer:')) {
+            if ($partyTransfer->remarks && (str_contains($partyTransfer->remarks, 'Party Transfer:') || str_contains($partyTransfer->remarks, 'Internal Transfer:'))) {
                 $parts = explode('->', $partyTransfer->remarks);
-                $srcPart = trim(str_replace('Party Transfer:', '', $parts[0]));
+                $srcPart = trim(preg_replace('/^(Party|Internal)\s*Transfer:\s*/i', '', $parts[0]));
                 $sourceName = $srcPart;
                 if (isset($parts[1])) {
                     $destPart = trim(explode('|', $parts[1])[0]);
                     $destName = $destPart;
                 }
             } else {
-                $sourceName = $partyTransfer->remarks ?: 'Party Transfer';
+                $sourceName = $partyTransfer->remarks ?: 'Transfer';
             }
 
             $rows = [];
@@ -2015,25 +2015,181 @@ class VoucherController extends Controller
     }
 
     /**
+     * Store Internal Transfer Voucher (Cash/Bank to Cash/Bank / Contra)
+     */
+    public function storeInternalTransfer(Request $request)
+    {
+        $request->validate([
+            'transfer_date'   => 'required|date',
+            'from_account_id' => 'required|exists:accounts,id',
+            'to_account_id'   => 'required|exists:accounts,id',
+            'amount'          => 'required|numeric|min:0.01',
+            'remarks'         => 'nullable|string',
+        ]);
+
+        if ($request->from_account_id == $request->to_account_id) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Source Account and Destination Account cannot be the same.',
+                ], 422);
+            }
+            return back()->with('error', 'Source Account and Destination Account cannot be the same.');
+        }
+
+        DB::beginTransaction();
+        try {
+            $amount = (float) $request->amount;
+            $date = $request->transfer_date;
+            $remarks = $request->remarks;
+
+            $fromAccount = Account::find($request->from_account_id);
+            $toAccount   = Account::find($request->to_account_id);
+
+            $fromName = $fromAccount ? $fromAccount->title : 'Account #' . $request->from_account_id;
+            $toName   = $toAccount ? $toAccount->title : 'Account #' . $request->to_account_id;
+
+            // Generate ITV Voucher Number
+            $lastItv = \App\Models\VoucherMaster::where('voucher_no', 'like', 'ITV-%')
+                ->orWhere('voucher_type', \App\Models\VoucherMaster::TYPE_CONTRA)
+                ->latest('id')
+                ->first();
+            $nextNum = $lastItv ? ($lastItv->id + 1) : 1;
+            $itvid = 'ITV-' . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+
+            // Create VoucherMaster of type 'contra'
+            $voucher = \App\Models\VoucherMaster::create([
+                'voucher_type' => \App\Models\VoucherMaster::TYPE_CONTRA,
+                'voucher_no'   => $itvid,
+                'date'         => $date,
+                'status'       => \App\Models\VoucherMaster::STATUS_POSTED,
+                'party_type'   => Account::class,
+                'party_id'     => $request->from_account_id,
+                'remarks'      => "Internal Transfer: {$fromName} -> {$toName}" . ($remarks ? " | {$remarks}" : ""),
+                'total_amount' => $amount,
+                'created_by'   => auth()->id(),
+            ]);
+
+            // Voucher Details:
+            // Debit Destination Account (Money enters)
+            \App\Models\VoucherDetail::create([
+                'voucher_master_id' => $voucher->id,
+                'account_id'        => $request->to_account_id,
+                'debit'             => $amount,
+                'credit'            => 0,
+                'narration'         => "Transfer from {$fromName}" . ($remarks ? " - {$remarks}" : ""),
+            ]);
+
+            // Credit Source Account (Money leaves)
+            \App\Models\VoucherDetail::create([
+                'voucher_master_id' => $voucher->id,
+                'account_id'        => $request->from_account_id,
+                'debit'             => 0,
+                'credit'            => $amount,
+                'narration'         => "Transfer to {$toName}" . ($remarks ? " - {$remarks}" : ""),
+            ]);
+
+            // General Ledger / Journal Entries:
+            $journalService = app(\App\Services\JournalEntryService::class);
+
+            // Destination Journal Entry (Debit)
+            $journalService->recordEntry(
+                $voucher,
+                $request->to_account_id,
+                $amount,
+                0,
+                "Internal Transfer from {$fromName} (Ref: {$itvid})" . ($remarks ? " - {$remarks}" : ""),
+                $date,
+                $fromAccount
+            );
+
+            // Source Journal Entry (Credit)
+            $journalService->recordEntry(
+                $voucher,
+                $request->from_account_id,
+                0,
+                $amount,
+                "Internal Transfer to {$toName} (Ref: {$itvid})" . ($remarks ? " - {$remarks}" : ""),
+                $date,
+                $toAccount
+            );
+
+            DB::commit();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Internal Transfer of Rs. " . number_format($amount, 2) . " processed successfully!",
+                    'voucher_id' => $voucher->id,
+                    'print_url' => route('print', $voucher->id),
+                    'all_vouchers_url' => route('voucher.history'),
+                ]);
+            }
+
+            return redirect()->route('voucher.history')->with('success', 'Internal Transfer processed successfully!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Internal Transfer Error: ' . $e->getMessage());
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete Internal Transfer Voucher
+     */
+    public function destroyInternalTransferVoucher($id)
+    {
+        DB::beginTransaction();
+        try {
+            $voucherMaster = \App\Models\VoucherMaster::where('id', $id)
+                ->where('voucher_type', \App\Models\VoucherMaster::TYPE_CONTRA)
+                ->first();
+
+            if (!$voucherMaster) {
+                return back()->with('error', 'Internal Transfer Voucher not found.');
+            }
+
+            // Reverse Journal Entries and update Account Balances
+            $journalService = app(\App\Services\JournalEntryService::class);
+            $journalService->reverseEntriesForSource($voucherMaster);
+
+            $voucherMaster->details()->delete();
+            $voucherMaster->delete();
+
+            DB::commit();
+
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Internal Transfer Voucher deleted successfully.']);
+            }
+            return back()->with('success', 'Internal Transfer Voucher deleted successfully.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Internal Transfer Delete Error: ' . $e->getMessage());
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['message' => 'Failed to delete Internal Transfer Voucher: ' . $e->getMessage()], 500);
+            }
+            return back()->with('error', 'Failed to delete Internal Transfer Voucher: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Unified All Vouchers Creation View
      */
     public function createUnified()
     {
-        $cashBankHeadIds = DB::table('account_heads')
-            ->where(function($q) {
-                $q->whereRaw('LOWER(name) LIKE ?', ['%cash%'])
-                  ->orWhereRaw('LOWER(name) LIKE ?', ['%bank%']);
-            })
-            ->pluck('id');
+        $excludedCodes = ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP'];
+        $excludedTitles = ['Accounts Receivable', 'Accounts Payable', 'Sales Revenue', 'Purchase Expense'];
 
         $accounts = DB::table('accounts')
             ->where('status', 1)
-            ->where(function($q) use ($cashBankHeadIds) {
-                $q->whereIn('head_id', $cashBankHeadIds)
-                  ->orWhereRaw('LOWER(title) LIKE ?', ['%cash%'])
-                  ->orWhereRaw('LOWER(title) LIKE ?', ['%bank%']);
-            })
-            ->whereNotIn('account_code', ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP'])
+            ->whereNotIn('account_code', $excludedCodes)
+            ->whereNotIn('title', $excludedTitles)
             ->orderBy('title')
             ->get();
 
@@ -2061,13 +2217,21 @@ class VoucherController extends Controller
             ->first();
         $nextTvid = 'TVID-' . str_pad($lastTv ? $lastTv->id + 1 : 1, 3, '0', STR_PAD_LEFT);
 
+        $lastItv = DB::table('voucher_masters')
+            ->where('voucher_no', 'like', 'ITV-%')
+            ->orWhere('voucher_type', 'contra')
+            ->latest('id')
+            ->first();
+        $nextItvid = 'ITV-' . str_pad($lastItv ? $lastItv->id + 1 : 1, 3, '0', STR_PAD_LEFT);
+
         return view('admin_panel.vochers.unified_create', compact(
             'accounts',
             'customers',
             'vendors',
             'expenseCategories',
             'nextEvid',
-            'nextTvid'
+            'nextTvid',
+            'nextItvid'
         ));
     }
 
@@ -2411,6 +2575,59 @@ class VoucherController extends Controller
             }
         }
 
+        // 5. Internal Transfers (Bank/Cash to Bank/Cash)
+        if ($type === 'all' || $type === 'internal_transfer' || $type === 'contra') {
+            $itQuery = DB::table('voucher_masters')->where('voucher_type', \App\Models\VoucherMaster::TYPE_CONTRA);
+
+            if ($fromDate) {
+                $itQuery->whereDate('date', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $itQuery->whereDate('date', '<=', $toDate);
+            }
+            if ($accountId) {
+                $matchingMasterIds = DB::table('voucher_details')->where('account_id', $accountId)->pluck('voucher_master_id');
+                $itQuery->whereIn('id', $matchingMasterIds);
+            }
+            if ($minAmount !== null && $minAmount !== '') {
+                $itQuery->where('total_amount', '>=', (float)$minAmount);
+            }
+            if ($maxAmount !== null && $maxAmount !== '') {
+                $itQuery->where('total_amount', '<=', (float)$maxAmount);
+            }
+
+            $itList = $itQuery->orderBy('id', 'desc')->get();
+
+            foreach ($itList as $it) {
+                $transferDesc = '-';
+                if ($it->remarks && str_contains($it->remarks, 'Internal Transfer:')) {
+                    $parts = explode('|', $it->remarks);
+                    $transferDesc = trim(str_replace('Internal Transfer:', '', $parts[0]));
+                } else {
+                    $transferDesc = $it->remarks ?: 'Internal Transfer';
+                }
+
+                $canDelete = $user && ($user->can('all.vouchers.delete') || $user->can('vouchers.create') || $user->can('payment.voucher.delete'));
+
+                $records->push([
+                    'id' => $it->id,
+                    'voucher_no' => $it->voucher_no ?: 'ITV-' . $it->id,
+                    'type_label' => 'Internal Transfer',
+                    'source' => 'internal_transfer',
+                    'date' => $it->date ? date('Y-m-d', strtotime($it->date)) : '-',
+                    'party_name' => $transferDesc,
+                    'party_type_label' => 'Bank/Cash',
+                    'detail' => 'Internal Transfer',
+                    'amount' => (float)$it->total_amount,
+                    'remarks' => $it->remarks ?: '-',
+                    'print_url' => route('print', $it->id),
+                    'delete_url' => $canDelete ? route('internal_transfer.destroy', $it->id) : null,
+                    'delete_method' => 'DELETE',
+                    'created_at' => $it->created_at ?? $it->date,
+                ]);
+            }
+        }
+
         // Global search filtering
         if (!empty($searchValue)) {
             $records = $records->filter(function($item) use ($searchValue) {
@@ -2430,6 +2647,7 @@ class VoucherController extends Controller
         $totalPaymentIn = $records->where('source', 'payment_in')->sum('amount');
         $totalPaymentOut = $records->where('source', 'payment_out')->sum('amount');
         $totalPartyTransfer = $records->where('source', 'party_transfer')->sum('amount');
+        $totalInternalTransfer = $records->where('source', 'internal_transfer')->sum('amount');
 
         // Sort records by date descending
         $sorted = $records->sortByDesc(function($item) {
@@ -2457,6 +2675,7 @@ class VoucherController extends Controller
                 'total_payment_in' => $totalPaymentIn,
                 'total_payment_out' => $totalPaymentOut,
                 'total_party_transfer' => $totalPartyTransfer,
+                'total_internal_transfer' => $totalInternalTransfer,
             ]
         ]);
     }

@@ -1891,10 +1891,24 @@ class ReportingController extends Controller
                         $sortDate = \Carbon\Carbon::parse($entryDate)->format('Y-m-d');
                     }
 
+                    $invoiceUrl = null;
+                    if (($row['source_type'] ?? '') === \App\Models\Sale::class || ($row['source_type'] ?? '') === 'Sale' || ($row['source_type'] ?? '') === 'SaleInvoice') {
+                        if (!empty($row['source_id'])) {
+                            $invoiceUrl = route('sales.invoice', $row['source_id']);
+                        }
+                    }
+                    if (!$invoiceUrl && $ref !== '-') {
+                        $saleId = \App\Models\Sale::where('invoice_no', $ref)->orWhere('id', $ref)->value('id');
+                        if ($saleId) {
+                            $invoiceUrl = route('sales.invoice', $saleId);
+                        }
+                    }
+
                     $allTransactions[] = [
                         'sort_date' => $sortDate,
                         'date' => $formattedDate,
                         'invoice' => $ref,
+                        'invoice_url' => $invoiceUrl,
                         'description' => $desc,
                         'customer_name' => $customerName,
                         'debit' => $row['debit'] ?? 0,
@@ -1954,6 +1968,19 @@ class ReportingController extends Controller
                 $ref = $matches[1];
             }
 
+            $invoiceUrl = null;
+            if (($row['source_type'] ?? '') === \App\Models\Sale::class || ($row['source_type'] ?? '') === 'Sale' || ($row['source_type'] ?? '') === 'SaleInvoice') {
+                if (!empty($row['source_id'])) {
+                    $invoiceUrl = route('sales.invoice', $row['source_id']);
+                }
+            }
+            if (!$invoiceUrl && $ref !== '-') {
+                $saleId = \App\Models\Sale::where('invoice_no', $ref)->orWhere('id', $ref)->value('id');
+                if ($saleId) {
+                    $invoiceUrl = route('sales.invoice', $saleId);
+                }
+            }
+
             $entryDate = $row['date'];
             if ($entryDate instanceof \Carbon\Carbon) {
                 $formattedDate = $entryDate->format('d-M-Y');
@@ -1964,6 +1991,7 @@ class ReportingController extends Controller
             return [
                 'date' => $formattedDate,
                 'invoice' => $ref,
+                'invoice_url' => $invoiceUrl,
                 'description' => $desc,
                 'debit' => $row['debit'] ?? 0,
                 'credit' => $row['credit'] ?? 0,
@@ -2075,11 +2103,25 @@ class ReportingController extends Controller
                         $sortDate = \Carbon\Carbon::parse($entryDate)->format('Y-m-d');
                     }
 
+                    $invoiceUrl = null;
+                    if (($row['source_type'] ?? '') === \App\Models\Purchase::class || ($row['source_type'] ?? '') === 'Purchase') {
+                        if (!empty($row['source_id'])) {
+                            $invoiceUrl = route('purchase.invoice', $row['source_id']);
+                        }
+                    }
+                    if (!$invoiceUrl && $ref !== '-') {
+                        $purchaseId = \App\Models\Purchase::where('invoice_no', $ref)->orWhere('id', $ref)->value('id');
+                        if ($purchaseId) {
+                            $invoiceUrl = route('purchase.invoice', $purchaseId);
+                        }
+                    }
+
                     $allTransactions[] = [
                         'sort_date'         => $sortDate,
                         'date'              => $formattedDate,
                         'invoice'           => $ref,
                         'invoice_no'        => $row['invoice_no'] ?? ($ref !== '-' ? $ref : null),
+                        'invoice_url'       => $invoiceUrl,
                         'vendor_invoice_no' => $row['vendor_invoice_no'] ?? null,
                         'source_type'       => $row['source_type'] ?? null,
                         'description'       => $desc,
@@ -2142,6 +2184,19 @@ class ReportingController extends Controller
                 $ref = $matches[1];
             }
 
+            $invoiceUrl = null;
+            if (($row['source_type'] ?? '') === \App\Models\Purchase::class || ($row['source_type'] ?? '') === 'Purchase') {
+                if (!empty($row['source_id'])) {
+                    $invoiceUrl = route('purchase.invoice', $row['source_id']);
+                }
+            }
+            if (!$invoiceUrl && $ref !== '-') {
+                $purchaseId = \App\Models\Purchase::where('invoice_no', $ref)->orWhere('id', $ref)->value('id');
+                if ($purchaseId) {
+                    $invoiceUrl = route('purchase.invoice', $purchaseId);
+                }
+            }
+
             $entryDate = $row['date'];
             if ($entryDate instanceof \Carbon\Carbon) {
                 $formattedDate = $entryDate->format('d-M-Y');
@@ -2153,6 +2208,7 @@ class ReportingController extends Controller
                 'date'              => $formattedDate,
                 'invoice'           => $ref,
                 'invoice_no'        => $row['invoice_no'] ?? ($ref !== '-' ? $ref : null),
+                'invoice_url'       => $invoiceUrl,
                 'vendor_invoice_no' => $row['vendor_invoice_no'] ?? null,
                 'source_type'       => $row['source_type'] ?? null,
                 'description'       => $desc,

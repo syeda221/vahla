@@ -444,6 +444,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/store_party_transfer', [VoucherController::class, 'store_party_transfer'])->middleware('permission:vouchers.create|all.vouchers.create|all.vouchers.view|vouchers.view')->name('store_party_transfer');
     Route::delete('/party_transfer/{id}', [VoucherController::class, 'destroyPartyTransferVoucher'])->name('party_transfer.destroy');
 
+    // Internal Transfer (Contra) Vouchers (Cash/Bank to Cash/Bank)
+    Route::post('/store_internal_transfer', [VoucherController::class, 'storeInternalTransfer'])->middleware('permission:vouchers.create|all.vouchers.create|all.vouchers.view|vouchers.view')->name('store_internal_transfer');
+    Route::delete('/internal_transfer/{id}', [VoucherController::class, 'destroyInternalTransferVoucher'])->name('internal_transfer.destroy');
+
     // AJAX helpers for vouchers
     Route::get('/get-accounts-by-head/{id}', [VoucherController::class, 'getAccountsByHead']);
     Route::get('/getOpeningBalance/{type}/{id}', [VoucherController::class, 'getOpeningBalance']);

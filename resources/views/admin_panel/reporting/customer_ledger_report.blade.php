@@ -571,11 +571,19 @@
                         let balClass = lastBalance >= 0 ? 'balance-positive' : 'balance-negative';
                         let custName = t.customer_name || '-';
 
+                        let invoiceBadge = t.invoice_url 
+                            ? `<a href="${t.invoice_url}" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace text-decoration-none py-1 px-2 shadow-sm" title="View & Print Invoice" style="cursor: pointer;"><i class="fas fa-file-invoice me-1"></i>${t.invoice} <i class="fas fa-external-link-alt ms-1" style="font-size: 8.5px;"></i></a>`
+                            : `<span class="badge bg-light text-primary border font-monospace">${t.invoice ?? '-'}</span>`;
+
+                        let mobInvoiceBadge = t.invoice_url 
+                            ? `<a href="${t.invoice_url}" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace text-decoration-none" title="View & Print Invoice"><i class="fas fa-file-invoice me-1"></i>${t.invoice} <i class="fas fa-external-link-alt ms-1" style="font-size: 8.5px;"></i></a>`
+                            : `<span class="badge bg-light text-primary border font-monospace">${t.invoice ?? 'REF'}</span>`;
+
                         // Desktop Row
                         html += `
                             <tr>
                                 <td class="text-center small text-nowrap">${t.date}</td>
-                                <td class="text-center"><span class="badge bg-light text-primary border font-monospace">${t.invoice ?? '-'}</span></td>
+                                <td class="text-center">${invoiceBadge}</td>
                                 <td class="fw-bold text-dark">${custName}</td>
                                 <td class="text-start">${t.description}</td>
                                 <td class="text-end text-danger fw-semibold">${debit > 0 ? 'Rs ' + debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
@@ -591,7 +599,7 @@
                         mobHtml += `
                             <div class="mob-card p-2.5 p-2 mb-2">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="badge bg-light text-primary border font-monospace">${t.invoice ?? 'REF'}</span>
+                                    ${mobInvoiceBadge}
                                     <small class="text-muted" style="font-size: 10.5px;">${t.date}</small>
                                 </div>
                                 <div class="mb-1">

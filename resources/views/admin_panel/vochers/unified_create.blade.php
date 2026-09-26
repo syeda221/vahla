@@ -31,19 +31,26 @@
 /* ========= VOUCHER TYPE CARDS ========= */
 .voucher-types {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
     margin-bottom: 24px;
 }
 
-@media (max-width: 991px) {
+@media (max-width: 1200px) {
     .voucher-types {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 12px;
     }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 768px) {
+    .voucher-types {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+}
+
+@media (max-width: 480px) {
     .voucher-types {
         grid-template-columns: repeat(1, 1fr);
         gap: 10px;
@@ -429,7 +436,7 @@
             </div>
         </div>
 
-        {{-- Voucher Type Toggle Cards (4 Main Vouchers) --}}
+        {{-- Voucher Type Toggle Cards (5 Main Vouchers) --}}
         <div class="voucher-types" id="voucherTypeSelector">
             <div class="voucher-type-btn active" data-type="expense">
                 <i class="fas fa-file-invoice-dollar v-icon"></i>
@@ -446,6 +453,10 @@
             <div class="voucher-type-btn" data-type="party_transfer">
                 <i class="fas fa-right-left v-icon"></i>
                 <span class="v-label">Party To Party</span>
+            </div>
+            <div class="voucher-type-btn" data-type="internal_transfer">
+                <i class="fas fa-money-bill-transfer v-icon"></i>
+                <span class="v-label">Internal Transfer</span>
             </div>
         </div>
 
@@ -856,6 +867,89 @@
                 </form>
             </div>
 
+            {{-- ==================== 5. INTERNAL TRANSFER (BANK/CASH TO BANK/CASH) ==================== --}}
+            <div class="voucher-form-section" id="form-internal_transfer">
+                <form class="voucher-form" data-action="{{ route('store_internal_transfer') }}" method="POST">
+                    @csrf
+                    
+                    {{-- Row 1: Voucher ID & Date --}}
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Voucher ID</label>
+                            <input type="text" class="form-control fw-bold" name="itvid" value="{{ $nextItvid ?? 'ITV-Auto' }}" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Transfer Date <span class="text-danger">*</span></label>
+                            <input type="date" name="transfer_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                        </div>
+                    </div>
+
+                    {{-- Row 2: Source Account (From) & Destination Account (To) --}}
+                    <div class="row g-4 mb-4">
+                        {{-- Source Account (From) --}}
+                        <div class="col-md-6">
+                            <div class="section-card h-100" style="border-left: 3px solid #dc2626;">
+                                <h6 class="sub-heading sub-heading-danger">
+                                    <i class="fas fa-minus-circle text-danger"></i> From Account (Source / Deduct From)
+                                </h6>
+                                <div class="mb-3">
+                                    <label class="form-label">Select Bank / Cash Account <span class="text-danger">*</span></label>
+                                    <select name="from_account_id" id="it_from_account" class="form-select select2-account" required>
+                                        <option value="">Choose source account...</option>
+                                        @foreach($accounts as $acc)
+                                        <option value="{{ $acc->id }}" data-balance="{{ $acc->current_balance ?? 0 }}">{{ $acc->title }} ({{ $acc->account_code }})</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="voucher-balance zero mt-3" id="it_from_balance">
+                                    <span class="vb-ttl">Current Balance:</span> <strong>Rs. 0</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Destination Account (To) --}}
+                        <div class="col-md-6">
+                            <div class="section-card h-100" style="border-left: 3px solid #2563eb;">
+                                <h6 class="sub-heading sub-heading-primary">
+                                    <i class="fas fa-plus-circle text-primary"></i> To Account (Destination / Deposit To)
+                                </h6>
+                                <div class="mb-3">
+                                    <label class="form-label">Select Bank / Cash Account <span class="text-danger">*</span></label>
+                                    <select name="to_account_id" id="it_to_account" class="form-select select2-account" required>
+                                        <option value="">Choose destination account...</option>
+                                        @foreach($accounts as $acc)
+                                        <option value="{{ $acc->id }}" data-balance="{{ $acc->current_balance ?? 0 }}">{{ $acc->title }} ({{ $acc->account_code }})</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="voucher-balance zero mt-3" id="it_to_balance">
+                                    <span class="vb-ttl">Current Balance:</span> <strong>Rs. 0</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Row 3: Amount and Remarks --}}
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Transfer Amount <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" min="0.01" name="amount" id="it_amount" class="form-control text-end fw-bold" placeholder="0.00" required>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Remarks / Description</label>
+                            <textarea name="remarks" class="form-control" rows="2" placeholder="e.g. Account balance merge, cash deposit into bank, fund transfer..."></textarea>
+                        </div>
+                    </div>
+
+                    {{-- Submit Button --}}
+                    <div class="d-flex justify-content-end mt-4">
+                        <button type="submit" class="btn btn-voucher px-4 py-2">
+                            <i class="fas fa-check-circle me-1"></i> Process Internal Transfer
+                        </button>
+                    </div>
+                </form>
+            </div>
+
         </div>{{-- /voucher-form-card --}}
     </div>
 </div>
@@ -908,7 +1002,8 @@
             expense:          '<i class="fas fa-file-invoice-dollar text-primary"></i> <span>Expense Voucher</span>',
             payment_in:       '<i class="fas fa-arrow-down text-primary"></i> <span>Payment In Voucher</span>',
             payment_out:      '<i class="fas fa-arrow-up text-danger"></i> <span>Payment Out Voucher</span>',
-            party_transfer:   '<i class="fas fa-right-left text-primary"></i> <span>Party-to-Party Transfer</span>'
+            party_transfer:   '<i class="fas fa-right-left text-primary"></i> <span>Party-to-Party Transfer</span>',
+            internal_transfer: '<i class="fas fa-money-bill-transfer text-primary"></i> <span>Internal Transfer (Bank / Cash)</span>'
         };
 
         // ============== VOUCHER TYPE TOGGLE ==============
@@ -1017,7 +1112,7 @@
         // ============== LIVE BALANCE INDICATORS (Payment In/Out & Party Transfer) ==============
         var voucherBalanceUrl = '{{ route("voucher.balance", ["type" => "__TYPE__", "id" => "__ID__"]) }}';
 
-        function renderVoucherBalance($el, balance, label, display) {
+        function renderVoucherBalance($el, balance, label, display, type) {
             $el.removeClass('loading dr cr zero');
             balance = (typeof balance === 'number' && !isNaN(balance)) ? balance : 0;
             var abs = Math.abs(balance);
@@ -1028,23 +1123,33 @@
             }
             var badgeLabel = label === 'Cr' ? 'Cr' : 'Dr';
             var text = display || ('Rs. ' + abs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + badgeLabel);
-            $el.addClass(badgeLabel === 'Cr' ? 'cr' : 'dr');
+
+            var isPositive = false;
+            if (type === 'account') {
+                isPositive = (balance >= 0); // Bank / Cash Dr is positive available balance
+            } else if (type === 'vendor') {
+                isPositive = (badgeLabel === 'Dr'); // Advance paid to vendor
+            } else {
+                isPositive = (badgeLabel === 'Cr'); // Advance received from customer
+            }
+
+            $el.addClass(isPositive ? 'cr' : 'dr');
             $el.html('<span class="vb-ttl">Current Balance:</span> <strong>' + text + '</strong>');
         }
 
         function fetchVoucherBalance($el, type, id) {
             if (!type || !id) {
-                renderVoucherBalance($el, 0, '', null);
+                renderVoucherBalance($el, 0, '', null, type);
                 return;
             }
             $el.removeClass('dr cr zero').addClass('loading');
             $el.html('<i class="fas fa-spinner fa-spin me-1"></i> Loading balance...');
             $.getJSON(voucherBalanceUrl.replace('__TYPE__', encodeURIComponent(type)).replace('__ID__', encodeURIComponent(id)))
                 .done(function(res) {
-                    renderVoucherBalance($el, res.balance, res.label, res.display);
+                    renderVoucherBalance($el, res.balance, res.label, res.display, type);
                 })
                 .fail(function() {
-                    renderVoucherBalance($el, 0, '', null);
+                    renderVoucherBalance($el, 0, '', null, type);
                 });
         }
 
@@ -1105,6 +1210,27 @@
         $(document).on('change', '.pt-src-party-type', ptSrcPartyTypeHandler);
         $(document).on('change', '.pt-dst-party-type', ptDstPartyTypeHandler);
 
+        // ---- Internal Transfer (Bank / Cash) ----
+        $(document).on('change', '#it_from_account', function() {
+            var val = $(this).val();
+            fetchVoucherBalance($('#it_from_balance'), 'account', val);
+            if (val && val === $('#it_to_account').val()) {
+                Swal.fire({ icon: 'warning', title: 'Invalid Selection', text: 'Source Account and Destination Account cannot be the same!' });
+                $(this).val('').trigger('change.select2');
+                renderVoucherBalance($('#it_from_balance'), 0, '', null);
+            }
+        });
+
+        $(document).on('change', '#it_to_account', function() {
+            var val = $(this).val();
+            fetchVoucherBalance($('#it_to_balance'), 'account', val);
+            if (val && val === $('#it_from_account').val()) {
+                Swal.fire({ icon: 'warning', title: 'Invalid Selection', text: 'Destination Account and Source Account cannot be the same!' });
+                $(this).val('').trigger('change.select2');
+                renderVoucherBalance($('#it_to_balance'), 0, '', null);
+            }
+        });
+
         // Normalize indicators to the zero state on load
         renderVoucherBalance($('#pi_party_balance'), 0, '', null);
         renderVoucherBalance($('#pi_deposit_balance'), 0, '', null);
@@ -1112,6 +1238,8 @@
         renderVoucherBalance($('#po_payfrom_balance'), 0, '', null);
         renderVoucherBalance($('#pt_src_balance'), 0, '', null);
         renderVoucherBalance($('#pt_dst_balance'), 0, '', null);
+        renderVoucherBalance($('#it_from_balance'), 0, '', null);
+        renderVoucherBalance($('#it_to_balance'), 0, '', null);
 
         // ============== EXPENSE: SOURCE ACCOUNT SELECT ==============
         $(document).on('change', '#form-expense select[name="vendor_id"]', function() {

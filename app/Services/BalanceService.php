@@ -12,16 +12,31 @@ use Illuminate\Support\Facades\DB;
 class BalanceService
 {
     /**
-     * Get account (Cash/Bank/any GL account) balance from journal entries
+     * Get account (Cash/Bank/any GL account) balance
      * Positive = net Dr balance, Negative = net Cr balance
      */
     public function getAccountBalance(int $accountId): float
     {
-        $balance = JournalEntry::where('account_id', $accountId)
-            ->selectRaw('COALESCE(SUM(debit) - SUM(credit), 0) as balance')
-            ->value('balance') ?? 0;
+        $account = Account::find($accountId);
+        if (!$account) {
+            return 0.0;
+        }
 
-        return (float) $balance;
+        if ($account->current_balance !== null) {
+            return (float) $account->current_balance;
+        }
+
+        $opening = (float) ($account->opening_balance ?? 0);
+        $type = strtolower((string) ($account->type ?? 'debit'));
+        $journalDiff = (float) (JournalEntry::where('account_id', $accountId)
+            ->selectRaw('COALESCE(SUM(debit) - SUM(credit), 0) as balance')
+            ->value('balance') ?? 0);
+
+        if ($type === 'credit') {
+            return -$opening + $journalDiff;
+        }
+
+        return $opening + $journalDiff;
     }
 
     /**
