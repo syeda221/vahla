@@ -9,6 +9,7 @@
             {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}
         </td>
         <td class="font-monospace text-dark">{{ $purchase->invoice_no }}</td>
+        <td class="font-monospace text-primary fw-medium">{{ $purchase->purchase_order_no ?? '-' }}</td>
         <td class="font-monospace text-dark small">{{ $purchase->note ?? '-' }}</td>
         <td>
             @if ($purchase->status_purchase == 'draft')

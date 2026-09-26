@@ -97,10 +97,11 @@ class PurchaseController extends Controller
             });
         }
 
-        // Apply Bill No (Invoice No / ID) Filter
+        // Apply Bill No (Invoice No / ID / Vendor Inv#) Filter
         if ($request->filled('bill_no')) {
             $query->where(function ($q) use ($request) {
                 $q->where('invoice_no', 'like', "%{$request->bill_no}%")
+                  ->orWhere('purchase_order_no', 'like', "%{$request->bill_no}%")
                   ->orWhere('id', 'like', "%{$request->bill_no}%");
             });
         }
