@@ -390,9 +390,11 @@ class PurchasePOSController extends Controller
         if ($request->filled('edit_id')) {
             $editId = $request->input('edit_id');
             $response = $purchaseController->update($newRequest, $editId);
+            $pur = \App\Models\Purchase::find($editId);
+            $invNo = ($pur && $pur->invoice_no) ? " #{$pur->invoice_no}" : " #{$editId}";
             return response()->json([
                 "ok" => true,
-                "message" => "Purchase Updated Successfully!",
+                "message" => "Purchase Invoice{$invNo} Updated Successfully!",
                 "invoice_url" => route('purchase.invoice', $editId),
             ]);
         }

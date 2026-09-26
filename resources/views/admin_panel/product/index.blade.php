@@ -966,6 +966,9 @@ $(document).ready(function () {
     });
 
     // ── DataTable init ── (responsive:false – we use CSS horizontal scroll instead)
+    if ($.fn.DataTable.isDataTable('#productTable')) {
+        $('#productTable').DataTable().destroy();
+    }
     let table = $('#productTable').DataTable({
         responsive: false,
         paging:     false,
@@ -976,11 +979,6 @@ $(document).ready(function () {
         scrollX:    false,
         columnDefs: [{ targets: [0, 8], orderable: false, searchable: false }]
     });   // DataTable closes here
-
-    // ── Select All ──
-    $('#selectAll').click(function() {
-        $('.selectProduct').prop('checked', this.checked);
-    });
 
     // ── View Product Modal ──
     $(document).on('click', '.viewProductBtn', function() {

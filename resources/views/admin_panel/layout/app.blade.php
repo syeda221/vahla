@@ -1304,7 +1304,6 @@
     <script src="{{ asset('assets/vendors/charts/c3charts/d3-5.4.0.min.js') }}"></script>
 
     <!-- Data Table js -->
-    <script src="{{ asset('assets/vendors/data-table/js/jquery.dataTables.js') }}"></script>
     <script src="{{ asset('assets/vendors/data-table/js/jquery.dataTables.min.js') }}"></script>
     <script src="{{ asset('assets/vendors/data-table/js/dataTables.bootstrap4.min.js') }}"></script>
     <script src="{{ asset('assets/vendors/data-table/js/dataTables.responsive.min.js') }}"></script>
@@ -1345,8 +1344,6 @@
             });
         }
     </script>
-
-    @yield('js')
 
     <!-- Global SweetAlert Toast/Popup -->
     <script>

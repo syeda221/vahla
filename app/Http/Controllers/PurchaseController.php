@@ -872,16 +872,17 @@ class PurchaseController extends Controller
             return $purchase;
         });
 
+        $invNo = ($purchase && $purchase->invoice_no) ? " #{$purchase->invoice_no}" : " #{$purchase->id}";
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Purchase saved successfully.',
+                'message' => "Purchase Invoice{$invNo} saved successfully.",
                 'invoice_url' => route('purchase.invoice', $purchase->id),
                 'redirect_url' => route('Purchase.home'),
             ]);
         }
 
-        return redirect()->route('Purchase.home')->with('success', 'Purchase saved successfully.');
+        return redirect()->route('Purchase.home')->with('success', "Purchase Invoice{$invNo} saved successfully.");
     }
 
     // public function store(Request $request)
@@ -1301,7 +1302,7 @@ class PurchaseController extends Controller
             'payment_amount' => 'nullable|array',
         ]);
 
-        DB::transaction(function () use ($validated, $request, $id) {
+        $purchase = DB::transaction(function () use ($validated, $request, $id) {
             $purchase = Purchase::with(['items', 'vendor'])->findOrFail($id);
             $oldNetAmount = (float) $purchase->net_amount;
             $oldPaidAmount = (float) $purchase->paid_amount;
@@ -1667,9 +1668,12 @@ class PurchaseController extends Controller
                     $oldLedger->save();
                 }
             }
+
+            return $purchase;
         });
 
-        return redirect()->route('Purchase.home')->with('success', 'Purchase updated successfully!');
+        $invNo = ($purchase && $purchase->invoice_no) ? " #{$purchase->invoice_no}" : " #{$id}";
+        return redirect()->route('Purchase.home')->with('success', "Purchase Invoice{$invNo} updated successfully!");
     }
 
     public function destroy($id)
