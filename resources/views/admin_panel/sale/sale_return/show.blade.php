@@ -30,6 +30,10 @@
                                         <td>{{ $return->return_invoice }}</td>
                                     </tr>
                                     <tr>
+                                        <td class="fw-bold">Original Invoice:</td>
+                                        <td>{{ $return->sale->invoice_no ?? 'N/A' }}</td>
+                                    </tr>
+                                    <tr>
                                         <td class="fw-bold">Return Date:</td>
                                         <td>{{ \Carbon\Carbon::parse($return->return_date)->format('d/m/Y') }}</td>
                                     </tr>
