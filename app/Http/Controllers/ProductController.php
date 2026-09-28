@@ -1122,7 +1122,7 @@ class ProductController extends Controller
         }
 
         DB::transaction(function () use ($request, $id, $userId, $imagePath, $mode, $height, $width, $piecesPerBox,
-            $boxesQuantity, $loosePieces, $pieceQuantity,
+            $boxesQuantity, $loosePieces, $pieceQuantity, $totalStockQty,
             $totalM2, $pricePerM2, $purchasePricePerM2, $salePricePerBox, $purchasePricePerPiece, $piecesPerM2,
             $salePricePerPiece, $purchasePricePerBox) {
 
@@ -1335,7 +1335,24 @@ class ProductController extends Controller
             $ppb = $piecesPerBox > 0 ? $piecesPerBox : 1;
 
             if ($warehouseStock) {
-                // Keep the actual pieces we have, just update the box display approximation
+                $hasInit = \App\Models\StockMovement::where('product_id', $id)->where('ref_type', 'INIT')->exists();
+                $initQty = \App\Models\StockMovement::where('product_id', $id)->where('ref_type', 'INIT')->sum('qty');
+                
+                $oldInitial = $hasInit ? $initQty : $warehouseStock->total_pieces;
+                $delta = $totalStockQty - $oldInitial;
+
+                if ($delta != 0) {
+                    $warehouseStock->total_pieces += $delta;
+                    
+                    \App\Models\StockMovement::create([
+                        'product_id' => $id,
+                        'type' => 'adjustment',
+                        'qty' => $delta,
+                        'ref_type' => 'INIT',
+                        'note' => 'Initial stock corrected (' . $oldInitial . ' -> ' . $totalStockQty . ')',
+                    ]);
+                }
+
                 $warehouseStock->quantity = round($warehouseStock->total_pieces / $ppb, 2);
                 $warehouseStock->save();
             }
@@ -1479,11 +1496,17 @@ class ProductController extends Controller
         $totalPieces = $product->warehouseStocks->sum('total_pieces');
         $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
 
+        // For editing initial stock, we want to show the original initial stock, not the current remaining stock
+        $initQty = \App\Models\StockMovement::where('product_id', $product->id)->where('ref_type', 'INIT')->sum('qty');
+        // If there's an INIT record, use it. Otherwise fallback to current stock.
+        $hasInit = \App\Models\StockMovement::where('product_id', $product->id)->where('ref_type', 'INIT')->exists();
+        $displayPieces = $hasInit ? $initQty : $totalPieces;
+
         if ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_size') {
-            $product->boxes_quantity = (int) floor($totalPieces / $ppb);
-            $product->loose_pieces   = (int) ($totalPieces % $ppb);
+            $product->boxes_quantity = (int) floor($displayPieces / $ppb);
+            $product->loose_pieces   = (int) ($displayPieces % $ppb);
         } elseif ($product->size_mode === 'by_pieces') {
-            $product->piece_quantity  = (int) $totalPieces;
+            $product->piece_quantity  = (int) $displayPieces;
             $product->boxes_quantity  = 0;
             $product->loose_pieces    = 0;
         }
@@ -1527,7 +1550,7 @@ class ProductController extends Controller
                                 'sale_price' => $product->sale_price_per_piece ?? $product->sale_price_per_box ?? 0,
                                 'wholesale_price' => $product->wholesale_price ?? 0,
                                 'purch_price' => $product->purchase_price_per_piece ?? 0,
-                                'alert' => $product->alert_quantity ?? 0,
+                                'alert' => $product->alert_quantity ?? (($product->alert_carton_quantity ?? 0) * ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1)),
                                 'barcode' => '',
                                 'conv_factor' => ($product->size_mode === 'by_cartons') ? ($product->pieces_per_box ?: 1) : 1,
                                 'is_base_variant' => $idx === 0 ? 1 : 0
@@ -1547,7 +1570,7 @@ class ProductController extends Controller
                     'sale_price' => $product->sale_price_per_piece ?: $product->sale_price_per_box ?: 0,
                     'wholesale_price' => $product->wholesale_price ?? 0,
                     'purch_price' => $product->purchase_price_per_piece ?? 0,
-                    'alert' => $product->alert_quantity ?? 0,
+                    'alert' => $product->alert_quantity ?? (($product->alert_carton_quantity ?? 0) * ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1)),
                     'barcode' => $product->barcode_path ?? '',
                     'conv_factor' => ($product->size_mode === 'by_cartons') ? ($product->pieces_per_box ?: 1) : 1,
                     'is_base_variant' => 1
@@ -1566,7 +1589,7 @@ class ProductController extends Controller
                     'sale_price' => $product->sale_price_per_piece ?: $product->sale_price_per_box ?: 0,
                     'wholesale_price' => $product->wholesale_price ?: 0,
                     'purch_price' => $product->purchase_price_per_piece ?: 0,
-                    'alert' => $product->alert_quantity ?: 0,
+                    'alert' => $product->alert_quantity ?: (($product->alert_carton_quantity ?? 0) * ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1)),
                     'barcode' => $product->barcode_path ?: '',
                     'conv_factor' => ($product->size_mode === 'by_cartons') ? ($product->pieces_per_box ?: 1) : 1,
                     'is_base_variant' => 1,

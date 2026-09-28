@@ -144,6 +144,21 @@
                             <input type="text" id="mobile_desk" class="form-control form-control-sm fw-bold mobileInput" placeholder="Mobile..." style="height: 32px; width: 120px; font-size: .78rem; border-radius: 6px;">
                         </div>
 
+                        <div class="d-flex align-items-center gap-1">
+                            <label class="sale-filter-label mb-0 ms-1 me-1">Zone:</label>
+                            <select id="zone_desk" class="form-select form-select-sm fw-bold zoneInput" style="height: 32px; width: 120px; font-size: .78rem; border-radius: 6px;">
+                                <option value="">All Zones</option>
+                                @foreach($zones as $z)
+                                    <option value="{{ $z->id }}">{{ $z->zone }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-1">
+                            <label class="sale-filter-label mb-0 ms-1 me-1">Address:</label>
+                            <input type="text" id="address_desk" class="form-control form-control-sm fw-bold addressInput" placeholder="Area..." style="height: 32px; width: 130px; font-size: .78rem; border-radius: 6px;">
+                        </div>
+
                         <div class="form-check form-check-inline ms-1 mb-0 d-flex align-items-center gap-1">
                             <input class="form-check-input showZeroInput" type="checkbox" id="show_zero_desk">
                             <label class="form-check-label fw-bold text-secondary" for="show_zero_desk" style="font-size: .75rem;">Show Zero</label>
@@ -206,6 +221,21 @@
                     <div class="col-6 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Mobile</label>
                         <input type="text" id="mobile_mob" class="form-control form-control-sm mobileInput" placeholder="Mobile..." style="font-size: 11px;">
+                    </div>
+
+                    <div class="col-6 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Zone</label>
+                        <select id="zone_mob" class="form-select form-select-sm zoneInput" style="font-size: 11px;">
+                            <option value="">All Zones</option>
+                            @foreach($zones as $z)
+                                <option value="{{ $z->id }}">{{ $z->zone }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="col-6 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Address</label>
+                        <input type="text" id="address_mob" class="form-control form-control-sm addressInput" placeholder="Area..." style="font-size: 11px;">
                     </div>
 
                     {{-- Full Width Search Button --}}
@@ -300,6 +330,7 @@
                                 <th>PARTY / TITLE</th>
                                 <th class="text-center" style="width: 100px;">TYPE</th>
                                 <th style="width: 130px;">MOBILE</th>
+                                <th style="width: 120px;">ZONE</th>
                                 <th class="text-end col-receivable" style="width: 150px;">RECEIVABLE</th>
                                 <th class="text-end col-payable" style="width: 150px;">PAYABLE</th>
                                 <th style="width: 100px;">NOTES</th>
@@ -329,6 +360,8 @@
         $('.reportTypeInput').on('change', function() { $('.reportTypeInput').val($(this).val()); });
         $('.partyNameInput').on('keyup change', function() { $('.partyNameInput').val($(this).val()); });
         $('.mobileInput').on('keyup change', function() { $('.mobileInput').val($(this).val()); });
+        $('.zoneInput').on('change', function() { $('.zoneInput').val($(this).val()); });
+        $('.addressInput').on('keyup change', function() { $('.addressInput').val($(this).val()); });
         $('.showZeroInput').on('change', function() { $('.showZeroInput').prop('checked', $(this).is(':checked')); });
 
         function fmt(amount) {
@@ -341,6 +374,8 @@
             let showZero = $(".showZeroInput").is(":checked");
             let partyName = $(".partyNameInput").val();
             let mobile = $(".mobileInput").val();
+            let zone = $(".zoneInput").val();
+            let address = $(".addressInput").val();
             
             $("#loader").show();
             $("#reportBox").hide();
@@ -349,7 +384,9 @@
                 report_type: reportType,
                 show_zero: showZero,
                 party_name: partyName,
-                mobile: mobile
+                mobile: mobile,
+                zone: zone,
+                address: address
             }, function(res) {
                 $("#loader").hide();
                 $("#reportBox").show();
@@ -383,6 +420,7 @@
                                 <td class="fw-semibold text-dark">${row.title}</td>
                                 <td class="text-center">${typeBadge}</td>
                                 <td class="text-muted" style="font-size: 11.5px;">${row.mobile || '-'}</td>
+                                <td class="text-muted" style="font-size: 11.5px;">${row.zone || '-'}</td>
                                 ${reportType !== 'PAYABLE' ? `<td class="text-end text-primary fw-semibold">${row.receivable != 0 ? fmt(row.receivable) : '-'}</td>` : ''}
                                 ${reportType !== 'RECEIVABLE' ? `<td class="text-end text-danger fw-semibold">${row.payable != 0 ? fmt(row.payable) : '-'}</td>` : ''}
                                 <td class="text-muted small">${row.notes || '-'}</td>
@@ -422,7 +460,7 @@
                         let t = res.totals;
                         let totalsHtml = `
                             <tr>
-                                <td colspan="5" class="text-end text-dark">TOTAL:</td>
+                                <td colspan="6" class="text-end text-dark">TOTAL:</td>
                                 ${reportType !== 'PAYABLE' ? `<td class="text-end text-primary">${fmt(t.receivable)}</td>` : ''}
                                 ${reportType !== 'RECEIVABLE' ? `<td class="text-end text-danger">${fmt(t.payable)}</td>` : ''}
                                 <td></td>
@@ -493,6 +531,8 @@
             $(".reportTypeInput").val('BOTH');
             $(".partyNameInput").val('');
             $(".mobileInput").val('');
+            $(".zoneInput").val('');
+            $(".addressInput").val('');
             $(".showZeroInput").prop('checked', false);
             loadReport();
         });

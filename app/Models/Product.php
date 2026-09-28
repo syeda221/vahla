@@ -80,9 +80,15 @@ class Product extends Model
     protected static function booted()
     {
         static::saved(function ($product) {
-            if (!is_null($product->alert_quantity)) {
+            $alertQty = $product->alert_quantity;
+            if (is_null($alertQty) && !is_null($product->alert_carton_quantity)) {
+                $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
+                $alertQty = $product->alert_carton_quantity * $ppb;
+            }
+            
+            if (!is_null($alertQty) && $alertQty > 0) {
                 $totalPieces = \App\Models\WarehouseStock::where('product_id', $product->id)->sum('total_pieces');
-                if ($totalPieces < $product->alert_quantity) {
+                if ($totalPieces < $alertQty) {
                     \App\Models\SystemNotification::createStockAlertNotification($product, $totalPieces);
                 }
             }

@@ -534,7 +534,7 @@
 
                 <div class="ms-auto">
                     <label class="idr-chip-toggle">
-                        <input type="checkbox" id="chkDemandOnly" checked>
+                        <input type="checkbox" id="chkDemandOnly">
                         <span class="idr-chip-pill idr-chip-pill-primary">
                             <i class="fas fa-filter" style="font-size: 11px;"></i> Demand Items Only (Req Qty > 0)
                         </span>

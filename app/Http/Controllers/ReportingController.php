@@ -52,7 +52,7 @@ class ReportingController extends Controller
         $brandId     = $request->brand_id ?: $request->company_id;
         $categoryId  = $request->category_id;
         $warehouseId = $request->warehouse_id;
-        $demandOnly  = $request->has('demand_only') ? (bool)$request->demand_only : true;
+        $demandOnly  = $request->has('demand_only') ? filter_var($request->demand_only, FILTER_VALIDATE_BOOLEAN) : false;
         $search      = $request->search;
 
         $query = Product::with(['warehouseStocks', 'unit', 'category_relation', 'brand']);
@@ -88,7 +88,8 @@ class ReportingController extends Controller
             }
 
             // Min Qty (Alert Qty set on product create/edit)
-            $minQty = (float) ($product->alert_quantity ?? 0);
+            $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
+            $minQty = (float) ($product->alert_quantity ?? (($product->alert_carton_quantity ?? 0) * $ppb));
 
             // Required / Demand Qty = Max(0, Min Qty - Stock)
             $reqQty = max(0, $minQty - $stock);
@@ -542,8 +543,10 @@ class ReportingController extends Controller
 
                     // Stock Status Badge
                     $status = 'healthy';
+                    $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
+                    $minQ = $product->alert_quantity ?? (($product->alert_carton_quantity ?? 0) * $ppb);
                     if ($balance <= 0) $status = 'out_of_stock';
-                    elseif ($product->alert_quantity && $balance < $product->alert_quantity) $status = 'low_stock';
+                    elseif ($minQ > 0 && $balance < $minQ) $status = 'low_stock';
 
                     $rows[] = [
                         'id'              => $product->id,
@@ -671,8 +674,10 @@ class ReportingController extends Controller
 
                 // Stock Status Badge
                 $status = 'healthy';
+                $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
+                $minQ = $product->alert_quantity ?? (($product->alert_carton_quantity ?? 0) * $ppb);
                 if ($balance <= 0) $status = 'out_of_stock';
-                elseif ($product->alert_quantity && $balance < $product->alert_quantity) $status = 'low_stock';
+                elseif ($minQ > 0 && $balance < $minQ) $status = 'low_stock';
 
                 $rows[] = [
                     'id'              => $product->id,
@@ -2525,7 +2530,8 @@ class ReportingController extends Controller
 
     public function parties_balance_report()
     {
-        return view('admin_panel.reporting.parties_balance_report');
+        $zones = \App\Models\Zone::orderBy('zone', 'asc')->get();
+        return view('admin_panel.reporting.parties_balance_report', compact('zones'));
     }
 
     public function fetch_parties_balance(Request $request)
@@ -2534,6 +2540,8 @@ class ReportingController extends Controller
         $showZero = $request->show_zero == 'true';
         $searchParty = $request->party_name;
         $searchMobile = $request->mobile;
+        $searchZone = $request->zone;
+        $searchAddress = $request->address;
         
         $balanceService = app(\App\Services\BalanceService::class);
         $apId = $balanceService->getAccountsPayableId();
@@ -2548,16 +2556,23 @@ class ReportingController extends Controller
                 ->groupBy('party_id')
                 ->pluck('balance', 'party_id');
 
-            $customers = DB::table('customers')->get();
+            $customers = DB::table('customers')
+                ->leftJoin('zones', 'customers.zone', '=', 'zones.id')
+                ->select('customers.*', 'zones.zone as zone_name')
+                ->get();
             foreach ($customers as $c) {
                 if ($searchParty && stripos($c->customer_name, $searchParty) === false) continue;
                 if ($searchMobile && stripos($c->mobile, $searchMobile) === false) continue;
+                if ($searchZone && (string)$c->zone !== (string)$searchZone) continue;
+                if ($searchAddress && stripos($c->address, $searchAddress) === false) continue;
                 
                 $balance = (float) ($custBalances[$c->id] ?? 0);
                 $parties[] = [
                     'code' => sprintf("C%04d", $c->id),
                     'title' => $c->customer_name,
                     'mobile' => $c->mobile,
+                    'zone' => $c->zone_name,
+                    'address' => $c->address,
                     'balance' => $balance,
                     'type' => 'customer'
                 ];
@@ -2565,7 +2580,7 @@ class ReportingController extends Controller
         }
 
         // Fetch Vendors in 1 Batch Query
-        if ($reportType == 'BOTH' || $reportType == 'PAYABLE') {
+        if (($reportType == 'BOTH' || $reportType == 'PAYABLE') && empty($searchZone)) {
             $vendorBalances = DB::table('journal_entries')
                 ->where('party_type', \App\Models\Vendor::class)
                 ->where('account_id', $apId)
@@ -2577,12 +2592,15 @@ class ReportingController extends Controller
             foreach ($vendors as $v) {
                 if ($searchParty && stripos($v->name, $searchParty) === false) continue;
                 if ($searchMobile && stripos($v->phone, $searchMobile) === false) continue;
+                if ($searchAddress && stripos($v->address, $searchAddress) === false) continue;
                 
                 $balance = (float) ($vendorBalances[$v->id] ?? 0);
                 $parties[] = [
                     'code' => sprintf("V%04d", $v->id),
                     'title' => $v->name,
                     'mobile' => $v->phone,
+                    'zone' => '-',
+                    'address' => $v->address,
                     'balance' => -$balance,
                     'type' => 'vendor'
                 ];
@@ -2617,6 +2635,8 @@ class ReportingController extends Controller
                 'code' => $p['code'],
                 'title' => $p['title'],
                 'mobile' => $p['mobile'] ?? '-',
+                'zone' => $p['zone'] ?? '-',
+                'address' => $p['address'] ?? '-',
                 'receivable' => $receivable,
                 'payable' => $payable,
                 'notes' => ''

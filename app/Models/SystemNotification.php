@@ -127,9 +127,15 @@ class SystemNotification extends Model
             return;
         }
 
+        $alertQty = $product->alert_quantity;
+        if (is_null($alertQty) && !is_null($product->alert_carton_quantity)) {
+            $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
+            $alertQty = $product->alert_carton_quantity * $ppb;
+        }
+
         $data = [
             'title' => '⚠️ Stock Alert: Low Stock',
-            'message' => "Product '{$product->item_name}' (SKU: {$product->item_code}) is low on stock. Current quantity: {$currentStock} pieces, Alert threshold: {$product->alert_quantity} pieces.",
+            'message' => "Product '{$product->item_name}' (SKU: {$product->item_code}) is low on stock. Current quantity: {$currentStock} pieces, Alert threshold: {$alertQty} pieces.",
             'type' => 'critical',
             'source_id' => $product->id,
             'source_type' => 'App\Models\Product',
