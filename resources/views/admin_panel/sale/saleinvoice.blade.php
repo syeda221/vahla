@@ -447,6 +447,7 @@
                 or taken back without receipt
             </div>
             <div class="footer-sign">
+                <img src="{{ asset('assets/images/stamp.png') }}" style="width: 160px; height: auto; margin-top: -60px; margin-bottom: 5px; margin-right: 10px; display: inline-block; opacity: 0.85; transform: rotate(-12deg); mix-blend-mode: multiply;" alt="Stamp"><br>
                 For {{ \App\Models\Setting::get('company_name', 'VAHLA MILL STORE') }}
             </div>
         </div>
