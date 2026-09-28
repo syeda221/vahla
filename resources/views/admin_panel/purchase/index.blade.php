@@ -476,6 +476,9 @@
                 $('.datanew').DataTable({
                     "pageLength": 10,
                     "order": [],
+                    "columnDefs": [
+                        { "orderable": false, "targets": 0 }
+                    ],
                     "language": {
                         "search": "",
                         "searchPlaceholder": "Search purchases..."
@@ -550,6 +553,9 @@
                         $('.datanew').DataTable({
                             "pageLength": 10,
                             "order": [],
+                            "columnDefs": [
+                                { "orderable": false, "targets": 0 }
+                            ],
                             "language": {
                                 "search": "",
                                 "searchPlaceholder": "Search purchases..."
@@ -637,13 +643,14 @@
 
             // Helper to get checkboxes across DataTables and DOM
             function getPurchaseCheckboxes() {
-                if ($.fn.DataTable.isDataTable('#purchase-table')) {
-                    return $('#purchase-table').DataTable().$('input.select-purchase-row');
+                var table = $('#purchase-table');
+                if ($.fn.DataTable.isDataTable(table[0])) {
+                    var dt = table.DataTable();
+                    return dt.$('input.select-purchase-row');
                 }
-                return $('#purchase-table').find('input.select-purchase-row');
+                return table.find('input.select-purchase-row');
             }
 
-            // Bulk select checkboxes logic
             function updateBulkDiscountBar() {
                 let $boxes = getPurchaseCheckboxes();
                 let $checked = $boxes.filter(':checked');
@@ -651,10 +658,8 @@
                 let total = $boxes.length;
 
                 // Visual row highlighting
-                $('#purchase-table tbody tr').removeClass('table-active bg-light');
-                $checked.each(function() {
-                    $(this).closest('tr').addClass('table-active bg-light');
-                });
+                $boxes.closest('tr').removeClass('table-active bg-light');
+                $checked.closest('tr').addClass('table-active bg-light');
 
                 if (count > 0) {
                     $('#selected-purchases-count-text').text(count);
@@ -670,6 +675,10 @@
                 let $boxes = getPurchaseCheckboxes();
                 let allChecked = $boxes.length > 0 && $boxes.length === $boxes.filter(':checked').length;
                 $('#selectAllPurchases').prop('checked', allChecked);
+            });
+
+            $(document).on('click', '#selectAllPurchases', function(e) {
+                e.stopPropagation();
             });
 
             $(document).on('change', '#selectAllPurchases', function() {
