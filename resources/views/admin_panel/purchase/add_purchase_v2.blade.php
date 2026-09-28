@@ -614,9 +614,9 @@
                         </button>
                     @else
                         {{-- New Save Only Button --}}
-                        <button type="button" class="btn btn-action-primary bg-info border-info text-white" id="btnSaveOnly">
+                        <!-- <button type="button" class="btn btn-action-primary bg-info border-info text-white" id="btnSaveOnly">
                             <i class="bi bi-save me-1"></i> Save Purchase
-                        </button>
+                        </button> -->
                         {{-- Existing Submit (Confirm) --}}
                         <button type="button" class="btn btn-action-primary bg-success border-success text-white" id="btnConfirm">
                             <i class="bi bi-check-circle me-1"></i> Confirm Purchase
