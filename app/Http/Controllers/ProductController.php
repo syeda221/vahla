@@ -19,7 +19,16 @@ class ProductController extends Controller
 {
     public function getPrice(Request $request)
     {
-        $product = Product::find($request->product_id);
+        $rawId = $request->product_id;
+        $variantData = null;
+        if (strpos($rawId, '|variant|') !== false) {
+            $parts = explode('|variant|', $rawId);
+            $realId = $parts[0];
+            $variantData = json_decode(base64_decode($parts[1]), true);
+            $product = Product::find($realId);
+        } else {
+            $product = Product::find($rawId);
+        }
 
         if (! $product) {
             return response()->json(['retail_price' => 0]);
@@ -34,6 +43,9 @@ class ProductController extends Controller
             $price = $product->sale_price_per_box;
         }
 
+        $saleDisc = $variantData && isset($variantData['sale_discount_percent']) ? (float)$variantData['sale_discount_percent'] : ($product->sale_discount_percent ?? 0);
+        $purchDisc = $variantData && isset($variantData['purchase_discount_percent']) ? (float)$variantData['purchase_discount_percent'] : ($product->purchase_discount_percent ?? 0);
+
         return response()->json([
             'retail_price'          => $price,
             'wholesale_price'       => (float)($product->wholesale_price ?? 0),
@@ -46,8 +58,8 @@ class ProductController extends Controller
             'height'                => $product->height,
             'width'                 => $product->width,
             'item_code'             => $product->item_code,
-            'purchase_discount_percent' => $product->purchase_discount_percent ?? 0,
-            'sale_discount_percent'     => $product->sale_discount_percent ?? 0,
+            'purchase_discount_percent' => $purchDisc,
+            'sale_discount_percent'     => $saleDisc,
         ]);
     }
 
@@ -347,8 +359,8 @@ class ProductController extends Controller
                         'purchase_price_per_piece' => $v['purch_price'] ?? $p->purchase_price_per_piece ?? 0,
                         'purchase_price_per_box' => ($v['purch_price'] ?? $p->purchase_price_per_piece ?? 0) * $vPpb,
                         'purchase_price_per_m2' => $p->purchase_price_per_m2 ?? 0,
-                        'sale_discount_percent' => $p->sale_discount_percent ?? 0,
-                        'purchase_discount_percent' => $p->purchase_discount_percent ?? 0,
+                        'sale_discount_percent' => (float)($v['sale_discount_percent'] ?? 0),
+                        'purchase_discount_percent' => (float)($v['purchase_discount_percent'] ?? 0),
                         'variant_data' => base64_encode($variantJson)
                     ];
                 }

@@ -179,7 +179,8 @@
             if ($itPPB <= 0) $itPPB = 1;
 
             $rawQtyStr = (string) ($it->qty ?? '0');
-            $isCtn = in_array($rawU, ['carton', 'ctn', 'box']) || ($it->size_mode === 'by_cartons');
+            $isPiece = in_array($rawU, ['pcs', 'pc', 'piece']);
+            $isCtn = in_array($rawU, ['carton', 'ctn', 'box']) || (!$isPiece && $it->size_mode === 'by_cartons');
 
             if ($isCtn) {
                 $hasCartonMode = true;
@@ -232,7 +233,8 @@
             @foreach ($purchase->items as $item)
                 @php
                     $rawUnit = strtolower(trim($item->unit ?? ''));
-                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || ($item->size_mode === 'by_cartons');
+                    $isPiece = in_array($rawUnit, ['pcs', 'pc', 'piece']);
+                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || (!$isPiece && ($item->size_mode === 'by_cartons'));
 
                     if ($isCarton) {
                         if ($item->boxes_qty > 0 || $item->loose_qty > 0) {

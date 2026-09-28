@@ -366,8 +366,8 @@
                 if ($itPPB <= 0) $itPPB = 1;
 
                 $rawQtyStr = (string) ($it->qty ?? '0');
-                $itQty = (float) $it->qty;
-                $isCtn = in_array($rawU, ['carton', 'ctn', 'box']) || ($it->size_mode === 'by_cartons');
+                $isPiece = in_array($rawU, ['pcs', 'pc', 'piece']);
+                $isCtn = in_array($rawU, ['carton', 'ctn', 'box']) || (!$isPiece && $it->size_mode === 'by_cartons');
 
                 if ($isCtn) {
                     $hasCartonMode = true;
@@ -446,8 +446,8 @@
                             $m2PerBox = $m2PerPiece * $piecesPerBox;
 
                             $rawUnit = strtolower(trim($item->unit ?? ''));
-                            $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || ($item->size_mode === 'by_cartons');
                             $isPiece = in_array($rawUnit, ['pcs', 'pc', 'piece']);
+                            $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || (!$isPiece && ($item->size_mode === 'by_cartons'));
                             $isWeight = in_array($rawUnit, ['kg', 'gm', 'g']);
 
                             if ($isCarton) {
@@ -475,7 +475,7 @@
                                 $loosePieces = $piecesPerBox > 1 ? ($totalPieces % $piecesPerBox) : $totalPieces;
                                 $uomDisplay = 'Pcs';
                                 $qtyDisplay = $totalPieces . ' Pcs';
-                                $subQtyText = '(' . $totalPieces . ' pcs)';
+                                $subQtyText = '';
                             } elseif ($isWeight) {
                                 $totalPieces = (float) $item->qty;
                                 $uomDisplay = $item->unit ?? 'Kg';
@@ -620,8 +620,8 @@
                 @php
                     $piecesPerBox = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : ($item->product->pieces_per_box ?? 1));
                     $rawUnit = strtolower(trim($item->unit ?? ''));
-                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || ($item->size_mode === 'by_cartons');
                     $isPiece = in_array($rawUnit, ['pcs', 'pc', 'piece']);
+                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || (!$isPiece && ($item->size_mode === 'by_cartons'));
 
                     if ($isCarton) {
                         if ($item->boxes_qty > 0 || $item->loose_qty > 0) {
