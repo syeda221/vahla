@@ -101,8 +101,8 @@ class DeliveryChallanController extends Controller
             $dc = DeliveryChallan::create([
                 'sale_id' => $saleId,
                 'customer_id' => $sale->customer_id,
-                'dc_number' => $baseNo . '-DC' . str_pad($dcCount, 2, '0', STR_PAD_LEFT),
-                'dc_date' => now()->format('Y-m-d'),
+                'dc_number' => $request->input('dc_number') ?: ($baseNo . '-DC' . str_pad($dcCount, 2, '0', STR_PAD_LEFT)),
+                'dc_date' => $request->input('dc_date') ?: now()->format('Y-m-d'),
                 'status' => 'confirmed', // We confirm it immediately as per plan
                 'is_invoiced' => $isAlreadyInvoiced,
                 'invoice_id' => $isAlreadyInvoiced ? $sale->id : null,

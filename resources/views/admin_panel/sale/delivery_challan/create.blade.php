@@ -32,6 +32,21 @@
                 <div class="card-body p-0">
                     <form action="{{ route('sales.store_dc', $sale->id) }}" method="POST">
                         @csrf
+                        <div class="row p-3 bg-light border-bottom m-0">
+                            @php
+                                $dcCount = \App\Models\DeliveryChallan::where('sale_id', $sale->id)->count() + 1;
+                                $baseNo = $sale->invoice_no ?: (($sale->sale_type === 'sales_order' ? 'SO-' : ($sale->sale_type === 'quotation' ? 'QUO-' : '#')) . str_pad($sale->id, 4, '0', STR_PAD_LEFT));
+                                $defaultDcNo = $baseNo . '-DC' . str_pad($dcCount, 2, '0', STR_PAD_LEFT);
+                            @endphp
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">DC Number</label>
+                                <input type="text" name="dc_number" class="form-control" value="{{ $defaultDcNo }}">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">DC Date</label>
+                                <input type="date" name="dc_date" class="form-control" value="{{ date('Y-m-d') }}">
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table premium-table mb-0">
                                 <thead>
