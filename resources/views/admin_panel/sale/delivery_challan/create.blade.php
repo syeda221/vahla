@@ -30,7 +30,7 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <form action="{{ route('sales.store_dc', $sale->id) }}" method="POST">
+                    <form action="{{ route('sales.store_dc', $sale->id) }}" method="POST" onkeydown="return event.key != 'Enter';">
                         @csrf
                         <div class="row p-3 bg-light border-bottom m-0">
                             @php
