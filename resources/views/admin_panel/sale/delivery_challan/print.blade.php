@@ -387,9 +387,13 @@
                                     $dispUnit = 'Box';
                                 }
 
-                                $rawQty = (float) $item->delivered_qty * $dispQtyFactor;
-                                if ($item->delivered_qty == 0 && $item->qty > 0) {
-                                    $rawQty = (float) $item->qty * $dispQtyFactor;
+                                if ((float)$item->boxes > 0 && !$item->sale_item_id) {
+                                    $rawQty = (float)$item->boxes + ((float)$item->loose_pieces / (optional($item->product)->pieces_per_box > 0 ? $item->product->pieces_per_box : 1));
+                                } else {
+                                    $rawQty = (float) $item->delivered_qty * $dispQtyFactor;
+                                    if ($item->delivered_qty == 0 && $item->qty > 0) {
+                                        $rawQty = (float) $item->qty * $dispQtyFactor;
+                                    }
                                 }
                                 $dispQty = $rawQty == (int)$rawQty ? (int)$rawQty : number_format($rawQty, 3, '.', '');
                             @endphp
@@ -415,6 +419,13 @@
                 
             </tbody>
         </table>
+
+        <!-- Remarks -->
+        @if(!empty($dc->remarks))
+            <div style="font-size: 12px; margin-bottom: 15px;">
+                <strong>Remarks:</strong> {{ $dc->remarks }}
+            </div>
+        @endif
 
         <!-- Footer -->
         <div class="pad-footer">
