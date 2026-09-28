@@ -1118,6 +1118,7 @@ $(document).ready(function() {
                 Swal.fire({ icon: 'error', title: 'Failed to Save', text: err });
             }
         });
+        });
     });
 });
 </script>
