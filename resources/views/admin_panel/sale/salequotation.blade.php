@@ -413,7 +413,7 @@
                         <td style="text-align: center;">{{ $index + 1 }}</td>
                         <td class="desc-col" style="text-align: left; font-weight: 500;">{{ $productTitle }}</td>
                         <td style="text-align: center;">{{ ($dispQty == (int)$dispQty) ? (int)$dispQty : number_format($dispQty, 3) }}</td>
-                        <td class="rate-col" style="text-align: right;">{{ number_format((float)($item['price_per_piece'] ?? 0), 2) }}</td>
+                        <td class="rate-col" style="text-align: right;">{{ number_format((float)($item['price'] ?? 0), 2) }}</td>
                         <td style="text-align: center;">{{ $dispUnit }}</td>
                         <td class="amount-col" style="text-align: right;">{{ number_format((float)($item['total'] ?? 0), 2) }}</td>
                     </tr>
