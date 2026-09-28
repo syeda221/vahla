@@ -233,6 +233,16 @@
             size: A4;
             margin: 0;
         }
+
+        .hide-rate-amount .rate-col,
+        .hide-rate-amount .amount-col,
+        .hide-rate-amount .total-row {
+            display: none !important;
+        }
+        
+        .hide-rate-amount .desc-col {
+            width: 65% !important; /* 35% + 15% + 15% */
+        }
     </style>
 </head>
 <body>
@@ -244,6 +254,9 @@
             </span>
         </div>
         <div class="d-flex align-items-center gap-2">
+            <button onclick="toggleRateAmount()" class="btn btn-warning shadow-sm" id="toggleRateAmountBtn">
+                <i class="fa-solid fa-eye-slash"></i> Hide Rate & Amount
+            </button>
             <button onclick="window.print()" class="btn btn-primary shadow-sm">
                 <i class="fa-solid fa-print"></i> Print Quotation
             </button>
@@ -319,12 +332,13 @@
         <!-- Table -->
         <table class="pad-table">
             <thead>
-                                <tr>
+                <tr>
                     <th style="width: 5%;">S.NO</th>
-                    <th style="width: 50%; text-align: left;">DESCRIPTION</th>
+                    <th class="desc-col" style="width: 35%; text-align: left;">DESCRIPTION</th>
                     <th style="width: 15%;">QTY</th>
-                    <th style="width: 15%;">Unit</th>
-                    <th style="width: 15%;">AMOUNT</th>
+                    <th class="rate-col" style="width: 15%;">RATE</th>
+                    <th style="width: 15%;">UNIT</th>
+                    <th class="amount-col" style="width: 15%;">AMOUNT</th>
                 </tr>
             </thead>
             <tbody>
@@ -397,27 +411,29 @@
 
                     <tr>
                         <td style="text-align: center;">{{ $index + 1 }}</td>
-                        <td style="text-align: left; font-weight: 500;">{{ $productTitle }}</td>
+                        <td class="desc-col" style="text-align: left; font-weight: 500;">{{ $productTitle }}</td>
                         <td style="text-align: center;">{{ ($dispQty == (int)$dispQty) ? (int)$dispQty : number_format($dispQty, 3) }}</td>
+                        <td class="rate-col" style="text-align: right;">{{ number_format((float)($item['price_per_piece'] ?? 0), 2) }}</td>
                         <td style="text-align: center;">{{ $dispUnit }}</td>
-                        <td style="text-align: right;">{{ number_format((float)($item['total'] ?? 0), 2) }}</td>
+                        <td class="amount-col" style="text-align: right;">{{ number_format((float)($item['total'] ?? 0), 2) }}</td>
                     </tr>
                 @endforeach
                 
                 @for($i=0; $i<$emptyRows; $i++)
                     <tr>
                         <td>&nbsp;</td>
+                        <td class="desc-col"></td>
                         <td></td>
+                        <td class="rate-col"></td>
                         <td></td>
-                        <td></td>
-                        <td></td>
+                        <td class="amount-col"></td>
                     </tr>
                 @endfor
                 
                 
-            <tr>
-                    <td colspan="4" style="text-align: right; font-weight: bold; padding-right: 15px;">TOTAL</td>
-                    <td style="text-align: right; font-weight: bold; color: #1e40af;">{{ number_format($sale->total_net, 2) }}</td>
+            <tr class="total-row">
+                    <td colspan="5" style="text-align: right; font-weight: bold; padding-right: 15px;">TOTAL</td>
+                    <td class="amount-col" style="text-align: right; font-weight: bold; color: #1e40af;">{{ number_format($sale->total_net, 2) }}</td>
                 </tr>
             </tbody>
         </table>
@@ -432,6 +448,22 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function toggleRateAmount() {
+            document.body.classList.toggle('hide-rate-amount');
+            const btn = document.getElementById('toggleRateAmountBtn');
+            if (document.body.classList.contains('hide-rate-amount')) {
+                btn.innerHTML = '<i class="fa-solid fa-eye"></i> Show Rate & Amount';
+                btn.classList.remove('btn-warning');
+                btn.classList.add('btn-success');
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Hide Rate & Amount';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-warning');
+            }
+        }
+    </script>
 </body>
 </html>
 
