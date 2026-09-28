@@ -2696,7 +2696,7 @@ class VoucherController extends Controller
         try {
             $sales = \App\Models\Sale::where('customer_id', $customerId)
                 ->where(function ($q) {
-                    $q->whereNull('sale_type')->orWhere('sale_type', '!=', 'quotation');
+                    $q->whereNull('sale_type')->orWhereNotIn('sale_type', ['quotation', 'sales_order']);
                 })
                 ->orderBy('id', 'asc')
                 ->get();

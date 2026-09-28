@@ -145,17 +145,7 @@ class SaleController extends Controller
             ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
             ->where(function($q) {
                 $q->where('sale_type', 'direct_sale')
-                  ->orWhereNull('sale_type')
-                  ->orWhere(function($sq) {
-                      $sq->where('sale_type', 'sales_order')
-                         ->whereIn('sale_status', ['posted', 'returned'])
-                         ->whereNotIn('id', function($sub) {
-                             $sub->select('sale_id')
-                                 ->from('delivery_challans')
-                                 ->whereNotNull('invoice_id')
-                                 ->whereColumn('invoice_id', '!=', 'delivery_challans.sale_id');
-                         });
-                  });
+                  ->orWhereNull('sale_type');
             });
         
         $this->applySalesFilters($query, $request);
@@ -2634,30 +2624,32 @@ class SaleController extends Controller
 
             $sale->save();
 
-            // 1. DEDUCT STOCK FROM WAREHOUSE
-            $this->handleStockImpact($sale, 'out');
+            if ($sale->sale_type !== 'sales_order') {
+                // 1. DEDUCT STOCK FROM WAREHOUSE
+                $this->handleStockImpact($sale, 'out');
 
-            // 2. LEGACY LEDGER: Post Invoice First (Increases Balance)
-            $this->updateLedger($sale);
+                // 2. LEGACY LEDGER: Post Invoice First (Increases Balance)
+                $this->updateLedger($sale);
 
-            // 3. PROFESSIONAL LEDGER POSTING (ENTRY 1: THE INVOICE)
-            $journalService = app(\App\Services\JournalEntryService::class);
-            $balanceService = app(\App\Services\BalanceService::class);
+                // 3. PROFESSIONAL LEDGER POSTING (ENTRY 1: THE INVOICE)
+                $journalService = app(\App\Services\JournalEntryService::class);
+                $balanceService = app(\App\Services\BalanceService::class);
 
-            $custForVoucher = $sale->customer_relation ?? \App\Models\Customer::find($sale->customer_id);
+                $custForVoucher = $sale->customer_relation ?? \App\Models\Customer::find($sale->customer_id);
 
-            if ($custForVoucher) {
-                $balanceService->createSaleVoucher(
-                    $custForVoucher,
-                    $sale->total_net,
-                    (string)($sale->invoice_no ?: ('INV-' . $sale->id)),
-                    $sale->created_at->format('Y-m-d')
-                );
+                if ($custForVoucher) {
+                    $balanceService->createSaleVoucher(
+                        $custForVoucher,
+                        $sale->total_net,
+                        (string)($sale->invoice_no ?: ('INV-' . $sale->id)),
+                        $sale->created_at->format('Y-m-d')
+                    );
+                }
+
+                // 4. AUTO RECEIPT (ENTRY 2: THE PAYMENT)
+                $transactionService = app(\App\Services\TransactionService::class);
+                $transactionService->createReceiptFromSale($sale);
             }
-
-            // 4. AUTO RECEIPT (ENTRY 2: THE PAYMENT)
-            $transactionService = app(\App\Services\TransactionService::class);
-            $transactionService->createReceiptFromSale($sale);
 
             // AUTO GENERATE DELIVERY CHALLAN FOR DIRECT SALE
             if (in_array($sale->sale_type, ['direct_sale', null])) {
