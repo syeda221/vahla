@@ -421,6 +421,22 @@
                         {{ number_format($sale->total_net, 2) }}
                     </td>
                 </tr>
+                @php
+                    $paidAmount = (float)($sale->cash ?? 0) + (float)($sale->card ?? 0);
+                    $dueAmount = max(0, (float)$sale->total_net - $paidAmount);
+                @endphp
+                <tr>
+                    <td colspan="5" style="text-align: right; font-weight: bold; padding-top: 10px;">PAID:</td>
+                    <td style="text-align: right; font-weight: bold; color: #16a34a; padding-top: 10px;">
+                        {{ number_format($paidAmount, 2) }}
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="5" style="text-align: right; font-weight: bold;">DUE:</td>
+                    <td style="text-align: right; font-weight: bold; color: #dc2626;">
+                        {{ number_format($dueAmount, 2) }}
+                    </td>
+                </tr>
             </tbody>
         </table>
 
