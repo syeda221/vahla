@@ -325,9 +325,9 @@
                                                         <th class="text-uppercase text-muted p-1 text-center" style="width: 90px; font-size: 10px;">Initial Stock</th>
                                                         <th class="text-uppercase text-muted p-1 text-center conv-col" id="convFactorHeader" style="width: 95px; font-size: 10px;">Pcs / Carton</th>
                                                         <th class="text-uppercase text-muted p-1 text-center piece-wt-only-col" style="width: 90px; font-size: 10px;">Piece Wt (g)</th>
-                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;">Sale Price</th>
-                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;">Wholesale</th>
-                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;">Purch Price</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="salePriceHeader">Sale Price</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="wholesalePriceHeader">Wholesale</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="purchPriceHeader">Purch Price</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Sale Disc (%)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Purch Disc (%)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 55px; font-size: 10px;">Alert</th>
@@ -696,9 +696,18 @@
                             <span style="position:absolute;right:5px;top:50%;transform:translateY(-50%);font-size:9px;color:#999;pointer-events:none;font-weight:600;">g</span>
                         </div>
                     </td>
-                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm base-sale-input" name="variant_sale_price[]" step="any" value="${escapeHtml(saleVal)}" placeholder="0.00" required></td>
-                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_wholesale_price[]" step="any" value="${escapeHtml(wholesaleVal)}" placeholder="0.00"></td>
-                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm base-purch-input" name="variant_purchase_price[]" step="any" value="${escapeHtml(purchVal)}" placeholder="0.00" required></td>
+                    <td class="p-1">
+                        <input type="number" class="form-control-pro form-control-sm base-sale-input sale-price-input" name="variant_sale_price[]" step="any" value="${escapeHtml(saleVal)}" placeholder="0.00" required>
+                        <div class="carton-price-badge carton-sale-badge text-primary fw-bold d-none" style="font-size: 10px; line-height: 1.2; margin-top: 2px;">Ctn: <span class="ctn-sale-val">0.00</span></div>
+                    </td>
+                    <td class="p-1">
+                        <input type="number" class="form-control-pro form-control-sm wholesale-price-input" name="variant_wholesale_price[]" step="any" value="${escapeHtml(wholesaleVal)}" placeholder="0.00">
+                        <div class="carton-price-badge carton-wsale-badge text-secondary fw-bold d-none" style="font-size: 10px; line-height: 1.2; margin-top: 2px;">Ctn: <span class="ctn-wsale-val">0.00</span></div>
+                    </td>
+                    <td class="p-1">
+                        <input type="number" class="form-control-pro form-control-sm base-purch-input purch-price-input" name="variant_purchase_price[]" step="any" value="${escapeHtml(purchVal)}" placeholder="0.00" required>
+                        <div class="carton-price-badge carton-purch-badge text-success fw-bold d-none" style="font-size: 10px; line-height: 1.2; margin-top: 2px;">Ctn: <span class="ctn-purch-val">0.00</span></div>
+                    </td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_sale_discount[]" step="0.01" value="${escapeHtml(saleDiscVal)}" placeholder="0" title="Sale Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_purchase_discount[]" step="0.01" value="${escapeHtml(purchDiscVal)}" placeholder="0" title="Purchase Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_alert_qty[]" value="${escapeHtml(alertVal)}" placeholder="0"></td>
@@ -879,9 +888,18 @@
                             <span style="position:absolute;right:5px;top:50%;transform:translateY(-50%);font-size:9px;color:#198754;pointer-events:none;font-weight:700;">g</span>
                         </div>
                     </td>
-                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm sale-price-input" name="variant_sale_price[]" step="any" value="${escapeHtml(suggSale)}" placeholder="0.00" required></td>
-                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_wholesale_price[]" step="any" value="${escapeHtml(suggWholesale)}" placeholder="0.00"></td>
-                    <td class="p-1"><input type="number" class="form-control-pro form-control-sm purch-price-input" name="variant_purchase_price[]" step="any" value="${escapeHtml(suggPurch)}" placeholder="0.00" required></td>
+                    <td class="p-1">
+                        <input type="number" class="form-control-pro form-control-sm sale-price-input" name="variant_sale_price[]" step="any" value="${escapeHtml(suggSale)}" placeholder="0.00" required>
+                        <div class="carton-price-badge carton-sale-badge text-primary fw-bold d-none" style="font-size: 10px; line-height: 1.2; margin-top: 2px;">Ctn: <span class="ctn-sale-val">0.00</span></div>
+                    </td>
+                    <td class="p-1">
+                        <input type="number" class="form-control-pro form-control-sm" name="variant_wholesale_price[]" step="any" value="${escapeHtml(suggWholesale)}" placeholder="0.00">
+                        <div class="carton-price-badge carton-wsale-badge text-secondary fw-bold d-none" style="font-size: 10px; line-height: 1.2; margin-top: 2px;">Ctn: <span class="ctn-wsale-val">0.00</span></div>
+                    </td>
+                    <td class="p-1">
+                        <input type="number" class="form-control-pro form-control-sm purch-price-input" name="variant_purchase_price[]" step="any" value="${escapeHtml(suggPurch)}" placeholder="0.00" required>
+                        <div class="carton-price-badge carton-purch-badge text-success fw-bold d-none" style="font-size: 10px; line-height: 1.2; margin-top: 2px;">Ctn: <span class="ctn-purch-val">0.00</span></div>
+                    </td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_sale_discount[]" step="0.01" value="${escapeHtml(saleDiscVal)}" placeholder="0" title="Sale Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_purchase_discount[]" step="0.01" value="${escapeHtml(purchDiscVal)}" placeholder="0" title="Purchase Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_alert_qty[]" value="${escapeHtml(alertVal)}" placeholder="0"></td>
@@ -922,6 +940,53 @@
                 }
                 toggleFactorColumns();
                 updateVariantStocksFromBase();
+                updateCartonPriceRow(tr);
+            }
+
+            function updateCartonPriceRow(row) {
+                if (!row) return;
+                const mode = unitDropdown ? unitDropdown.value : 'by_pieces';
+                const rowUnit = row.querySelector('[name="variant_unit[]"]')?.value || '';
+                const isCarton = (mode === 'by_cartons' || rowUnit.toLowerCase() === 'carton');
+
+                const convInp = row.querySelector('.conv-factor-input');
+                let ppb = parseFloat(convInp?.value || 0);
+                if (isNaN(ppb)) ppb = 0;
+
+                const saleInp = row.querySelector('.sale-price-input, .base-sale-input');
+                const purchInp = row.querySelector('.purch-price-input, .base-purch-input');
+                const wsInp = row.querySelector('input[name="variant_wholesale_price[]"]');
+
+                const saleBadge = row.querySelector('.carton-sale-badge');
+                const purchBadge = row.querySelector('.carton-purch-badge');
+                const wsBadge = row.querySelector('.carton-wsale-badge');
+
+                if (isCarton && ppb > 0) {
+                    if (saleBadge && saleInp) {
+                        const s = parseFloat(saleInp.value) || 0;
+                        saleBadge.querySelector('.ctn-sale-val').textContent = (s * ppb).toFixed(2);
+                        saleBadge.classList.remove('d-none');
+                    }
+                    if (purchBadge && purchInp) {
+                        const p = parseFloat(purchInp.value) || 0;
+                        purchBadge.querySelector('.ctn-purch-val').textContent = (p * ppb).toFixed(2);
+                        purchBadge.classList.remove('d-none');
+                    }
+                    if (wsBadge && wsInp) {
+                        const w = parseFloat(wsInp.value) || 0;
+                        wsBadge.querySelector('.ctn-wsale-val').textContent = (w * ppb).toFixed(2);
+                        wsBadge.classList.remove('d-none');
+                    }
+                } else {
+                    if (saleBadge) saleBadge.classList.add('d-none');
+                    if (purchBadge) purchBadge.classList.add('d-none');
+                    if (wsBadge) wsBadge.classList.add('d-none');
+                }
+            }
+
+            function updateAllCartonPrices() {
+                if (!variantsBody) return;
+                variantsBody.querySelectorAll('tr').forEach(row => updateCartonPriceRow(row));
             }
 
             function toggleFactorColumns() {
@@ -987,6 +1052,20 @@
                     convCols.forEach(c => c.classList.add('d-none'));
                     pieceWtOnlyCols.forEach(c => c.classList.add('d-none'));
                 }
+
+                const saleH = document.getElementById('salePriceHeader');
+                const purchH = document.getElementById('purchPriceHeader');
+                const wsH = document.getElementById('wholesalePriceHeader');
+                if (isCarton) {
+                    if (saleH) saleH.textContent = 'Sale (1 Pc)';
+                    if (purchH) purchH.textContent = 'Purch (1 Pc)';
+                    if (wsH) wsH.textContent = 'Wholesale (1 Pc)';
+                } else {
+                    if (saleH) saleH.textContent = 'Sale Price';
+                    if (purchH) purchH.textContent = 'Purch Price';
+                    if (wsH) wsH.textContent = 'Wholesale';
+                }
+                updateAllCartonPrices();
             }
 
             // Image Handler
@@ -1194,6 +1273,17 @@
                     } else if (genBtn) {
                         const input = genBtn.closest('td').querySelector('input');
                         if (input) input.value = generateRandomBarcode();
+                    }
+                });
+
+                variantsBody.addEventListener('input', function(e) {
+                    const row = e.target.closest('tr');
+                    if (row) updateCartonPriceRow(row);
+                });
+                variantsBody.addEventListener('change', function(e) {
+                    if (e.target.matches('[name="variant_unit[]"]')) {
+                        const row = e.target.closest('tr');
+                        if (row) updateCartonPriceRow(row);
                     }
                 });
             }
@@ -1443,28 +1533,31 @@
 
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                         <div class="mob-field-group">
-                            <div class="mob-label">Sale Price <span class="req">*</span></div>
+                            <div class="mob-label"><span class="mob-lbl-sale">${unitDropdown && unitDropdown.value === 'by_cartons' ? 'Sale Price (1 Pc)' : 'Sale Price'}</span> <span class="req">*</span></div>
                             <input type="number" class="mob-input mob-sync" data-field="variant_sale_price[]" value="${escapeHtml(saleVal)}" placeholder="0.00" step="any" required>
+                            <div class="mob-ctn-hint text-primary fw-bold ${unitDropdown && unitDropdown.value === 'by_cartons' ? '' : 'd-none'}" style="font-size:10px;margin-top:2px;">Ctn: <span class="mob-ctn-sale-val">${((parseFloat(saleVal)||0)*(parseFloat(convVal)||0)).toFixed(2)}</span></div>
                         </div>
                         <div class="mob-field-group">
-                            <div class="mob-label">Wholesale Price</div>
+                            <div class="mob-label"><span class="mob-lbl-wsale">${unitDropdown && unitDropdown.value === 'by_cartons' ? 'Wholesale (1 Pc)' : 'Wholesale Price'}</span></div>
                             <input type="number" class="mob-input mob-sync" data-field="variant_wholesale_price[]" value="${escapeHtml(wsaleVal)}" placeholder="0.00" step="any">
+                            <div class="mob-ctn-hint text-secondary fw-bold ${unitDropdown && unitDropdown.value === 'by_cartons' ? '' : 'd-none'}" style="font-size:10px;margin-top:2px;">Ctn: <span class="mob-ctn-wsale-val">${((parseFloat(wsaleVal)||0)*(parseFloat(convVal)||0)).toFixed(2)}</span></div>
                         </div>
                     </div>
-<div class="mob-field-group">
-                            <div class="mob-label">Purchase Price <span class="req">*</span></div>
-                            <input type="number" class="mob-input mob-sync" data-field="variant_purchase_price[]" value="${escapeHtml(purchVal)}" placeholder="0.00" step="any" required>
+                    <div class="mob-field-group">
+                        <div class="mob-label"><span class="mob-lbl-purch">${unitDropdown && unitDropdown.value === 'by_cartons' ? 'Purchase Price (1 Pc)' : 'Purchase Price'}</span> <span class="req">*</span></div>
+                        <input type="number" class="mob-input mob-sync" data-field="variant_purchase_price[]" value="${escapeHtml(purchVal)}" placeholder="0.00" step="any" required>
+                        <div class="mob-ctn-hint text-success fw-bold ${unitDropdown && unitDropdown.value === 'by_cartons' ? '' : 'd-none'}" style="font-size:10px;margin-top:2px;">Ctn: <span class="mob-ctn-purch-val">${((parseFloat(purchVal)||0)*(parseFloat(convVal)||0)).toFixed(2)}</span></div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <div class="mob-field-group">
+                            <div class="mob-label">Sale Disc (%)</div>
+                            <input type="number" class="mob-input mob-sync" data-field="variant_sale_discount[]" value="${escapeHtml(saleDiscVal)}" placeholder="0" step="0.01">
                         </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                            <div class="mob-field-group">
-                                <div class="mob-label">Sale Disc (%)</div>
-                                <input type="number" class="mob-input mob-sync" data-field="variant_sale_discount[]" value="${escapeHtml(saleDiscVal)}" placeholder="0" step="0.01">
-                            </div>
-                            <div class="mob-field-group">
-                                <div class="mob-label">Purch Disc (%)</div>
-                                <input type="number" class="mob-input mob-sync" data-field="variant_purchase_discount[]" value="${escapeHtml(purchDiscVal)}" placeholder="0" step="0.01">
-                            </div>
+                        <div class="mob-field-group">
+                            <div class="mob-label">Purch Disc (%)</div>
+                            <input type="number" class="mob-input mob-sync" data-field="variant_purchase_discount[]" value="${escapeHtml(purchDiscVal)}" placeholder="0" step="0.01">
                         </div>
+                    </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                         <div class="mob-field-group">
                             <div class="mob-label">Alert Qty</div>
@@ -1553,6 +1646,19 @@
             if (typeof updateVariantStocksFromBase === 'function') {
                 updateVariantStocksFromBase();
             }
+            if (typeof updateCartonPriceRow === 'function') {
+                updateCartonPriceRow(tr);
+            }
+            const conv = parseFloat(card.querySelector('.mob-conv-inp')?.value || 0);
+            const sale = parseFloat(card.querySelector('[data-field="variant_sale_price[]"]')?.value || 0);
+            const wsale = parseFloat(card.querySelector('[data-field="variant_wholesale_price[]"]')?.value || 0);
+            const purch = parseFloat(card.querySelector('[data-field="variant_purchase_price[]"]')?.value || 0);
+            const saleEl = card.querySelector('.mob-ctn-sale-val');
+            const wsEl = card.querySelector('.mob-ctn-wsale-val');
+            const purchEl = card.querySelector('.mob-ctn-purch-val');
+            if (saleEl) saleEl.textContent = (sale * conv).toFixed(2);
+            if (wsEl) wsEl.textContent = (wsale * conv).toFixed(2);
+            if (purchEl) purchEl.textContent = (purch * conv).toFixed(2);
         }
 
         // ---- Toggle accordion (one open at a time) ----

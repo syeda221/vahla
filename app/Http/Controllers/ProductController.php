@@ -656,14 +656,14 @@ class ProductController extends Controller
                 $totalStockQty = ($piecesPerBox * $boxesQuantity) + $loosePieces;
             }
 
-            $inputSaleCtn = (float) $request->sale_price_per_box;
-            $inputPurchCtn = (float) $request->purchase_price_per_piece;
+            $inputSalePc = (float) $request->sale_price_per_box;
+            $inputPurchPc = (float) $request->purchase_price_per_piece;
 
-            $salePricePerBox = $inputSaleCtn;
-            $salePricePerPiece = $piecesPerBox > 1 ? ($inputSaleCtn / $piecesPerBox) : $inputSaleCtn;
+            $salePricePerPiece = $inputSalePc;
+            $salePricePerBox = round($inputSalePc * $piecesPerBox, 2);
 
-            $purchasePricePerBox = $inputPurchCtn;
-            $purchasePricePerPiece = $piecesPerBox > 1 ? ($inputPurchCtn / $piecesPerBox) : $inputPurchCtn;
+            $purchasePricePerPiece = $inputPurchPc;
+            $purchasePricePerBox = round($inputPurchPc * $piecesPerBox, 2);
 
         } else {
             // Treat by_pieces, by_kg, by_meter, by_gm as piece-based mode
@@ -785,11 +785,7 @@ class ProductController extends Controller
                         $vPurchPrice = (float)($purch_prices[$i] ?? 0);
                         $vWholesalePrice = (float)($wholesale_prices[$i] ?? 0);
 
-                        if (($mode === 'by_cartons' || strtolower($units[$i] ?? '') === 'carton') && $vConvFactor > 1) {
-                            $vSalePrice = round($vSalePrice / $vConvFactor, 4);
-                            $vPurchPrice = round($vPurchPrice / $vConvFactor, 4);
-                            $vWholesalePrice = round($vWholesalePrice / $vConvFactor, 4);
-                        }
+                        // Price entered by user on product page is per 1 PCS. Carton price is multiplied by conversion factor.
 
                         $variants[] = [
                             'name' => $names[$i],
@@ -1081,14 +1077,14 @@ class ProductController extends Controller
                 $totalStockQty = ($piecesPerBox * $boxesQuantity) + $loosePieces;
             }
 
-            $inputSaleCtn = (float) $request->sale_price_per_box;
-            $inputPurchCtn = (float) $request->purchase_price_per_piece;
+            $inputSalePc = (float) $request->sale_price_per_box;
+            $inputPurchPc = (float) $request->purchase_price_per_piece;
 
-            $salePricePerBox = $inputSaleCtn;
-            $salePricePerPiece = $piecesPerBox > 1 ? ($inputSaleCtn / $piecesPerBox) : $inputSaleCtn;
+            $salePricePerPiece = $inputSalePc;
+            $salePricePerBox = round($inputSalePc * $piecesPerBox, 2);
 
-            $purchasePricePerBox = $inputPurchCtn;
-            $purchasePricePerPiece = $piecesPerBox > 1 ? ($inputPurchCtn / $piecesPerBox) : $inputPurchCtn;
+            $purchasePricePerPiece = $inputPurchPc;
+            $purchasePricePerBox = round($inputPurchPc * $piecesPerBox, 2);
 
             $totalPrice = $totalStockQty * $salePricePerPiece;
             $totalPurchasePrice = $totalStockQty * $purchasePricePerPiece;
@@ -1189,11 +1185,7 @@ class ProductController extends Controller
                         $vPurchPrice = (float)($purch_prices[$i] ?? 0);
                         $vWholesalePrice = (float)($wholesale_prices[$i] ?? 0);
 
-                        if (($mode === 'by_cartons' || strtolower($units[$i] ?? '') === 'carton') && $vConvFactor > 1) {
-                            $vSalePrice = round($vSalePrice / $vConvFactor, 4);
-                            $vPurchPrice = round($vPurchPrice / $vConvFactor, 4);
-                            $vWholesalePrice = round($vWholesalePrice / $vConvFactor, 4);
-                        }
+                        // Price entered by user on product page is per 1 PCS. Carton price is multiplied by conversion factor.
 
                         $variants[] = [
                             'name' => $names[$i],
@@ -1610,16 +1602,7 @@ class ProductController extends Controller
             }
         }
 
-        if ($product->size_mode === 'by_cartons' && !empty($variants)) {
-            foreach ($variants as &$v) {
-                $cf = (float)($v['conv_factor'] ?? $ppb);
-                if ($cf > 1) {
-                    if (isset($v['sale_price']) && (float)$v['sale_price'] > 0) $v['sale_price'] = (string) round((float)$v['sale_price'] * $cf, 2);
-                    if (isset($v['purch_price']) && (float)$v['purch_price'] > 0) $v['purch_price'] = (string) round((float)$v['purch_price'] * $cf, 2);
-                    if (isset($v['wholesale_price']) && (float)$v['wholesale_price'] > 0) $v['wholesale_price'] = (string) round((float)$v['wholesale_price'] * $cf, 2);
-                }
-            }
-        }
+        // Variants prices are stored and edited as per-piece (1 PCS) prices. Carton prices are computed live on page.
 
         return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'variants'));
     }
