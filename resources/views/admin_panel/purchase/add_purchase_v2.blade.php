@@ -723,6 +723,17 @@
                 recalcAll();
             });
 
+            // Enter key to add row
+            $('#purchaseTableBody').on('keydown', '.main-qty-input, .price, .item-disc-percent', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if ($(this).closest('tr').is(':last-child')) {
+                        addBlankRow();
+                        $('#purchaseTableBody tr:last .product-select2').select2('open');
+                    }
+                }
+            });
+
             // Summary Inputs
             $('#billDiscount, #billDiscountPct, #extraCost').on('input', function() {
                 recalcAll();
