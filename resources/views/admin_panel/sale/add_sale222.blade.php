@@ -821,7 +821,7 @@
                                             <th class="col-size" style="width: 55px;">SIZE</th>
                                             <th class="col-color" style="width: 65px;">COLOR</th>
                                             <th class="col-pieces" style="width: 55px;">PCS</th>
-                                            <th class="col-price-p" style="width: 85px;">PRICE</th>
+                                            <th class="col-price-p" style="width: 105px;">PRICE</th>
                                             <th class="col-disc" style="width: 85px;">DISCOUNT</th>
                                             <th class="col-amount" style="width: 95px;">AMOUNT</th>
                                             <th class="col-action" style="width: 34px;">×</th>

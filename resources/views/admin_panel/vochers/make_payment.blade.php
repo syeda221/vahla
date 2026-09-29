@@ -378,7 +378,7 @@
 
                 <div class="row g-3">
                     <!-- Vendor Selection -->
-                    <div class="col-md-4">
+                    <div class="col-md-4" id="vendorIdCol">
                         <label class="mp-label">Vendor <span class="req">*</span></label>
                         <select name="vendor_id" id="vendorId" class="form-select mp-select select2" required>
                             <option value="">-- Choose Vendor --</option>
@@ -397,23 +397,24 @@
                     </div>
 
                     <!-- Payment Date -->
-                    <div class="col-md-2">
+                    <div class="col-md-2" id="paymentDateCol">
                         <label class="mp-label">Payment Date <span class="req">*</span></label>
                         <input type="date" name="payment_date" id="paymentDate" class="form-control mp-input" value="{{ date('Y-m-d') }}" required>
                     </div>
 
                     <!-- Payment Mode -->
-                    <div class="col-md-2">
+                    <div class="col-md-2" id="paymentModeCol">
                         <label class="mp-label">Payment Mode <span class="req">*</span></label>
                         <select name="payment_mode" id="paymentMode" class="form-select mp-select" required>
                             <option value="Cash" selected>Cash</option>
                             <option value="Bank">Bank</option>
+                            <option value="Cheque">Cheque</option>
                         </select>
                     </div>
 
                     <!-- Paid From Account -->
-                    <div class="col-md-4">
-                        <label class="mp-label">Paid From Account (Cash/Bank) <span class="req">*</span></label>
+                    <div class="col-md-4" id="paidFromAccountCol">
+                        <label class="mp-label" id="lblPaidFromAccount">Paid From Account (Cash/Bank) <span class="req">*</span></label>
                         <select name="paid_from_account_id" id="paidFromAccountId" class="form-select mp-select select2" required>
                             <option value="">-- Select Cash/Bank Account --</option>
                             @foreach ($accounts as $acc)
@@ -424,10 +425,10 @@
                         </select>
                     </div>
 
-                    <!-- Reference / Cheque No -->
-                    <div class="col-md-4">
-                        <label class="mp-label">Reference / Cheque #</label>
-                        <input type="text" name="reference_no" id="referenceNo" class="form-control mp-input" placeholder="e.g. CHQ-88219 / TXN-0012">
+                    <!-- Reference / Voucher No -->
+                    <div class="col-md-4" id="referenceNoCol">
+                        <label class="mp-label" id="lblReferenceNo">Reference / Voucher #</label>
+                        <input type="text" name="reference_no" id="referenceNo" class="form-control mp-input" placeholder="e.g. TXN-0012 / Voucher # / Slip #">
                     </div>
 
                     <!-- Total Payment Amount -->
@@ -443,9 +444,30 @@
                     </div>
 
                     <!-- Remarks / Narration -->
-                    <div class="col-md-4">
+                    <div class="col-md-4" id="remarksCol">
                         <label class="mp-label">Remarks / Narration</label>
-                        <input type="text" name="remarks" id="remarks" class="form-control mp-input" placeholder="e.g. Paid vendor bill dues via cheque">
+                        <input type="text" name="remarks" id="remarks" class="form-control mp-input" placeholder="e.g. Paid vendor bill dues">
+                    </div>
+                </div>
+
+                <!-- Cheque Details Section (Shown when Payment Mode = Cheque) -->
+                <div class="row g-3 mt-1 p-3 d-none rounded border" id="chequeDetailsRow" style="background: #eff6ff; border-color: #bfdbfe !important;">
+                    <div class="col-12 pb-1 border-bottom d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-money-check text-primary"></i>
+                        <strong class="text-primary small text-uppercase">Cheque Details</strong>
+                        <span class="badge bg-primary-subtle text-primary small">Cheque Mode Selected</span>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="mp-label">Cheque # <span class="req">*</span></label>
+                        <input type="text" name="cheque_no" id="chequeNo" class="form-control mp-input" placeholder="e.g. CHQ-882194">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="mp-label">Cheque Date <span class="req">*</span></label>
+                        <input type="date" name="cheque_date" id="chequeDate" class="form-control mp-input" value="{{ date('Y-m-d') }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="mp-label">Issuing Bank Account / Bank</label>
+                        <input type="text" name="cheque_bank" id="chequeBank" class="form-control mp-input" placeholder="e.g. HBL / Meezan Bank / Alfalah">
                     </div>
                 </div>
             </div>
@@ -611,6 +633,50 @@ $(document).ready(function() {
             runFifoAllocation();
         }
     });
+
+    function handlePaymentModeChange() {
+        let mode = $('#paymentMode').val();
+        if (mode === 'Cheque') {
+            $('#chequeDetailsRow').removeClass('d-none');
+            $('#paidFromAccountCol').addClass('d-none');
+            $('#paidFromAccountId').prop('required', false);
+            $('#vendorIdCol').removeClass('col-md-4').addClass('col-md-6');
+            $('#paymentDateCol').removeClass('col-md-2').addClass('col-md-3');
+            $('#paymentModeCol').removeClass('col-md-2').addClass('col-md-3');
+            $('#lblReferenceNo').text('Additional Reference #');
+            $('#referenceNo').attr('placeholder', 'e.g. Voucher / Slip / Memo');
+            $('#chequeNo').prop('required', true);
+        } else if (mode === 'Bank') {
+            $('#chequeDetailsRow').addClass('d-none');
+            $('#paidFromAccountCol').removeClass('d-none');
+            $('#paidFromAccountId').prop('required', true);
+            $('#vendorIdCol').removeClass('col-md-6').addClass('col-md-4');
+            $('#paymentDateCol').removeClass('col-md-3').addClass('col-md-2');
+            $('#paymentModeCol').removeClass('col-md-3').addClass('col-md-2');
+            $('#lblPaidFromAccount').html('Paid From Bank Account <span class="req">*</span>');
+            $('#lblReferenceNo').text('Transaction / Ref #');
+            $('#referenceNo').attr('placeholder', 'e.g. Online Transfer / TXN-0012');
+            $('#chequeNo').prop('required', false);
+        } else {
+            $('#chequeDetailsRow').addClass('d-none');
+            $('#paidFromAccountCol').removeClass('d-none');
+            $('#paidFromAccountId').prop('required', true);
+            $('#vendorIdCol').removeClass('col-md-6').addClass('col-md-4');
+            $('#paymentDateCol').removeClass('col-md-3').addClass('col-md-2');
+            $('#paymentModeCol').removeClass('col-md-3').addClass('col-md-2');
+            $('#lblPaidFromAccount').html('Paid From Account (Cash/Bank) <span class="req">*</span>');
+            $('#lblReferenceNo').text('Reference / Voucher #');
+            $('#referenceNo').attr('placeholder', 'e.g. Voucher # / Slip #');
+            $('#chequeNo').prop('required', false);
+        }
+    }
+
+    $(document).on('change', '#paymentMode', function() {
+        handlePaymentModeChange();
+    });
+
+    // Run on load
+    handlePaymentModeChange();
 
     function handleVendorChange() {
         let vendorId = $('#vendorId').val();
@@ -1057,13 +1123,24 @@ $(document).ready(function() {
             Swal.fire({ icon: 'warning', title: 'Vendor Required', text: 'Please select a vendor.' });
             return;
         }
-        if (!paidAccId) {
+        let payMode = $('#paymentMode').val();
+
+        if (payMode !== 'Cheque' && !paidAccId) {
             Swal.fire({ icon: 'warning', title: 'Account Required', text: 'Please select the Paid From Account (Cash/Bank).' });
             return;
         }
         if (totalAmt <= 0) {
             Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: 'Please enter a valid Total Payment Amount.' });
             return;
+        }
+
+        if (payMode === 'Cheque') {
+            let chqNo = $('#chequeNo').val().trim();
+            if (!chqNo) {
+                Swal.fire({ icon: 'warning', title: 'Cheque # Required', text: 'Please enter the Cheque number for Cheque payment mode.' });
+                $('#chequeNo').focus();
+                return;
+            }
         }
 
         let vendorName = $('#vendorId').find(':selected').text().trim();

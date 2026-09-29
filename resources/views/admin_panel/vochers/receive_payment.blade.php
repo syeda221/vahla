@@ -378,7 +378,7 @@
 
                 <div class="row g-3">
                     <!-- Customer Selection -->
-                    <div class="col-md-4">
+                    <div class="col-md-4" id="customerIdCol">
                         <label class="rp-label">Customer <span class="req">*</span></label>
                         <select name="customer_id" id="customerId" class="form-select rp-select select2" required>
                             <option value="">-- Choose Customer --</option>
@@ -397,23 +397,24 @@
                     </div>
 
                     <!-- Payment Date -->
-                    <div class="col-md-2">
+                    <div class="col-md-2" id="paymentDateCol">
                         <label class="rp-label">Payment Date <span class="req">*</span></label>
                         <input type="date" name="payment_date" id="paymentDate" class="form-control rp-input" value="{{ date('Y-m-d') }}" required>
                     </div>
 
                     <!-- Payment Mode -->
-                    <div class="col-md-2">
+                    <div class="col-md-2" id="paymentModeCol">
                         <label class="rp-label">Payment Mode <span class="req">*</span></label>
                         <select name="payment_mode" id="paymentMode" class="form-select rp-select" required>
                             <option value="Cash" selected>Cash</option>
                             <option value="Bank">Bank</option>
+                            <option value="Cheque">Cheque</option>
                         </select>
                     </div>
 
                     <!-- Deposit To Account -->
-                    <div class="col-md-4">
-                        <label class="rp-label">Deposit To Account (Cash/Bank) <span class="req">*</span></label>
+                    <div class="col-md-4" id="depositAccountCol">
+                        <label class="rp-label" id="lblDepositAccount">Deposit To Account (Cash/Bank) <span class="req">*</span></label>
                         <select name="deposit_account_id" id="depositAccountId" class="form-select rp-select select2" required>
                             <option value="">-- Select Cash/Bank Account --</option>
                             @foreach ($accounts as $acc)
@@ -424,10 +425,10 @@
                         </select>
                     </div>
 
-                    <!-- Reference / Cheque No -->
-                    <div class="col-md-4">
-                        <label class="rp-label">Reference / Cheque #</label>
-                        <input type="text" name="reference_no" id="referenceNo" class="form-control rp-input" placeholder="e.g. CHQ-99081 / TR-88123">
+                    <!-- Reference / Receipt No -->
+                    <div class="col-md-4" id="referenceNoCol">
+                        <label class="rp-label" id="lblReferenceNo">Reference / Receipt #</label>
+                        <input type="text" name="reference_no" id="referenceNo" class="form-control rp-input" placeholder="e.g. Slip # / Memo / Receipt #">
                     </div>
 
                     <!-- Total Received Amount -->
@@ -443,9 +444,30 @@
                     </div>
 
                     <!-- Remarks / Narration -->
-                    <div class="col-md-4">
+                    <div class="col-md-4" id="remarksCol">
                         <label class="rp-label">Remarks / Narration</label>
-                        <input type="text" name="remarks" id="remarks" class="form-control rp-input" placeholder="e.g. Received via Cheque against invoice dues">
+                        <input type="text" name="remarks" id="remarks" class="form-control rp-input" placeholder="e.g. Received payment against invoice dues">
+                    </div>
+                </div>
+
+                <!-- Cheque Details Section (Shown when Payment Mode = Cheque) -->
+                <div class="row g-3 mt-1 p-3 d-none rounded border" id="chequeDetailsRow" style="background: #f0fdf4; border-color: #bbf7d0 !important;">
+                    <div class="col-12 pb-1 border-bottom d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-money-check text-success"></i>
+                        <strong class="text-success small text-uppercase">Cheque Details</strong>
+                        <span class="badge bg-success-subtle text-success small">Cheque Mode Selected</span>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="rp-label">Cheque # <span class="req">*</span></label>
+                        <input type="text" name="cheque_no" id="chequeNo" class="form-control rp-input" placeholder="e.g. CHQ-990812">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="rp-label">Cheque Date <span class="req">*</span></label>
+                        <input type="date" name="cheque_date" id="chequeDate" class="form-control rp-input" value="{{ date('Y-m-d') }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="rp-label">Customer's Bank Name</label>
+                        <input type="text" name="cheque_bank" id="chequeBank" class="form-control rp-input" placeholder="e.g. Meezan Bank / HBL / UBL">
                     </div>
                 </div>
             </div>
@@ -611,6 +633,50 @@ $(document).ready(function() {
             runFifoAllocation();
         }
     });
+
+    function handlePaymentModeChange() {
+        let mode = $('#paymentMode').val();
+        if (mode === 'Cheque') {
+            $('#chequeDetailsRow').removeClass('d-none');
+            $('#depositAccountCol').addClass('d-none');
+            $('#depositAccountId').prop('required', false);
+            $('#customerIdCol').removeClass('col-md-4').addClass('col-md-6');
+            $('#paymentDateCol').removeClass('col-md-2').addClass('col-md-3');
+            $('#paymentModeCol').removeClass('col-md-2').addClass('col-md-3');
+            $('#lblReferenceNo').text('Additional Reference #');
+            $('#referenceNo').attr('placeholder', 'e.g. Deposit Slip # / Memo');
+            $('#chequeNo').prop('required', true);
+        } else if (mode === 'Bank') {
+            $('#chequeDetailsRow').addClass('d-none');
+            $('#depositAccountCol').removeClass('d-none');
+            $('#depositAccountId').prop('required', true);
+            $('#customerIdCol').removeClass('col-md-6').addClass('col-md-4');
+            $('#paymentDateCol').removeClass('col-md-3').addClass('col-md-2');
+            $('#paymentModeCol').removeClass('col-md-3').addClass('col-md-2');
+            $('#lblDepositAccount').html('Deposit To Bank Account <span class="req">*</span>');
+            $('#lblReferenceNo').text('Transaction / Ref #');
+            $('#referenceNo').attr('placeholder', 'e.g. Online Transfer / TR-88123');
+            $('#chequeNo').prop('required', false);
+        } else {
+            $('#chequeDetailsRow').addClass('d-none');
+            $('#depositAccountCol').removeClass('d-none');
+            $('#depositAccountId').prop('required', true);
+            $('#customerIdCol').removeClass('col-md-6').addClass('col-md-4');
+            $('#paymentDateCol').removeClass('col-md-3').addClass('col-md-2');
+            $('#paymentModeCol').removeClass('col-md-3').addClass('col-md-2');
+            $('#lblDepositAccount').html('Deposit To Account (Cash/Bank) <span class="req">*</span>');
+            $('#lblReferenceNo').text('Reference / Receipt #');
+            $('#referenceNo').attr('placeholder', 'e.g. Slip # / Memo / Receipt #');
+            $('#chequeNo').prop('required', false);
+        }
+    }
+
+    $(document).on('change', '#paymentMode', function() {
+        handlePaymentModeChange();
+    });
+
+    // Run on load in case Cheque is restored or default
+    handlePaymentModeChange();
 
     function handleCustomerChange() {
         let customerId = $('#customerId').val();
@@ -1057,13 +1123,24 @@ $(document).ready(function() {
             Swal.fire({ icon: 'warning', title: 'Customer Required', text: 'Please select a customer.' });
             return;
         }
-        if (!depAccId) {
+        let payMode = $('#paymentMode').val();
+
+        if (payMode !== 'Cheque' && !depAccId) {
             Swal.fire({ icon: 'warning', title: 'Account Required', text: 'Please select the Deposit Account (Cash/Bank).' });
             return;
         }
         if (totalAmt <= 0) {
             Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: 'Please enter a valid Total Received Amount.' });
             return;
+        }
+
+        if (payMode === 'Cheque') {
+            let chqNo = $('#chequeNo').val().trim();
+            if (!chqNo) {
+                Swal.fire({ icon: 'warning', title: 'Cheque # Required', text: 'Please enter the Cheque number for Cheque payment mode.' });
+                $('#chequeNo').focus();
+                return;
+            }
         }
 
         let custName = $('#customerId').find(':selected').text().trim();

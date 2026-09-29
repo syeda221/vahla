@@ -1291,9 +1291,66 @@
                 let activePriceMode = $('input[name="pos_price_mode"]:checked').val() || 'retail';
                 let price = (activePriceMode === 'wholesale' && wholesalePrice > 0) ? wholesalePrice : retailPrice;
                 
-                addToCart(id, name, price, stockPieces, 1, sizeMode, piecesPerBox, '', retailPrice, wholesalePrice, weightPerPiece);
+                checkAndAddToCart(id, name, price, stockPieces, 1, sizeMode, piecesPerBox, '', retailPrice, wholesalePrice, weightPerPiece);
             }
         });
+
+        // Check & Prompt for Customer Recent Sale Price in POS
+        function checkAndAddToCart(id, name, price, stockPieces, qty, sizeMode, piecesPerBox, variantData, retailPrice = 0, wholesalePrice = 0, weightPerPiece = 0, onDone = null) {
+            const isRegistered = !$('#btnToggleWalkin').hasClass('active');
+            const customerId = $('#customerSelect').val();
+            const pid = id.toString().split('|')[0];
+
+            if (isRegistered && customerId && pid && !id.toString().startsWith('manual_')) {
+                $.get('{{ route("get-price") }}', {
+                    product_id: pid,
+                    customer_id: customerId,
+                    _t: new Date().getTime()
+                }).done(function(pRes) {
+                    if (pRes && pRes.last_sale_info && pRes.last_sale_info.price > 0) {
+                        const info = pRes.last_sale_info;
+                        const lastPrice = parseFloat(info.price);
+                        let customerName = $('#customerSelect option:selected').text() || 'Selected Customer';
+                        
+                        Swal.fire({
+                            title: 'Recent Sale Price Found!',
+                            html: `
+                                <div style="text-align: left; font-size: 0.95rem; line-height: 1.6;">
+                                    <p class="mb-2">Recently sold <strong>${name}</strong> to <strong class="text-primary">${customerName}</strong> for:</p>
+                                    <div class="p-2 mb-2 rounded bg-light text-center border">
+                                        <span class="text-success fw-bold" style="font-size: 1.35rem;">Rs. ${lastPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                        <div class="text-muted small mt-1"><i class="far fa-calendar-alt me-1"></i> Sold on: <strong>${info.date}</strong> ${info.invoice_no ? '(' + info.invoice_no + ')' : ''}</div>
+                                    </div>
+                                    <div class="small text-muted text-center">Standard Current Rate: <strong>Rs. ${price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></div>
+                                    <p class="mt-3 mb-0 text-center fw-semibold">Would you like to apply the previous rate (Rs. ${lastPrice.toLocaleString()})?</p>
+                                </div>
+                            `,
+                            icon: 'info',
+                            showCancelButton: true,
+                            confirmButtonColor: '#10b981',
+                            cancelButtonColor: '#64748b',
+                            confirmButtonText: `<i class="fas fa-check me-1"></i> Apply Rs. ${lastPrice.toLocaleString()}`,
+                            cancelButtonText: `Keep Standard (Rs. ${price.toLocaleString()})`,
+                            reverseButtons: true,
+                            focusConfirm: true
+                        }).then((result) => {
+                            let finalPrice = result.isConfirmed ? lastPrice : price;
+                            addToCart(id, name, finalPrice, stockPieces, qty, sizeMode, piecesPerBox, variantData, retailPrice, wholesalePrice, weightPerPiece, info);
+                            if (typeof onDone === 'function') onDone();
+                        });
+                        return;
+                    }
+                    addToCart(id, name, price, stockPieces, qty, sizeMode, piecesPerBox, variantData, retailPrice, wholesalePrice, weightPerPiece);
+                    if (typeof onDone === 'function') onDone();
+                }).fail(function() {
+                    addToCart(id, name, price, stockPieces, qty, sizeMode, piecesPerBox, variantData, retailPrice, wholesalePrice, weightPerPiece);
+                    if (typeof onDone === 'function') onDone();
+                });
+            } else {
+                addToCart(id, name, price, stockPieces, qty, sizeMode, piecesPerBox, variantData, retailPrice, wholesalePrice, weightPerPiece);
+                if (typeof onDone === 'function') onDone();
+            }
+        }
 
         // Modal quantity increment/decrement
         $(document).on('click', '.modal-qty-plus', function() {
@@ -1334,14 +1391,14 @@
             let activePriceMode = $('input[name="pos_price_mode"]:checked').val() || 'retail';
             let price = (activePriceMode === 'wholesale' && wholesalePrice > 0) ? wholesalePrice : retailPrice;
 
-            addToCart(id, name, price, stockPieces, qty, sizeMode, piecesPerBox, variantData, retailPrice, wholesalePrice, weightPerPiece);
-            
-            // Show added feedback
             let $btn = $(this);
-            $btn.removeClass('btn-primary').addClass('btn-success').html('<i class="fas fa-check"></i> Added');
-            setTimeout(() => {
-                $btn.removeClass('btn-success').addClass('btn-primary').html('<i class="fas fa-plus me-1"></i> Add');
-            }, 1000);
+            checkAndAddToCart(id, name, price, stockPieces, qty, sizeMode, piecesPerBox, variantData, retailPrice, wholesalePrice, weightPerPiece, function() {
+                // Show added feedback
+                $btn.removeClass('btn-primary').addClass('btn-success').html('<i class="fas fa-check"></i> Added');
+                setTimeout(() => {
+                    $btn.removeClass('btn-success').addClass('btn-primary').html('<i class="fas fa-plus me-1"></i> Add');
+                }, 1000);
+            });
         });
 
         // Live Vendor Summary for Manual Product Modal
@@ -1543,7 +1600,7 @@
         });
 
         // Core addToCart Helper
-        function addToCart(id, name, price, stockPieces, qty, sizeMode, piecesPerBox, variantData, retailPrice = 0, wholesalePrice = 0, weightPerPiece = 0) {
+        function addToCart(id, name, price, stockPieces, qty, sizeMode, piecesPerBox, variantData, retailPrice = 0, wholesalePrice = 0, weightPerPiece = 0, lastSaleInfo = null) {
             let cartItem = cart.find(item => item.id === id);
             if (cartItem) {
                 if (cartItem.qty + qty <= stockPieces) {
@@ -1552,6 +1609,7 @@
                     cartItem.qty = stockPieces;
                     Swal.fire('Limit Exceeded', 'Adjusted to maximum available stock.', 'warning');
                 }
+                if (lastSaleInfo) cartItem.lastSaleInfo = lastSaleInfo;
             } else {
                 cart.push({
                     id: id,
@@ -1565,7 +1623,8 @@
                     stock: stockPieces,
                     sizeMode: sizeMode,
                     piecesPerBox: piecesPerBox,
-                    variantData: variantData
+                    variantData: variantData,
+                    lastSaleInfo: lastSaleInfo
                 });
             }
             renderCart();
@@ -1612,11 +1671,15 @@
                 let isRet = item.is_return === true;
                 let itemBg = isRet ? 'background: #fff5f5; border: 1px solid #feb2b2;' : '';
                 let badge = isRet ? '<span class="badge bg-danger me-1">RETURN</span>' : '';
+                let lastSaleBadge = (!isRet && item.lastSaleInfo) ? `<small class="text-primary d-block mt-1" style="font-size: 11px; font-weight: 600;"><i class="fas fa-history"></i> Last Sold: Rs. ${Number(item.lastSaleInfo.price).toLocaleString()} (${item.lastSaleInfo.date})</small>` : '';
                 
                 let html = `
                     <div class="cart-item" data-index="${index}" style="${itemBg}">
                         <div class="cart-item-header">
-                            <span class="cart-item-name">${badge}${item.name}</span>
+                            <div>
+                                <span class="cart-item-name">${badge}${item.name}</span>
+                                ${lastSaleBadge}
+                            </div>
                             <span class="cart-item-remove remove-cart-item"><i class="fas fa-trash-alt"></i></span>
                         </div>
                         <div class="cart-item-details">

@@ -2497,7 +2497,8 @@ class VoucherController extends Controller
         $cashBankHeadIds = DB::table('account_heads')
             ->where(function($q) {
                 $q->whereRaw('LOWER(name) LIKE ?', ['%cash%'])
-                  ->orWhereRaw('LOWER(name) LIKE ?', ['%bank%']);
+                  ->orWhereRaw('LOWER(name) LIKE ?', ['%bank%'])
+                  ->orWhereRaw('LOWER(name) LIKE ?', ['%cheque%']);
             })
             ->pluck('id');
 
@@ -2506,7 +2507,8 @@ class VoucherController extends Controller
             ->where(function($q) use ($cashBankHeadIds) {
                 $q->whereIn('head_id', $cashBankHeadIds)
                   ->orWhereRaw('LOWER(title) LIKE ?', ['%cash%'])
-                  ->orWhereRaw('LOWER(title) LIKE ?', ['%bank%']);
+                  ->orWhereRaw('LOWER(title) LIKE ?', ['%bank%'])
+                  ->orWhereRaw('LOWER(title) LIKE ?', ['%cheque%']);
             })
             ->whereNotIn('account_code', ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP'])
             ->orderBy('title')
@@ -2548,7 +2550,7 @@ class VoucherController extends Controller
         $request->validate([
             'customer_id' => 'required',
             'payment_date' => 'required|date',
-            'deposit_account_id' => 'required',
+            'deposit_account_id' => 'nullable',
             'total_amount' => 'required|numeric|min:0.01',
         ]);
 
@@ -2560,16 +2562,51 @@ class VoucherController extends Controller
                 return response()->json(['success' => false, 'message' => 'Customer not found.'], 404);
             }
 
-            $depositAccount = DB::table('accounts')->where('id', $request->deposit_account_id)->first();
-            if (!$depositAccount) {
-                return response()->json(['success' => false, 'message' => 'Deposit Account not found.'], 404);
-            }
-
             $totalAmount = (float) $request->total_amount;
             $paymentMode = $request->payment_mode ?: 'Cash';
             $referenceNo = $request->reference_no ?: '';
+            $chequeNo = $request->cheque_no ?: '';
+            $chequeDate = $request->cheque_date ?: '';
+            $chequeBank = $request->cheque_bank ?: '';
             $paymentDate = $request->payment_date;
             $remarks = $request->remarks ?: '';
+
+            if ($paymentMode === 'Cheque') {
+                $depositAccount = null;
+                if (!empty($request->deposit_account_id)) {
+                    $depositAccount = DB::table('accounts')->where('id', $request->deposit_account_id)->first();
+                }
+                if (!$depositAccount) {
+                    $chequeAcc = DB::table('accounts')->where(function($q) {
+                        $q->whereRaw('LOWER(title) LIKE ?', ['%cheque%'])
+                          ->orWhereRaw('LOWER(title) LIKE ?', ['%check%']);
+                    })->first();
+
+                    if (!$chequeAcc) {
+                        $headId = DB::table('account_heads')->whereRaw('LOWER(name) LIKE ?', ['%asset%'])->value('id') ?? 1;
+                        $chequeAccId = DB::table('accounts')->insertGetId([
+                            'title' => 'Cheques in Hand',
+                            'account_code' => 'CHQ-001',
+                            'head_id' => $headId,
+                            'type' => 'Debit',
+                            'status' => 1,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        $depositAccount = DB::table('accounts')->where('id', $chequeAccId)->first();
+                    } else {
+                        $depositAccount = $chequeAcc;
+                    }
+                }
+            } else {
+                $depositAccount = DB::table('accounts')->where('id', $request->deposit_account_id)->first();
+                if (!$depositAccount) {
+                    return response()->json(['success' => false, 'message' => 'Deposit Account not found.'], 404);
+                }
+            }
+
+            // Primary reference (prefer cheque # when in cheque mode)
+            $primaryRef = ($paymentMode === 'Cheque' && $chequeNo) ? $chequeNo : $referenceNo;
 
             // Generate RVID
             $lastRec = DB::table('receipts_vouchers')->latest('id')->first();
@@ -2597,15 +2634,29 @@ class VoucherController extends Controller
                 }
             }
 
-            $narrationList = !empty($settledInvoices) 
-                ? "Payment Received against Invoices: " . implode(', ', $settledInvoices)
-                : "Payment Received from Customer";
-            if ($referenceNo) {
-                $narrationList .= " | Ref: " . $referenceNo;
+            $chequeInfo = [];
+            if ($paymentMode === 'Cheque') {
+                if ($chequeNo) $chequeInfo[] = "Chq #: {$chequeNo}";
+                if ($chequeDate) $chequeInfo[] = "Date: {$chequeDate}";
+                if ($chequeBank) $chequeInfo[] = "Bank: {$chequeBank}";
             }
+
+            $narrationParts = [];
             if ($remarks) {
-                $narrationList = $remarks . " | " . $narrationList;
+                $narrationParts[] = $remarks;
             }
+            if (!empty($chequeInfo)) {
+                $narrationParts[] = "Cheque (" . implode(', ', $chequeInfo) . ")";
+            } elseif ($referenceNo) {
+                $narrationParts[] = "Ref: {$referenceNo}";
+            }
+
+            if (!empty($settledInvoices)) {
+                $narrationParts[] = "Invoices Settled: " . implode(', ', $settledInvoices);
+            } else {
+                $narrationParts[] = "Payment Received from Customer";
+            }
+            $narrationList = implode(' | ', $narrationParts);
 
             // 1. Create ReceiptsVoucher record for legacy print/history compatibility
             $recVoucher = \App\Models\ReceiptsVoucher::create([
@@ -2617,7 +2668,7 @@ class VoucherController extends Controller
                 'tel' => $customer->mobile ?? '',
                 'remarks' => $narrationList,
                 'narration_id' => json_encode(['Receive Payment - Invoices']),
-                'reference_no' => json_encode([$referenceNo]),
+                'reference_no' => json_encode([$primaryRef]),
                 'row_account_head' => json_encode([$depositAccount->head_id ?? 1]),
                 'row_account_id' => json_encode([$depositAccount->id]),
                 'discount_value' => json_encode([0]),
@@ -2746,7 +2797,8 @@ class VoucherController extends Controller
         $cashBankHeadIds = DB::table('account_heads')
             ->where(function($q) {
                 $q->whereRaw('LOWER(name) LIKE ?', ['%cash%'])
-                  ->orWhereRaw('LOWER(name) LIKE ?', ['%bank%']);
+                  ->orWhereRaw('LOWER(name) LIKE ?', ['%bank%'])
+                  ->orWhereRaw('LOWER(name) LIKE ?', ['%cheque%']);
             })
             ->pluck('id');
 
@@ -2755,7 +2807,8 @@ class VoucherController extends Controller
             ->where(function($q) use ($cashBankHeadIds) {
                 $q->whereIn('head_id', $cashBankHeadIds)
                   ->orWhereRaw('LOWER(title) LIKE ?', ['%cash%'])
-                  ->orWhereRaw('LOWER(title) LIKE ?', ['%bank%']);
+                  ->orWhereRaw('LOWER(title) LIKE ?', ['%bank%'])
+                  ->orWhereRaw('LOWER(title) LIKE ?', ['%cheque%']);
             })
             ->whereNotIn('account_code', ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP'])
             ->orderBy('title')
@@ -2797,7 +2850,7 @@ class VoucherController extends Controller
         $request->validate([
             'vendor_id' => 'required',
             'payment_date' => 'required|date',
-            'paid_from_account_id' => 'required',
+            'paid_from_account_id' => 'nullable',
             'total_amount' => 'required|numeric|min:0.01',
         ]);
 
@@ -2809,16 +2862,51 @@ class VoucherController extends Controller
                 return response()->json(['success' => false, 'message' => 'Vendor not found.'], 404);
             }
 
-            $paidFromAccount = DB::table('accounts')->where('id', $request->paid_from_account_id)->first();
-            if (!$paidFromAccount) {
-                return response()->json(['success' => false, 'message' => 'Paid From Account not found.'], 404);
-            }
-
             $totalAmount = (float) $request->total_amount;
             $paymentMode = $request->payment_mode ?: 'Cash';
             $referenceNo = $request->reference_no ?: '';
+            $chequeNo = $request->cheque_no ?: '';
+            $chequeDate = $request->cheque_date ?: '';
+            $chequeBank = $request->cheque_bank ?: '';
             $paymentDate = $request->payment_date;
             $remarks = $request->remarks ?: '';
+
+            if ($paymentMode === 'Cheque') {
+                $paidFromAccount = null;
+                if (!empty($request->paid_from_account_id)) {
+                    $paidFromAccount = DB::table('accounts')->where('id', $request->paid_from_account_id)->first();
+                }
+                if (!$paidFromAccount) {
+                    $chequeAcc = DB::table('accounts')->where(function($q) {
+                        $q->whereRaw('LOWER(title) LIKE ?', ['%cheque%'])
+                          ->orWhereRaw('LOWER(title) LIKE ?', ['%check%']);
+                    })->first();
+
+                    if (!$chequeAcc) {
+                        $headId = DB::table('account_heads')->whereRaw('LOWER(name) LIKE ?', ['%asset%'])->value('id') ?? 1;
+                        $chequeAccId = DB::table('accounts')->insertGetId([
+                            'title' => 'Cheques in Hand',
+                            'account_code' => 'CHQ-001',
+                            'head_id' => $headId,
+                            'type' => 'Debit',
+                            'status' => 1,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        $paidFromAccount = DB::table('accounts')->where('id', $chequeAccId)->first();
+                    } else {
+                        $paidFromAccount = $chequeAcc;
+                    }
+                }
+            } else {
+                $paidFromAccount = DB::table('accounts')->where('id', $request->paid_from_account_id)->first();
+                if (!$paidFromAccount) {
+                    return response()->json(['success' => false, 'message' => 'Paid From Account not found.'], 404);
+                }
+            }
+
+            // Primary reference (prefer cheque # when in cheque mode)
+            $primaryRef = ($paymentMode === 'Cheque' && $chequeNo) ? $chequeNo : $referenceNo;
 
             // Generate PVID
             $lastPay = DB::table('payment_vouchers')->latest('id')->first();
@@ -2849,15 +2937,29 @@ class VoucherController extends Controller
                 }
             }
 
-            $narrationList = !empty($settledBills) 
-                ? "Payment Made against Bills: " . implode(', ', $settledBills)
-                : "Payment Made to Vendor";
-            if ($referenceNo) {
-                $narrationList .= " | Ref: " . $referenceNo;
+            $chequeInfo = [];
+            if ($paymentMode === 'Cheque') {
+                if ($chequeNo) $chequeInfo[] = "Chq #: {$chequeNo}";
+                if ($chequeDate) $chequeInfo[] = "Date: {$chequeDate}";
+                if ($chequeBank) $chequeInfo[] = "Bank: {$chequeBank}";
             }
+
+            $narrationParts = [];
             if ($remarks) {
-                $narrationList = $remarks . " | " . $narrationList;
+                $narrationParts[] = $remarks;
             }
+            if (!empty($chequeInfo)) {
+                $narrationParts[] = "Cheque (" . implode(', ', $chequeInfo) . ")";
+            } elseif ($referenceNo) {
+                $narrationParts[] = "Ref: {$referenceNo}";
+            }
+
+            if (!empty($settledBills)) {
+                $narrationParts[] = "Bills Settled: " . implode(', ', $settledBills);
+            } else {
+                $narrationParts[] = "Payment Made to Vendor";
+            }
+            $narrationList = implode(' | ', $narrationParts);
 
             // 1. Create PaymentVoucher record for legacy print/history compatibility
             $payVoucher = \App\Models\PaymentVoucher::create([
@@ -2868,7 +2970,7 @@ class VoucherController extends Controller
                 'party_id' => json_encode([$vendorId]),
                 'remarks' => $narrationList,
                 'narration_id' => json_encode(['Pay Bill - Purchase Settlement']),
-                'reference_no' => json_encode([$referenceNo]),
+                'reference_no' => json_encode([$primaryRef]),
                 'row_account_head' => $paidFromAccount->head_id ?? 1,
                 'row_account_id' => $paidFromAccount->id,
                 'discount_value' => json_encode([0]),

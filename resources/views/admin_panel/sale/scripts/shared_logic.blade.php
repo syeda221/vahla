@@ -1,5 +1,42 @@
 
 
+<style>
+    .last-sale-badge-container {
+        margin-top: 2px;
+        padding-right: 2px;
+    }
+    .last-sale-pill {
+        background: #eff6ff !important;
+        color: #1d4ed8 !important;
+        border: 1px solid #bfdbfe !important;
+        font-size: 10px !important;
+        font-weight: 600 !important;
+        padding: 1px 6px !important;
+        border-radius: 4px !important;
+        cursor: pointer !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        white-space: nowrap !important;
+        line-height: 1.3 !important;
+        transition: all 0.15s ease-in-out !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+    }
+    .last-sale-pill:hover {
+        background: #2563eb !important;
+        color: #ffffff !important;
+        border-color: #2563eb !important;
+        box-shadow: 0 2px 5px rgba(37, 99, 235, 0.25) !important;
+        transform: translateY(-1px);
+    }
+    .last-sale-pill:hover i {
+        color: #ffffff !important;
+    }
+    .col-price-p {
+        min-width: 105px !important;
+    }
+</style>
+
 <script>
     let lastSelectedPriceMode = 'retail';
     /* =========================================
@@ -237,47 +274,137 @@
         updateRowIndexes();
     }
 
+    // Global helper for clickable badge
+    window.applyLastSalePrice = function(el, price) {
+        let $row = $(el).is('tr') ? $(el) : $(el).closest('tr');
+        $row.find('.visible-price').val(price);
+        $row.find('.price-per-piece').val(price);
+        computeRow($row);
+
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Applied recent price: Rs. ' + Number(price).toLocaleString(),
+                showConfirmButton: false,
+                timer: 1800
+            });
+        }
+    };
+
+    // Check & Notify Recent Sold Price to Selected Customer
+    function checkCustomerLastPrice($row, productId, customerId, promptUser = true) {
+        if (!productId || !customerId) {
+            $row.find('.last-sale-badge-container').remove();
+            return;
+        }
+
+        let pid = productId.toString().split('|')[0];
+        
+        $.get('{{ route('get-price') }}', {
+            product_id: pid,
+            customer_id: customerId,
+            _t: new Date().getTime()
+        }).done(function(pRes) {
+            $row.find('.last-sale-badge-container').remove();
+
+            if (pRes && pRes.last_sale_info && pRes.last_sale_info.price > 0) {
+                const info = pRes.last_sale_info;
+                const lastPrice = parseFloat(info.price);
+                const currentVal = parseFloat($row.find('.visible-price').val()) || 0;
+
+                // 1. Append sleek, compact clickable pill badge under price column
+                const badgeHtml = `
+                <div class="last-sale-badge-container d-flex justify-content-end">
+                    <span class="last-sale-pill" 
+                          onclick="applyLastSalePrice(this, ${lastPrice})"
+                          title="Sold on ${info.date} ${info.invoice_no ? '(' + info.invoice_no + ')' : ''} - Click to apply Rs. ${lastPrice.toLocaleString()}">
+                        <i class="fas fa-history text-primary"></i> Last: <b>Rs ${lastPrice.toLocaleString()}</b>
+                    </span>
+                </div>`;
+                $row.find('.col-price-p').append(badgeHtml);
+
+                // 2. Show SweetAlert2 popup if promptUser is true
+                if (promptUser && typeof Swal !== 'undefined') {
+                    let customerName = $('#customerSelect option:selected').text() || 'this customer';
+                    if (customerName.includes(' — ')) {
+                        customerName = customerName.split(' — ')[1] || customerName;
+                    }
+
+                    Swal.fire({
+                        title: 'Recent Sale Price Found!',
+                        html: `
+                            <div style="text-align: left; font-size: 0.95rem; line-height: 1.6;">
+                                <p class="mb-2">Recently sold this product to <strong class="text-primary">${customerName}</strong> for:</p>
+                                <div class="p-2 mb-2 rounded bg-light text-center border">
+                                    <span class="text-success fw-bold" style="font-size: 1.35rem;">Rs. ${lastPrice.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                    <div class="text-muted small mt-1"><i class="far fa-calendar-alt me-1"></i> Sold on: <strong>${info.date}</strong> ${info.invoice_no ? '(' + info.invoice_no + ')' : ''}</div>
+                                </div>
+                                <div class="small text-muted text-center">Standard Current Rate: <strong>Rs. ${currentVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></div>
+                                <p class="mt-3 mb-0 text-center fw-semibold">Would you like to apply the previous rate (Rs. ${lastPrice.toLocaleString()})?</p>
+                            </div>
+                        `,
+                        icon: 'info',
+                        showCancelButton: true,
+                        confirmButtonColor: '#10b981',
+                        cancelButtonColor: '#64748b',
+                        confirmButtonText: `<i class="fas fa-check me-1"></i> Apply Rs. ${lastPrice.toLocaleString()}`,
+                        cancelButtonText: `Keep Standard (Rs. ${currentVal.toLocaleString()})`,
+                        reverseButtons: true,
+                        focusConfirm: true
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            applyLastSalePrice($row, lastPrice);
+                        }
+                    });
+                }
+            }
+        }).fail(function(err) {
+            console.error('Customer recent price check failed', err);
+        });
+    }
+
     // --- Loading Data for Rows ---
 
-    function fetchProductPrice($row, productId) {
-        console.log('Fetching price for product:', productId);
+    function fetchProductPrice($row, productId, callback = null) {
+        let pid = productId ? productId.toString().split('|')[0] : '';
+        if (!pid) return;
+
         $.get('{{ route('get-price') }}', {
-            product_id: productId
+            product_id: pid,
+            customer_id: $('#customerSelect').val(),
+            _t: new Date().getTime()
         }).done(function(pRes) {
-            // Fill Item Code
             $row.find('.item-code-display').val(pRes.item_code || '');
-
-            // Populate Fields
-            // Store retail price (box price) in hidden field and visible if needed
-             $row.find('.retail-price').val(pRes.retail_price || 0);
-             $row.find('.wholesale-price').val(pRes.wholesale_price || 0);
-             $row.find('.weight-per-piece').val(pRes.weight_per_piece || 0);
+            $row.find('.retail-price').val(pRes.retail_price || 0);
+            $row.find('.wholesale-price').val(pRes.wholesale_price || 0);
+            $row.find('.weight-per-piece').val(pRes.weight_per_piece || 0);
              
-             let rowMode = $row.find('.price-mode-row-toggle').attr('data-mode') || 'retail';
-             let wsPrice = parseFloat(pRes.wholesale_price) || 0;
-             let rate = (rowMode === 'wholesale' && wsPrice > 0) ? wsPrice : (pRes.retail_price || 0);
+            let rowMode = $row.find('.price-mode-row-toggle').attr('data-mode') || 'retail';
+            let wsPrice = parseFloat(pRes.wholesale_price) || 0;
+            let rate = (rowMode === 'wholesale' && wsPrice > 0) ? wsPrice : (pRes.retail_price || 0);
 
-             const ppb = parseFloat(pRes.pieces_per_box) || 1;
-             const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
-             if (pRes.size_mode == "by_cartons") {
-                 let piecePrice = parseFloat(pRes.sale_price_per_piece || rate || 0);
-                 let cartonPrice = ppb > 1 ? (piecePrice * ppb) : piecePrice;
-                 $row.find('.visible-price').val(unitMode === 'pcs' ? piecePrice : cartonPrice);
-                 $row.find('.price-per-piece').val(unitMode === 'pcs' ? piecePrice : cartonPrice);
-             } else if (pRes.size_mode == "by_pieces" || pRes.size_mode == "by_kg" || pRes.size_mode == "by_gm" || pRes.size_mode == "by_meter") {
-                 $row.find('.visible-price').val(pRes.sale_price_per_piece || rate || 0);
-                 $row.find('.price-per-piece').val($row.find('.visible-price').val() || 0);
-             } else {
-                 $row.find('.visible-price').val(pRes.price_per_m2 || rate || 0);
-                 $row.find('.price-per-piece').val($row.find('.visible-price').val() || 0);
-             }
+            const ppb = parseFloat(pRes.pieces_per_box) || 1;
+            const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
+            if (pRes.size_mode == "by_cartons") {
+                let piecePrice = parseFloat(pRes.sale_price_per_piece || rate || 0);
+                let cartonPrice = ppb > 1 ? (piecePrice * ppb) : piecePrice;
+                $row.find('.visible-price').val(unitMode === 'pcs' ? piecePrice : cartonPrice);
+                $row.find('.price-per-piece').val(unitMode === 'pcs' ? piecePrice : cartonPrice);
+            } else if (pRes.size_mode == "by_pieces" || pRes.size_mode == "by_kg" || pRes.size_mode == "by_gm" || pRes.size_mode == "by_meter") {
+                $row.find('.visible-price').val(pRes.sale_price_per_piece || rate || 0);
+                $row.find('.price-per-piece').val($row.find('.visible-price').val() || 0);
+            } else {
+                $row.find('.visible-price').val(pRes.price_per_m2 || rate || 0);
+                $row.find('.price-per-piece').val($row.find('.visible-price').val() || 0);
+            }
 
-             $row.find('.pack-qty').val(pRes.pieces_per_box || 1);
-             $row.find('.size-h').val(pRes.height || '-');
-             $row.find('.size-w').val(pRes.width || '-');
-             $row.find('.size-mode-text').val(pRes.size_mode || '-');
+            $row.find('.pack-qty').val(pRes.pieces_per_box || 1);
+            $row.find('.size-h').val(pRes.height || '-');
+            $row.find('.size-w').val(pRes.width || '-');
+            $row.find('.size-mode-text').val(pRes.size_mode || '-');
 
-            // Set default discount
             $row.find('.discount-value').val(pRes.sale_discount_percent || 0);
 
             $row.data('size_mode', pRes.size_mode);
@@ -285,8 +412,17 @@
             $row.data('price_per_m2', pRes.price_per_m2 || 0);
 
             setupRowQtyToggle($row, pRes.size_mode);
-
             computeRow($row);
+
+            // Check and notify recent price
+            const custId = $('#customerSelect').val();
+            if (custId) {
+                checkCustomerLastPrice($row, pid, custId, true);
+            }
+
+            if (typeof callback === 'function') {
+                callback(pRes);
+            }
         }).fail(function(err) {
             console.error('Price fetch failed', err);
         });
@@ -1077,6 +1213,26 @@
             setupRowQtyToggle($row, data.size_mode, variantUnit);
 
             computeRow($row);
+
+            // Check & Notify Customer's Recent Sold Price
+            const currentSelectedCustId = $('#customerSelect').val();
+            if (currentSelectedCustId && pid) {
+                checkCustomerLastPrice($row, pid, currentSelectedCustId, true);
+            }
+        });
+
+        // Customer selection change -> re-check recent sale prices for all loaded products
+        $(document).on('change select2:select', '#customerSelect', function() {
+            const newCustId = $(this).val();
+            $('#salesTableBody tr').each(function() {
+                const $r = $(this);
+                const pVal = $r.find('.product-id-hidden').val() || $r.find('.product').val();
+                if (pVal && newCustId) {
+                    checkCustomerLastPrice($r, pVal, newCustId, false);
+                } else {
+                    $r.find('.last-sale-badge-container').remove();
+                }
+            });
         });
 
     function setupRowQtyToggle($row, sizeMode, variantUnit = null) {
@@ -1777,7 +1933,9 @@
             } else {
                 $select.val(prodId).trigger('change.select2');
             }
-            $select.trigger('change');
+            $targetRow.find('.product-id-hidden').val(prodId);
+            loadWarehousesForProduct($targetRow, prodId);
+            fetchProductPrice($targetRow, prodId);
         });
 
         // --- Sidebar Live Search ---

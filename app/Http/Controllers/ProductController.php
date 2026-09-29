@@ -21,10 +21,46 @@ class ProductController extends Controller
 {
     public function getPrice(Request $request)
     {
-        $product = Product::find($request->product_id);
+        $rawProductId = $request->product_id;
+        $productId = is_string($rawProductId) ? explode('|', $rawProductId)[0] : $rawProductId;
+        $product = Product::find($productId);
+        $customerId = $request->customer_id;
+        
+        \Log::info("getPrice called for Product: {$productId}, Customer: {$customerId}");
 
         if (! $product) {
-            return response()->json(['retail_price' => 0]);
+            return response()->json(['retail_price' => 0, 'last_sale_info' => null]);
+        }
+        
+        $lastSaleInfo = null;
+        if (!empty($customerId)) {
+            $lastSaleItem = \DB::table('sale_items')
+                ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                ->where('sales.customer_id', $customerId)
+                ->where('sale_items.product_id', $product->id)
+                ->where('sales.sale_type', '!=', 'quotation')
+                ->where(function($q) {
+                    $q->whereNull('sales.sale_status')
+                      ->orWhere('sales.sale_status', '!=', 'cancelled');
+                })
+                ->orderBy('sales.created_at', 'desc')
+                ->orderBy('sales.id', 'desc')
+                ->select('sale_items.price', 'sale_items.price_per_piece', 'sales.created_at', 'sales.invoice_no', 'sales.id as sale_id')
+                ->first();
+
+            if ($lastSaleItem) {
+                $soldPrice = (float)($lastSaleItem->price ?? 0);
+                if ($soldPrice <= 0 && !empty($lastSaleItem->price_per_piece)) {
+                    $soldPrice = (float)$lastSaleItem->price_per_piece;
+                }
+                if ($soldPrice > 0) {
+                    $lastSaleInfo = [
+                        'price' => (float) $soldPrice,
+                        'date'  => \Carbon\Carbon::parse($lastSaleItem->created_at)->format('d M, Y'),
+                        'invoice_no' => $lastSaleItem->invoice_no ?: ('#' . $lastSaleItem->sale_id)
+                    ];
+                }
+            }
         }
 
         // Determine price based on mode
@@ -53,6 +89,7 @@ class ProductController extends Controller
             'item_code'             => $product->item_code,
             'purchase_discount_percent' => $product->purchase_discount_percent ?? 0,
             'sale_discount_percent'     => $product->sale_discount_percent ?? 0,
+            'last_sale_info'        => $lastSaleInfo,
         ]);
     }
 
