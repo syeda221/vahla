@@ -321,8 +321,11 @@
             <div class="col-12 col-md-4">
                 <div class="info-box">
                     <div class="info-box-header">Reference</div>
-                    <div><span class="info-label">{{ $purchase->purchase_type === 'purchase_order' ? 'PO #:' : 'Inv #:' }}</span> <strong>{{ $purchase->invoice_no }}</strong></div>
+                    <div><span class="info-label">Inv #:</span> <strong>{{ $purchase->invoice_no }}</strong></div>
                     <div><span class="info-label">Date:</span> {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}</div>
+                    @if(!empty($purchase->purchase_order_no))
+                        <div><span class="info-label">PO #:</span> <strong>{{ $purchase->purchase_order_no }}</strong></div>
+                    @endif
                 </div>
             </div>
         </div>
