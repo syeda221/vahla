@@ -302,22 +302,7 @@ class ReportingController extends Controller
             $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
             $minQty = (float) ($product->alert_quantity ?? (($product->alert_carton_quantity ?? 0) * $ppb));
             
-            foreach ($variants as $variant) {
-                $stock = $variant["stock"];
-                $vMinQty = isset($variant["alert"]) && $variant["alert"] !== null && $variant["alert"] !== "" ? (float)$variant["alert"] : $minQty;
-                $reqQty = max(0, $vMinQty - $stock);
-                
-                if ($demandOnly && $reqQty <= 0) {
-                    continue;
-                }
-                
-                $costAmount = round($reqQty * $purchPrice, 2);
-                
-                $isCartonMode = $variant["is_carton_mode"];
-                $vPPB = $variant["ppb"];
-                $vUnitName = $variant["unit_name"];
-                $vSizeMode = $variant["size_mode"];
-                
+            foreach ($variants as $variant) {                $isCartonMode = $variant["is_carton_mode"];                $vPPB = $variant["ppb"];                $vUnitName = $variant["unit_name"];                $vSizeMode = $variant["size_mode"];                                $stock = $variant["stock"];                if (isset($variant["alert"]) && $variant["alert"] !== null && $variant["alert"] !== "") {                    $vMinQty = (float)$variant["alert"];                    if ($isCartonMode || ($vPPB > 1 && $vSizeMode === "by_size")) {                        $vMinQty = $vMinQty * $vPPB;                    }                } else {                    $vMinQty = $minQty;                }                                $reqQty = max(0, $vMinQty - $stock);                                if ($demandOnly && $reqQty <= 0) {                    continue;                }                                $costAmount = round($reqQty * $purchPrice, 2);                
                 $formatQty = function($qty) use ($isCartonMode, $vPPB, $vUnitName, $vSizeMode) {
                     if ($isCartonMode) {
                         $cartons = (int) floor($qty / $vPPB);
@@ -332,9 +317,21 @@ class ReportingController extends Controller
                     }
                 };
                 
+                $formatCartonOnly = function($qty) use ($isCartonMode, $vPPB, $vUnitName, $vSizeMode) {
+                    if ($isCartonMode) {
+                        $cartons = round($qty / $vPPB, 2);
+                        return "{$cartons} Ctn";
+                    } elseif ($vPPB > 1 && $vSizeMode === "by_size") {
+                        $cartons = round($qty / $vPPB, 2);
+                        return "{$cartons} Boxes";
+                    } else {
+                        return number_format($qty, (in_array($vSizeMode, ["by_kg","by_gm","by_ton","by_meter","by_feet"]) ? 2 : 0)) . " {$vUnitName}";
+                    }
+                };
+                
                 $formattedStock = $formatQty($stock);
-                $formattedMin = $formatQty($vMinQty);
-                $formattedReq = $formatQty($reqQty);
+                $formattedMin = $formatCartonOnly($vMinQty);
+                $formattedReq = $formatCartonOnly($reqQty);
                 $rows[] = [
                     "id"          => $product->id,
                     "code"        => $variant["code"] ?: "0",

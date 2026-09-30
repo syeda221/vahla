@@ -720,7 +720,7 @@
                 }
 
                 var reqDisplay = (row.req_qty > 0) 
-                    ? `<span class="badge-demand-pill">${row.req_qty}</span>` 
+                    ? `<span class="badge-demand-pill">${row.formatted_req_qty || row.req_qty}</span>` 
                     : `<span>0</span>`;
 
                 var tr = `
@@ -732,7 +732,7 @@
                         <td class="col-company ${showCompany ? '' : 'd-none'}"><span class="tag-neutral">${row.company}</span></td>
                         <td class="text-end">${stockDisplay}</td>
                         <td class="text-end font-monospace">${Number(row.p_price).toFixed(2)}</td>
-                        <td class="text-end font-monospace">${row.min_qty}</td>
+                        <td class="text-end font-monospace">${row.formatted_min_qty || row.min_qty}</td>
                         <td class="text-end">${reqDisplay}</td>
                         <td class="text-end fw-bold font-monospace">${Number(row.cost_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     </tr>
