@@ -10,7 +10,8 @@ class Sale extends Model
     protected $fillable = [
         'customer_id', 'reference', 'total_amount_Words', 'total_bill_amount',
         'total_extradiscount', 'total_net', 'cash', 'card', 'change', 'change_account_id',
-        'total_items', 'discount_type', 'sale_status', 'invoice_no', 'is_booking'
+        'total_items', 'discount_type', 'sale_status', 'invoice_no', 'is_booking',
+        'freight_charges', 'freight_type'
     ];
 
     public function customer_relation()

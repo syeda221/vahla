@@ -482,10 +482,19 @@
         const orderPct = toNum($('#discountPercent').length ? $('#discountPercent').val() : 0);
         orderDisc = (rsDisc > 0 ? rsDisc : 0) + ((orderPct > 0 && tNet > 0) ? (tNet * orderPct) / 100 : 0);
 
+        const freightType = $('#freightType').length ? $('#freightType').val() : 'add';
+        const freightCharges = $('#freightCharges').length ? toNum($('#freightCharges').val()) : 0;
+
+        let currentInvoiceTotal = Math.max(0, tNet - orderDisc);
+        if (freightType === 'add') {
+            currentInvoiceTotal += freightCharges;
+        } else if (freightType === 'deduct') {
+            currentInvoiceTotal -= freightCharges;
+        }
+
         const prev = toNum($('#previousBalance').val());
         const receipts = toNum($('#receiptsTotal').text());
-        const payable = Math.max(0, tNet - orderDisc + prev - receipts);
-        const currentInvoiceTotal = Math.max(0, tNet - orderDisc);
+        const payable = Math.max(0, currentInvoiceTotal + prev - receipts);
 
         $('#tQty').text(tQty.toFixed(0));
         $('#tGross').text(tGross.toFixed(2));
@@ -946,7 +955,20 @@
         if (typeof refreshPcsCtnHeader === 'function') refreshPcsCtnHeader();
 
         // Walk-in UI Event Bindings
-        $(document).on('input', '#walkinDiscountRs', function() {
+        $(document).on('input', '#walkinDiscountRs, #freightCharges', function() {
+            updateGrandTotals();
+        });
+        
+        $(document).on('click', '#freightTypeToggle', function() {
+            const btn = $(this);
+            const input = $('#freightType');
+            if (input.val() === 'add') {
+                input.val('deduct');
+                btn.text('-');
+            } else {
+                input.val('add');
+                btn.text('+');
+            }
             updateGrandTotals();
         });
         

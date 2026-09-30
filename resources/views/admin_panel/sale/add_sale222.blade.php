@@ -1555,6 +1555,15 @@
                                     <span class="input-group-text">Rs</span>
                                 </div>
                             </div>
+                            <div class="s-row">
+                                <span class="s-label">Freight</span>
+                                <div class="input-group input-group-sm discount-input">
+                                    <button type="button" class="btn btn-outline-secondary" id="freightTypeToggle" tabindex="-1" style="width: 36px; border-radius: 8px 0 0 8px; font-weight: bold; font-size: 14px; background: #F8FAFC; color: #64748b; border-color: var(--pos-border);">+</button>
+                                    <input type="hidden" name="freight_type" id="freightType" value="add">
+                                    <input type="number" class="form-control text-end" id="freightCharges" name="freight_charges" value="0" placeholder="0">
+                                    <span class="input-group-text">Rs</span>
+                                </div>
+                            </div>
                             <div class="s-row net">
                                 <span class="net-label">Net Total</span>
                                 <span class="net-val" id="tSub">0.00</span>

@@ -1415,7 +1415,16 @@ class SaleController extends Controller
             // Update Sale Totals
             $sale->total_bill_amount = $total_bill;
             $sale->total_extradiscount = $request->total_extra_cost ?? 0;
-            $sale->total_net = $total_bill - $sale->total_extradiscount;
+            $sale->freight_charges = $request->freight_charges ?? 0;
+            $sale->freight_type = $request->freight_type ?? 'add';
+            
+            $net = $total_bill - $sale->total_extradiscount;
+            if ($sale->freight_type === 'add') {
+                $net += $sale->freight_charges;
+            } elseif ($sale->freight_type === 'deduct') {
+                $net -= $sale->freight_charges;
+            }
+            $sale->total_net = max(0, $net);
             $sale->total_items = $total_items;
 
             $sale->cash = $request->cash ?? 0;

@@ -1493,7 +1493,18 @@
                             </tr>
 
                         @endif
-
+                        
+                        @if ($sale->freight_charges > 0)
+                            <tr>
+                                <td class="text-muted">
+                                    Freight Charges {{ $sale->freight_type === 'add' ? '(+) ' : '(-) ' }}
+                                </td>
+                                <td class="text-end">
+                                    {{ $sale->freight_type === 'add' ? '+' : '-' }}
+                                    {{ number_format($sale->freight_charges, 2) }}
+                                </td>
+                            </tr>
+                        @endif
 
                         @if ($exchangeReturnedAmount > 0)
 
@@ -2327,27 +2338,17 @@
 
 
             @if ($sale->total_extradiscount > 0)
-
                 <div class="tot-row">
-
-                    <span>
-                        Discount:
-                    </span>
-
-                    <span>
-
-                        -
-                        {{
-                            number_format(
-                                $sale->total_extradiscount,
-                                0
-                            )
-                        }}
-
-                    </span>
-
+                    <span>Discount:</span>
+                    <span>- {{ number_format($sale->total_extradiscount, 0) }}</span>
                 </div>
+            @endif
 
+            @if ($sale->freight_charges > 0)
+                <div class="tot-row">
+                    <span>Freight {{ $sale->freight_type === 'add' ? '(Added)' : '(Deducted)' }}:</span>
+                    <span>{{ $sale->freight_type === 'add' ? '+' : '-' }} {{ number_format($sale->freight_charges, 0) }}</span>
+                </div>
             @endif
 
 
