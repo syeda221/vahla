@@ -147,7 +147,7 @@ class ReportingController extends Controller
             $vColor = $v['color'] ?? '-';
             
             $vUnitName = $v['unit'] ?? $unitName;
-            $isCartonMode = ($product->size_mode === 'by_cartons' || strtolower($vUnitName) === 'carton');
+            $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($vUnitName) === 'carton');
             $ppb = (float) ($product->pieces_per_box ?? 1);
             if ($isCartonMode) {
                 $vConv = (float) ($v['conv_factor'] ?? 0);
@@ -305,9 +305,10 @@ class ReportingController extends Controller
             foreach ($variants as $variant) {                $isCartonMode = $variant["is_carton_mode"];                $vPPB = $variant["ppb"];                $vUnitName = $variant["unit_name"];                $vSizeMode = $variant["size_mode"];                                $stock = $variant["stock"];                if (isset($variant["alert"]) && $variant["alert"] !== null && $variant["alert"] !== "") {                    $vMinQty = (float)$variant["alert"];                    if ($isCartonMode || ($vPPB > 1 && $vSizeMode === "by_size")) {                        $vMinQty = $vMinQty * $vPPB;                    }                } else {                    $vMinQty = $minQty;                }                                $reqQty = max(0, $vMinQty - $stock);                                if ($demandOnly && $reqQty <= 0) {                    continue;                }                                $costAmount = round($reqQty * $purchPrice, 2);                
                 $formatQty = function($qty) use ($isCartonMode, $vPPB, $vUnitName, $vSizeMode) {
                     if ($isCartonMode) {
+                        $ctnLbl = ($vSizeMode === 'by_bandal') ? 'Bndl' : 'Ctn';
                         $cartons = (int) floor($qty / $vPPB);
                         $loose   = (int) round($qty - ($cartons * $vPPB));
-                        return ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs" : "{$cartons} Ctn";
+                        return ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs" : "{$cartons} {$ctnLbl}";
                     } elseif ($vPPB > 1 && $vSizeMode === "by_size") {
                         $cartons = (int) floor($qty / $vPPB);
                         $loose   = (int) round($qty - ($cartons * $vPPB));
@@ -319,8 +320,9 @@ class ReportingController extends Controller
                 
                 $formatCartonOnly = function($qty) use ($isCartonMode, $vPPB, $vUnitName, $vSizeMode) {
                     if ($isCartonMode) {
+                        $ctnLbl = ($vSizeMode === 'by_bandal') ? 'Bndl' : 'Ctn';
                         $cartons = round($qty / $vPPB, 2);
-                        return "{$cartons} Ctn";
+                        return "{$cartons} {$ctnLbl}";
                     } elseif ($vPPB > 1 && $vSizeMode === "by_size") {
                         $cartons = round($qty / $vPPB, 2);
                         return "{$cartons} Boxes";
@@ -627,7 +629,7 @@ class ReportingController extends Controller
 
                     // Variant Unit Logic
                     $vUnitName = $v['unit'] ?? $unitName;
-                    $isCartonMode = ($product->size_mode === 'by_cartons' || strtolower($vUnitName) === 'carton');
+                    $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($vUnitName) === 'carton');
 
                     // Cartons / Loose / Unit Formatting
                     $ppb = (float) ($product->pieces_per_box ?? 1);
@@ -749,10 +751,11 @@ class ReportingController extends Controller
                     $totalSoldAmount   += $saleAmount;
 
                     if ($isCartonMode) {
+                        $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
                         $cartons = (int) floor($balance / $ppb);
                         $loose   = (int) round($balance - ($cartons * $ppb));
-                        $formattedStock = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs" : "{$cartons} Ctn";
-                        $cartonDisplay = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/ctn)</span>" : "{$cartons} Ctn <span class='text-muted small'>({$ppb} pcs/ctn)</span>";
+                        $formattedStock = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs" : "{$cartons} {$ctnLbl}";
+                        $cartonDisplay = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>" : "{$cartons} {$ctnLbl} <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>";
                     } elseif ($ppb > 1 && $product->size_mode === 'by_size') {
                         $cartons = (int) floor($balance / $ppb);
                         $loose   = (int) round($balance - ($cartons * $ppb));
@@ -876,14 +879,15 @@ class ReportingController extends Controller
                 $totalSoldAmount   += $saleAmount;
 
                 // Cartons / Loose
-                $isCartonMode = ($product->size_mode === 'by_cartons' || strtolower($unitName) === 'carton');
+                $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($unitName) === 'carton');
                 $ppb = (float) ($product->pieces_per_box ?? 1);
                 if ($ppb <= 0) $ppb = 1;
                 if ($isCartonMode) {
+                    $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
                     $cartons = (int) floor($balance / $ppb);
                     $loose   = (int) round($balance - ($cartons * $ppb));
-                    $formattedStock = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs" : "{$cartons} Ctn";
-                    $cartonDisplay = ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/ctn)</span>" : "{$cartons} Ctn <span class='text-muted small'>({$ppb} pcs/ctn)</span>";
+                    $formattedStock = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs" : "{$cartons} {$ctnLbl}";
+                    $cartonDisplay = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>" : "{$cartons} {$ctnLbl} <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>";
                 } elseif ($ppb > 1 && $product->size_mode === 'by_size') {
                     $cartons = (int) floor($balance / $ppb);
                     $loose   = (int) round($balance - ($cartons * $ppb));
@@ -1201,9 +1205,10 @@ class ReportingController extends Controller
 
                     // Determine Unit Badge
                     $unitBadge = '';
-                    if ($product->size_mode === 'by_cartons') {
+                    if (in_array($product->size_mode, ['by_cartons', 'by_bandal'])) {
                         $cartonPpb = $vConv > 1 ? $vConv : $ppb;
-                        $unitBadge = "Carton ({$cartonPpb} pcs/ctn)";
+                        $cartonLbl = ($product->size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
+                        $unitBadge = "{$cartonLbl} ({$cartonPpb} pcs/" . strtolower($cartonLbl) . ")";
                     } elseif ($product->size_mode === 'by_kg') {
                         if ($isBase == 1 || $vConv == 1) {
                             $unitBadge = "Kg (Base)";
@@ -1266,14 +1271,17 @@ class ReportingController extends Controller
 
                     if ($soldQtyPieces > 0 || $returnedQtyPieces > 0) {
                         // Format Sold Qty Display
-                        if ($product->size_mode === 'by_cartons') {
+                        if (in_array($product->size_mode, ['by_cartons', 'by_bandal'])) {
                             $cartonPpb = $vConv > 1 ? $vConv : $ppb;
+                            $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
+                            $cartonFull = ($product->size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
+                            $cartonFulls = ($product->size_mode === 'by_bandal') ? 'Bandals' : 'Cartons';
                             $soldBoxes = (int) floor($soldQtyPieces / $cartonPpb);
                             $soldLoose = (int) round($soldQtyPieces - ($soldBoxes * $cartonPpb));
                             if ($soldBoxes > 0 && $soldLoose > 0) {
-                                $soldQtyDisplay = "{$soldBoxes} Ctn . {$soldLoose} Pcs";
+                                $soldQtyDisplay = "{$soldBoxes} {$ctnLbl} . {$soldLoose} Pcs";
                             } elseif ($soldBoxes > 0) {
-                                $soldQtyDisplay = ($soldBoxes == 1) ? "1 Carton" : "{$soldBoxes} Cartons";
+                                $soldQtyDisplay = ($soldBoxes == 1) ? "1 {$cartonFull}" : "{$soldBoxes} {$cartonFulls}";
                             } else {
                                 $soldQtyDisplay = "{$soldQtyPieces} Pcs";
                             }
@@ -1281,9 +1289,9 @@ class ReportingController extends Controller
                             $retBoxes = (int) floor($returnedQtyPieces / $cartonPpb);
                             $retLoose = (int) round($returnedQtyPieces - ($retBoxes * $cartonPpb));
                             if ($retBoxes > 0 && $retLoose > 0) {
-                                $retQtyDisplay = "{$retBoxes} Ctn . {$retLoose} Pcs";
+                                $retQtyDisplay = "{$retBoxes} {$ctnLbl} . {$retLoose} Pcs";
                             } elseif ($retBoxes > 0) {
-                                $retQtyDisplay = ($retBoxes == 1) ? "1 Carton" : "{$retBoxes} Cartons";
+                                $retQtyDisplay = ($retBoxes == 1) ? "1 {$cartonFull}" : "{$retBoxes} {$cartonFulls}";
                             } else {
                                 $retQtyDisplay = ($returnedQtyPieces > 0) ? "{$returnedQtyPieces} Pcs" : "0";
                             }
@@ -1400,8 +1408,9 @@ class ReportingController extends Controller
 
                     // Determine Unit Badge
                     $unitBadge = '';
-                    if ($product->size_mode === 'by_cartons') {
-                        $unitBadge = "Carton ({$ppb} pcs/ctn)";
+                    if (in_array($product->size_mode, ['by_cartons', 'by_bandal'])) {
+                        $cartonLbl = ($product->size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
+                        $unitBadge = "{$cartonLbl} ({$ppb} pcs/" . strtolower($cartonLbl) . ")";
                     } elseif ($product->size_mode === 'by_kg') {
                         $unitBadge = "Kg";
                     } elseif ($product->size_mode === 'by_gm') {
@@ -1417,13 +1426,16 @@ class ReportingController extends Controller
                     }
 
                     // Format Sold / Returned Qty
-                    if ($product->size_mode === 'by_cartons') {
+                    if (in_array($product->size_mode, ['by_cartons', 'by_bandal'])) {
+                        $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
+                        $cartonFull = ($product->size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
+                        $cartonFulls = ($product->size_mode === 'by_bandal') ? 'Bandals' : 'Cartons';
                         $soldBoxes = (int) floor($soldQtyPieces / $ppb);
                         $soldLoose = (int) round($soldQtyPieces - ($soldBoxes * $ppb));
                         if ($soldBoxes > 0 && $soldLoose > 0) {
-                            $soldQtyDisplay = "{$soldBoxes} Ctn . {$soldLoose} Pcs";
+                            $soldQtyDisplay = "{$soldBoxes} {$ctnLbl} . {$soldLoose} Pcs";
                         } elseif ($soldBoxes > 0) {
-                            $soldQtyDisplay = ($soldBoxes == 1) ? "1 Carton" : "{$soldBoxes} Cartons";
+                            $soldQtyDisplay = ($soldBoxes == 1) ? "1 {$cartonFull}" : "{$soldBoxes} {$cartonFulls}";
                         } else {
                             $soldQtyDisplay = "{$soldQtyPieces} Pcs";
                         }
@@ -1431,9 +1443,9 @@ class ReportingController extends Controller
                         $retBoxes = (int) floor($returnedQtyPieces / $ppb);
                         $retLoose = (int) round($returnedQtyPieces - ($retBoxes * $ppb));
                         if ($retBoxes > 0 && $retLoose > 0) {
-                            $retQtyDisplay = "{$retBoxes} Ctn . {$retLoose} Pcs";
+                            $retQtyDisplay = "{$retBoxes} {$ctnLbl} . {$retLoose} Pcs";
                         } elseif ($retBoxes > 0) {
-                            $retQtyDisplay = ($retBoxes == 1) ? "1 Carton" : "{$retBoxes} Cartons";
+                            $retQtyDisplay = ($retBoxes == 1) ? "1 {$cartonFull}" : "{$retBoxes} {$cartonFulls}";
                         } else {
                             $retQtyDisplay = ($returnedQtyPieces > 0) ? "{$returnedQtyPieces} Pcs" : "0";
                         }
@@ -1900,7 +1912,7 @@ class ReportingController extends Controller
                     } else {
                         $b = floor($tp / $ppb);
                         $l = $tp % $ppb;
-                        $uom = $mode == 'by_cartons' ? 'Ctn' : 'Box';
+                        $uom = $mode == 'by_bandal' ? 'Bndl' : (in_array($mode, ['by_cartons', 'by_bandal']) ? 'Ctn' : 'Box');
                         if ($b > 0 && $l > 0) {
                             return $b . ' ' . $uom . ' + ' . $l . ' Pcs';
                         } elseif ($b > 0) {

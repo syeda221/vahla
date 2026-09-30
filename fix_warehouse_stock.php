@@ -107,7 +107,7 @@ foreach ($products as $product) {
                     $itemPPB = (float) ($pItem->pieces_per_box > 0 ? $pItem->pieces_per_box : $vPpb);
                     if ($itemPPB <= 0) $itemPPB = 1;
 
-                    if (in_array($pUnit, ['carton', 'ctn', 'box']) || $product->size_mode === 'by_cartons') {
+                    if (in_array($pUnit, ['carton', 'ctn', 'box']) || in_array($product->size_mode, ['by_cartons', 'by_bandal'])) {
                         if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
                             $pPieces = (((int) $pItem->boxes_qty) * $itemPPB) + ((int) $pItem->loose_qty);
                         } else {

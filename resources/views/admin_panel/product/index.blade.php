@@ -634,7 +634,7 @@
                             @php
                                 $stockPieces = (float) ($product->warehouse_stocks_sum_total_pieces ?? 0);
                                 $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
-                                if (($product->size_mode === 'by_cartons' || $product->size_mode === 'by_size') && $ppb > 1) {
+                                if ((in_array($product->size_mode, ['by_cartons', 'by_bandal']) || $product->size_mode === 'by_size') && $ppb > 1) {
                                     $boxes = floor($stockPieces / $ppb);
                                     $loose = $stockPieces % $ppb;
                                     $stockDisplay = $loose > 0 ? "{$boxes}.{$loose}" : "{$boxes}";
@@ -733,7 +733,7 @@
                 @php
                     $stockPieces = (float) ($product->warehouse_stocks_sum_total_pieces ?? 0);
                     $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
-                    if (($product->size_mode === 'by_cartons' || $product->size_mode === 'by_size') && $ppb > 1) {
+                    if ((in_array($product->size_mode, ['by_cartons', 'by_bandal']) || $product->size_mode === 'by_size') && $ppb > 1) {
                         $boxes = floor($stockPieces / $ppb);
                         $loose = $stockPieces % $ppb;
                         $stockDisplay = $loose > 0 ? "{$boxes}.{$loose}" : "{$boxes}";

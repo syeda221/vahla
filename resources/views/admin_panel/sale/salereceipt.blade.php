@@ -362,7 +362,7 @@
                             };
                             $qtyVal = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
                             $qtyDisplay = ($qtyVal == (int)$qtyVal ? (int)$qtyVal : number_format($qtyVal, 3)) . ' ' . $uomLabel;
-                        } elseif ($sizeMode == 'by_cartons' || $sizeMode == 'by_size') {
+                        } elseif (in_array($sizeMode, ['by_cartons', 'by_bandal']) || $sizeMode == 'by_size') {
                             $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
                             if ($piecesPerBox <= 0) $piecesPerBox = 1;
                             $boxes = floor($totalPieces / $piecesPerBox);

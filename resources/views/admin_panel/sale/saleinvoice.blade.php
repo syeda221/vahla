@@ -896,9 +896,7 @@
 
                                             {{ $boxes }}
 
-                                            {{ $sizeMode == 'by_cartons'
-                                                ? 'Carton'
-                                                : 'Box' }}
+                                            {{ $sizeMode === 'by_bandal' ? 'Bandal' : (in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Carton' : 'Box') }}
 
                                             +
 
@@ -909,9 +907,7 @@
 
                                             {{ $boxes }}
 
-                                            {{ $sizeMode == 'by_cartons'
-                                                ? 'Carton'
-                                                : 'Box' }}
+                                            {{ $sizeMode === 'by_bandal' ? 'Bandal' : (in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Carton' : 'Box') }}
 
                                         @else
 
@@ -944,7 +940,11 @@
                             @if (!empty($item['variant_unit']))
 
                                 <span class="fw-bold">
-                                    {{ ucfirst($item['variant_unit']) }}
+                                    @if(strtolower($item['variant_unit']) === 'carton' && $sizeMode === 'by_bandal')
+                                        Bandal
+                                    @else
+                                        {{ ucfirst($item['variant_unit']) }}
+                                    @endif
                                 </span>
 
                             @elseif ($sizeMode == 'by_pieces')
@@ -953,10 +953,10 @@
                                     Pieces
                                 </span>
 
-                            @elseif ($sizeMode == 'by_cartons')
+                            @elseif (in_array($sizeMode, ['by_cartons', 'by_bandal']))
 
                                 <span class="fw-bold">
-                                    Cartons
+                                    {{ $sizeMode === 'by_bandal' ? 'Bandals' : 'Cartons' }}
                                 </span>
 
                             @elseif ($sizeMode == 'by_size')
@@ -1082,7 +1082,7 @@
                 $vU = strtolower($it['variant_unit'] ?? '');
                 $sM = $it['size_mode'] ?? 'std';
 
-                if ($sM === 'by_cartons' || $vU === 'carton' || $vU === 'ctn') {
+                if (in_array($sM, ['by_cartons', 'by_bandal']) || $vU === 'carton' || $vU === 'ctn') {
                     $b = floor($tp / $ppb);
                     $l = $tp % $ppb;
                     $totalCartonsCount += $b;
@@ -1437,15 +1437,15 @@
                             <tr>
 
                                 <td class="text-muted fw-bold">
-                                    Total Cartons
+                                    Total Cartons / Bandals
                                 </td>
 
                                 <td class="text-end fw-bold" style="color: var(--primary-color);">
 
                                     @if ($totalLooseCount > 0)
-                                        {{ $totalCartonsCount }} Cartons + {{ $totalLooseCount }} Pcs
+                                        {{ $totalCartonsCount }} Ctn/Bndl + {{ $totalLooseCount }} Pcs
                                     @else
-                                        {{ $totalCartonsCount }} Cartons
+                                        {{ $totalCartonsCount }} Ctn/Bndl
                                     @endif
 
                                 </td>
@@ -2078,7 +2078,7 @@
                         }
 
                         elseif (
-                            $sizeMode == 'by_cartons'
+                            in_array($sizeMode, ['by_cartons', 'by_bandal'])
                             ||
                             $sizeMode == 'by_size'
                         ) {

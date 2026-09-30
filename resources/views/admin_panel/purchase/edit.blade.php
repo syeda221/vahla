@@ -445,7 +445,7 @@
                                                 $sizeMode = $item->size_mode ?? 'by_pieces';
                                                 $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : 1);
                                                 $uVal = strtolower($unitName ?? 'pcs');
-                                                $isCtn = in_array($uVal, ['carton', 'ctn', 'box']) || ($sizeMode === 'by_cartons');
+                                                $isCtn = in_array($uVal, ['carton', 'ctn', 'box', 'bandal', 'bndl']) || in_array($sizeMode, ['by_cartons', 'by_bandal']);
                                                 $isKg = in_array($uVal, ['kg', 'gm', 'g']);
 
                                                 $displayQty = (float) $item->qty;
@@ -553,7 +553,7 @@
                                                 <td class="text-center align-middle">
                                                     @php
                                                         $uVal = strtolower($unitName ?? 'pcs');
-                                                        $isCtn = in_array($uVal, ['carton', 'ctn', 'box']);
+                                                        $isCtn = in_array($uVal, ['carton', 'ctn', 'box', 'bandal', 'bndl']);
                                                         $isKg = in_array($uVal, ['kg', 'gm', 'g']);
                                                         $btnClass = $isCtn ? 'btn-outline-success' : ($isKg ? 'btn-outline-primary' : 'btn-outline-info');
                                                     @endphp
@@ -750,10 +750,10 @@
                 const $priceInp = $row.find('.price');
                 let curPrice = parseFloat($priceInp.val()) || 0;
 
-                const isCartonOrPcs = (sizeMode === 'by_cartons' || packQty > 1 || ['carton', 'ctn', 'pcs', 'pc', 'piece'].includes(currentUnit.toLowerCase()));
+                const isCartonOrPcs = (['by_cartons', 'by_bandal'].includes(sizeMode) || packQty > 1 || ['carton', 'ctn', 'pcs', 'pc', 'piece'].includes(currentUnit.toLowerCase()));
 
                 if (isCartonOrPcs) {
-                    if (currentUnit.toLowerCase() === 'carton' || currentUnit.toLowerCase() === 'ctn') {
+                    if (['carton', 'ctn', 'bandal', 'bndl'].includes(currentUnit.toLowerCase())) {
                         // Switch from Carton to Pcs
                         currentUnit = 'Pcs';
                         $btn.text('Pcs')
@@ -768,12 +768,12 @@
                         }
                     } else {
                         // Switch from Pcs to Carton
-                        currentUnit = 'Carton';
-                        $btn.text('Carton')
+                        currentUnit = (sizeMode === 'by_bandal') ? 'Bandal' : 'Carton';
+                        $btn.text(currentUnit)
                             .removeClass('btn-outline-info btn-outline-primary')
                             .addClass('btn-outline-success')
-                            .attr('data-unit', 'Carton');
-                        $row.find('.unit-input-val').val('Carton');
+                            .attr('data-unit', currentUnit);
+                        $row.find('.unit-input-val').val(currentUnit);
 
                         if (packQty > 1 && curPrice > 0) {
                             let cartonPrice = curPrice * packQty;
@@ -1063,17 +1063,17 @@
 
                     let unitName = data.unit_name || 'Pcs';
                     const ppb = parseFloat(data.pieces_per_box || data.ppb) || 1;
-                    const isCartonMode = (data.size_mode === 'by_cartons' || unitName.toLowerCase() === 'carton' || unitName.toLowerCase() === 'ctn' || ppb > 1);
+                    const isCartonMode = (['by_cartons', 'by_bandal'].includes(data.size_mode) || unitName.toLowerCase() === 'carton' || unitName.toLowerCase() === 'ctn' || ppb > 1);
 
                     // Dynamic Unit & Style
                     if (isCartonMode) {
-                        unitName = 'Carton';
+                        unitName = (data.size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-primary btn-outline-info')
                             .addClass('btn-outline-success')
-                            .attr('data-unit', 'Carton')
-                            .text('Carton');
-                        $row.find('.unit-input-val').val('Carton');
+                            .attr('data-unit', unitName)
+                            .text(unitName);
+                        $row.find('.unit-input-val').val(unitName);
                     } else if (data.size_mode === 'by_kg' || data.size_mode === 'by_gm') {
                         unitName = 'Kg';
                         $row.find('.unit-toggle-btn')

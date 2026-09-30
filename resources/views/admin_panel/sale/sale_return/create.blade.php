@@ -625,7 +625,7 @@
 
                 if (sizeMode === 'by_size') {
                     total = qty * ppm2 * price;
-                } else if (sizeMode === 'by_cartons' || sizeMode === 'by_carton') {
+                } else if (['by_cartons', 'by_bandal'].includes(sizeMode) || sizeMode === 'by_carton') {
                     // Price is Per Box, qty is Total Pieces
                     total = ppb > 0 ? (qty / ppb) * price : qty * price;
                 } else {

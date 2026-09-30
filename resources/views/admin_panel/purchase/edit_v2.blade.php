@@ -998,13 +998,13 @@
 
                     // Dynamic Unit & Style
                     if (isCartonMode) {
-                        unitName = 'Carton';
+                        unitName = (data.size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-primary btn-outline-info')
                             .addClass('btn-outline-success')
-                            .attr('data-unit', 'Carton')
-                            .text('Carton');
-                        $row.find('.unit-input-val').val('Carton');
+                            .attr('data-unit', unitName)
+                            .text(unitName);
+                        $row.find('.unit-input-val').val(unitName);
                     } else if (data.size_mode === 'by_kg' || data.size_mode === 'by_gm') {
                         unitName = 'Kg';
                         $row.find('.unit-toggle-btn')
@@ -1102,7 +1102,7 @@
                 const isCartonOrPcs = (sizeMode === 'by_cartons' || packQty > 1 || ['carton', 'ctn', 'pcs', 'pc', 'piece'].includes(currentUnit.toLowerCase()));
 
                 if (isCartonOrPcs) {
-                    if (currentUnit.toLowerCase() === 'carton' || currentUnit.toLowerCase() === 'ctn') {
+                    if (['carton', 'ctn', 'bandal', 'bndl'].includes(currentUnit.toLowerCase())) {
                         // Switch from Carton to Pcs
                         currentUnit = 'Pcs';
                         $btn.text('Pcs')
@@ -1117,12 +1117,12 @@
                         }
                     } else {
                         // Switch from Pcs to Carton
-                        currentUnit = 'Carton';
-                        $btn.text('Carton')
+                        currentUnit = (sizeMode === 'by_bandal') ? 'Bandal' : 'Carton';
+                        $btn.text(currentUnit)
                             .removeClass('btn-outline-info btn-outline-primary')
                             .addClass('btn-outline-success')
-                            .attr('data-unit', 'Carton');
-                        $row.find('.unit-input-val').val('Carton');
+                            .attr('data-unit', currentUnit);
+                        $row.find('.unit-input-val').val(currentUnit);
 
                         if (packQty > 1 && curPrice > 0) {
                             let cartonPrice = curPrice * packQty;

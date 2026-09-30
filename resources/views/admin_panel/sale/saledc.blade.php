@@ -362,10 +362,10 @@
                                     {{ $totalPieces }} Pcs
                                 @else
                                     @if ($boxes > 0 && $loosePieces > 0)
-                                        {{ $boxes }} {{ $sizeMode == 'by_cartons' ? 'Carton' : 'Box' }} +
+                                        {{ $boxes }} {{ $sizeMode === 'by_bandal' ? 'Bandal' : (in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Carton' : 'Box') }} +
                                         {{ $loosePieces }} Pc
                                     @elseif ($boxes > 0)
-                                        {{ $boxes }} {{ $sizeMode == 'by_cartons' ? 'Carton' : 'Box' }}
+                                        {{ $boxes }} {{ $sizeMode === 'by_bandal' ? 'Bandal' : (in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Carton' : 'Box') }}
                                     @else
                                         {{ $loosePieces }} Pcs
                                     @endif
@@ -379,10 +379,10 @@
                             <span class="fw-bold">
                             Pieces
                         </span> 
-                            @elseif ($sizeMode == 'by_cartons')
+                            @elseif (in_array($sizeMode, ['by_cartons', 'by_bandal']))
                             <span class="fw-bold">
-                            Cartons
-                        </span> 
+                                {{ $sizeMode === 'by_bandal' ? 'Bandals' : 'Cartons' }}
+                            </span> 
                             @elseif ($sizeMode == 'by_size')
                             <span class="fw-bold">
                                     {{ number_format($totalM2Line, 4) }}

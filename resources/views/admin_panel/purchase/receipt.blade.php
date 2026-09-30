@@ -180,7 +180,7 @@
 
             $rawQtyStr = (string) ($it->qty ?? '0');
             $isPiece = in_array($rawU, ['pcs', 'pc', 'piece']);
-            $isCtn = in_array($rawU, ['carton', 'ctn', 'box']) || (!$isPiece && $it->size_mode === 'by_cartons');
+            $isCtn = in_array($rawU, ['carton', 'ctn', 'box']) || (!$isPiece && in_array($it->size_mode, ['by_cartons', 'by_bandal']));
 
             if ($isCtn) {
                 $hasCartonMode = true;
@@ -210,9 +210,9 @@
 
         if ($hasCartonMode && $sumCartons > 0) {
             if ($sumLoosePieces > 0) {
-                $cartonPcsDisplay = "{$sumCartons} Ctn + {$sumLoosePieces} Pcs (" . number_format($sumTotalPieces) . " Total Pcs)";
+                $cartonPcsDisplay = "{$sumCartons} Ctn/Bndl + {$sumLoosePieces} Pcs (" . number_format($sumTotalPieces) . " Total Pcs)";
             } else {
-                $cartonPcsDisplay = "{$sumCartons} Cartons (" . number_format($sumTotalPieces) . " Total Pcs)";
+                $cartonPcsDisplay = "{$sumCartons} Ctn/Bndl (" . number_format($sumTotalPieces) . " Total Pcs)";
             }
         } elseif ($hasCartonMode && $sumLoosePieces > 0) {
             $cartonPcsDisplay = "{$sumLoosePieces} Pcs";
@@ -234,7 +234,7 @@
                 @php
                     $rawUnit = strtolower(trim($item->unit ?? ''));
                     $isPiece = in_array($rawUnit, ['pcs', 'pc', 'piece']);
-                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || (!$isPiece && ($item->size_mode === 'by_cartons'));
+                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || (!$isPiece && (in_array($item->size_mode, ['by_cartons', 'by_bandal'])));
 
                     if ($isCarton) {
                         if ($item->boxes_qty > 0 || $item->loose_qty > 0) {
@@ -243,14 +243,15 @@
                         } else {
                             [$b, $l] = \App\Http\Controllers\PurchaseController::parseCartonQty($item->qty);
                         }
+                        $ctnLbl = ($item->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
                         if ($b > 0 && $l > 0) {
-                            $qtyDisplay = "{$b} Ctn + {$l} Pcs";
+                            $qtyDisplay = "{$b} {$ctnLbl} + {$l} Pcs";
                         } elseif ($b > 0) {
-                            $qtyDisplay = "{$b} Ctn";
+                            $qtyDisplay = "{$b} {$ctnLbl}";
                         } elseif ($l > 0) {
                             $qtyDisplay = "{$l} Pcs";
                         } else {
-                            $qtyDisplay = '0 Ctn';
+                            $qtyDisplay = "0 {$ctnLbl}";
                         }
                     } elseif (in_array($rawUnit, ['pcs', 'pc', 'piece'])) {
                         $qtyDisplay = ((float) $item->qty) . ' Pcs';

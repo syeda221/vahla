@@ -639,7 +639,7 @@
                 const ppm2 = num($row.find('.pieces-per-m2').val());
                 const ppb = num($row.find('.pieces-per-box').val()) || 1;
                 const unitVal = ($row.find('input[name="unit[]"]').val() || '').toLowerCase();
-                const isCarton = (sizeMode === 'by_cartons' || unitVal === 'carton' || unitVal === 'ctn' || unitVal === 'box' || ppb > 1);
+                const isCarton = (['by_cartons', 'by_bandal'].includes(sizeMode) || unitVal === 'carton' || unitVal === 'ctn' || unitVal === 'box' || ppb > 1);
 
                 let total = 0;
 

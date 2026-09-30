@@ -2175,7 +2175,7 @@
             $vStock = 0;
             if (!empty($vData['current_stock']) || !empty($vData['stock'])) {
                 $cs = $vData['current_stock'] ?? $vData['stock'] ?? 0;
-                if ($it->size_mode === 'by_cartons' && $ppb > 1) {
+                if (in_array($it->size_mode, ['by_cartons', 'by_bandal']) && $ppb > 1) {
                     $csStr = (string) $cs;
                     if (strpos($csStr, '.') !== false) {
                         $parts = explode('.', $csStr);
@@ -2191,7 +2191,7 @@
                 $matched = $it->warehouse_id ? $ws->firstWhere('warehouse_id', $it->warehouse_id) : null;
                 $vStock = $matched ? (float) $matched->total_pieces : (float) $ws->sum('total_pieces');
             }
-            if ($vStock > 0 && $it->size_mode === 'by_cartons' && $ppb > 1) {
+            if ($vStock > 0 && in_array($it->size_mode, ['by_cartons', 'by_bandal']) && $ppb > 1) {
                 $boxes = floor($vStock / $ppb);
                 $loose = (int) ($vStock % $ppb);
                 $stockDisplay = $loose > 0 ? $boxes . '.' . $loose : $boxes;
@@ -2236,6 +2236,7 @@
                 var $btn = $row.find('.qty-unit-toggle');
                 var meta = {
                     by_cartons: ['ctn', 'Ctn', 'btn-outline-success'],
+                    by_bandal: ['ctn', 'Bandal', 'btn-outline-success'],
                     by_kg: ['kg', 'Kg', 'btn-outline-primary'],
                     by_gm: ['gm', 'Gm', 'btn-outline-info'],
                     by_feet: ['ft', 'Ft', 'btn-outline-primary'],
@@ -2249,7 +2250,7 @@
                         .removeClass('btn-outline-primary btn-outline-info btn-outline-warning btn-outline-success')
                         .addClass(m[2]);
                     $row.find('.hidden-sub-unit-mode').val(m[0]);
-                    if (sizeMode === 'by_cartons') {
+                    if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
                         $row.find('.pcs-per-ctn').val($row.find('.pack-qty').val());
                     } else {
                         $row.find('.pcs-per-ctn').val('');
@@ -2295,7 +2296,7 @@
                 var unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'main';
                 var cartonQty, priceDisplay;
 
-                if (it.size_mode === 'by_cartons') {
+                if (['by_cartons', 'by_bandal'].includes(it.size_mode)) {
                     var boxes = Math.floor(it.total_pieces / it.ppb);
                     var loose = (it.total_pieces % it.ppb);
                     cartonQty = (loose > 0) ? boxes + '.' + loose : String(boxes);

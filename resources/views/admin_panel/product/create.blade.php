@@ -599,6 +599,7 @@
                                             <select class="form-select form-control-pro form-select-pro fw-bold" name="size_mode" id="unit-dropdown">
                                                 <option value="by_pieces">Pcs</option>
                                                 <option value="by_cartons">Carton</option>
+<option value="by_bandal">Bandal</option>
                                                 <option value="by_meter">Meter</option>
                                                 <option value="by_feet">Ft (Feet)</option>
                                                 <option value="by_kg">Kg</option>
@@ -851,7 +852,7 @@
                 let firstConv = vConvFactors.length > 0 ? (parseFloat(vConvFactors[0].value) || 0) : 0;
 
                 const mode = unitDropdown ? unitDropdown.value : 'by_pieces';
-                if(mode === 'by_cartons') {
+                if(['by_cartons', 'by_bandal'].includes(mode)) {
                     let ppb = firstConv > 0 ? firstConv : 1;
                     document.getElementById('boxes_quantity').value = totalStock;
                     document.getElementById('pieces_per_box').value = ppb;
@@ -1293,7 +1294,7 @@
                 if (!row) return;
                 const mode = unitDropdown ? unitDropdown.value : 'by_pieces';
                 const rowUnit = row.querySelector('[name="variant_unit[]"]')?.value || '';
-                const isCarton = (mode === 'by_cartons' || rowUnit.toLowerCase() === 'carton');
+                const isCarton = (['by_cartons', 'by_bandal'].includes(mode) || rowUnit.toLowerCase() === 'carton');
 
                 const convInp = row.querySelector('.conv-factor-input');
                 let ppb = parseFloat(convInp?.value || 0);
@@ -1339,7 +1340,7 @@
                 if (!unitDropdown) return;
                 const mode = unitDropdown.value;
                 const isWeight = (mode === 'by_kg' || mode === 'by_gm' || mode === 'by_ton');
-                const isCarton = (mode === 'by_cartons');
+                const isCarton = (['by_cartons', 'by_bandal'].includes(mode));
 
                 const headerEl = document.getElementById('convFactorHeader');
                 if (headerEl) {

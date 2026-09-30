@@ -367,7 +367,7 @@
 
                 $rawQtyStr = (string) ($it->qty ?? '0');
                 $isPiece = in_array($rawU, ['pcs', 'pc', 'piece']);
-                $isCtn = in_array($rawU, ['carton', 'ctn', 'box']) || (!$isPiece && $it->size_mode === 'by_cartons');
+                $isCtn = in_array($rawU, ['carton', 'ctn', 'box']) || (!$isPiece && in_array($it->size_mode, ['by_cartons', 'by_bandal']));
 
                 if ($isCtn) {
                     $hasCartonMode = true;
@@ -397,11 +397,11 @@
 
             if ($hasCartonMode && $sumCartons > 0) {
                 if ($sumLoosePieces > 0) {
-                    $cartonPcsDisplay = "{$sumCartons} Ctn + {$sumLoosePieces} Pcs (" . number_format($sumTotalPieces) . " Total Pcs)";
-                    $cartonPcsShort = "{$sumCartons} Ctn + {$sumLoosePieces} Pcs";
+                    $cartonPcsDisplay = "{$sumCartons} Ctn/Bndl + {$sumLoosePieces} Pcs (" . number_format($sumTotalPieces) . " Total Pcs)";
+                    $cartonPcsShort = "{$sumCartons} Ctn/Bndl + {$sumLoosePieces} Pcs";
                 } else {
-                    $cartonPcsDisplay = "{$sumCartons} Cartons (" . number_format($sumTotalPieces) . " Total Pcs)";
-                    $cartonPcsShort = "{$sumCartons} Cartons";
+                    $cartonPcsDisplay = "{$sumCartons} Ctn/Bndl (" . number_format($sumTotalPieces) . " Total Pcs)";
+                    $cartonPcsShort = "{$sumCartons} Ctn/Bndl";
                 }
             } elseif ($hasCartonMode && $sumLoosePieces > 0) {
                 $cartonPcsDisplay = "{$sumLoosePieces} Pcs";
@@ -447,7 +447,7 @@
 
                             $rawUnit = strtolower(trim($item->unit ?? ''));
                             $isPiece = in_array($rawUnit, ['pcs', 'pc', 'piece']);
-                            $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || (!$isPiece && ($item->size_mode === 'by_cartons'));
+                            $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || (!$isPiece && (in_array($item->size_mode, ['by_cartons', 'by_bandal'])));
                             $isWeight = in_array($rawUnit, ['kg', 'gm', 'g']);
 
                             if ($isCarton) {
@@ -458,15 +458,18 @@
                                     [$boxes, $loosePieces] = \App\Http\Controllers\PurchaseController::parseCartonQty($item->qty);
                                 }
                                 $totalPieces = ($boxes * $piecesPerBox) + $loosePieces;
-                                $uomDisplay = 'Carton';
+                                $ctnLbl = ($item->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
+                                $cartonFull = ($item->size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
+                                $cartonFulls = ($item->size_mode === 'by_bandal') ? 'Bandals' : 'Cartons';
+                                $uomDisplay = $cartonFull;
                                 if ($boxes > 0 && $loosePieces > 0) {
-                                    $qtyDisplay = "{$boxes} Ctn + {$loosePieces} Pcs";
+                                    $qtyDisplay = "{$boxes} {$ctnLbl} + {$loosePieces} Pcs";
                                 } elseif ($boxes > 0) {
-                                    $qtyDisplay = ($boxes == 1 ? '1 Carton' : ($boxes . ' Cartons'));
+                                    $qtyDisplay = ($boxes == 1 ? "1 {$cartonFull}" : ($boxes . " {$cartonFulls}"));
                                 } elseif ($loosePieces > 0) {
                                     $qtyDisplay = "{$loosePieces} Pcs";
                                 } else {
-                                    $qtyDisplay = '0 Cartons';
+                                    $qtyDisplay = "0 {$cartonFulls}";
                                 }
                                 $subQtyText = '(' . $totalPieces . ' pcs)';
                             } elseif ($isPiece) {
@@ -621,7 +624,7 @@
                     $piecesPerBox = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : ($item->product->pieces_per_box ?? 1));
                     $rawUnit = strtolower(trim($item->unit ?? ''));
                     $isPiece = in_array($rawUnit, ['pcs', 'pc', 'piece']);
-                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || (!$isPiece && ($item->size_mode === 'by_cartons'));
+                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || (!$isPiece && (in_array($item->size_mode, ['by_cartons', 'by_bandal'])));
 
                     if ($isCarton) {
                         if ($item->boxes_qty > 0 || $item->loose_qty > 0) {
@@ -630,14 +633,17 @@
                         } else {
                             [$boxes, $loosePieces] = \App\Http\Controllers\PurchaseController::parseCartonQty($item->qty);
                         }
+                        $ctnLbl = ($item->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
+                        $cartonFull = ($item->size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
+                        $cartonFulls = ($item->size_mode === 'by_bandal') ? 'Bandals' : 'Cartons';
                         if ($boxes > 0 && $loosePieces > 0) {
-                            $qtyDisplay = "{$boxes} Ctn + {$loosePieces} Pcs";
+                            $qtyDisplay = "{$boxes} {$ctnLbl} + {$loosePieces} Pcs";
                         } elseif ($boxes > 0) {
-                            $qtyDisplay = ($boxes == 1 ? '1 Carton' : ($boxes . ' Cartons'));
+                            $qtyDisplay = ($boxes == 1 ? "1 {$cartonFull}" : ($boxes . " {$cartonFulls}"));
                         } elseif ($loosePieces > 0) {
                             $qtyDisplay = "{$loosePieces} Pcs";
                         } else {
-                            $qtyDisplay = '0 Cartons';
+                            $qtyDisplay = "0 {$cartonFulls}";
                         }
                     } elseif ($isPiece) {
                         $qtyDisplay = (float) $item->qty . ' Pcs';

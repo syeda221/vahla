@@ -307,7 +307,7 @@ class SaleReturnController extends Controller
                 // Calculate Line Total Logic based on size mode
                 if ($sizeMode === 'by_size') {
                     $lineTotal = round($ppm2 * $qty * $price, 2);
-                } elseif ($sizeMode === 'by_cartons' || $sizeMode === 'by_carton') {
+                } elseif (in_array($sizeMode, ['by_cartons', 'by_bandal']) || $sizeMode === 'by_carton') {
                     $lineTotal = round(($ppb > 0 ? ($qty / $ppb) : $qty) * $price, 2);
                 } else {
                     $lineTotal = round($qty * $price, 2);

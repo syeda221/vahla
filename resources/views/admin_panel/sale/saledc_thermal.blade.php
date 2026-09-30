@@ -268,10 +268,10 @@
                             $qtyStr = "{$totalPieces} Pcs";
                         } else {
                             if ($boxes > 0 && $loosePieces > 0) {
-                                $cStr = $sizeMode == 'by_cartons' ? 'Crtn' : 'Box';
+                                $cStr = in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Crtn' : 'Box';
                                 $qtyStr = "{$boxes} {$cStr} + {$loosePieces} Pc";
                             } elseif ($boxes > 0) {
-                                $cStr = $sizeMode == 'by_cartons' ? 'Cartons' : 'Boxes';
+                                $cStr = in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Cartons' : 'Boxes';
                                 $qtyStr = "{$boxes} {$cStr}";
                             } else {
                                 $qtyStr = "{$loosePieces} Pcs";

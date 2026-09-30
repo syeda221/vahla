@@ -1271,7 +1271,7 @@ class SaleController extends Controller
                     $loose = (float) ($request->loose_pieces[$index] ?? 0); // Legacy/Fallback
 
                     // Quantity Logic based on Size Mode
-                    if ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_size') {
+                    if (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || $product->size_mode === 'by_size') {
                         // For Carton/Size modes, Frontend sends 'total_pieces' (Calculated Pieces)
                         // and 'qty' contains "Box.Loose" string.
                         $reqTotal = (float) ($request->total_pieces[$index] ?? 0);
@@ -1328,7 +1328,7 @@ class SaleController extends Controller
                         $lineGross = $discount < 100 ? round($frontendNet / (1 - ($discount / 100)), 2) : $frontendNet;
                     }
                 } else {
-                    if ($sizeMode === 'by_cartons') {
+                    if (in_array($sizeMode, ['by_cartons', 'by_bandal'])) {
                         $subUnit = $request->sub_unit_mode[$index] ?? 'main';
                         if ($subUnit === 'pcs') {
                             $lineGross = $totalPieces * $dbPrice;
@@ -2031,7 +2031,7 @@ class SaleController extends Controller
         }
 
         $vUnitName = $matched['unit'] ?? '';
-        $isCartonMode = ($product->size_mode === 'by_cartons' || strtolower($vUnitName) === 'carton');
+        $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($vUnitName) === 'carton');
         $ppb = (float) ($product->pieces_per_box ?? 1);
         if ($isCartonMode) {
             $vConv = (float) ($matched['conv_factor'] ?? 0);

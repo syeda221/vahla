@@ -325,7 +325,7 @@
                     let disp;
                     const ppb = parseFloat(matched.ppb) || 1;
 
-                    if ((matched.size_mode === 'by_cartons' || matched.size_mode === 'by_size') && ppb > 1) {
+                    if ((['by_cartons', 'by_bandal'].includes(matched.size_mode) || matched.size_mode === 'by_size') && ppb > 1) {
                         const boxes = Math.floor(matched.boxes || 0);
                         const loose = matched.stock % ppb;
                         disp = loose > 0 ? `${boxes}.${loose}` : boxes;
@@ -374,7 +374,7 @@
         let pcsDisplay = rawQty;
         let gross = 0;
 
-        if (sizeMode === 'by_cartons') {
+        if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
             if (unitMode === 'pcs') {
                 // Selling in Pieces: unitPrice is price per piece
                 pcsDisplay = rawQty;
@@ -1034,7 +1034,7 @@
 
             const ppb = parseFloat(data.pieces_per_box) || 1;
             const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
-            if (data.size_mode === 'by_cartons') {
+            if (['by_cartons', 'by_bandal'].includes(data.size_mode)) {
                 let cartonPrice = ppb > 1 ? (rate * ppb) : rate;
                 $row.find('.visible-price').val(unitMode === 'pcs' ? rate : cartonPrice);
                 $row.find('.price-per-piece').val(unitMode === 'pcs' ? rate : cartonPrice);
@@ -1063,7 +1063,7 @@
         const packQty = parseFloat($row.find('.pack-qty').val()) || 1;
         const $col = $row.find('.col-pcs-ctn');
         if ($col.length === 0) return;
-        if (sizeMode === 'by_cartons') {
+        if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
             $row.find('.pcs-per-ctn').val(packQty);
         } else {
             $row.find('.pcs-per-ctn').val('');
@@ -1077,10 +1077,11 @@
     function setupRowQtyToggle($row, sizeMode) {
         const $toggleBtn = $row.find('.qty-unit-toggle');
         updatePcsCtnColumn($row, sizeMode);
-        if (sizeMode === 'by_cartons') {
+        if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
+            let label = (sizeMode === 'by_bandal') ? 'Bandal' : 'Ctn';
             $toggleBtn.removeClass('d-none')
                       .attr('data-unit-mode', 'ctn')
-                      .text('Ctn')
+                      .text(label)
                       .removeClass('btn-outline-primary btn-outline-info btn-outline-warning')
                       .addClass('btn-outline-success');
             $row.find('.hidden-sub-unit-mode').val('ctn');
@@ -1131,7 +1132,7 @@
         const sizeMode = $row.data('size_mode') || $row.find('.size-mode-text').val();
         let currentMode = $btn.attr('data-unit-mode');
 
-        if (sizeMode === 'by_cartons') {
+        if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
             const packQty = parseFloat($row.find('.pack-qty').val()) || 1;
             const $priceInp = $row.find('.visible-price');
             let curPrice = parseFloat($priceInp.val()) || 0;
@@ -1169,7 +1170,8 @@
                 $row.find('.price-per-piece').val($priceInp.val());
             } else {
                 currentMode = 'ctn';
-                $btn.attr('data-unit-mode', 'ctn').text('Ctn').removeClass('btn-outline-info').addClass('btn-outline-success');
+                let label = (sizeMode === 'by_bandal') ? 'Bandal' : 'Ctn';
+                $btn.attr('data-unit-mode', 'ctn').text(label).removeClass('btn-outline-info').addClass('btn-outline-success');
                 $row.find('.carton-qty').attr('placeholder', '0');
 
                 // Convert Quantity from Pcs to Ctn (dot notation)
@@ -1261,7 +1263,7 @@
             const sizeMode = $row.data('size_mode');
             const ppb = parseFloat($row.find('.pack-qty').val()) || 1;
 
-            if ((sizeMode === 'by_cartons' || sizeMode === 'by_size') && ppb > 1 && val.includes('.')) {
+            if ((['by_cartons', 'by_bandal'].includes(sizeMode) || sizeMode === 'by_size') && ppb > 1 && val.includes('.')) {
                 const parts = val.split('.');
                 const boxes = parseInt(parts[0]) || 0;
                 const looseStr = parts[1];
@@ -1302,7 +1304,7 @@
                     const rowMode = $row.find('.price-mode-row-toggle').attr('data-mode') || 'retail';
 
                     let baseRate = newPrice;
-                    if (sizeMode === 'by_cartons') {
+                    if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
                         baseRate = (unitMode === 'pcs' || packQty <= 1) ? newPrice : (newPrice / packQty);
                     } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
                         baseRate = (unitMode === 'gm') ? (newPrice * 1000) : newPrice;
@@ -1391,7 +1393,7 @@
             const packQty = parseFloat($row.find('.pack-qty').val()) || 1;
             const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
 
-            if (sizeMode === 'by_cartons') {
+            if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
                 let cartonPrice = packQty > 1 ? (pieceRate * packQty) : pieceRate;
                 let finalPrice = (unitMode === 'pcs') ? pieceRate : cartonPrice;
                 $row.find('.visible-price').val(finalPrice % 1 === 0 ? finalPrice : finalPrice.toFixed(2));

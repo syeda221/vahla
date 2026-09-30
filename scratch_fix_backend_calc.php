@@ -5,7 +5,7 @@ $content = file_get_contents($file);
 $oldCalc = "                if (\$curSizeMode === 'by_size') {
                     // price is per m2. Gross = TotalPieces * m2_per_piece * price_per_m2
                     \$grossTotal = \$curPPM2 * \$qty * \$price;
-                } elseif (\$curSizeMode === 'by_cartons' || \$curSizeMode === 'by_carton') {
+                } elseif (\in_array($curSizeMode, ['by_cartons', 'by_bandal']) || \$curSizeMode === 'by_carton') {
                     // For cartons, price is per carton, so divide by pieces_per_box to get price per piece
                     \$ppb = isset(\$ppbs[\$i]) && \$ppbs[\$i] > 0 ? (float) \$ppbs[\$i] : 1;
                     \$grossTotal = \$qty * (\$price / \$ppb);

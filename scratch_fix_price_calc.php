@@ -8,7 +8,7 @@ $oldCalc = "                // --- TOTAL CALCULATION ---
                 if (sizeMode == 'by_size') {
                     // Price is per M2. Total M2 = totalPieces * pieces_per_m2 (m2/piece)
                     grossTotal = (totalPieces * pieces_per_m2) * price;
-                } else if (sizeMode == 'by_cartons') {
+                } else if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
                     // Price is per Carton.
                     // If ppb > 0
                     if (ppb > 0) {
@@ -38,7 +38,7 @@ $oldSelect2 = "                    let price = 0;
                     if (sizeMode === 'by_size') {
                         price = pM2;
                         unitLabel = '(m²)';
-                    } else if (sizeMode === 'by_cartons') {
+                    } else if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
                         price = pPiece * ppb; // Carton Price
                         unitLabel = '(carton)';
                     } else {
