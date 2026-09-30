@@ -1329,7 +1329,8 @@ class ProductController extends Controller
                             if ($isBase === 1) {
                                 $baseCount++;
                                 if ($factor != 1) {
-                                    throw new \Exception("Base variant must have Conversion Factor exactly equal to 1.");
+                                    $factor = 1;
+                                    $conv_factors[$i] = 1;
                                 }
                                 // Base factor is not added to duplicate list
                             } else {
@@ -1748,7 +1749,8 @@ class ProductController extends Controller
                             if ($isBase === 1) {
                                 $baseCount++;
                                 if ($factor != 1) {
-                                    throw new \Exception("Base variant must have Conversion Factor exactly equal to 1.");
+                                    $factor = 1;
+                                    $conv_factors[$i] = 1;
                                 }
                                 // do not add base factor to $factors array
                             } else {

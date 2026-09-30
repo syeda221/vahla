@@ -383,7 +383,9 @@ class ProductImportExportController extends Controller
             $isWeightProduct = (isset($productsByRef[$prodRef]) && in_array($productsByRef[$prodRef]['size_mode'], ['by_kg', 'by_gm', 'by_ton']));
 
             // Auto-calculate conversion factor & piece weight (g)
-            if ($isWeightProduct) {
+            if ($vIsBase === 1) {
+                $vConvFactor = 1;
+            } elseif ($isWeightProduct) {
                 if ($vConvFactor > 0 && $vConvFactor < 1) {
                     if ($vPieceWt <= 0) {
                         $vPieceWt = (float) round($vConvFactor * 1000.0, 4);

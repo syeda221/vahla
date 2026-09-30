@@ -1215,8 +1215,27 @@
                     const vAlert = document.querySelectorAll('input[name="variant_alert_qty[]"]');
                     const vConvFactors = document.querySelectorAll('input[name="variant_conv_factor[]"]');
 
+                    const vUnits = document.querySelectorAll('input[name="variant_unit[]"], select[name="variant_unit[]"]');
+                    const mode = unitDropdown ? unitDropdown.value : 'by_pieces';
+
                     let totalStock = 0;
-                    vStocks.forEach(el => totalStock += (parseFloat(el.value) || 0));
+                    vStocks.forEach((el, index) => {
+                        let stock = parseFloat(el.value) || 0;
+                        let factor = parseFloat(vConvFactors[index] ? vConvFactors[index].value : 1) || 1;
+                        let u = vUnits[index] ? vUnits[index].value.toLowerCase() : '';
+                        
+                        if (['by_kg', 'by_gm', 'by_ton'].includes(mode)) {
+                            if (['pcs', 'pc'].includes(u) && factor > 0) {
+                                totalStock += (stock * factor);
+                            } else if (['gm', 'g'].includes(u) && mode === 'by_kg') {
+                                totalStock += (stock / 1000.0);
+                            } else {
+                                totalStock += stock;
+                            }
+                        } else {
+                            totalStock += stock;
+                        }
+                    });
 
                     let firstSale = vSale.length > 0 ? (parseFloat(vSale[0].value) || 0) : 0;
                     let firstWholesale = vWholesale.length > 0 ? (parseFloat(vWholesale[0].value) || 0) : 0;
@@ -1225,7 +1244,7 @@
                     let firstAlert = vAlert.length > 0 ? (parseFloat(vAlert[0].value) || 0) : 0;
                     let firstConv = vConvFactors.length > 0 ? (parseFloat(vConvFactors[0].value) || 0) : 0;
 
-                    const mode = unitDropdown ? unitDropdown.value : 'by_pieces';
+
                     
                     if (vStocks.length > 0) {
                         const elBoxQty = document.getElementById('boxes_quantity');
