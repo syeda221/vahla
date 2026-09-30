@@ -66,7 +66,7 @@
                     <body>
                         <!-- page-wrapper start -->
 
-                        <form action="{{ route('store.Purchase') }}" method="POST">
+                        <form action="{{ route('store.Purchase') }}" method="POST" enctype="multipart/form-data">
                             @csrf
 
                             <style>
@@ -256,6 +256,11 @@
                                                     <div class="col-md-12">
                                                         <label>Job / Description</label>
                                                         <input type="text" name="note" class="form-control">
+                                                    </div>
+
+                                                    <div class="col-md-12 mt-2">
+                                                        <label>Attachment (Optional)</label>
+                                                        <input type="file" name="attachment" class="form-control">
                                                     </div>
 
                                                 </div>

@@ -20,6 +20,7 @@ class GoodsReceivingNote extends Model
         'remarks',
         'carrier_info',
         'created_by',
+        'attachment',
     ];
 
     protected $casts = [

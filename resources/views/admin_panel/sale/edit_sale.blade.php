@@ -530,7 +530,7 @@
 
             <div id="alertBox" class="alert d-none mb-2" role="alert" style="padding:6px 12px; font-size:0.8rem;"></div>
 
-            <form id="saleForm" autocomplete="off">
+            <form id="saleForm" autocomplete="off" enctype="multipart/form-data">
                 @csrf
                 @if(request()->has('convert_to_sale') || request()->has('convert_to_so'))
                     <input type="hidden" name="parent_quotation_id" value="{{ $sale->id }}">
@@ -700,6 +700,15 @@
                         <div class="col-sm-6 col-md-2 col-lg-2">
                             <label class="meta-label"><i class="far fa-comment-dots text-muted"></i> Remarks / M.Bill</label>
                             <input type="text" class="form-control" name="reference" id="remarks" value="{{ $sale->reference ?? '' }}" placeholder="Notes / Ref...">
+                        </div>
+
+                        <!-- Attachment -->
+                        <div class="col-sm-6 col-md-2 col-lg-2">
+                            <label class="meta-label"><i class="fas fa-paperclip text-muted"></i> Attachment</label>
+                            <input type="file" class="form-control" name="attachment" style="padding: 2px;">
+                            @if(!empty($sale->attachment))
+                                <a href="{{ asset('uploads/attachments/' . $sale->attachment) }}" target="_blank" class="small text-primary mt-1 d-block"><i class="fas fa-external-link-alt"></i> View Existing File</a>
+                            @endif
                         </div>
 
                         <!-- Customer Type -->

@@ -18,6 +18,7 @@ class DeliveryChallan extends Model
         'invoice_id',
         'remarks',
         'created_by',
+        'attachment',
     ];
 
     public function invoice()

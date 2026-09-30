@@ -201,6 +201,14 @@ class GoodsReceivingNoteController extends Controller
 
             $purchase->recalculateReceivingStatus();
 
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('uploads/attachments'), $filename);
+                $grn->attachment = $filename;
+                $grn->save();
+            }
+
             DB::commit();
 
             return redirect()->route('purchase_orders.index')->with('success', "Goods Receiving Note {$grn->grn_number} created successfully and warehouse stock updated!");

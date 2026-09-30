@@ -352,7 +352,7 @@
     <div class="container-fluid py-2">
         <div class="main-container bg-white border shadow-sm mx-auto p-2 rounded-3">
 
-            <form id="purchaseForm" action="{{ route('purchase.update', $purchase->id) }}" method="POST" autocomplete="off">
+            <form id="purchaseForm" action="{{ route('purchase.update', $purchase->id) }}" method="POST" enctype="multipart/form-data" autocomplete="off">
                 @csrf
                 @method('PUT')
 
@@ -404,6 +404,14 @@
                             <div class="mb-2">
                                 <label class="form-label fw-bold text-muted small">M.Bill</label>
                                 <textarea class="form-control" name="note" rows="2">{{ $purchase->note }}</textarea>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label fw-bold text-muted small">Attachment</label>
+                                <input type="file" class="form-control" name="attachment">
+                                @if(!empty($purchase->attachment))
+                                    <a href="{{ asset('uploads/attachments/' . $purchase->attachment) }}" target="_blank" class="small text-primary mt-1 d-block"><i class="fas fa-external-link-alt"></i> View Existing File</a>
+                                @endif
                             </div>
 
                             <div class="mb-2">

@@ -173,6 +173,14 @@ class DirectGRNController extends Controller
                 ]);
             }
 
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('uploads/attachments'), $filename);
+                $grn->attachment = $filename;
+                $grn->save();
+            }
+
             DB::commit();
 
             return redirect()->route('direct-grn.index')->with('success', "Direct Goods Receiving Note {$grn->grn_number} created successfully and stock added!");

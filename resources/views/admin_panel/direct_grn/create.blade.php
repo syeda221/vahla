@@ -36,7 +36,7 @@
 
     <div class="card border-0 shadow-sm rounded-3">
         <div class="card-body p-4">
-            <form action="{{ route('direct-grn.store') }}" method="POST">
+            <form action="{{ route('direct-grn.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @if ($errors->any())
                     <div class="alert alert-danger rounded-3 mb-3">
@@ -80,6 +80,10 @@
                         <div class="col-md-6">
                             <label class="meta-label">Remarks / Receiving Notes</label>
                             <input type="text" name="remarks" class="form-control" placeholder="Any quality check or warehouse note...">
+                        </div>
+                        <div class="col-md-12 mt-2">
+                            <label class="meta-label">Attachment (Optional)</label>
+                            <input type="file" name="attachment" class="form-control">
                         </div>
                     </div>
                 </div>

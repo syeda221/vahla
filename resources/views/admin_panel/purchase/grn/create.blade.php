@@ -27,7 +27,7 @@
             </div>
         </div>
 
-        <form action="{{ route('purchases.grn.store', $purchase->id) }}" method="POST">
+        <form action="{{ route('purchases.grn.store', $purchase->id) }}" method="POST" enctype="multipart/form-data">
             @csrf
             <div class="card-body p-4">
                 <!-- METADATA ROW -->
@@ -43,6 +43,13 @@
                     <div class="col-md-5">
                         <label class="form-label fw-bold small text-muted text-uppercase">Remarks / Receiving Notes</label>
                         <input type="text" name="remarks" class="form-control" placeholder="Any quality check or warehouse note...">
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4 bg-light p-3 rounded-3 border">
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Attachment (Optional)</label>
+                        <input type="file" name="attachment" class="form-control">
                     </div>
                 </div>
 

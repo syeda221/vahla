@@ -782,10 +782,18 @@
 
             $('#btnSave, #btnQuotation, #btnHeaderPosted, #btnPosted, #btnDraft, #btnHeaderDraftSale, #btnSaveDraft, #btnSaveDraft2, #btnSaveAndComplete, #btnSaveAndComplete2').prop('disabled', true);
 
+            let formData = new FormData($('#saleForm')[0]);
+            if (method === 'PUT') {
+                formData.append('_method', 'PUT');
+                method = 'POST'; // Laravel spoofing
+            }
+
             $.ajax({
                 url: url,
                 type: method,
-                data: serializeForm(),
+                data: formData,
+                processData: false,
+                contentType: false,
                 success: function(res) {
                     $('#btnSave, #btnQuotation, #btnHeaderPosted, #btnPosted, #btnDraft, #btnHeaderDraftSale, #btnSaveDraft, #btnSaveDraft2, #btnSaveAndComplete, #btnSaveAndComplete2').prop('disabled', false);
                     if (res?.ok) {

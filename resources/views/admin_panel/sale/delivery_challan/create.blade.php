@@ -30,7 +30,7 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <form action="{{ route('sales.store_dc', $sale->id) }}" method="POST" onkeydown="return event.key != 'Enter';">
+                    <form action="{{ route('sales.store_dc', $sale->id) }}" method="POST" enctype="multipart/form-data" onkeydown="return event.key != 'Enter';">
                         @csrf
                         <div class="row p-3 bg-light border-bottom m-0">
                             @php
@@ -187,11 +187,15 @@
 
                         <div class="p-4 bg-light border-top">
                             <div class="row align-items-end">
-                                <div class="col-md-8">
+                                <div class="col-md-6">
                                     <label class="fw-bold text-muted mb-2" style="font-size: 12px; text-transform: uppercase;">Remarks / Note</label>
                                     <input type="text" name="remarks" class="form-control" placeholder="Enter any additional notes for this delivery challan (optional)...">
                                 </div>
-                                <div class="col-md-4 text-end mt-3 mt-md-0">
+                                <div class="col-md-6 mt-3 mt-md-0">
+                                    <label class="fw-bold text-muted mb-2" style="font-size: 12px; text-transform: uppercase;">Attachment</label>
+                                    <input type="file" name="attachment" class="form-control">
+                                </div>
+                                <div class="col-md-12 text-end mt-4">
                                     <a href="{{ route('sale.index') }}" class="btn btn-light border fw-bold me-2 px-4">Cancel</a>
                                     <button type="submit" 
                                             class="btn btn-primary fw-bold px-4 shadow-sm"

@@ -2129,6 +2129,14 @@ class SaleController extends Controller
                 $targetRoute = 'sales_orders.index';
             }
 
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('uploads/attachments'), $filename);
+                $sale->attachment = $filename;
+                $sale->save();
+            }
+
             if ($request->ajax() || $request->wantsJson()) {
                 $receiptUrl = route('sales.receipt', $sale->id) . '?from=pos';
                 return response()->json([

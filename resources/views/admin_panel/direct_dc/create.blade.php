@@ -27,7 +27,7 @@
         <div class="col-12 grid-margin stretch-card">
             <div class="card border border-light-subtle rounded-3 shadow-sm">
                 <div class="card-body p-3">
-                    <form action="{{ route('direct-dc.store') }}" method="POST">
+                    <form action="{{ route('direct-dc.store') }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         @if ($errors->any())
                             <div class="alert alert-danger rounded-3">
@@ -62,6 +62,10 @@
                             <div class="col-md-12 form-group mb-2">
                                 <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;">Remarks</label>
                                 <input type="text" name="remarks" class="form-control" placeholder="Any additional notes or instructions...">
+                            </div>
+                            <div class="col-md-12 form-group mb-2">
+                                <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;">Attachment (Optional)</label>
+                                <input type="file" name="attachment" class="form-control">
                             </div>
                         </div>
 

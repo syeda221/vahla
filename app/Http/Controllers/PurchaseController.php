@@ -1023,6 +1023,14 @@ class PurchaseController extends Controller
                 $gatepass->save();
             }
 
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('uploads/attachments'), $filename);
+                $purchase->attachment = $filename;
+                $purchase->save();
+            }
+
             return $purchase;
         });
 

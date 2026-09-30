@@ -241,6 +241,14 @@ class DeliveryChallanController extends Controller
 
             $sale->recalculateDeliveryStatus();
 
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('uploads/attachments'), $filename);
+                $dc->attachment = $filename;
+                $dc->save();
+            }
+
             DB::commit();
 
             $targetRoute = 'sale.index';

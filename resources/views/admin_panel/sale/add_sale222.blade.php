@@ -600,7 +600,7 @@
 
             <div id="alertBox" class="alert d-none mb-2" role="alert" style="padding:6px 12px; font-size:0.8rem;"></div>
 
-            <form id="saleForm" autocomplete="off">
+            <form id="saleForm" autocomplete="off" enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" id="booking_id" name="booking_id" value="">
                 <input type="hidden" id="action" name="action" value="sale">
@@ -744,6 +744,12 @@
                         <div class="col-sm-6 col-md-2 col-lg-2">
                             <label class="meta-label"><i class="far fa-comment-dots text-muted"></i> Remarks</label>
                             <input type="text" class="form-control" name="reference" id="remarks" placeholder="Notes / Ref...">
+                        </div>
+
+                        <!-- Attachment -->
+                        <div class="col-sm-6 col-md-2 col-lg-2">
+                            <label class="meta-label"><i class="fas fa-paperclip text-muted"></i> Attachment</label>
+                            <input type="file" class="form-control" name="attachment" style="padding: 2px;">
                         </div>
 
                         <!-- Customer Type -->

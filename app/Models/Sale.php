@@ -11,7 +11,7 @@ class Sale extends Model
         'customer_id', 'reference', 'total_amount_Words', 'total_bill_amount',
         'total_extradiscount', 'total_net', 'cash', 'card', 'change', 'change_account_id',
         'total_items', 'discount_type', 'sale_status', 'invoice_no', 'is_booking',
-        'sale_type', 'delivery_status', 'parent_quotation_id'
+        'sale_type', 'delivery_status', 'parent_quotation_id', 'attachment'
     ];
 
     public function customer_relation()

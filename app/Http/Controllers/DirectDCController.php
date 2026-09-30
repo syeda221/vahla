@@ -159,6 +159,14 @@ class DirectDCController extends Controller
                 DB::table('stock_movements')->insert($srMovements);
             }
 
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('uploads/attachments'), $filename);
+                $dc->attachment = $filename;
+                $dc->save();
+            }
+
             DB::commit();
             return redirect()->route('direct-dc.index')->with('success', 'Direct Delivery Challan created successfully.');
         } catch (\Exception $e) {
@@ -360,6 +368,13 @@ class DirectDCController extends Controller
                 if ($sale) {
                     $sale->recalculateDeliveryStatus();
                 }
+            }
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('uploads/attachments'), $filename);
+                $dc->attachment = $filename;
+                $dc->save();
             }
 
             DB::commit();
