@@ -47,6 +47,213 @@ class ReportingController extends Controller
         return view('admin_panel.reporting.inventory_demand_report', compact('categories', 'brands', 'warehouses', 'units'));
     }
 
+        private function getVariantStockBalances($product, $warehouseId = 'all')
+    {
+        $dateFrom = null;
+        $dateTo = null;
+        
+        $parsedVariants = [];
+        if ($product->color) {
+            try {
+                $decoded = is_string($product->color) ? json_decode($product->color, true) : $product->color;
+                if (is_array($decoded) && count($decoded) > 0 && isset($decoded[0]['name'])) {
+                    $parsedVariants = $decoded;
+                }
+            } catch (\Exception $e) {}
+        }
+        
+        if (count($parsedVariants) == 0) {
+            if ($warehouseId && $warehouseId !== 'all') {
+                $balance = (float) $product->warehouseStocks->where('warehouse_id', $warehouseId)->sum('total_pieces');
+            } else {
+                $balance = (float) $product->warehouseStocks->sum('total_pieces');
+            }
+            return [[
+                'name' => $product->item_name,
+                'code' => $product->item_code,
+                'stock' => $balance,
+                "unit_name" => $product->unit->name ?? "Pcs",
+                "is_carton_mode" => ($product->size_mode === "by_cartons" || strtolower($product->unit->name ?? "") === "carton"),
+                "ppb" => ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1),
+                "size_mode" => $product->size_mode,
+                'is_variant' => false
+            ]];
+        }
+        
+        $unitName = $product->unit->name ?? 'Pcs';
+        $results = [];
+        
+        if ($product->size_mode === 'by_kg') {
+            if ($warehouseId && $warehouseId !== 'all') {
+                $parentClosing = (float) $product->warehouseStocks->where('warehouse_id', $warehouseId)->sum('total_pieces');
+            } else {
+                $parentClosing = (float) $product->warehouseStocks->sum('total_pieces');
+            }
+            [$parentPurchased, $parentPurchaseAmount] = $this->getPurchasedQtyAndNetAmount($product->id, ['from' => null, 'to' => null], $warehouseId);
+            $saleStatsQuery = \DB::table('sale_items')->join('sales', 'sales.id', '=', 'sale_items.sale_id')->where('sale_items.product_id', $product->id)->whereIn('sales.sale_status', ['posted', 'returned']);
+            if ($warehouseId && $warehouseId !== 'all') $saleStatsQuery->where('sale_items.warehouse_id', $warehouseId);
+            $saleStats = $saleStatsQuery->selectRaw('COALESCE(SUM(sale_items.total_pieces),0) as total_qty')->first();
+            $parentSold = (float) $saleStats->total_qty;
+            $retQuery = \DB::table('stock_movements')->where('product_id', $product->id)->where('type', 'sale_return');
+            if ($warehouseId && $warehouseId !== 'all') $retQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
+            $parentReturnedQty = (float) $retQuery->sum('qty');
+            $pRetQuery = \DB::table('purchase_return_items as pri')->join('purchase_returns as pr', 'pr.id', '=', 'pri.purchase_return_id')->where('pri.product_id', $product->id);
+            if ($warehouseId && $warehouseId !== 'all') $pRetQuery->where('pr.warehouse_id', $warehouseId);
+            $parentPReturned = (float) $pRetQuery->sum('pri.qty');
+            $adjQuery = \DB::table('stock_movements')->where('product_id', $product->id)->where('type', 'adjustment')->where(function($q) { $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT'); });
+            if ($warehouseId && $warehouseId !== 'all') $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
+            $parentAdjustments = (float) $adjQuery->sum('qty');
+            $parentOpening = max(0, $parentClosing - $parentPurchased + $parentSold - $parentReturnedQty + $parentPReturned - $parentAdjustments);
+        } else {
+            $salesQuery = \DB::table('sale_items')->join('sales', 'sales.id', '=', 'sale_items.sale_id')->where('sale_items.product_id', $product->id)->whereIn('sales.sale_status', ['posted', 'returned']);
+            if ($warehouseId && $warehouseId !== 'all') $salesQuery->where('sale_items.warehouse_id', $warehouseId);
+            $salesList = $salesQuery->select('sale_items.total_pieces', 'sale_items.total', 'sale_items.color')->get();
+            $webSalesQuery = \DB::table('ecommerce_order_items as eoi')->join('ecommerce_orders as eo', 'eo.id', '=', 'eoi.ecommerce_order_id')->where('eoi.product_id', $product->id)->where('eo.is_stock_deducted', 1);
+            if ($warehouseId && $warehouseId !== 'all' && $warehouseId != 1) $webSalesQuery->whereRaw('1 = 0');
+            $webSalesList = $webSalesQuery->select('eoi.quantity as total_pieces', 'eoi.total', 'eoi.color', 'eoi.size')->get();
+            $salesListArray = $salesList->toArray();
+            foreach ($webSalesList as $wItem) {
+                $salesListArray[] = (object) [
+                    'total_pieces' => $wItem->total_pieces,
+                    'total' => $wItem->total,
+                    'color' => json_encode(['color' => $wItem->color ?: '-', 'size' => $wItem->size ?: '-'])
+                ];
+            }
+            $salesList = collect($salesListArray);
+            $returnsQuery = \DB::table('sale_return_items as sri')->join('sale_returns as sr', 'sr.id', '=', 'sri.sale_return_id')->where('sri.product_id', $product->id);
+            if ($warehouseId && $warehouseId !== 'all') $returnsQuery->where('sri.warehouse_id', $warehouseId);
+            $returnsList = $returnsQuery->select('sri.qty', 'sri.color', 'sr.sale_id')->get();
+            $purchasesQuery = \DB::table('purchase_items as pi')->join('purchases as pur', 'pur.id', '=', 'pi.purchase_id')->where('pi.product_id', $product->id)->whereIn('pur.status_purchase', ['approved', 'Returned', 'Partial']);
+            if ($warehouseId && $warehouseId !== 'all') $purchasesQuery->where('pur.warehouse_id', $warehouseId);
+            $purchasesList = $purchasesQuery->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.line_total', 'pi.color')->get();
+            $pReturnsQuery = \DB::table('purchase_return_items as pri')->where('pri.product_id', $product->id);
+            $purchaseReturnsList = $pReturnsQuery->select('pri.qty', 'pri.line_total', 'pri.color')->get();
+            $adjQuery = \DB::table('stock_movements')->where('product_id', $product->id)->where('type', 'adjustment')->where(function($q) { $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT'); });
+            if ($warehouseId && $warehouseId !== 'all') $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
+            $adjList = $adjQuery->select('qty', 'note', 'ref_type')->get();
+            $saleIds = $returnsList->pluck('sale_id')->unique()->toArray();
+            $saleItemsMap = [];
+            if (!empty($saleIds)) {
+                $siList = \DB::table('sale_items')->whereIn('sale_id', $saleIds)->where('product_id', $product->id)->select('sale_id', 'color')->get();
+                foreach ($siList as $si) {
+                    $saleItemsMap[$si->sale_id][] = $si->color;
+                }
+            }
+        }
+        
+        foreach ($parsedVariants as $v) {
+            $vName = $v['name'] ?? $product->item_name;
+            $vSize = $v['size'] ?? '-';
+            $vColor = $v['color'] ?? '-';
+            
+            $vUnitName = $v['unit'] ?? $unitName;
+            $isCartonMode = ($product->size_mode === 'by_cartons' || strtolower($vUnitName) === 'carton');
+            $ppb = (float) ($product->pieces_per_box ?? 1);
+            if ($isCartonMode) {
+                $vConv = (float) ($v['conv_factor'] ?? 0);
+                if ($vConv > 0) $ppb = $vConv;
+            }
+            
+            if ($product->size_mode === 'by_kg') {
+                $factor = isset($v['conv_factor']) ? (float)$v['conv_factor'] : 1.0;
+                $factor = $factor > 0 ? $factor : 1.0;
+                $initial = $parentOpening / $factor;
+                $purchased = $parentPurchased / $factor;
+                $sold = $parentSold / $factor;
+                $returnedQty = $parentReturnedQty / $factor;
+                $pReturned = $parentPReturned / $factor;
+                $adjustments = $parentAdjustments / $factor;
+                $balance = $parentClosing / $factor;
+            } else {
+                $vRawStock = (string) ($v['stock'] ?? '0');
+                if ($isCartonMode && $ppb > 1) {
+                    if (strpos($vRawStock, '.') !== false) {
+                        $parts = explode('.', $vRawStock);
+                        $boxes = (int) ($parts[0] ?? 0);
+                        $looseP = (int) ($parts[1] ?? 0);
+                        $initial = ($boxes * $ppb) + $looseP;
+                    } else {
+                        $initial = (float) $vRawStock * $ppb;
+                    }
+                } else {
+                    $initial = (float) $vRawStock;
+                }
+                
+                $purchased = 0;
+                foreach ($purchasesList as $pItem) {
+                    if ($this->matchSaleItemToVariant($pItem, $v)) {
+                        $pUnit = strtolower(trim($pItem->unit ?? ''));
+                        $pPPB = (float) ($pItem->pieces_per_box > 0 ? $pItem->pieces_per_box : $ppb);
+                        if ($pPPB <= 0) $pPPB = 1;
+                        if (in_array($pUnit, ['carton', 'ctn', 'box'])) {
+                            if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
+                                $pPieces = (((int) $pItem->boxes_qty) * $pPPB) + ((int) $pItem->loose_qty);
+                            } else {
+                                [$b, $l] = \App\Http\Controllers\PurchaseController::parseCartonQty($pItem->qty);
+                                $pPieces = ($b * $pPPB) + $l;
+                            }
+                        } elseif (in_array($pUnit, ['gm', 'g'])) {
+                            $pPieces = ((float) $pItem->qty) / 1000.0;
+                        } else {
+                            $pPieces = (float) $pItem->qty;
+                        }
+                        $purchased += $pPieces;
+                    }
+                }
+                
+                $pReturned = 0;
+                foreach ($purchaseReturnsList as $prItem) {
+                    if ($this->matchSaleItemToVariant($prItem, $v)) {
+                        $pReturned += (float) $prItem->qty;
+                    }
+                }
+                
+                $sold = 0;
+                foreach ($salesList as $sItem) {
+                    if ($this->matchSaleItemToVariant($sItem, $v)) {
+                        $sold += (float) $sItem->total_pieces;
+                    }
+                }
+                
+                $returnedQty = 0;
+                foreach ($returnsList as $rItem) {
+                    $rColor = $rItem->color;
+                    if (empty($rColor)) {
+                        $saleColors = $saleItemsMap[$rItem->sale_id] ?? [];
+                        $rColor = !empty($saleColors) ? $saleColors[0] : '';
+                    }
+                    $rItemCopy = (object)['qty' => $rItem->qty, 'color' => $rColor];
+                    if ($this->matchSaleItemToVariant($rItemCopy, $v)) {
+                        $returnedQty += (float) $rItem->qty;
+                    }
+                }
+                
+                $adjustments = 0;
+                foreach ($adjList as $adjItem) {
+                    if ($this->matchAdjustmentToVariant($adjItem, $v)) {
+                        $adjustments += (float) $adjItem->qty;
+                    }
+                }
+                
+                $balance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments);
+            }
+            
+            $results[] = [
+                'name' => $vName . ' (' . $vSize . ' | ' . $vColor . ')',
+                'code' => $product->item_code,
+                'stock' => $balance,
+                "alert" => isset($v["alert"]) ? (float)$v["alert"] : null,
+                "unit_name" => $vUnitName,
+                "is_carton_mode" => $isCartonMode,
+                "ppb" => $ppb,
+                "size_mode" => $product->size_mode,
+                'is_variant' => true
+            ];
+        }
+        
+        return $results;
+    }
+
     public function fetchInventoryDemand(Request $request)
     {
         $brandId     = $request->brand_id ?: $request->company_id;
@@ -80,63 +287,83 @@ class ReportingController extends Controller
         $totalCostAmount   = 0;
 
         foreach ($products as $product) {
-            // Calculate current stock from warehouse stocks
-            if ($warehouseId && $warehouseId !== 'all') {
-                $stock = (float) $product->warehouseStocks->where('warehouse_id', $warehouseId)->sum('total_pieces');
-            } else {
-                $stock = (float) $product->warehouseStocks->sum('total_pieces');
-            }
-
-            // Min Qty (Alert Qty set on product create/edit)
-            $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
-            $minQty = (float) ($product->alert_quantity ?? (($product->alert_carton_quantity ?? 0) * $ppb));
-
-            // Required / Demand Qty = Max(0, Min Qty - Stock)
-            $reqQty = max(0, $minQty - $stock);
-
-            // If demand_only is checked and this item does not need replenishment, skip
-            if ($demandOnly && $reqQty <= 0) {
-                continue;
-            }
-
+            $variants = $this->getVariantStockBalances($product, $warehouseId);
+            
             // Purchase Price / Unit Cost
             $purchPrice = 0;
-            if ($product->size_mode === 'by_size' || $product->size_mode === 'by_m2') {
+            if ($product->size_mode === "by_size" || $product->size_mode === "by_m2") {
                 $m2PerPiece = (float) ($product->pieces_per_m2 ?? 0);
                 $purchPerM2 = (float) ($product->purchase_price_per_m2 ?? 0);
                 $purchPrice = $m2PerPiece * $purchPerM2;
             } else {
                 $purchPrice = (float) ($product->purchase_price_per_piece ?? 0);
             }
-
-            $costAmount = round($reqQty * $purchPrice, 2);
-
-            $rows[] = [
-                'id'          => $product->id,
-                'code'        => $product->item_code ?: '0',
-                'item_name'   => $product->item_name,
-                'category'    => $product->category_relation->name ?? '-',
-                'company'     => $product->brand->name ?? '-',
-                'unit'        => $product->unit->name ?? 'Pcs',
-                'stock'       => round($stock, 2),
-                'p_price'     => round($purchPrice, 2),
-                'min_qty'     => round($minQty, 2),
-                'req_qty'     => round($reqQty, 2),
-                'cost_amount' => $costAmount,
-                'status'      => $stock <= 0 ? 'out_of_stock' : ($stock < $minQty ? 'low_stock' : 'adequate'),
-            ];
-
-            $totalItemsCount++;
-            if ($reqQty > 0) {
-                $totalDemandItems++;
+            
+            $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
+            $minQty = (float) ($product->alert_quantity ?? (($product->alert_carton_quantity ?? 0) * $ppb));
+            
+            foreach ($variants as $variant) {
+                $stock = $variant["stock"];
+                $vMinQty = isset($variant["alert"]) && $variant["alert"] !== null && $variant["alert"] !== "" ? (float)$variant["alert"] : $minQty;
+                $reqQty = max(0, $vMinQty - $stock);
+                
+                if ($demandOnly && $reqQty <= 0) {
+                    continue;
+                }
+                
+                $costAmount = round($reqQty * $purchPrice, 2);
+                
+                $isCartonMode = $variant["is_carton_mode"];
+                $vPPB = $variant["ppb"];
+                $vUnitName = $variant["unit_name"];
+                $vSizeMode = $variant["size_mode"];
+                
+                $formatQty = function($qty) use ($isCartonMode, $vPPB, $vUnitName, $vSizeMode) {
+                    if ($isCartonMode) {
+                        $cartons = (int) floor($qty / $vPPB);
+                        $loose   = (int) round($qty - ($cartons * $vPPB));
+                        return ($loose > 0) ? "{$cartons} Ctn + {$loose} Pcs" : "{$cartons} Ctn";
+                    } elseif ($vPPB > 1 && $vSizeMode === "by_size") {
+                        $cartons = (int) floor($qty / $vPPB);
+                        $loose   = (int) round($qty - ($cartons * $vPPB));
+                        return ($loose > 0) ? "{$cartons} Box . {$loose} Pcs" : "{$cartons} Boxes";
+                    } else {
+                        return number_format($qty, (in_array($vSizeMode, ["by_kg","by_gm","by_ton","by_meter","by_feet"]) ? 2 : 0)) . " {$vUnitName}";
+                    }
+                };
+                
+                $formattedStock = $formatQty($stock);
+                $formattedMin = $formatQty($vMinQty);
+                $formattedReq = $formatQty($reqQty);
+                $rows[] = [
+                    "id"          => $product->id,
+                    "code"        => $variant["code"] ?: "0",
+                    "item_name"   => $variant["name"],
+                    "category"    => $product->category_relation->name ?? "-",
+                    "company"     => $product->brand->name ?? "-",
+                    "unit"        => $product->unit->name ?? "Pcs",
+                    "stock"       => round($stock, 2),
+                    "formatted_stock" => $formattedStock,
+                    "p_price"     => round($purchPrice, 2),
+                    "min_qty"     => round($vMinQty, 2),
+                    "formatted_min_qty" => $formattedMin,
+                    "req_qty"     => round($reqQty, 2),
+                    "formatted_req_qty" => $formattedReq,
+                    "cost_amount" => $costAmount,
+                    "status"      => $stock <= 0 ? "out_of_stock" : ($stock < $vMinQty ? "low_stock" : "adequate"),
+                ];
+                
+                $totalItemsCount++;
+                if ($reqQty > 0) {
+                    $totalDemandItems++;
+                }
+                if ($stock < 0) {
+                    $totalStockDeficit += abs($stock);
+                }
+                $totalDemandQty  += $reqQty;
+                $totalCostAmount += $costAmount;
             }
-            if ($stock < 0) {
-                $totalStockDeficit += abs($stock);
-            }
-            $totalDemandQty  += $reqQty;
-            $totalCostAmount += $costAmount;
         }
-
         return response()->json([
             'success' => true,
             'rows'    => $rows,

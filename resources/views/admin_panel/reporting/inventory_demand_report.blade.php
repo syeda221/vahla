@@ -712,11 +712,11 @@
 
                 var stockDisplay = '';
                 if (row.stock < 0) {
-                    stockDisplay = `<span class="badge-deficit-pill">${row.stock}</span>`;
+                    stockDisplay = `<span class="badge-deficit-pill">${row.formatted_stock || row.stock}</span>`;
                 } else if (row.stock === 0) {
-                    stockDisplay = `<span class="badge-zero-pill">0</span>`;
+                    stockDisplay = `<span class="badge-zero-pill">${row.formatted_stock || 0}</span>`;
                 } else {
-                    stockDisplay = `<span class="fw-bold">${row.stock}</span>`;
+                    stockDisplay = `<span class="fw-bold">${row.formatted_stock || row.stock}</span>`;
                 }
 
                 var reqDisplay = (row.req_qty > 0) 
