@@ -431,20 +431,21 @@ class ProductImportExportController extends Controller
 
         fclose($handle);
 
-        // --- Auto-calculate Child Variant Prices from Base Variant ---
+        // --- Auto-calculate Child Variant Prices and Stock from Base Variant ---
         foreach ($productsByRef as &$refData) {
-            $baseSale = 0; $baseWhole = 0; $basePurch = 0;
-            // 1. Find Base Variant Prices
+            $baseSale = 0; $baseWhole = 0; $basePurch = 0; $baseStock = 0;
+            // 1. Find Base Variant
             foreach ($refData['variants'] as $v) {
                 if ($v['is_base_variant'] === 1) {
                     $baseSale  = $v['sale_price'];
                     $baseWhole = $v['wholesale_price'];
                     $basePurch = $v['purch_price'];
+                    $baseStock = max(0, (float)$v['stock']);
                     break;
                 }
             }
             // 2. Apply to Child Variants if needed
-            if ($baseSale > 0 || $baseWhole > 0 || $basePurch > 0) {
+            if ($baseSale > 0 || $baseWhole > 0 || $basePurch > 0 || $baseStock > 0) {
                 foreach ($refData['variants'] as &$v) {
                     if ($v['is_base_variant'] !== 1) {
                         $factor = $v['conv_factor'] > 0 ? $v['conv_factor'] : 1;
@@ -457,8 +458,13 @@ class ProductImportExportController extends Controller
                         if ($v['purch_price'] <= 0 || $v['purch_price'] == $basePurch) {
                             $v['purch_price'] = round($basePurch * $factor, 4);
                         }
+                        if ($v['stock'] <= 0) {
+                            // If base stock is in Kg and child is Pcs, Pcs = Kg / conv_factor
+                            $v['stock'] = round($baseStock / $factor);
+                        }
                     }
                 }
+                unset($v); // CRITICAL: Unset reference variable to prevent overwriting in next loops
             }
         }
         unset($refData);
