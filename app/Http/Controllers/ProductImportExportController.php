@@ -431,6 +431,39 @@ class ProductImportExportController extends Controller
 
         fclose($handle);
 
+        // --- Auto-calculate Child Variant Prices from Base Variant ---
+        foreach ($productsByRef as &$refData) {
+            $baseSale = 0; $baseWhole = 0; $basePurch = 0;
+            // 1. Find Base Variant Prices
+            foreach ($refData['variants'] as $v) {
+                if ($v['is_base_variant'] === 1) {
+                    $baseSale  = $v['sale_price'];
+                    $baseWhole = $v['wholesale_price'];
+                    $basePurch = $v['purch_price'];
+                    break;
+                }
+            }
+            // 2. Apply to Child Variants if needed
+            if ($baseSale > 0 || $baseWhole > 0 || $basePurch > 0) {
+                foreach ($refData['variants'] as &$v) {
+                    if ($v['is_base_variant'] !== 1) {
+                        $factor = $v['conv_factor'] > 0 ? $v['conv_factor'] : 1;
+                        if ($v['sale_price'] <= 0 || $v['sale_price'] == $baseSale) {
+                            $v['sale_price'] = round($baseSale * $factor, 4);
+                        }
+                        if ($v['wholesale_price'] <= 0 || $v['wholesale_price'] == $baseWhole) {
+                            $v['wholesale_price'] = round($baseWhole * $factor, 4);
+                        }
+                        if ($v['purch_price'] <= 0 || $v['purch_price'] == $basePurch) {
+                            $v['purch_price'] = round($basePurch * $factor, 4);
+                        }
+                    }
+                }
+            }
+        }
+        unset($refData);
+        // -----------------------------------------------------------
+
         // Prepare Preview Summary
         $existingCodes = Product::pluck('id', 'item_code')->toArray();
         $productsToCreate = 0;
