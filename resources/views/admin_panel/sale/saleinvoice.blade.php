@@ -420,12 +420,33 @@
                     </tr>
                 @endfor
                 
+                @if(isset($netSaleTotal) && $netSaleTotal < $sale->total_net)
+                <tr>
+                    <td colspan="5" style="text-align: right; font-weight: bold;">GROSS TOTAL:</td>
+                    <td style="text-align: right; font-weight: bold;">
+                        {{ number_format($sale->total_net, 2) }}
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="5" style="text-align: right; font-weight: bold; color: #dc2626;">RETURNED AMOUNT:</td>
+                    <td style="text-align: right; font-weight: bold; color: #dc2626;">
+                        -{{ number_format($sale->total_net - $netSaleTotal, 2) }}
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="5" style="text-align: right; font-weight: bold;">NET TOTAL:</td>
+                    <td style="text-align: right; font-weight: bold; background-color: rgba(224, 242, 254, 0.5);">
+                        {{ number_format($netSaleTotal, 2) }}
+                    </td>
+                </tr>
+                @else
                 <tr>
                     <td colspan="5" style="text-align: right; font-weight: bold;">TOTAL:</td>
                     <td style="text-align: right; font-weight: bold; background-color: rgba(224, 242, 254, 0.5);">
                         {{ number_format($netSaleTotal ?? $sale->total_net, 2) }}
                     </td>
                 </tr>
+                @endif
                 @php
                     $paidAmount = (float)($sale->cash ?? 0) + (float)($sale->card ?? 0);
                     $dueAmount = max(0, (float)($netSaleTotal ?? $sale->total_net) - $paidAmount);
