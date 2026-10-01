@@ -27,7 +27,7 @@
         <div class="col-12 grid-margin stretch-card">
             <div class="card border border-light-subtle rounded-3 shadow-sm">
                 <div class="card-body p-3">
-                    <form action="{{ route('direct-dc.store') }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ route('direct-dc.store') }}" method="POST" enctype="multipart/form-data" id="dcForm">
                         @csrf
                         @if ($errors->any())
                             <div class="alert alert-danger rounded-3">
@@ -320,6 +320,13 @@ $(document).ready(function() {
                     calculateRow(tr);
                 }
             });
+        }
+    });
+    // Prevent form submission on Enter key press
+    $('#dcForm').on('keydown', function(e) {
+        if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            return false;
         }
     });
 });

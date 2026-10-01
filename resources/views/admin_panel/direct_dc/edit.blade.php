@@ -8,7 +8,7 @@
         <div class="col-12 grid-margin stretch-card">
             <div class="card">
                 <div class="card-body">
-                    <form action="{{ route('direct-dc.update', $dc->id) }}" method="POST">
+                    <form action="{{ route('direct-dc.update', $dc->id) }}" method="POST" id="dcEditForm">
                         @csrf
                         @if ($errors->any())
                             <div class="alert alert-danger">
@@ -390,6 +390,13 @@ $(document).ready(function() {
         }
     });
     calculateTotal();
+    // Prevent form submission on Enter key press
+    $('#dcEditForm').on('keydown', function(e) {
+        if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            return false;
+        }
+    });
 });
 </script>
 @endsection
