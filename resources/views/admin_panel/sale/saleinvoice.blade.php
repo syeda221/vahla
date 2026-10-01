@@ -291,6 +291,42 @@
         </div>
 
         <!-- Meta -->
+        @php
+            // Find linked Sale Order (if any)
+            $linkedSaleOrder = null;
+            if (!empty($sale->parent_quotation_id)) {
+                $linkedSaleOrder = \App\Models\Sale::find($sale->parent_quotation_id);
+            }
+            
+            // Find linked Delivery Challan(s)
+            $linkedDcs = \App\Models\DeliveryChallan::where('invoice_id', $sale->id)->get();
+            if ($linkedDcs->isEmpty() && !empty($sale->parent_quotation_id)) {
+                $linkedDcs = \App\Models\DeliveryChallan::where('sale_id', $sale->parent_quotation_id)->get();
+            }
+            if ($linkedDcs->isEmpty()) {
+                $linkedDcs = \App\Models\DeliveryChallan::where('sale_id', $sale->id)->get();
+            }
+            
+            $dcNumbersList = $linkedDcs->pluck('dc_number')->filter()->unique()->values();
+            $dcNumbers = $dcNumbersList->implode(', ');
+            
+            // Determine genuine LPO / Reference
+            $lpoReference = $sale->reference ?? '';
+            // If the saved reference matches a DC number or default string, resolve the real user reference
+            if ($dcNumbersList->contains($lpoReference) || str_starts_with($lpoReference, 'Invoice for DC') || $lpoReference === 'Consolidated DC Invoice') {
+                $realRef = '';
+                foreach ($linkedDcs as $ldc) {
+                    if (!empty($ldc->reference_no)) {
+                        $realRef = $ldc->reference_no;
+                        break;
+                    }
+                }
+                if (empty($realRef) && $linkedSaleOrder && !empty($linkedSaleOrder->reference)) {
+                    $realRef = $linkedSaleOrder->reference;
+                }
+                $lpoReference = $realRef;
+            }
+        @endphp
         <div class="meta-section">
             <div class="meta-left">
                 <div class="meta-row">
@@ -299,7 +335,7 @@
                 </div>
                 <div class="meta-row mt-2">
                     <div class="meta-label">LPO</div>
-                    <div class="meta-value" style="color: #1e40af;">{{ $sale->reference ?? '' }}</div>
+                    <div class="meta-value" style="color: #1e40af;">{{ $lpoReference }}</div>
                 </div>
                 <div class="meta-row mt-2">
                     <div class="meta-label">M/s</div>
@@ -308,9 +344,21 @@
             </div>
             <div class="meta-right">
                 <div class="meta-row">
-                    <div class="meta-label" style="width:40px;">Date:</div>
+                    <div class="meta-label" style="width:60px;">Date:</div>
                     <div class="meta-value" style="color: #1e40af;">{{ $sale->created_at ? $sale->created_at->format('d-m-Y') : date('d-m-Y') }}</div>
                 </div>
+                @if($linkedSaleOrder)
+                <div class="meta-row mt-2">
+                    <div class="meta-label" style="width:60px;">S.O. No:</div>
+                    <div class="meta-value" style="color: #1e40af;">{{ $linkedSaleOrder->invoice_no }}</div>
+                </div>
+                @endif
+                @if(!empty($dcNumbers))
+                <div class="meta-row mt-2">
+                    <div class="meta-label" style="width:60px;">D.C. No:</div>
+                    <div class="meta-value" style="color: #1e40af;">{{ $dcNumbers }}</div>
+                </div>
+                @endif
             </div>
         </div>
 

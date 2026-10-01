@@ -627,7 +627,7 @@ class DirectDCController extends Controller
             if (!empty($refs)) {
                 $sale->reference = implode(', ', $refs);
             } else {
-                $sale->reference = 'Consolidated DC Invoice';
+                $sale->reference = null;
             }
             
             
@@ -754,7 +754,12 @@ class DirectDCController extends Controller
             $firstOriginalSaleId = $dcs->pluck('sale_id')->filter()->first();
             if ($firstOriginalSaleId) {
                 $sale->parent_quotation_id = $firstOriginalSaleId;
-                $sale->reference = $dcs->pluck('dc_number')->implode(', ');
+                if (empty($sale->reference)) {
+                    $origSale = \App\Models\Sale::find($firstOriginalSaleId);
+                    if ($origSale && !empty($origSale->reference)) {
+                        $sale->reference = $origSale->reference;
+                    }
+                }
             }
 
             $sale->total_bill_amount = $totalBillAmount;

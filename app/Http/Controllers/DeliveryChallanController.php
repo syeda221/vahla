@@ -318,7 +318,7 @@ class DeliveryChallanController extends Controller
             if (empty($ref) && $dc->sale) {
                 $ref = $dc->sale->reference;
             }
-            $sale->reference = $ref ?: ('Invoice for DC: ' . $dc->dc_number);
+            $sale->reference = $ref ?: null;
 
             $totalBillAmount = 0;
             $totalItems = 0;
