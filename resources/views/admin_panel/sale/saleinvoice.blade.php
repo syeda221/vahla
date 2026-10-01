@@ -393,9 +393,9 @@
                         }
                         $productTitle .= $vExtraStr;
                         
-                        $retQty = (int)($item['returned_qty'] ?? 0);
+                        $retQty = (float)($item['returned_qty'] ?? 0);
                         if ($retQty > 0) {
-                            $productTitle .= " (Returned: " . $retQty . " pcs)";
+                            $productTitle .= " (Returned: " . (($retQty == (int)$retQty) ? (int)$retQty : $retQty) . ")";
                         }
                     @endphp
 

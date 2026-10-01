@@ -1011,7 +1011,7 @@ class SaleController extends Controller
         
         if ($sale->returns) {
             foreach ($sale->returns as $ret) {
-                if (in_array($ret->return_status, ['approved', 'completed'])) {
+                if (in_array($ret->status, ['posted', 'approved', 'completed']) || in_array($ret->return_status, ['approved', 'completed'])) {
                     foreach ($ret->items as $rItem) {
                         $key = $rItem->product_id;
                         if (!isset($returnedItemsMap[$key])) {
