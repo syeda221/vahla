@@ -367,7 +367,7 @@
 
                 $rawQtyStr = (string) ($it->qty ?? '0');
                 $isPiece = in_array($rawU, ['pcs', 'pc', 'piece']);
-                $isCtn = in_array($rawU, ['carton', 'ctn', 'box']) || (!$isPiece && in_array($it->size_mode, ['by_cartons', 'by_bandal']));
+                $isCtn = in_array($rawU, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (!$isPiece && in_array($it->size_mode, ['by_cartons', 'by_bandal']));
 
                 if ($isCtn) {
                     $hasCartonMode = true;
@@ -447,7 +447,7 @@
 
                             $rawUnit = strtolower(trim($item->unit ?? ''));
                             $isPiece = in_array($rawUnit, ['pcs', 'pc', 'piece']);
-                            $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || (!$isPiece && (in_array($item->size_mode, ['by_cartons', 'by_bandal'])));
+                            $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (!$isPiece && (in_array($item->size_mode, ['by_cartons', 'by_bandal'])));
                             $isWeight = in_array($rawUnit, ['kg', 'gm', 'g']);
 
                             if ($isCarton) {
@@ -459,8 +459,8 @@
                                 }
                                 $totalPieces = ($boxes * $piecesPerBox) + $loosePieces;
                                 $ctnLbl = ($item->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
-                                $cartonFull = ($item->size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
-                                $cartonFulls = ($item->size_mode === 'by_bandal') ? 'Bandals' : 'Cartons';
+                                $cartonFull = ($item->size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
+                                $cartonFulls = ($item->size_mode === 'by_bandal') ? 'Bundals' : 'Cartons';
                                 $uomDisplay = $cartonFull;
                                 if ($boxes > 0 && $loosePieces > 0) {
                                     $qtyDisplay = "{$boxes} {$ctnLbl} + {$loosePieces} Pcs";
@@ -476,7 +476,13 @@
                                 $totalPieces = (float) $item->qty;
                                 $boxes = $piecesPerBox > 1 ? floor($totalPieces / $piecesPerBox) : 0;
                                 $loosePieces = $piecesPerBox > 1 ? ($totalPieces % $piecesPerBox) : $totalPieces;
-                                $uomDisplay = 'Pcs';
+                                if ($item->size_mode === 'by_bandal') {
+                                    $uomDisplay = 'Bundal';
+                                } elseif ($item->size_mode === 'by_cartons') {
+                                    $uomDisplay = 'Carton';
+                                } else {
+                                    $uomDisplay = 'Pcs';
+                                }
                                 $qtyDisplay = $totalPieces . ' Pcs';
                                 $subQtyText = '';
                             } elseif ($isWeight) {
@@ -624,7 +630,7 @@
                     $piecesPerBox = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : ($item->product->pieces_per_box ?? 1));
                     $rawUnit = strtolower(trim($item->unit ?? ''));
                     $isPiece = in_array($rawUnit, ['pcs', 'pc', 'piece']);
-                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || (!$isPiece && (in_array($item->size_mode, ['by_cartons', 'by_bandal'])));
+                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (!$isPiece && (in_array($item->size_mode, ['by_cartons', 'by_bandal'])));
 
                     if ($isCarton) {
                         if ($item->boxes_qty > 0 || $item->loose_qty > 0) {
@@ -634,8 +640,8 @@
                             [$boxes, $loosePieces] = \App\Http\Controllers\PurchaseController::parseCartonQty($item->qty);
                         }
                         $ctnLbl = ($item->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
-                        $cartonFull = ($item->size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
-                        $cartonFulls = ($item->size_mode === 'by_bandal') ? 'Bandals' : 'Cartons';
+                        $cartonFull = ($item->size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
+                        $cartonFulls = ($item->size_mode === 'by_bandal') ? 'Bundals' : 'Cartons';
                         if ($boxes > 0 && $loosePieces > 0) {
                             $qtyDisplay = "{$boxes} {$ctnLbl} + {$loosePieces} Pcs";
                         } elseif ($boxes > 0) {

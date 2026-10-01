@@ -2065,7 +2065,7 @@ class SaleController extends Controller
             $pUnit = strtolower(trim($pItem->unit ?? ''));
             $pPPB = (float) ($pItem->pieces_per_box > 0 ? $pItem->pieces_per_box : $ppb);
             if ($pPPB <= 0) $pPPB = 1;
-            if (in_array($pUnit, ['carton', 'ctn', 'box'])) {
+            if (in_array($pUnit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl'])) {
                 if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
                     $pPieces = (((int) $pItem->boxes_qty) * $pPPB) + ((int) $pItem->loose_qty);
                 } else {

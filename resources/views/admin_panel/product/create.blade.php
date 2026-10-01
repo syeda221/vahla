@@ -599,7 +599,7 @@
                                             <select class="form-select form-control-pro form-select-pro fw-bold" name="size_mode" id="unit-dropdown">
                                                 <option value="by_pieces">Pcs</option>
                                                 <option value="by_cartons">Carton</option>
-<option value="by_bandal">Bandal</option>
+<option value="by_bandal">Bundal</option>
                                                 <option value="by_meter">Meter</option>
                                                 <option value="by_feet">Ft (Feet)</option>
                                                 <option value="by_kg">Kg</option>

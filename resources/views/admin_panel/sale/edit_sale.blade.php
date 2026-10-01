@@ -2236,7 +2236,7 @@
                 var $btn = $row.find('.qty-unit-toggle');
                 var meta = {
                     by_cartons: ['ctn', 'Ctn', 'btn-outline-success'],
-                    by_bandal: ['ctn', 'Bandal', 'btn-outline-success'],
+                    by_bandal: ['ctn', 'Bundal', 'btn-outline-success'],
                     by_kg: ['kg', 'Kg', 'btn-outline-primary'],
                     by_gm: ['gm', 'Gm', 'btn-outline-info'],
                     by_feet: ['ft', 'Ft', 'btn-outline-primary'],

@@ -896,7 +896,7 @@
 
                                             {{ $boxes }}
 
-                                            {{ $sizeMode === 'by_bandal' ? 'Bandal' : (in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Carton' : 'Box') }}
+                                            {{ $sizeMode === 'by_bandal' ? 'Bundal' : (in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Carton' : 'Box') }}
 
                                             +
 
@@ -907,7 +907,7 @@
 
                                             {{ $boxes }}
 
-                                            {{ $sizeMode === 'by_bandal' ? 'Bandal' : (in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Carton' : 'Box') }}
+                                            {{ $sizeMode === 'by_bandal' ? 'Bundal' : (in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Carton' : 'Box') }}
 
                                         @else
 
@@ -941,7 +941,7 @@
 
                                 <span class="fw-bold">
                                     @if(strtolower($item['variant_unit']) === 'carton' && $sizeMode === 'by_bandal')
-                                        Bandal
+                                        Bundal
                                     @else
                                         {{ ucfirst($item['variant_unit']) }}
                                     @endif
@@ -956,7 +956,7 @@
                             @elseif (in_array($sizeMode, ['by_cartons', 'by_bandal']))
 
                                 <span class="fw-bold">
-                                    {{ $sizeMode === 'by_bandal' ? 'Bandals' : 'Cartons' }}
+                                    {{ $sizeMode === 'by_bandal' ? 'Bundals' : 'Cartons' }}
                                 </span>
 
                             @elseif ($sizeMode == 'by_size')
@@ -1437,7 +1437,7 @@
                             <tr>
 
                                 <td class="text-muted fw-bold">
-                                    Total Cartons / Bandals
+                                    Total Cartons / Bundals
                                 </td>
 
                                 <td class="text-end fw-bold" style="color: var(--primary-color);">

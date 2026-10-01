@@ -423,7 +423,7 @@ class PurchaseController extends Controller
                 if ($ppb <= 0) $ppb = 1;
 
                 $isPiece = in_array($unit, ['pcs', 'pc', 'piece']);
-                $isCarton = in_array($unit, ['carton', 'ctn', 'box']) || (!$isPiece && in_array($item->size_mode, ['by_cartons', 'by_bandal']));
+                $isCarton = in_array($unit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (!$isPiece && in_array($item->size_mode, ['by_cartons', 'by_bandal']));
 
                 if ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams') {
                     $baseQty = ((float) $item->qty) / 1000.0;
@@ -739,7 +739,7 @@ class PurchaseController extends Controller
                 $curPPM2 = (float) ($ppm2[$i] ?? 0); // This is actually m2_per_piece if by_size
                 $rawQtyStr = (string) ($qtys[$i] ?? '0');
                 $isPiece = in_array($u, ['pcs', 'pc', 'piece']);
-                $isCarton = in_array($u, ['carton', 'ctn', 'box']) || (!$isPiece && in_array($curSizeMode, ['by_cartons', 'by_bandal']));
+                $isCarton = in_array($u, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (!$isPiece && in_array($curSizeMode, ['by_cartons', 'by_bandal']));
 
                 if ($curSizeMode === 'by_size') {
                     // Frontend: pieces_per_m2 * totalPieces * price
@@ -1399,7 +1399,7 @@ class PurchaseController extends Controller
                 $curPPM2 = (float) ($ppm2[$i] ?? 0);
                 $rawQtyStr = (string) ($qtys[$i] ?? '0');
                 $isPiece = in_array($u, ['pcs', 'pc', 'piece']);
-                $isCarton = in_array($u, ['carton', 'ctn', 'box']) || (!$isPiece && in_array($curSizeMode, ['by_cartons', 'by_bandal']));
+                $isCarton = in_array($u, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (!$isPiece && in_array($curSizeMode, ['by_cartons', 'by_bandal']));
 
                 if ($curSizeMode === 'by_size') {
                     $grossTotal = $curPPM2 * $qty * $price;
@@ -1895,7 +1895,7 @@ class PurchaseController extends Controller
 
             $unit = strtolower($item->unit ?? '');
             $sizeMode = $item->size_mode ?? optional($item->product)->size_mode ?? 'by_pieces';
-            $isCarton = in_array($unit, ['carton', 'ctn', 'box']) || (in_array($sizeMode, ['by_cartons', 'by_bandal']));
+            $isCarton = in_array($unit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (in_array($sizeMode, ['by_cartons', 'by_bandal']));
 
             // Calculate Total Purchased in Pieces
             if ($isCarton) {
@@ -2094,7 +2094,7 @@ class PurchaseController extends Controller
 
                 $sizeMode = $origItem ? ($origItem->size_mode ?? 'by_pieces') : ($product->size_mode ?? 'by_pieces');
                 $unit = strtolower($origItem->unit ?? ($product->unit->name ?? 'pc'));
-                $isCarton = in_array($unit, ['carton', 'ctn', 'box']) || (in_array($sizeMode, ['by_cartons', 'by_bandal']));
+                $isCarton = in_array($unit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (in_array($sizeMode, ['by_cartons', 'by_bandal']));
                 
                 // Fallback to m2_of_box if pieces_per_m2 is 0 or missing in old data
                 $ppm2 = $origItem && $origItem->pieces_per_m2 > 0 ? $origItem->pieces_per_m2 : ($product->m2_of_box ?? 0);

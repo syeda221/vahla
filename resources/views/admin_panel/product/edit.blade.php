@@ -276,7 +276,7 @@
                                             <select class="form-select form-control-pro form-select-pro fw-bold" name="size_mode" id="unit-dropdown">
                                                 <option value="by_pieces" {{ $product->size_mode == 'by_pieces' ? 'selected' : '' }}>Pcs</option>
                                                 <option value="by_cartons" {{ $product->size_mode == 'by_cartons' ? 'selected' : '' }}>Carton</option>
-                                                <option value="by_bandal" {{ $product->size_mode == 'by_bandal' ? 'selected' : '' }}>Bandal</option>
+                                                <option value="by_bandal" {{ $product->size_mode == 'by_bandal' ? 'selected' : '' }}>Bundal</option>
                                                 <option value="by_meter" {{ $product->size_mode == 'by_meter' ? 'selected' : '' }}>Meter</option>
                                                 <option value="by_feet" {{ $product->size_mode == 'by_feet' ? 'selected' : '' }}>Ft (Feet)</option>
                                                 <option value="by_kg" {{ $product->size_mode == 'by_kg' ? 'selected' : '' }}>Kg</option>

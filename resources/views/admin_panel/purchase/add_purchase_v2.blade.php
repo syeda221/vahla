@@ -998,7 +998,7 @@
 
                     // Dynamic Unit & Style
                     if (isCartonMode) {
-                        unitName = (data.size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
+                        unitName = (data.size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-primary btn-outline-info')
                             .addClass('btn-outline-success')
@@ -1102,7 +1102,7 @@
                 const isCartonOrPcs = (['by_cartons', 'by_bandal'].includes(sizeMode) || packQty > 1 || ['carton', 'ctn', 'pcs', 'pc', 'piece'].includes(currentUnit.toLowerCase()));
 
                 if (isCartonOrPcs) {
-                    if (['carton', 'ctn', 'bandal', 'bndl'].includes(currentUnit.toLowerCase())) {
+                    if (['carton', 'ctn', 'bandal', 'bundal', 'bndl'].includes(currentUnit.toLowerCase())) {
                         // Switch from Carton to Pcs
                         currentUnit = 'Pcs';
                         $btn.text('Pcs')
@@ -1117,7 +1117,7 @@
                         }
                     } else {
                         // Switch from Pcs to Carton
-                        currentUnit = (sizeMode === 'by_bandal') ? 'Bandal' : 'Carton';
+                        currentUnit = (sizeMode === 'by_bandal') ? 'Bundal' : 'Carton';
                         $btn.text(currentUnit)
                             .removeClass('btn-outline-info btn-outline-primary')
                             .addClass('btn-outline-success')

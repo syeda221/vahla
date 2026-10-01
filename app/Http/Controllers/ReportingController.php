@@ -76,7 +76,8 @@ class ReportingController extends Controller
                 "is_carton_mode" => ($product->size_mode === "by_cartons" || strtolower($product->unit->name ?? "") === "carton"),
                 "ppb" => ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1),
                 "size_mode" => $product->size_mode,
-                'is_variant' => false
+                'is_variant' => false,
+                "purch_price" => null
             ]];
         }
         
@@ -185,7 +186,7 @@ class ReportingController extends Controller
                         $pUnit = strtolower(trim($pItem->unit ?? ''));
                         $pPPB = (float) ($pItem->pieces_per_box > 0 ? $pItem->pieces_per_box : $ppb);
                         if ($pPPB <= 0) $pPPB = 1;
-                        if (in_array($pUnit, ['carton', 'ctn', 'box'])) {
+                        if (in_array($pUnit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl'])) {
                             if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
                                 $pPieces = (((int) $pItem->boxes_qty) * $pPPB) + ((int) $pItem->loose_qty);
                             } else {
@@ -247,7 +248,8 @@ class ReportingController extends Controller
                 "is_carton_mode" => $isCartonMode,
                 "ppb" => $ppb,
                 "size_mode" => $product->size_mode,
-                'is_variant' => true
+                'is_variant' => true,
+                "purch_price" => isset($v["purch_price"]) && $v["purch_price"] !== "" ? (float)$v["purch_price"] : null
             ];
         }
         
@@ -302,7 +304,29 @@ class ReportingController extends Controller
             $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
             $minQty = (float) ($product->alert_quantity ?? (($product->alert_carton_quantity ?? 0) * $ppb));
             
-            foreach ($variants as $variant) {                $isCartonMode = $variant["is_carton_mode"];                $vPPB = $variant["ppb"];                $vUnitName = $variant["unit_name"];                $vSizeMode = $variant["size_mode"];                                $stock = $variant["stock"];                if (isset($variant["alert"]) && $variant["alert"] !== null && $variant["alert"] !== "") {                    $vMinQty = (float)$variant["alert"];                    if ($isCartonMode || ($vPPB > 1 && $vSizeMode === "by_size")) {                        $vMinQty = $vMinQty * $vPPB;                    }                } else {                    $vMinQty = $minQty;                }                                $reqQty = max(0, $vMinQty - $stock);                                if ($demandOnly && $reqQty <= 0) {                    continue;                }                                $costAmount = round($reqQty * $purchPrice, 2);                
+            foreach ($variants as $variant) {
+                $isCartonMode = $variant["is_carton_mode"];
+                $vPPB = $variant["ppb"];
+                $vUnitName = $variant["unit_name"];
+                $vSizeMode = $variant["size_mode"];
+                $stock = $variant["stock"];
+                
+                if (isset($variant["alert"]) && $variant["alert"] !== null && $variant["alert"] !== "") {
+                    $vMinQty = (float)$variant["alert"];
+                    if ($isCartonMode || ($vPPB > 1 && $vSizeMode === "by_size")) {
+                        $vMinQty = $vMinQty * $vPPB;
+                    }
+                } else {
+                    $vMinQty = $minQty;
+                }
+                
+                $reqQty = max(0, $vMinQty - $stock);
+                if ($demandOnly && $reqQty <= 0) {
+                    continue;
+                }
+                
+                $vPurchPrice = (isset($variant["purch_price"]) && $variant["purch_price"] !== null) ? $variant["purch_price"] : $purchPrice;
+                $costAmount = round($reqQty * $vPurchPrice, 2);
                 $formatQty = function($qty) use ($isCartonMode, $vPPB, $vUnitName, $vSizeMode) {
                     if ($isCartonMode) {
                         $ctnLbl = ($vSizeMode === 'by_bandal') ? 'Bndl' : 'Ctn';
@@ -343,7 +367,7 @@ class ReportingController extends Controller
                     "unit"        => $product->unit->name ?? "Pcs",
                     "stock"       => round($stock, 2),
                     "formatted_stock" => $formattedStock,
-                    "p_price"     => round($purchPrice, 2),
+                    "p_price"     => round($vPurchPrice, 2),
                     "min_qty"     => round($vMinQty, 2),
                     "formatted_min_qty" => $formattedMin,
                     "req_qty"     => round($reqQty, 2),
@@ -675,7 +699,7 @@ class ReportingController extends Controller
                                 $pPPB = (float) ($pItem->pieces_per_box > 0 ? $pItem->pieces_per_box : $ppb);
                                 if ($pPPB <= 0) $pPPB = 1;
 
-                                if (in_array($pUnit, ['carton', 'ctn', 'box'])) {
+                                if (in_array($pUnit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl'])) {
                                     if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
                                         $pPieces = (((int) $pItem->boxes_qty) * $pPPB) + ((int) $pItem->loose_qty);
                                     } else {
@@ -1207,7 +1231,7 @@ class ReportingController extends Controller
                     $unitBadge = '';
                     if (in_array($product->size_mode, ['by_cartons', 'by_bandal'])) {
                         $cartonPpb = $vConv > 1 ? $vConv : $ppb;
-                        $cartonLbl = ($product->size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
+                        $cartonLbl = ($product->size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
                         $unitBadge = "{$cartonLbl} ({$cartonPpb} pcs/" . strtolower($cartonLbl) . ")";
                     } elseif ($product->size_mode === 'by_kg') {
                         if ($isBase == 1 || $vConv == 1) {
@@ -1274,8 +1298,8 @@ class ReportingController extends Controller
                         if (in_array($product->size_mode, ['by_cartons', 'by_bandal'])) {
                             $cartonPpb = $vConv > 1 ? $vConv : $ppb;
                             $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
-                            $cartonFull = ($product->size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
-                            $cartonFulls = ($product->size_mode === 'by_bandal') ? 'Bandals' : 'Cartons';
+                            $cartonFull = ($product->size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
+                            $cartonFulls = ($product->size_mode === 'by_bandal') ? 'Bundals' : 'Cartons';
                             $soldBoxes = (int) floor($soldQtyPieces / $cartonPpb);
                             $soldLoose = (int) round($soldQtyPieces - ($soldBoxes * $cartonPpb));
                             if ($soldBoxes > 0 && $soldLoose > 0) {
@@ -1409,7 +1433,7 @@ class ReportingController extends Controller
                     // Determine Unit Badge
                     $unitBadge = '';
                     if (in_array($product->size_mode, ['by_cartons', 'by_bandal'])) {
-                        $cartonLbl = ($product->size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
+                        $cartonLbl = ($product->size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
                         $unitBadge = "{$cartonLbl} ({$ppb} pcs/" . strtolower($cartonLbl) . ")";
                     } elseif ($product->size_mode === 'by_kg') {
                         $unitBadge = "Kg";
@@ -1428,8 +1452,8 @@ class ReportingController extends Controller
                     // Format Sold / Returned Qty
                     if (in_array($product->size_mode, ['by_cartons', 'by_bandal'])) {
                         $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
-                        $cartonFull = ($product->size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
-                        $cartonFulls = ($product->size_mode === 'by_bandal') ? 'Bandals' : 'Cartons';
+                        $cartonFull = ($product->size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
+                        $cartonFulls = ($product->size_mode === 'by_bandal') ? 'Bundals' : 'Cartons';
                         $soldBoxes = (int) floor($soldQtyPieces / $ppb);
                         $soldLoose = (int) round($soldQtyPieces - ($soldBoxes * $ppb));
                         if ($soldBoxes > 0 && $soldLoose > 0) {
@@ -3201,7 +3225,7 @@ class ReportingController extends Controller
         $result = $query->select(DB::raw("
             COALESCE(SUM(
                 CASE
-                    WHEN LOWER(purchase_items.unit) IN ('carton', 'ctn', 'box')
+                    WHEN LOWER(purchase_items.unit) IN ('carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl')
                     THEN purchase_items.qty * COALESCE(NULLIF(purchase_items.pieces_per_box, 0), 1)
                     WHEN LOWER(purchase_items.unit) IN ('gm', 'g')
                     THEN purchase_items.qty / 1000.0

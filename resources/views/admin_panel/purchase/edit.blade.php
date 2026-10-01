@@ -445,7 +445,7 @@
                                                 $sizeMode = $item->size_mode ?? 'by_pieces';
                                                 $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : 1);
                                                 $uVal = strtolower($unitName ?? 'pcs');
-                                                $isCtn = in_array($uVal, ['carton', 'ctn', 'box', 'bandal', 'bndl']) || in_array($sizeMode, ['by_cartons', 'by_bandal']);
+                                                $isCtn = in_array($uVal, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || in_array($sizeMode, ['by_cartons', 'by_bandal']);
                                                 $isKg = in_array($uVal, ['kg', 'gm', 'g']);
 
                                                 $displayQty = (float) $item->qty;
@@ -553,7 +553,7 @@
                                                 <td class="text-center align-middle">
                                                     @php
                                                         $uVal = strtolower($unitName ?? 'pcs');
-                                                        $isCtn = in_array($uVal, ['carton', 'ctn', 'box', 'bandal', 'bndl']);
+                                                        $isCtn = in_array($uVal, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']);
                                                         $isKg = in_array($uVal, ['kg', 'gm', 'g']);
                                                         $btnClass = $isCtn ? 'btn-outline-success' : ($isKg ? 'btn-outline-primary' : 'btn-outline-info');
                                                     @endphp
@@ -753,7 +753,7 @@
                 const isCartonOrPcs = (['by_cartons', 'by_bandal'].includes(sizeMode) || packQty > 1 || ['carton', 'ctn', 'pcs', 'pc', 'piece'].includes(currentUnit.toLowerCase()));
 
                 if (isCartonOrPcs) {
-                    if (['carton', 'ctn', 'bandal', 'bndl'].includes(currentUnit.toLowerCase())) {
+                    if (['carton', 'ctn', 'bandal', 'bundal', 'bndl'].includes(currentUnit.toLowerCase())) {
                         // Switch from Carton to Pcs
                         currentUnit = 'Pcs';
                         $btn.text('Pcs')
@@ -768,7 +768,7 @@
                         }
                     } else {
                         // Switch from Pcs to Carton
-                        currentUnit = (sizeMode === 'by_bandal') ? 'Bandal' : 'Carton';
+                        currentUnit = (sizeMode === 'by_bandal') ? 'Bundal' : 'Carton';
                         $btn.text(currentUnit)
                             .removeClass('btn-outline-info btn-outline-primary')
                             .addClass('btn-outline-success')
@@ -1067,7 +1067,7 @@
 
                     // Dynamic Unit & Style
                     if (isCartonMode) {
-                        unitName = (data.size_mode === 'by_bandal') ? 'Bandal' : 'Carton';
+                        unitName = (data.size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-primary btn-outline-info')
                             .addClass('btn-outline-success')

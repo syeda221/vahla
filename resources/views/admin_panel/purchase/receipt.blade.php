@@ -180,7 +180,7 @@
 
             $rawQtyStr = (string) ($it->qty ?? '0');
             $isPiece = in_array($rawU, ['pcs', 'pc', 'piece']);
-            $isCtn = in_array($rawU, ['carton', 'ctn', 'box']) || (!$isPiece && in_array($it->size_mode, ['by_cartons', 'by_bandal']));
+            $isCtn = in_array($rawU, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (!$isPiece && in_array($it->size_mode, ['by_cartons', 'by_bandal']));
 
             if ($isCtn) {
                 $hasCartonMode = true;
@@ -234,7 +234,7 @@
                 @php
                     $rawUnit = strtolower(trim($item->unit ?? ''));
                     $isPiece = in_array($rawUnit, ['pcs', 'pc', 'piece']);
-                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box']) || (!$isPiece && (in_array($item->size_mode, ['by_cartons', 'by_bandal'])));
+                    $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (!$isPiece && (in_array($item->size_mode, ['by_cartons', 'by_bandal'])));
 
                     if ($isCarton) {
                         if ($item->boxes_qty > 0 || $item->loose_qty > 0) {
