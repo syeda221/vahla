@@ -129,7 +129,7 @@
                                         </td>
                                         <td>{{ \Carbon\Carbon::parse($dc->dc_date)->format('d M, Y') }}</td>
                                         <td>{{ $cName }}</td>
-                                        <td>{{ $dc->reference_no ?? '-' }}</td>
+                                        <td>{{ $dc->reference_no ?? ($dc->sale?->reference ?? '-') }}</td>
                                         <td>{{ $dc->items->count() }}</td>
                                         <td class="text-center">
                                             @if($isInvoiced)
