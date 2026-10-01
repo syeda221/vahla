@@ -20,7 +20,8 @@
                             </div>
                         @endif
                         <div class="row">
-                            <div class="col-md-4 form-group">
+                            <div class="col-md-3 form-group">
+                                <label>Customer</label>
                                 @php
                                     $effCustId = $dc->customer_id ?? ($dc->sale->customer_id ?? null);
                                 @endphp
@@ -30,13 +31,17 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-4 form-group">
+                            <div class="col-md-3 form-group">
                                 <label>DC Date</label>
                                 <input type="date" name="dc_date" class="form-control" value="{{ \Carbon\Carbon::parse($dc->dc_date)->format('Y-m-d') }}" required>
                             </div>
-                            <div class="col-md-4 form-group">
+                            <div class="col-md-3 form-group">
                                 <label>DC Number</label>
                                 <input type="text" class="form-control" value="{{ $dc->dc_number }}" readonly>
+                            </div>
+                            <div class="col-md-3 form-group">
+                                <label>Order No / Ref</label>
+                                <input type="text" name="reference_no" class="form-control" value="{{ $dc->reference_no }}">
                             </div>
                             <input type="hidden" name="warehouse_id" value="{{ ($dc->items->first()->warehouse_id ?? '') ?: (auth()->user()->warehouse_id ?? 1) }}">
                             <div class="col-md-8 form-group">

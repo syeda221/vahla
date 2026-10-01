@@ -12,6 +12,7 @@ class DeliveryChallan extends Model
         'sale_id',
         'customer_id',
         'dc_number',
+        'reference_no',
         'dc_date',
         'status',
         'is_invoiced',

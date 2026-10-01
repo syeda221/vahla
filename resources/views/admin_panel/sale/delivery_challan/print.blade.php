@@ -319,7 +319,7 @@
                     </div>
                 </div>
                 <div class="mt-3" style="font-size: 11px; color: #1e40af; font-weight: bold;">
-                    Please Receive the following goods, your order No. <span style="border-bottom: 1px solid var(--pad-border); display: inline-block; width: 150px; color: #000; font-weight: normal; text-align: center;">{{ $dc->sale?->reference ?? '' }}</span>
+                    Please Receive the following goods, your order No. <span style="border-bottom: 1px solid var(--pad-border); display: inline-block; width: 150px; color: #000; font-weight: normal; text-align: center;">{{ $dc->reference_no ?? ($dc->sale?->reference ?? '') }}</span>
                 </div>
             </div>
             <div class="meta-right">

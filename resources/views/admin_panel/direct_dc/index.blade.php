@@ -93,6 +93,7 @@
                                         <th class="fw-bold">DC Number</th>
                                         <th class="fw-bold">Date</th>
                                         <th class="fw-bold">Customer</th>
+                                        <th class="fw-bold">Order No</th>
                                         <th class="fw-bold">Items Count</th>
                                         <th class="fw-bold text-center">Status</th>
                                         <th class="fw-bold text-center">Actions</th>
@@ -128,6 +129,7 @@
                                         </td>
                                         <td>{{ \Carbon\Carbon::parse($dc->dc_date)->format('d M, Y') }}</td>
                                         <td>{{ $cName }}</td>
+                                        <td>{{ $dc->reference_no ?? '-' }}</td>
                                         <td>{{ $dc->items->count() }}</td>
                                         <td class="text-center">
                                             @if($isInvoiced)

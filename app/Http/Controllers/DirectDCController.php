@@ -42,6 +42,7 @@ class DirectDCController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'dc_date' => 'required|date',
             'dc_number' => 'required|unique:delivery_challans,dc_number',
+            'reference_no' => 'nullable|string',
             'product_id' => 'required|array',
             'product_id.*' => 'required|exists:products,id',
             'qty' => 'required|array',
@@ -58,6 +59,7 @@ class DirectDCController extends Controller
                 'sale_id' => null,
                 'customer_id' => $validated['customer_id'],
                 'dc_number' => $validated['dc_number'],
+                'reference_no' => $validated['reference_no'] ?? null,
                 'dc_date' => $validated['dc_date'],
                 'status' => 'confirmed',
                 'is_invoiced' => 0,
@@ -199,6 +201,7 @@ class DirectDCController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'dc_date' => 'required|date',
+            'reference_no' => 'nullable|string',
             'product_id' => 'required|array',
             'product_id.*' => 'required|exists:products,id',
             'qty' => 'required|array',
@@ -214,6 +217,7 @@ class DirectDCController extends Controller
             $dc->update([
                 'customer_id' => $validated['customer_id'],
                 'dc_date' => $validated['dc_date'],
+                'reference_no' => $validated['reference_no'] ?? null,
                 'remarks' => $validated['remarks'] ?? null
             ]);
 

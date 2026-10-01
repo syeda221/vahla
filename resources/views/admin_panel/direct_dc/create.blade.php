@@ -41,7 +41,7 @@
                         
                         <h6 class="fw-bold text-dark mb-2 pb-1 border-bottom"><i class="fas fa-info-circle text-primary me-1"></i> Basic Information</h6>
                         <div class="row mb-3">
-                            <div class="col-md-4 form-group mb-2">
+                            <div class="col-md-3 form-group mb-2">
                                 <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;">Customer <span class="text-danger">*</span></label>
                                 <select name="customer_id" class="form-control select2" required>
                                     <option value="">Select...</option>
@@ -50,13 +50,17 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-4 form-group mb-2">
+                            <div class="col-md-3 form-group mb-2">
                                 <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;">DC Date <span class="text-danger">*</span></label>
                                 <input type="date" name="dc_date" class="form-control" value="{{ date('Y-m-d') }}" required>
                             </div>
-                            <div class="col-md-4 form-group mb-2">
+                            <div class="col-md-3 form-group mb-2">
                                 <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;">DC Number</label>
                                 <input type="text" name="dc_number" class="form-control font-monospace fw-bold" value="{{ $nextDcNumber }}" placeholder="e.g. DDC-0001" required title="Aap custom DC number bhi enter kar sakte hain">
+                            </div>
+                            <div class="col-md-3 form-group mb-2">
+                                <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;">Order No / Ref</label>
+                                <input type="text" name="reference_no" class="form-control" placeholder="Order No (Optional)">
                             </div>
                             <input type="hidden" name="warehouse_id" value="{{ auth()->user()->warehouse_id ?? 1 }}">
                             <div class="col-md-12 form-group mb-2">
