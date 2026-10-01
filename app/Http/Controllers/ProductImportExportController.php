@@ -732,12 +732,20 @@ class ProductImportExportController extends Controller
                         $stk = (float) ($v['stock'] ?? 0);
                         $f = (float) ($v['conv_factor'] ?? 1);
                         $u = strtolower($v['unit'] ?? '');
-                        if (($pData['size_mode'] === 'by_kg' || $pData['size_mode'] === 'by_gm') && ($u === 'pcs' || $u === 'pc') && $f > 0) {
+                        $isBase = (int)($v['is_base_variant'] ?? 0);
+                        
+                        if (in_array($pData['size_mode'], ['by_kg', 'by_gm', 'by_ton'])) {
+                            if ($isBase === 1) {
+                                $stockTotal += $stk;
+                            }
+                        } elseif ($pData['size_mode'] === 'by_cartons') {
                             $stockTotal += ($stk * $f);
-                        } elseif ($u === 'gm' || $u === 'g') {
-                            $stockTotal += ($stk / 1000.0);
                         } else {
-                            $stockTotal += $stk;
+                            if ($u === 'gm' || $u === 'g') {
+                                $stockTotal += ($stk / 1000.0);
+                            } else {
+                                $stockTotal += $stk;
+                            }
                         }
                     }
                     
@@ -809,12 +817,20 @@ class ProductImportExportController extends Controller
                         $stk = (float) ($v['stock'] ?? 0);
                         $f = (float) ($v['conv_factor'] ?? 1);
                         $u = strtolower($v['unit'] ?? '');
-                        if (($pData['size_mode'] === 'by_kg' || $pData['size_mode'] === 'by_gm') && ($u === 'pcs' || $u === 'pc') && $f > 0) {
+                        $isBase = (int)($v['is_base_variant'] ?? 0);
+                        
+                        if (in_array($pData['size_mode'], ['by_kg', 'by_gm', 'by_ton'])) {
+                            if ($isBase === 1) {
+                                $stockTotal += $stk;
+                            }
+                        } elseif ($pData['size_mode'] === 'by_cartons') {
                             $stockTotal += ($stk * $f);
-                        } elseif ($u === 'gm' || $u === 'g') {
-                            $stockTotal += ($stk / 1000.0);
                         } else {
-                            $stockTotal += $stk;
+                            if ($u === 'gm' || $u === 'g') {
+                                $stockTotal += ($stk / 1000.0);
+                            } else {
+                                $stockTotal += $stk;
+                            }
                         }
                     }
                     
@@ -946,12 +962,20 @@ class ProductImportExportController extends Controller
                         $stk = (float) ($v['stock'] ?? 0);
                         $f = (float) ($v['conv_factor'] ?? 1);
                         $u = strtolower($v['unit'] ?? '');
-                        if (($pData['size_mode'] === 'by_kg' || $pData['size_mode'] === 'by_gm') && ($u === 'pcs' || $u === 'pc') && $f > 0) {
+                        $isBase = (int)($v['is_base_variant'] ?? 0);
+                        
+                        if (in_array($pData['size_mode'], ['by_kg', 'by_gm', 'by_ton'])) {
+                            if ($isBase === 1) {
+                                $stockTotal += $stk;
+                            }
+                        } elseif ($pData['size_mode'] === 'by_cartons') {
                             $stockTotal += ($stk * $f);
-                        } elseif ($u === 'gm' || $u === 'g') {
-                            $stockTotal += ($stk / 1000.0);
                         } else {
-                            $stockTotal += $stk;
+                            if ($u === 'gm' || $u === 'g') {
+                                $stockTotal += ($stk / 1000.0);
+                            } else {
+                                $stockTotal += $stk;
+                            }
                         }
                     }
                     
@@ -1018,12 +1042,20 @@ class ProductImportExportController extends Controller
                         $stk = (float) ($v['stock'] ?? 0);
                         $f = (float) ($v['conv_factor'] ?? 1);
                         $u = strtolower($v['unit'] ?? '');
-                        if (($pData['size_mode'] === 'by_kg' || $pData['size_mode'] === 'by_gm') && ($u === 'pcs' || $u === 'pc') && $f > 0) {
+                        $isBase = (int)($v['is_base_variant'] ?? 0);
+                        
+                        if (in_array($pData['size_mode'], ['by_kg', 'by_gm', 'by_ton'])) {
+                            if ($isBase === 1) {
+                                $stockTotal += $stk;
+                            }
+                        } elseif ($pData['size_mode'] === 'by_cartons') {
                             $stockTotal += ($stk * $f);
-                        } elseif ($u === 'gm' || $u === 'g') {
-                            $stockTotal += ($stk / 1000.0);
                         } else {
-                            $stockTotal += $stk;
+                            if ($u === 'gm' || $u === 'g') {
+                                $stockTotal += ($stk / 1000.0);
+                            } else {
+                                $stockTotal += $stk;
+                            }
                         }
                     }
                     
