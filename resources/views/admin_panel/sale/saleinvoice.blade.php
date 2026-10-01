@@ -266,7 +266,7 @@
                     <h2 style="margin:0; font-weight:900; font-size:28px; color: #1e40af;">{{ \App\Models\Setting::get('company_name', 'VAHLA') }}</h2>
                     <div style="font-size:12px; font-weight:bold; letter-spacing:1px; margin-bottom:8px; color: #1e40af;">INDUSTRIAL SOLUTIONS</div>
                 @endif
-                <div class="invoice-badge">INVOICE / BILL</div>
+                <div class="invoice-badge">{{ !empty($isFullReturn) && $isFullReturn ? 'RETURN INVOICE / BILL' : 'INVOICE / BILL' }}</div>
             </div>
             
             <div class="company-details-section">
@@ -392,6 +392,11 @@
                             $productTitle .= ' — ' . $vName;
                         }
                         $productTitle .= $vExtraStr;
+                        
+                        $retQty = (int)($item['returned_qty'] ?? 0);
+                        if ($retQty > 0) {
+                            $productTitle .= " (Returned: " . $retQty . " pcs)";
+                        }
                     @endphp
 
                     <tr>
@@ -418,12 +423,12 @@
                 <tr>
                     <td colspan="5" style="text-align: right; font-weight: bold;">TOTAL:</td>
                     <td style="text-align: right; font-weight: bold; background-color: rgba(224, 242, 254, 0.5);">
-                        {{ number_format($sale->total_net, 2) }}
+                        {{ number_format($netSaleTotal ?? $sale->total_net, 2) }}
                     </td>
                 </tr>
                 @php
                     $paidAmount = (float)($sale->cash ?? 0) + (float)($sale->card ?? 0);
-                    $dueAmount = max(0, (float)$sale->total_net - $paidAmount);
+                    $dueAmount = max(0, (float)($netSaleTotal ?? $sale->total_net) - $paidAmount);
                 @endphp
                 <tr>
                     <td colspan="5" style="text-align: right; font-weight: bold; padding-top: 10px;">PAID:</td>

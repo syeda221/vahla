@@ -1000,9 +1000,68 @@ class SaleController extends Controller
 
     public function saleinvoice($id)
     {
-        $sale = Sale::with(['customer_relation.salesOfficer'])->findOrFail($id);
+        $sale = Sale::with(['customer_relation.salesOfficer', 'returns.items'])->findOrFail($id);
         $items = $this->_getSaleItems($sale);
         $isEstimate = request()->query('type') === 'estimate';
+
+        // Calculate returned quantities
+        $totalOriginalPieces = 0;
+        $totalReturnedPieces = 0;
+        $returnedItemsMap = [];
+        
+        if ($sale->returns) {
+            foreach ($sale->returns as $ret) {
+                if (in_array($ret->return_status, ['approved', 'completed'])) {
+                    foreach ($ret->items as $rItem) {
+                        $key = $rItem->product_id;
+                        if (!isset($returnedItemsMap[$key])) {
+                            $returnedItemsMap[$key] = 0;
+                        }
+                        $returnedItemsMap[$key] += $rItem->qty;
+                    }
+                }
+            }
+        }
+
+        $netSaleTotal = 0;
+        $items = $items->map(function ($item) use (&$returnedItemsMap, &$totalOriginalPieces, &$totalReturnedPieces, &$netSaleTotal) {
+            $totalOriginalPieces += $item['total_pieces'];
+            $key = $item['product_id'];
+            
+            if (isset($returnedItemsMap[$key]) && $returnedItemsMap[$key] > 0) {
+                $deductQty = min($item['total_pieces'], $returnedItemsMap[$key]);
+                $item['returned_qty'] = $deductQty;
+                
+                $netPieces = $item['total_pieces'] - $deductQty;
+                $netTotal = $netPieces * $item['price_per_piece'];
+                
+                // Adjust for view calculations
+                if ($item['total_pieces'] > 0) {
+                    $ratio = $netPieces / $item['total_pieces'];
+                    $item['qty_box'] = (isset($item['qty_box']) ? $item['qty_box'] : 0) * $ratio;
+                }
+                $item['qty'] = $netPieces;
+                $item['total_pieces'] = $netPieces;
+                $item['total'] = $netTotal;
+                
+                $returnedItemsMap[$key] -= $deductQty;
+                $totalReturnedPieces += $deductQty;
+                $netSaleTotal += $netTotal;
+            } else {
+                $item['returned_qty'] = 0;
+                $netSaleTotal += $item['total'];
+            }
+            return $item;
+        });
+
+        // Exclude items that have been fully returned if you don't want to show them?
+        // Wait, showing them as 0 qty is probably fine or we can filter them.
+        // Let's filter them out if net pieces is 0 so the invoice only shows remaining items
+        $items = $items->filter(function($item) {
+            return $item['total_pieces'] > 0 || $item['returned_qty'] > 0;
+        })->values();
+
+        $isFullReturn = ($totalOriginalPieces > 0 && $totalReturnedPieces >= $totalOriginalPieces);
 
         // Calculate Balances for Invoice
         $previousBalance = 0;
@@ -1031,7 +1090,7 @@ class SaleController extends Controller
                 $previousBalance = 0;
             }
         }
-        $currentBalance = $previousBalance + $sale->total_net;
+        $currentBalance = $previousBalance + $netSaleTotal;
 
         if ($sale->sale_status === 'booked' && !$sale->is_booking) {
             return view('admin_panel.sale.salequotation', [
@@ -1046,6 +1105,8 @@ class SaleController extends Controller
             'previousBalance' => $previousBalance,
             'currentBalance' => $currentBalance,
             'isEstimate' => $isEstimate,
+            'isFullReturn' => $isFullReturn,
+            'netSaleTotal' => $netSaleTotal,
         ]);
     }
 
