@@ -78,9 +78,15 @@ class SaleController extends Controller
             });
         }
 
-        // Apply M.Bill # (Reference) Filter
+        // Apply Ref No / M.Bill # (Reference) Filter
         if ($request->filled('reference')) {
-            $query->where('reference', 'like', "%{$request->reference}%");
+            $ref = trim($request->reference);
+            $query->where(function($q) use ($ref) {
+                $q->where('reference', 'like', "%{$ref}%")
+                  ->orWhereHas('deliveryChallans', function($dq) use ($ref) {
+                      $dq->where('reference_no', 'like', "%{$ref}%");
+                  });
+            });
         }
 
         // Apply Customer Filter

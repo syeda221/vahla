@@ -130,6 +130,25 @@
         <td class="font-monospace text-dark" style="max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $sale->reference ?? '' }}">
             @php
                 $rawRef = $sale->reference ?? '';
+                if (empty($rawRef)) {
+                    // Check linked delivery challans for reference_no
+                    if ($sale->deliveryChallans && $sale->deliveryChallans->isNotEmpty()) {
+                        $rawRef = $sale->deliveryChallans->whereNotNull('reference_no')->pluck('reference_no')->filter()->first() ?? '';
+                    }
+                    if (empty($rawRef)) {
+                        $linkedDc = \App\Models\DeliveryChallan::where('invoice_id', $sale->id)->whereNotNull('reference_no')->first();
+                        if ($linkedDc && !empty($linkedDc->reference_no)) {
+                            $rawRef = $linkedDc->reference_no;
+                        }
+                    }
+                    if (empty($rawRef) && $sale->parent_quotation_id) {
+                        $origSale = $sale->quotation ?: \App\Models\Sale::find($sale->parent_quotation_id);
+                        if ($origSale && !empty($origSale->reference)) {
+                            $rawRef = $origSale->reference;
+                        }
+                    }
+                }
+
                 $cleanRef = $rawRef;
                 $isSpecial = false;
                 $badgeIcon = 'fas fa-hashtag';

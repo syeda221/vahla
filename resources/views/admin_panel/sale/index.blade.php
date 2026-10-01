@@ -510,8 +510,8 @@
                                         <input type="text" class="form-control" name="bill_no" id="filter_bill_no" value="{{ request('bill_no') ?? request('invoice_no') }}" placeholder="Inv / Bill#...">
                                     </div>
                                     <div class="col-6 col-md-1">
-                                        <label class="form-label mb-1">M.Bill / Ref</label>
-                                        <input type="text" class="form-control" name="reference" id="filter_reference" placeholder="M.Bill...">
+                                        <label class="form-label mb-1">Ref No</label>
+                                        <input type="text" class="form-control" name="reference" id="filter_reference" placeholder="Ref No...">
                                     </div>
                                     <div class="col-6 col-md-3">
                                         <label class="form-label mb-1">Customer</label>
@@ -543,7 +543,7 @@
                                     <tr>
                                         <th class="py-3 ps-3 rounded-start text-secondary fw-semibold text-uppercase small">Invoice / Bill#</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Customer</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small" style="width: 120px; max-width: 140px;">M.Bill</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small" style="width: 130px; max-width: 150px;" title="Reference / Order No">Ref No</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Products</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-center">Qty</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Gross</th>
