@@ -22,11 +22,21 @@ use Illuminate\Support\Str;
 
 class SaleController extends Controller
 {
-        private function applySalesFilters($query, Request $request)
+    private function applySalesFilters($query, Request $request, $ignoreStatus = false)
     {
         // Apply Status Filter
-        if ($request->has('status') && $request->status != 'all') {
-            $query->where('sale_status', $request->status);
+        if (!$ignoreStatus && $request->has('status') && $request->status != 'all') {
+            if ($request->status === 'returned') {
+                $query->where(function($q) {
+                    $q->whereIn('sale_status', ['returned', '1', 1])
+                      ->orWhereHas('returns', function($rq) {
+                          $rq->whereIn('status', ['posted', 'approved', 'completed', 'returned'])
+                             ->orWhereNull('status');
+                      });
+                });
+            } else {
+                $query->where('sale_status', $request->status);
+            }
         }
 
         // Helper for flexible date parsing
@@ -103,9 +113,32 @@ class SaleController extends Controller
         }
     }
 
-    private function getSalesDataAndRespond($query, Request $request, $pageType)
+    private function getSalesDataAndRespond($baseQuery, Request $request, $pageType)
     {
+        // 1. Calculate status pill counts from the base query (ignoring status filter so all tab badges show correct numbers)
+        $statsQuery = clone $baseQuery;
+        $this->applySalesFilters($statsQuery, $request, true);
+        $allStatsSales = $statsQuery->get();
+
+        $stats = [
+            'total_count' => $allStatsSales->count(),
+            'total_net' => (float) $allStatsSales->sum('total_net'),
+            'total_paid' => 0,
+            'total_due' => 0,
+            'total_discount' => (float) $allStatsSales->sum('total_extradiscount'),
+            'posted_count' => $allStatsSales->where('sale_status', 'posted')->count(),
+            'draft_count' => $allStatsSales->where('sale_status', 'draft')->count(),
+            'booked_count' => $allStatsSales->where('sale_status', 'booked')->count(),
+            'returned_count' => $allStatsSales->filter(function($s) {
+                return in_array($s->sale_status, ['returned', 1, '1']) || ($s->returns && $s->returns->count() > 0);
+            })->count(),
+        ];
+
+        // 2. Main query with status filter applied
+        $query = clone $baseQuery;
+        $this->applySalesFilters($query, $request, false);
         $sales = $query->get();
+
         $totalPaid = 0;
         $totalDue = 0;
         foreach ($sales as $s) {
@@ -120,18 +153,13 @@ class SaleController extends Controller
                 $totalDue += max(0, $sNet - $sPaid);
             }
         }
+        $stats['total_paid'] = (float) $totalPaid;
+        $stats['total_due'] = (float) $totalDue;
 
-        $stats = [
-            'total_count' => $sales->count(),
-            'total_net' => (float) $sales->sum('total_net'),
-            'total_paid' => (float) $totalPaid,
-            'total_due' => (float) $totalDue,
-            'total_discount' => (float) $sales->sum('total_extradiscount'),
-            'posted_count' => $sales->where('sale_status', 'posted')->count(),
-            'draft_count' => $sales->where('sale_status', 'draft')->count(),
-            'booked_count' => $sales->where('sale_status', 'booked')->count(),
-            'returned_count' => $sales->whereIn('sale_status', ['returned', 1])->count(),
-        ];
+        if ($request->has('status') && $request->status != 'all') {
+            $stats['total_net'] = (float) $sales->sum('total_net');
+            $stats['total_discount'] = (float) $sales->sum('total_extradiscount');
+        }
 
         if ($request->ajax()) {
             return response()->json([
@@ -154,7 +182,6 @@ class SaleController extends Controller
                   ->orWhereNull('sale_type');
             });
         
-        $this->applySalesFilters($query, $request);
         return $this->getSalesDataAndRespond($query, $request, 'direct_sale');
     }
 
@@ -164,7 +191,6 @@ class SaleController extends Controller
             ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
             ->where('sale_type', 'quotation');
         
-        $this->applySalesFilters($query, $request);
         return $this->getSalesDataAndRespond($query, $request, 'quotation');
     }
 
@@ -174,7 +200,6 @@ class SaleController extends Controller
             ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
             ->where('sale_type', 'sales_order');
         
-        $this->applySalesFilters($query, $request);
         return $this->getSalesDataAndRespond($query, $request, 'sales_order');
     }
     public function addsale(Request $request = null)
@@ -1017,7 +1042,7 @@ class SaleController extends Controller
         
         if ($sale->returns) {
             foreach ($sale->returns as $ret) {
-                if (in_array($ret->status, ['posted', 'approved', 'completed']) || in_array($ret->return_status, ['approved', 'completed'])) {
+                if (in_array($ret->status, ['posted', 'approved', 'completed', 'returned']) || in_array($ret->return_status, ['approved', 'completed']) || empty($ret->status)) {
                     foreach ($ret->items as $rItem) {
                         $key = $rItem->product_id;
                         if (!isset($returnedItemsMap[$key])) {
@@ -1113,6 +1138,8 @@ class SaleController extends Controller
             'isEstimate' => $isEstimate,
             'isFullReturn' => $isFullReturn,
             'netSaleTotal' => $netSaleTotal,
+            'totalReturnedPieces' => $totalReturnedPieces,
+            'totalOriginalPieces' => $totalOriginalPieces,
         ]);
     }
 

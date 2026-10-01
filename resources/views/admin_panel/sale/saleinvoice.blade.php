@@ -257,6 +257,25 @@
     </div>
 
     <div class="invoice-page">
+        @php
+            // Check if invoice has returns (partial or full)
+            $hasReturn = (!empty($isFullReturn) && $isFullReturn) || (!empty($totalReturnedPieces) && $totalReturnedPieces > 0) || ($sale->returns && $sale->returns->count() > 0) || in_array($sale->sale_status, ['returned', '1', 1]);
+            
+            $returnDates = '';
+            if ($sale->returns && $sale->returns->count() > 0) {
+                $returnDates = $sale->returns->map(function($r) {
+                    if (!empty($r->return_date)) {
+                        return \Carbon\Carbon::parse($r->return_date)->format('d-m-Y');
+                    } elseif (!empty($r->created_at)) {
+                        return $r->created_at->format('d-m-Y');
+                    }
+                    return '';
+                })->filter()->unique()->implode(', ');
+            }
+            if (empty($returnDates) && $hasReturn) {
+                $returnDates = $sale->updated_at ? $sale->updated_at->format('d-m-Y') : date('d-m-Y');
+            }
+        @endphp
         <!-- Header -->
         <div class="pad-header">
             <div class="logo-section">
@@ -267,6 +286,11 @@
                     <div style="font-size:12px; font-weight:bold; letter-spacing:1px; margin-bottom:8px; color: #1e40af;">INDUSTRIAL SOLUTIONS</div>
                 @endif
                 <div class="invoice-badge">{{ !empty($isFullReturn) && $isFullReturn ? 'RETURN INVOICE / BILL' : 'INVOICE / BILL' }}</div>
+                @if($hasReturn)
+                    <div style="font-size: 11px; font-weight: bold; color: #dc2626; margin-top: 4px;">
+                        <i class="fa-solid fa-rotate-left"></i> {{ !empty($isFullReturn) && $isFullReturn ? 'Full Return' : 'Partial Return' }}@if(!empty($returnDates)) (Date: {{ $returnDates }})@endif
+                    </div>
+                @endif
             </div>
             
             <div class="company-details-section">
@@ -347,6 +371,12 @@
                     <div class="meta-label" style="width:60px;">Date:</div>
                     <div class="meta-value" style="color: #1e40af;">{{ $sale->created_at ? $sale->created_at->format('d-m-Y') : date('d-m-Y') }}</div>
                 </div>
+                @if($hasReturn && !empty($returnDates))
+                <div class="meta-row mt-2">
+                    <div class="meta-label" style="width:60px; color: #dc2626;">Ret. Date:</div>
+                    <div class="meta-value" style="color: #dc2626; font-weight: bold;">{{ $returnDates }}</div>
+                </div>
+                @endif
                 @if($linkedSaleOrder)
                 <div class="meta-row mt-2">
                     <div class="meta-label" style="width:60px;">S.O. No:</div>
@@ -442,15 +472,26 @@
                         $productTitle .= $vExtraStr;
                         
                         $retQty = (float)($item['returned_qty'] ?? 0);
-                        if ($retQty > 0) {
-                            $productTitle .= " (Returned: " . (($retQty == (int)$retQty) ? (int)$retQty : $retQty) . ")";
-                        }
                     @endphp
 
                     <tr>
                         <td style="text-align: center;">{{ $loop->iteration }}</td>
-                        <td class="desc-col" style="font-weight: 500;">{{ $productTitle }}</td>
-                        <td style="text-align: center; font-weight: bold;">{{ ($dispQty == (int)$dispQty) ? (int)$dispQty : number_format($dispQty, 3) }}</td>
+                        <td class="desc-col" style="font-weight: 500;">
+                            {{ $productTitle }}
+                            @if($retQty > 0)
+                                <div style="font-size: 11px; color: #dc2626; font-weight: 600; margin-top: 2px;">
+                                    <i class="fa-solid fa-rotate-left"></i> Returned Qty: {{ ($retQty == (int)$retQty) ? (int)$retQty : number_format($retQty, 3) }} {{ $dispUnit }}
+                                </div>
+                            @endif
+                        </td>
+                        <td style="text-align: center; font-weight: bold;">
+                            {{ ($dispQty == (int)$dispQty) ? (int)$dispQty : number_format($dispQty, 3) }}
+                            @if($retQty > 0)
+                                <div style="font-size: 10px; color: #dc2626; font-weight: normal; margin-top: 2px;">
+                                    (Ret: -{{ ($retQty == (int)$retQty) ? (int)$retQty : number_format($retQty, 3) }})
+                                </div>
+                            @endif
+                        </td>
                         <td class="rate-col" style="text-align: right;">{{ number_format((float)($item['price'] ?? 0), 2) }}</td>
                         <td style="text-align: center;">{{ $dispUnit }}</td>
                         <td style="text-align: right; font-weight: bold;">{{ number_format((float)($item['total'] ?? 0), 2) }}</td>
@@ -475,8 +516,9 @@
                         {{ number_format($sale->total_net, 2) }}
                     </td>
                 </tr>
+
                 <tr>
-                    <td colspan="5" style="text-align: right; font-weight: bold; color: #dc2626;">RETURNED AMOUNT:</td>
+                    <td colspan="5" style="text-align: right; font-weight: bold; color: #dc2626;">RETURNED AMOUNT{{ !empty($returnDates) ? ' (' . $returnDates . ')' : '' }}:</td>
                     <td style="text-align: right; font-weight: bold; color: #dc2626;">
                         -{{ number_format($sale->total_net - $netSaleTotal, 2) }}
                     </td>
@@ -519,6 +561,11 @@
             <div class="footer-note">
                 Goods once sold can not be exchange<br>
                 or taken back without receipt
+                @if($hasReturn)
+                    <div style="margin-top: 6px; color: #dc2626; font-size: 11px; font-weight: bold;">
+                        * Note: Return processed{{ !empty($returnDates) ? ' on ' . $returnDates : '' }}. Refund/Credit of Rs. {{ number_format($sale->total_net - $netSaleTotal, 2) }} applied.
+                    </div>
+                @endif
             </div>
             <div class="footer-sign">
                 <img src="{{ asset('assets/images/stamp.png') }}" style="width: 160px; height: auto; margin-top: -60px; margin-bottom: 5px; margin-right: 10px; display: inline-block; opacity: 0.85; transform: rotate(-12deg); mix-blend-mode: multiply;" alt="Stamp"><br>
