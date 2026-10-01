@@ -615,6 +615,22 @@ class DirectDCController extends Controller
             $sale->sale_status = 'posted';
             $sale->delivery_status = 'delivered'; // already delivered
             
+            $refs = [];
+            foreach($dcs as $dc) {
+                if (!empty($dc->reference_no)) {
+                    $refs[] = $dc->reference_no;
+                } elseif ($dc->sale && !empty($dc->sale->reference)) {
+                    $refs[] = $dc->sale->reference;
+                }
+            }
+            $refs = array_unique($refs);
+            if (!empty($refs)) {
+                $sale->reference = implode(', ', $refs);
+            } else {
+                $sale->reference = 'Consolidated DC Invoice';
+            }
+            
+            
             // Allow backdating invoice if sale_date is provided
             if ($request->filled('sale_date')) {
                 $sale->created_at = \Carbon\Carbon::parse($request->sale_date)->format('Y-m-d H:i:s');

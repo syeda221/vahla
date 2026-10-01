@@ -2550,10 +2550,10 @@ class SaleController extends Controller
                 'item_code' => $item->product->item_code ?? '',
                 'brand' => $item->product->brand->name ?? '',
                 'unit' => $item->product->unit->name ?? '', // Access name if relation exists
-                'qty' => (int) $item->total_pieces, // Use Pieces for Return Logic (Matches Price-Per-Piece)
+                'qty' => (float) $item->total_pieces, // Use Pieces for Return Logic (Matches Price-Per-Piece)
                 'qty_box' => (float) $item->qty, // Store Box Count separately
-                'total_pieces' => (int) $item->total_pieces,
-                'loose_pieces' => (int) $item->loose_pieces,
+                'total_pieces' => (float) $item->total_pieces,
+                'loose_pieces' => (float) $item->loose_pieces,
                 'price' => (float) $item->price, // Price Per Piece / Unit
                 'discount' => (float) $item->discount_percent, // Legacy
                 'discount_percent' => (float) $item->discount_percent,

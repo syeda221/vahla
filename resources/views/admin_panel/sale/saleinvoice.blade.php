@@ -336,9 +336,9 @@
                         $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
                         if ($piecesPerBox <= 0) $piecesPerBox = 1;
                         
-                        $totalPieces = (int)($item['total_pieces'] ?? 0);
+                        $totalPieces = (float)($item['total_pieces'] ?? 0);
                         $boxes = floor($totalPieces / $piecesPerBox);
-                        $loosePieces = $totalPieces % $piecesPerBox;
+                        $loosePieces = fmod($totalPieces, $piecesPerBox);
                         $sizeMode = $item['size_mode'] ?? 'by_size';
                         $variantUnit = strtolower($item['variant_unit'] ?? '');
                         

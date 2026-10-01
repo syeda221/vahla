@@ -359,7 +359,7 @@
             </div>
         </div>
 
-        <form id="receivePaymentForm" method="POST" action="{{ route('vouchers.receive_payment.store') }}">
+        <form id="receivePaymentForm" method="POST" action="{{ route('vouchers.receive_payment.store') }}" enctype="multipart/form-data">
             @csrf
             <input type="hidden" name="rvid" value="{{ $nextRvid }}">
 
@@ -426,13 +426,13 @@
                     </div>
 
                     <!-- Reference / Receipt No -->
-                    <div class="col-md-4" id="referenceNoCol">
+                    <div class="col-md-3" id="referenceNoCol">
                         <label class="rp-label" id="lblReferenceNo">Reference / Receipt #</label>
                         <input type="text" name="reference_no" id="referenceNo" class="form-control rp-input" placeholder="e.g. Slip # / Memo / Receipt #">
                     </div>
 
                     <!-- Total Received Amount -->
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="rp-label">Total Received Amount (PKR) <span class="req">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text bg-success text-white fw-bold">PKR</span>
@@ -440,13 +440,19 @@
                                    class="form-control rp-input rp-amount-hero text-end" 
                                    placeholder="0.00" required autocomplete="off">
                         </div>
-                        <small class="text-muted" style="font-size: 11px;" id="lblAmountHint">Amount will be distributed strictly among checked/selected invoices.</small>
+                        <small class="text-muted" style="font-size: 11px;" id="lblAmountHint">Distributed among selected invoices.</small>
                     </div>
 
                     <!-- Remarks / Narration -->
-                    <div class="col-md-4" id="remarksCol">
+                    <div class="col-md-3" id="remarksCol">
                         <label class="rp-label">Remarks / Narration</label>
                         <input type="text" name="remarks" id="remarks" class="form-control rp-input" placeholder="e.g. Received payment against invoice dues">
+                    </div>
+
+                    <!-- Attachment / Slip -->
+                    <div class="col-md-3" id="attachmentCol">
+                        <label class="rp-label"><i class="fa-solid fa-paperclip text-success me-1"></i> Attachment / Slip (Image/PDF)</label>
+                        <input type="file" name="attachment" id="attachment" class="form-control rp-input" accept="image/*,.pdf,.doc,.docx">
                     </div>
                 </div>
 
@@ -1146,7 +1152,8 @@ $(document).ready(function() {
         let custName = $('#customerId').find(':selected').text().trim();
         let clickedBtn = $(document.activeElement);
         let actionVal = clickedBtn.val() || 'save_and_print';
-        let formData = $(this).serialize();
+        let formElem = document.getElementById('receivePaymentForm');
+        let formData = new FormData(formElem);
 
         window.showConfirmPopup({
             title: 'Receive & Settle Payment?',
@@ -1167,6 +1174,8 @@ $(document).ready(function() {
                 url: "{{ route('vouchers.receive_payment.store') }}",
                 type: "POST",
                 data: formData,
+                processData: false,
+                contentType: false,
                 dataType: "json",
             success: function(response) {
                 if (response.success) {

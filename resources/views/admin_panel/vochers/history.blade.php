@@ -480,6 +480,15 @@ $(function() {
                 className: 'text-center',
                 render: function(r) {
                     var btns = [];
+                    if (r.attachment_url) {
+                        btns.push({ 
+                            icon: 'bi-paperclip', 
+                            cls: 'btn-outline-info', 
+                            url: r.attachment_url, 
+                            title: 'View Attachment / Slip', 
+                            target: '_blank' 
+                        });
+                    }
                     if (r.print_url) {
                         btns.push({ 
                             icon: 'bi-printer', 

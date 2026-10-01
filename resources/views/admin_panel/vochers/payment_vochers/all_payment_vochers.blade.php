@@ -69,6 +69,12 @@
                                             <td>{{ $item->created_at }}</td>
                                             <td>
                                                 <div class="d-flex align-items-center gap-1">
+                                                    @if (!empty($item->attachment))
+                                                        <a href="{{ asset('uploads/attachments/' . $item->attachment) }}" target="_blank"
+                                                            class="btn btn-sm btn-outline-info" title="View Attachment / Slip">
+                                                            <i class="bi bi-paperclip"></i>
+                                                        </a>
+                                                    @endif
                                                     <a href="{{ route('Paymentprint', $item->id) }}" target="_blank"
                                                         class="btn btn-sm btn-outline-primary" title="Print">
                                                         <i class="bi bi-printer"></i>

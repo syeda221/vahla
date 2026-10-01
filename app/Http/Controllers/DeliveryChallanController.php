@@ -313,7 +313,12 @@ class DeliveryChallanController extends Controller
             }
             $sale->invoice_no = $generatedNo;
             $sale->parent_quotation_id = $dc->sale_id;
-            $sale->reference = 'Invoice for DC: ' . $dc->dc_number;
+            
+            $ref = $dc->reference_no;
+            if (empty($ref) && $dc->sale) {
+                $ref = $dc->sale->reference;
+            }
+            $sale->reference = $ref ?: ('Invoice for DC: ' . $dc->dc_number);
 
             $totalBillAmount = 0;
             $totalItems = 0;

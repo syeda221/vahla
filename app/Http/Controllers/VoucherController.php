@@ -2006,6 +2006,7 @@ class VoucherController extends Controller
                     'detail' => $detailText,
                     'amount' => (float)$ev->total_amount,
                     'remarks' => $ev->remarks ?: '-',
+                    'attachment_url' => !empty($ev->attachment) ? asset('uploads/attachments/' . $ev->attachment) : null,
                     'print_url' => route('expenseprint', $ev->id),
                     'delete_url' => $canDelete ? route('expense_vouchers.destroy', $ev->id) : null,
                     'delete_method' => 'DELETE',
@@ -2089,6 +2090,7 @@ class VoucherController extends Controller
                     'detail' => $detailName,
                     'amount' => (float)$rv->total_amount,
                     'remarks' => $rv->remarks ?: '-',
+                    'attachment_url' => !empty($rv->attachment) ? asset('uploads/attachments/' . $rv->attachment) : null,
                     'print_url' => route('print', $rv->id),
                     'delete_url' => $canDelete ? route('receipt_vouchers.destroy', $rv->id) : null,
                     'delete_method' => 'DELETE',
@@ -2172,6 +2174,7 @@ class VoucherController extends Controller
                     'detail' => $detailName,
                     'amount' => (float)$pv->total_amount,
                     'remarks' => $pv->remarks ?: '-',
+                    'attachment_url' => !empty($pv->attachment) ? asset('uploads/attachments/' . $pv->attachment) : null,
                     'print_url' => route('Paymentprint', $pv->id),
                     'delete_url' => $canDelete ? route('payment_vouchers.destroy', $pv->id) : null,
                     'delete_method' => 'DELETE',
@@ -2214,14 +2217,15 @@ class VoucherController extends Controller
                     'voucher_no' => $jv->voucher_no ?: 'JV-' . $jv->id,
                     'type_label' => 'Party Transfer',
                     'source' => 'journal',
-                    'date' => $jv->date ? date('Y-m-d', strtotime($jv->date)) : '-',
+                    'date' => $jv->date ? $jv->date->format('Y-m-d') : '-',
                     'party_name' => $partyName,
-                    'party_type_label' => 'Transfer',
-                    'detail' => 'Journal Transfer',
+                    'party_type_label' => 'Journal',
+                    'detail' => 'Transfer',
                     'amount' => (float)$jv->total_amount,
                     'remarks' => $jv->remarks ?: '-',
+                    'attachment_url' => !empty($jv->attachment) ? asset('uploads/attachments/' . $jv->attachment) : null,
                     'print_url' => route('journalprint', $jv->id),
-                    'delete_url' => null,
+                    'delete_url' => (auth()->user()->can('journal.voucher.delete') || auth()->user()->email === 'admin@admin.com') ? route('journal_vouchers.destroy', $jv->id) : null,
                     'delete_method' => 'DELETE',
                     'created_at' => $jv->created_at ?? $jv->date,
                 ]);
@@ -2583,11 +2587,22 @@ class VoucherController extends Controller
                     })->first();
 
                     if (!$chequeAcc) {
-                        $headId = DB::table('account_heads')->whereRaw('LOWER(name) LIKE ?', ['%asset%'])->value('id') ?? 1;
+                        $head = \App\Models\AccountHead::whereRaw('LOWER(name) LIKE ?', ['%bank%'])
+                            ->orWhereRaw('LOWER(name) LIKE ?', ['%cash%'])
+                            ->orWhereRaw('LOWER(name) LIKE ?', ['%asset%'])
+                            ->first();
+
+                        if (!$head) {
+                            $head = \App\Models\AccountHead::create([
+                                'name' => 'Bank & Cheque Clearing',
+                                'opening_balance' => 0
+                            ]);
+                        }
+
                         $chequeAccId = DB::table('accounts')->insertGetId([
                             'title' => 'Cheques in Hand',
                             'account_code' => 'CHQ-001',
-                            'head_id' => $headId,
+                            'head_id' => $head->id,
                             'type' => 'Debit',
                             'status' => 1,
                             'created_at' => now(),
@@ -2658,6 +2673,15 @@ class VoucherController extends Controller
             }
             $narrationList = implode(' | ', $narrationParts);
 
+            // Handle Attachment Upload
+            $attachmentPath = null;
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $file->move(public_path('uploads/attachments'), $filename);
+                $attachmentPath = $filename;
+            }
+
             // 1. Create ReceiptsVoucher record for legacy print/history compatibility
             $recVoucher = \App\Models\ReceiptsVoucher::create([
                 'rvid' => $rvid,
@@ -2667,6 +2691,7 @@ class VoucherController extends Controller
                 'party_id' => $customerId,
                 'tel' => $customer->mobile ?? '',
                 'remarks' => $narrationList,
+                'attachment' => $attachmentPath,
                 'narration_id' => json_encode(['Receive Payment - Invoices']),
                 'reference_no' => json_encode([$primaryRef]),
                 'row_account_head' => json_encode([$depositAccount->head_id ?? 1]),
@@ -2706,6 +2731,11 @@ class VoucherController extends Controller
                     'party_id' => $customerId,
                     'remarks' => $narrationList,
                 ], $v2Lines, auth()->id());
+
+                if ($v2Master && $attachmentPath) {
+                    $v2Master->attachment = $attachmentPath;
+                    $v2Master->save();
+                }
             }
 
             // 3. Customer Ledger
@@ -2883,11 +2913,22 @@ class VoucherController extends Controller
                     })->first();
 
                     if (!$chequeAcc) {
-                        $headId = DB::table('account_heads')->whereRaw('LOWER(name) LIKE ?', ['%asset%'])->value('id') ?? 1;
+                        $head = \App\Models\AccountHead::whereRaw('LOWER(name) LIKE ?', ['%bank%'])
+                            ->orWhereRaw('LOWER(name) LIKE ?', ['%cash%'])
+                            ->orWhereRaw('LOWER(name) LIKE ?', ['%asset%'])
+                            ->first();
+
+                        if (!$head) {
+                            $head = \App\Models\AccountHead::create([
+                                'name' => 'Bank & Cheque Clearing',
+                                'opening_balance' => 0
+                            ]);
+                        }
+
                         $chequeAccId = DB::table('accounts')->insertGetId([
                             'title' => 'Cheques in Hand',
                             'account_code' => 'CHQ-001',
-                            'head_id' => $headId,
+                            'head_id' => $head->id,
                             'type' => 'Debit',
                             'status' => 1,
                             'created_at' => now(),
@@ -2961,6 +3002,15 @@ class VoucherController extends Controller
             }
             $narrationList = implode(' | ', $narrationParts);
 
+            // Handle Attachment Upload
+            $attachmentPath = null;
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $file->move(public_path('uploads/attachments'), $filename);
+                $attachmentPath = $filename;
+            }
+
             // 1. Create PaymentVoucher record for legacy print/history compatibility
             $payVoucher = \App\Models\PaymentVoucher::create([
                 'pvid' => $pvid,
@@ -2969,6 +3019,7 @@ class VoucherController extends Controller
                 'type' => json_encode(['vendor']),
                 'party_id' => json_encode([$vendorId]),
                 'remarks' => $narrationList,
+                'attachment' => $attachmentPath,
                 'narration_id' => json_encode(['Pay Bill - Purchase Settlement']),
                 'reference_no' => json_encode([$primaryRef]),
                 'row_account_head' => $paidFromAccount->head_id ?? 1,
@@ -3008,6 +3059,11 @@ class VoucherController extends Controller
                     'party_id' => $vendorId,
                     'remarks' => $narrationList,
                 ], $v2Lines, auth()->id());
+
+                if ($v2Master && $attachmentPath) {
+                    $v2Master->attachment = $attachmentPath;
+                    $v2Master->save();
+                }
             }
 
             // 3. Vendor Ledger
