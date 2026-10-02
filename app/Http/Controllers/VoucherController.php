@@ -1301,6 +1301,28 @@ class VoucherController extends Controller
 
     public function store_expense_vochers(Request $request)
     {
+        $request->validate([
+            'entry_date' => 'required|date',
+            'vendor_type' => 'required',
+            'vendor_id' => 'required',
+            'row_account_id' => 'required|array|min:1',
+            'row_account_id.*' => 'required',
+            'amount' => 'required|array|min:1',
+            'amount.*' => 'required|numeric|min:0.01',
+            'total_amount' => 'required|numeric|min:0.01',
+        ], [
+            'entry_date.required' => 'Voucher date is required.',
+            'vendor_type.required' => 'Please select Payment Head (Source).',
+            'vendor_id.required' => 'Please select Account / Paid From.',
+            'row_account_id.required' => 'Please add at least one expense category.',
+            'row_account_id.*.required' => 'Please select an expense category for all rows.',
+            'amount.required' => 'Please enter expense amounts.',
+            'amount.*.required' => 'Amount is required for each expense row.',
+            'amount.*.min' => 'Amount must be greater than zero.',
+            'total_amount.required' => 'Total amount is required.',
+            'total_amount.min' => 'Total amount must be greater than zero.',
+        ]);
+
         DB::beginTransaction();
         try {
             $evid = ExpenseVoucher::generateInvoiceNo();

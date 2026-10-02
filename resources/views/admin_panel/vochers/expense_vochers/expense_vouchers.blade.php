@@ -338,6 +338,13 @@
             padding: 4px 8px !important;
             font-size: 0.82rem !important;
         }
+        .select2-container.border-danger .select2-selection,
+        .select2-container.is-invalid .select2-selection,
+        .cell-input.border-danger,
+        .ex-input.border-danger {
+            border-color: #dc3545 !important;
+            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2) !important;
+        }
     </style>
 
     <div class="main-content">
@@ -357,6 +364,18 @@
                         <button type="button" class="btn-close" data-bs-dismiss="alert" style="padding: 0.75rem;"></button>
                     </div>
                 @endif
+                @if ($errors->any())
+                    <div class="alert alert-danger alert-dismissible fade show py-2 px-3 small border-0 shadow-sm rounded-3 mb-3">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>Please fix the following errors:</strong>
+                        <ul class="mb-0 ps-3 mt-1">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" style="padding: 0.75rem;"></button>
+                    </div>
+                @endif
 
                 <form action="{{ route('store_expense_vochers') }}" method="POST" id="expenseForm">
                     @csrf
@@ -372,7 +391,7 @@
                                 <a href="{{ route('all_expense_vochers') }}" class="btn btn-outline-secondary btn-sm fw-bold d-inline-flex align-items-center" style="height: 32px; font-size: 0.8rem; padding: 4px 12px; border-radius: 5px; margin-right: 12px;">
                                     <i class="bi bi-list-ul me-1" style="margin-right: 5px;"></i> All Expenses
                                 </a>
-                                <button type="submit" class="btn btn-primary btn-sm fw-bold shadow-sm d-inline-flex align-items-center" style="height: 32px; font-size: 0.8rem; padding: 4px 16px; border-radius: 5px;">
+                                <button type="button" class="btn btn-primary btn-sm fw-bold shadow-sm d-inline-flex align-items-center btn-save-voucher" style="height: 32px; font-size: 0.8rem; padding: 4px 16px; border-radius: 5px;">
                                     <i class="bi bi-check2 me-1" style="margin-right: 5px;"></i> Save Voucher
                                 </button>
                             </div>
@@ -386,7 +405,7 @@
                                 <input type="text" class="ex-input fw-bold text-primary font-monospace" name="evid" value="{{ $nextRvid }}" readonly>
                             </div>
                             <div class="col-6 col-md-2 col-lg-2">
-                                <label class="ex-label">Date</label>
+                                <label class="ex-label">Date <span class="text-danger">*</span></label>
                                 <input type="date" name="entry_date" class="ex-input" value="{{ now()->toDateString() }}" required>
                             </div>
                             <div class="col-6 col-md-2 col-lg-2">
@@ -394,7 +413,7 @@
                                 <input type="text" name="ref_no_header" class="ex-input" placeholder="e.g. Chq-1029">
                             </div>
                             <div class="col-6 col-md-3 col-lg-3">
-                                <label class="ex-label">Payment Head (Source)</label>
+                                <label class="ex-label">Payment Head (Source) <span class="text-danger">*</span></label>
                                 <select name="vendor_type" class="ex-input" id="partyType" required>
                                     <option value="" disabled selected>Select Source Head</option>
                                     @foreach ($AccountHeads as $head)
@@ -403,7 +422,7 @@
                                 </select>
                             </div>
                             <div class="col-12 col-md-3 col-lg-3">
-                                <label class="ex-label">Account / Paid From</label>
+                                <label class="ex-label">Account / Paid From <span class="text-danger">*</span></label>
                                 <select name="vendor_id" class="ex-input" id="partyId" required>
                                     <option value="" disabled selected>Select Account</option>
                                 </select>
@@ -500,12 +519,9 @@
                                         <input type="text" name="total_amount" class="total-summary-value" id="totalAmount" readonly value="0.00">
                                     </div>
                                 </div>
-                                <button type="submit" 
-                                        class="btn btn-primary fw-bold shadow-sm d-inline-flex align-items-center" 
-                                        data-confirm="true"
-                                        data-confirm-title="Save Expense Voucher?"
-                                        data-confirm-text="Are you sure you want to record this Expense Voucher?"
-                                        data-confirm-btn="<i class='bi bi-check-circle-fill me-1'></i> Yes, Save Expense"
+                                <button type="button" 
+                                        class="btn btn-primary fw-bold shadow-sm d-inline-flex align-items-center btn-save-voucher" 
+                                        id="btnSaveExpenseBottom"
                                         style="height: 44px; padding: 0 24px; border-radius: 6px; font-size: 0.9rem;">
                                     <i class="bi bi-check-circle-fill me-2" style="margin-right: 8px;"></i> Save Expense
                                 </button>
@@ -581,6 +597,7 @@
 
             // Header Party Type Selection
             $('#partyType').on('change', function() {
+                $('#partyType').next('.select2-container').find('.select2-selection').removeClass('border-danger');
                 let type = $(this).val();
                 loadPartyList(type);
             });
@@ -617,6 +634,7 @@
             }
 
             $('#partyId').on('change', function() {
+                $('#partyId').next('.select2-container').find('.select2-selection').removeClass('border-danger');
                 let $opt = $(this).find(':selected');
                 let codeOrPhone = $opt.data('phone') || $opt.data('code') || '';
                 $('#tel').val(codeOrPhone);
@@ -764,6 +782,162 @@
                         Swal.fire('Error', msg, 'error');
                     }
                 });
+            });
+
+            // Validation Function for Expense Voucher
+            function validateExpenseForm() {
+                let partyType = $('#partyType').val();
+                let partyId = $('#partyId').val();
+
+                // Clear previous error borders
+                $('.border-danger, .is-invalid').removeClass('border-danger is-invalid');
+                $('.select2-container').find('.select2-selection').removeClass('border-danger');
+
+                if (!partyType) {
+                    $('#partyType').next('.select2-container').find('.select2-selection').addClass('border-danger');
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Payment Head Required',
+                        text: 'Please select Payment Head (Source).'
+                    }).then(() => {
+                        $('#partyType').select2('open');
+                    });
+                    return false;
+                }
+
+                if (!partyId) {
+                    $('#partyId').next('.select2-container').find('.select2-selection').addClass('border-danger');
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Account Required',
+                        text: 'Please select Account / Paid From.'
+                    }).then(() => {
+                        $('#partyId').select2('open');
+                    });
+                    return false;
+                }
+
+                let $rows = $('#voucherTable tbody tr');
+                if ($rows.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Expense Required',
+                        text: 'At least one expense row is required.'
+                    });
+                    return false;
+                }
+
+                let firstInvalidCat = null;
+                let firstInvalidAmt = null;
+
+                $rows.each(function() {
+                    let $cat = $(this).find('.rowAccountCategory');
+                    let $amt = $(this).find('.amount');
+                    let catVal = $cat.val();
+                    let amtVal = parseFloat($amt.val()) || 0;
+
+                    if (!catVal) {
+                        $cat.next('.select2-container').find('.select2-selection').addClass('border-danger');
+                        if (!firstInvalidCat) firstInvalidCat = $cat;
+                    }
+                    if (amtVal <= 0) {
+                        $amt.addClass('border-danger is-invalid');
+                        if (!firstInvalidAmt) firstInvalidAmt = $amt;
+                    }
+                });
+
+                if (firstInvalidCat) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Category Required',
+                        text: 'Please select an Expense Category for all rows.'
+                    }).then(() => {
+                        firstInvalidCat.select2('open');
+                    });
+                    return false;
+                }
+
+                if (firstInvalidAmt) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Amount Required',
+                        text: 'Please enter a valid amount greater than 0 for all expense rows.'
+                    }).then(() => {
+                        firstInvalidAmt.focus();
+                    });
+                    return false;
+                }
+
+                let totalAmount = parseFloat($('#totalAmount').val()) || 0;
+                if (totalAmount <= 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Invalid Total',
+                        text: 'Total Amount must be greater than 0.00'
+                    });
+                    return false;
+                }
+
+                return true;
+            }
+
+            // Remove error styling on user interaction
+            $(document).on('change', '.rowAccountCategory', function() {
+                $(this).next('.select2-container').find('.select2-selection').removeClass('border-danger');
+            });
+            $(document).on('input', '.amount', function() {
+                $(this).removeClass('border-danger is-invalid');
+            });
+
+            // Save Voucher Click Handler (Top & Bottom buttons)
+            $(document).on('click', '.btn-save-voucher', function(e) {
+                e.preventDefault();
+                if (!validateExpenseForm()) {
+                    return false;
+                }
+
+                if (typeof window.showConfirmPopup === 'function') {
+                    window.showConfirmPopup({
+                        title: 'Save Expense Voucher?',
+                        text: 'Are you sure you want to record this Expense Voucher?',
+                        confirmBtnText: '<i class="bi bi-check-circle-fill me-1"></i> Yes, Save Expense'
+                    }, function() {
+                        $('.btn-save-voucher').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+                        $('#expenseForm')[0].submit();
+                    });
+                } else if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Save Expense Voucher?',
+                        text: 'Are you sure you want to record this Expense Voucher?',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: '<i class="bi bi-check-circle-fill me-1"></i> Yes, Save Expense',
+                        cancelButtonText: 'Cancel',
+                        customClass: {
+                            confirmButton: 'btn btn-primary px-4 py-2 fw-bold shadow-sm',
+                            cancelButton: 'btn btn-secondary px-3 py-2 fw-bold me-2'
+                        },
+                        buttonsStyling: false
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            $('.btn-save-voucher').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+                            $('#expenseForm')[0].submit();
+                        }
+                    });
+                } else {
+                    if (confirm('Are you sure you want to save this Expense Voucher?')) {
+                        $('.btn-save-voucher').prop('disabled', true);
+                        $('#expenseForm')[0].submit();
+                    }
+                }
+            });
+
+            // Form Submit Interceptor to ensure validation always runs
+            $('#expenseForm').on('submit', function(e) {
+                if (!validateExpenseForm()) {
+                    e.preventDefault();
+                    return false;
+                }
             });
         });
     </script>
