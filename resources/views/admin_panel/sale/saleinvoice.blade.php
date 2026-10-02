@@ -400,6 +400,14 @@
 
         </button>
 
+        <button onclick="printA4()" class="btn btn-success btn-sm shadow ms-2 fw-bold">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-text me-2" viewBox="0 0 16 16">
+                <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5z"/>
+                <path d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0zm0 1v2.5a1 1 0 0 0 1 1H13v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>
+            </svg>
+            Print A4
+        </button>
+
         <a href="javascript:void(0)"
             onclick="handleGoBack()"
             class="btn btn-secondary btn-sm shadow ms-2 fw-bold">
@@ -690,6 +698,17 @@
                         $sizeMode =
                             $item['size_mode'] ?? 'by_size';
 
+                        $soldInPieces = false;
+                        if (in_array($sizeMode, ['by_cartons', 'by_bandal'])) {
+                            $dbPrice = (float)($item['price'] ?? 0);
+                            $grossIfPieces = $totalPieces * $dbPrice;
+                            $grossIfCartons = (float)($item['qty_box'] ?? 0) * $dbPrice;
+                            $actualGross = (float)($item['total'] ?? 0) + (float)($item['discount_amount'] ?? 0);
+                            
+                            if (abs($actualGross - $grossIfPieces) < 0.1 && abs($actualGross - $grossIfCartons) >= 0.1) {
+                                $soldInPieces = true;
+                            }
+                        }
                     @endphp
 
 
@@ -793,18 +812,15 @@
 
 
                             @if (
-                                $variantUnit === 'pcs'
-                                ||
-                                $variantUnit === 'piece'
-                                ||
-                                $variantUnit === 'pieces'
+                                in_array($variantUnit, ['pcs', 'piece', 'pieces'])
+                                && !in_array($sizeMode, ['by_cartons', 'by_bandal'])
                             )
 
                                 <div style="font-weight: bold; color: #2c3e50;">
 
                                     {{ $totalPieces }} Pcs
 
-                                    @if ($weightGrams > 0)
+                                    @if ($weightGrams > 0 && in_array($sizeMode, ['by_kg', 'by_gm']))
 
                                         <small class="d-block text-muted"
                                             style="font-size: 10px;">
@@ -886,7 +902,7 @@
 
                                 <div style="font-weight: bold; color: #2c3e50;">
 
-                                    @if ($sizeMode == 'by_pieces')
+                                    @if ($sizeMode == 'by_pieces' || $soldInPieces)
 
                                         {{ $totalPieces }} Pcs
 
@@ -940,8 +956,12 @@
                             @if (!empty($item['variant_unit']))
 
                                 <span class="fw-bold">
-                                    @if(strtolower($item['variant_unit']) === 'carton' && $sizeMode === 'by_bandal')
+                                    @if($soldInPieces)
+                                        Pcs
+                                    @elseif($sizeMode === 'by_bandal')
                                         Bundal
+                                    @elseif($sizeMode === 'by_cartons')
+                                        Carton
                                     @else
                                         {{ ucfirst($item['variant_unit']) }}
                                     @endif
@@ -983,7 +1003,18 @@
                         <td class="text-end"
                             style="vertical-align: middle;">
 
-                            {{ number_format($item['price'], 2) }}
+                            @if (in_array($sizeMode, ['by_cartons', 'by_bandal']) && !$soldInPieces && $piecesPerBox > 1)
+                                @php
+                                    $piecePrice = $item['price'] / $piecesPerBox;
+                                    $unitLabel = $sizeMode === 'by_bandal' ? 'Bndl' : 'Ctn';
+                                @endphp
+                                <div style="line-height: 1.2;">
+                                    {{ number_format($piecePrice, 2) }}
+                                    <div class="text-muted" style="font-size: 10px;">{{ $unitLabel }} : {{ number_format($item['price'], 2) }}</div>
+                                </div>
+                            @else
+                                {{ number_format($item['price'], 2) }}
+                            @endif
 
                         </td>
 
@@ -2585,6 +2616,29 @@
     <!-- ========================================== -->
 
     <script>
+
+        function printA4() {
+            let style = document.createElement('style');
+            style.id = 'a4-print-style';
+            style.innerHTML = `
+                @media print {
+                    @page { size: auto; margin: 10mm; }
+                    .screen-only { display: block !important; }
+                    .receipt-container { display: none !important; }
+                    body { width: auto !important; margin: 0 !important; padding: 0 !important; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            window.print();
+            
+            setTimeout(() => {
+                let s = document.getElementById('a4-print-style');
+                if (s) {
+                    s.remove();
+                }
+            }, 500);
+        }
 
         function handleGoBack() {
 

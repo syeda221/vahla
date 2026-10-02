@@ -314,8 +314,19 @@
 
                         // Total M2 for line
                         $totalM2Line = $m2PerPiece * $totalPieces;
-                        // Use size_mode directly from item if available (from DB), else fallback
                         $sizeMode = $item['size_mode'] ?? 'std';
+                        
+                        $soldInPieces = false;
+                        if (in_array($sizeMode, ['by_cartons', 'by_bandal'])) {
+                            $dbPrice = (float)($item['price'] ?? 0);
+                            $grossIfPieces = $totalPieces * $dbPrice;
+                            $grossIfCartons = (float)($item['qty_box'] ?? 0) * $dbPrice;
+                            $actualGross = (float)($item['total'] ?? 0) + (float)($item['discount_amount'] ?? 0);
+                            
+                            if (abs($actualGross - $grossIfPieces) < 0.1 && abs($actualGross - $grossIfCartons) >= 0.1) {
+                                $soldInPieces = true;
+                            }
+                        }
                     @endphp
                     <tr>
                         <td class="text-start">
@@ -358,7 +369,7 @@
 
                         <td class="text-center" style="vertical-align: middle;">
                             <div style="font-weight: bold; color: #2c3e50;">
-                                @if ($sizeMode == 'by_pieces')
+                                @if ($sizeMode == 'by_pieces' || $soldInPieces)
                                     {{ $totalPieces }} Pcs
                                 @else
                                     @if ($boxes > 0 && $loosePieces > 0)
@@ -375,7 +386,11 @@
                         </td>
 
                         <td class="text-center" style="vertical-align: middle;">
-                            @if ($sizeMode == 'by_pieces')
+                            @if ($soldInPieces)
+                            <span class="fw-bold">
+                                Pieces
+                            </span>
+                            @elseif ($sizeMode == 'by_pieces')
                             <span class="fw-bold">
                             Pieces
                         </span> 

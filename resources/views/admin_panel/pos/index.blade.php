@@ -1596,7 +1596,7 @@
                     } else if (item.sizeMode === 'by_meter') {
                         totalPieces = item.qty * factor;
                     }
-                } else if (item.['by_cartons', 'by_bandal'].includes(sizeMode)) {
+                } else if (['by_cartons', 'by_bandal'].includes(item.sizeMode)) {
                     let ppb = parseFloat(item.piecesPerBox) || 1;
                     let qtyStr = (item.qty || '').toString().trim();
                     if (qtyStr.includes('.')) {

@@ -72,8 +72,8 @@ class ReportingController extends Controller
                 'name' => $product->item_name,
                 'code' => $product->item_code,
                 'stock' => $balance,
-                "unit_name" => $product->unit->name ?? "Pcs",
-                "is_carton_mode" => ($product->size_mode === "by_cartons" || strtolower($product->unit->name ?? "") === "carton"),
+                "unit_name" => ($product->size_mode === 'by_bandal') ? 'Bundal' : ($product->unit->name ?? "Pcs"),
+                "is_carton_mode" => (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($product->unit->name ?? "") === "carton"),
                 "ppb" => ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1),
                 "size_mode" => $product->size_mode,
                 'is_variant' => false,
@@ -81,7 +81,7 @@ class ReportingController extends Controller
             ]];
         }
         
-        $unitName = $product->unit->name ?? 'Pcs';
+        $unitName = ($product->size_mode === 'by_bandal') ? 'Bundal' : ($product->unit->name ?? 'Pcs');
         $results = [];
         
         if ($product->size_mode === 'by_kg') {
@@ -148,6 +148,9 @@ class ReportingController extends Controller
             $vColor = $v['color'] ?? '-';
             
             $vUnitName = $v['unit'] ?? $unitName;
+            if ($product->size_mode === 'by_bandal' && strtolower($vUnitName) === 'carton') {
+                $vUnitName = 'Bundal';
+            }
             $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($vUnitName) === 'carton');
             $ppb = (float) ($product->pieces_per_box ?? 1);
             if ($isCartonMode) {
@@ -364,7 +367,7 @@ class ReportingController extends Controller
                     "item_name"   => $variant["name"],
                     "category"    => $product->category_relation->name ?? "-",
                     "company"     => $product->brand->name ?? "-",
-                    "unit"        => $product->unit->name ?? "Pcs",
+                    "unit"        => ($product->size_mode === 'by_bandal') ? 'Bundal' : ($product->unit->name ?? "Pcs"),
                     "stock"       => round($stock, 2),
                     "formatted_stock" => $formattedStock,
                     "p_price"     => round($vPurchPrice, 2),
@@ -469,7 +472,7 @@ class ReportingController extends Controller
             }
 
             // Determine size mode & unit display label
-            $unitName = $product->unit->name ?? 'Pcs';
+            $unitName = ($product->size_mode === 'by_bandal') ? 'Bundal' : ($product->unit->name ?? 'Pcs');
             $sizeMode = $product->size_mode ?: 'std';
 
             // Check if product has variants
@@ -653,6 +656,9 @@ class ReportingController extends Controller
 
                     // Variant Unit Logic
                     $vUnitName = $v['unit'] ?? $unitName;
+                    if ($product->size_mode === 'by_bandal' && strtolower($vUnitName) === 'carton') {
+                        $vUnitName = 'Bundal';
+                    }
                     $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($vUnitName) === 'carton');
 
                     // Cartons / Loose / Unit Formatting
