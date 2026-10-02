@@ -8,8 +8,18 @@
                     <div class="col-lg-12">
 
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h3>Sale Returns</h3>
-                            <a class="btn btn-primary" href="{{ route('sale.index') }}">Back to Purchases</a>
+                            <div>
+                                <h3 class="fw-bold mb-0 text-dark"><i class="fas fa-undo-alt text-danger me-2"></i> Sale Returns</h3>
+                                <small class="text-muted">Manage all customer sale returns & direct returns</small>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a class="btn btn-danger shadow-sm fw-bold d-inline-flex align-items-center gap-2" href="{{ route('sale.return.create_direct') }}">
+                                    <i class="fas fa-plus-circle"></i> Create Sale Return
+                                </a>
+                                <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-1" href="{{ route('sale.index') }}">
+                                    <i class="fas fa-arrow-left"></i> Back to Sales
+                                </a>
+                            </div>
                         </div>
 
                         <div class="border mt-1 shadow rounded bg-white">
@@ -48,6 +58,8 @@
                                                     @if ($return->sale)
                                                         <br><small class="text-muted">Orig:
                                                             {{ $return->sale->invoice_no }}</small>
+                                                    @else
+                                                        <br><span class="badge bg-secondary" style="font-size: 0.65rem;">Direct Return</span>
                                                     @endif
                                                 </td>
                                                 <td>{{ $return->customer->customer_name ?? 'N/A' }}</td>

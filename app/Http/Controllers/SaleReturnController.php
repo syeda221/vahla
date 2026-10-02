@@ -350,44 +350,72 @@ class SaleReturnController extends Controller
                     $ppb = (float)$vData['conv_factor'];
                 } elseif (!empty($vData['pieces_per_box']) && (float)$vData['pieces_per_box'] > 0) {
                     $ppb = (float)$vData['pieces_per_box'];
-                } elseif (!empty($vData['size']) && is_numeric($vData['size']) && (float)$vData['size'] > 0) {
-                    $ppb = (float)$vData['size'];
+                } elseif (!empty($vData['weight_per_piece']) && (float)$vData['weight_per_piece'] > 0) {
+                    $ppb = (float)$vData['weight_per_piece'] / 1000.0;
                 } elseif ($product && (float)$product->pieces_per_box > 0) {
                     $ppb = (float)$product->pieces_per_box;
                 }
 
                 if ($ppb <= 0) $ppb = 1;
 
-                $saleUnit = strtolower($request->unit[$idx] ?? 'pc');
-                
-                // If weight product sold by pieces, the UI submits pieces. We must convert it to Kg (which is the actual total_pieces format).
-                if (in_array($sizeMode, ['by_kg', 'by_gm']) && in_array($saleUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
-                    $qty = $qty * $ppb; // Convert pieces to Kg
-                } elseif (in_array($sizeMode, ['by_kg', 'by_gm']) && $saleUnit === 'gm') {
-                    $qty = $qty / 1000; // Convert gm back to Kg
-                }
+                $saleUnit = strtolower($request->unit[$idx] ?? '');
+                $variantUnit = strtolower($liveVariant['unit'] ?? $vData['unit'] ?? '');
+                $variantName = strtolower($liveVariant['name'] ?? $vData['name'] ?? '');
 
-                // Calculate Line Total Logic based on size mode
-                if ($sizeMode === 'by_size') {
-                    $lineTotal = round($ppm2 * $qty * $price, 2);
-                } elseif ($sizeMode === 'by_cartons' || $sizeMode === 'by_carton' || (in_array($sizeMode, ['by_kg', 'by_gm']) && in_array($saleUnit, ['pcs', 'pc', 'piece', 'pieces']))) {
-                    $lineTotal = round(($ppb > 0 ? ($qty / $ppb) : $qty) * $price, 2);
-                } elseif (in_array($sizeMode, ['by_kg', 'by_gm']) && $saleUnit === 'gm') {
-                    $lineTotal = round(($qty * 1000) * $price, 2);
-                } else {
-                    $lineTotal = round($qty * $price, 2);
-                }
-                
-                $lineTotal -= $itemDisc;
+                $isWeightMode = in_array($sizeMode, ['by_kg', 'by_gm']);
+                $isPcsUnit = in_array($saleUnit, ['pcs', 'pc', 'piece', 'pieces']) 
+                    || in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])
+                    || str_contains($variantName, '(pcs)');
 
-                // Calculate boxes and loose pieces
-                // Carton/size: box.loose notation; pieces: ppb=1; kg/gm: no box concept (ppb = conv_factor, avoid huge/crash)
-                if (in_array($sizeMode, ['by_kg', 'by_gm'])) {
-                    $boxes = 0;
-                    $loosePieces = 0;
+                $inputQty = $qty;
+                $itemDisplayUnit = 'pc';
+
+                if ($isWeightMode) {
+                    if ($isPcsUnit) {
+                        $stockQty = $inputQty * $ppb;
+                        $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
+                        $itemDisplayUnit = 'pcs';
+                        $boxes = 0;
+                        $loosePieces = 0;
+                    } elseif ($saleUnit === 'gm') {
+                        $stockQty = $inputQty / 1000;
+                        $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
+                        $itemDisplayUnit = 'gm';
+                        $boxes = 0;
+                        $loosePieces = 0;
+                    } else {
+                        $stockQty = $inputQty;
+                        $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
+                        $itemDisplayUnit = 'kg';
+                        $boxes = 0;
+                        $loosePieces = 0;
+                    }
+                } elseif ($sizeMode === 'by_size') {
+                    $stockQty = $inputQty;
+                    $lineTotal = round(($ppm2 * $inputQty * $price) - $itemDisc, 2);
+                    $itemDisplayUnit = $saleUnit ?: 'pc';
+                    $boxes = floor($inputQty / ($ppb > 0 ? $ppb : 1));
+                    $loosePieces = fmod((float)$inputQty, (float)($ppb > 0 ? $ppb : 1));
+                } elseif ($sizeMode === 'by_cartons' || $sizeMode === 'by_carton') {
+                    if ($saleUnit === 'pcs' || $saleUnit === 'pc') {
+                        $stockQty = $inputQty;
+                        $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
+                        $itemDisplayUnit = 'pcs';
+                        $boxes = floor($inputQty / ($ppb > 0 ? $ppb : 1));
+                        $loosePieces = fmod((float)$inputQty, (float)($ppb > 0 ? $ppb : 1));
+                    } else {
+                        $stockQty = $inputQty * $ppb;
+                        $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
+                        $itemDisplayUnit = 'ctn';
+                        $boxes = floor($inputQty);
+                        $loosePieces = fmod((float)$inputQty, 1) * $ppb;
+                    }
                 } else {
-                    $boxes = floor($qty / $ppb);
-                    $loosePieces = fmod((float)$qty, (float)$ppb);
+                    $stockQty = $inputQty;
+                    $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
+                    $itemDisplayUnit = $saleUnit ?: 'pc';
+                    $boxes = floor($inputQty / ($ppb > 0 ? $ppb : 1));
+                    $loosePieces = fmod((float)$inputQty, (float)($ppb > 0 ? $ppb : 1));
                 }
 
                 // Create Return Item
@@ -396,20 +424,14 @@ class SaleReturnController extends Controller
                     'product_id' => $productId,
                     'color' => $request->color[$idx] ?? null,
                     'warehouse_id' => $validated['warehouse_id'],
-                    'qty' => $qty,
-                    'boxes' => $boxes + ($loosePieces / $ppb), // Decimal boxes
+                    'qty' => $inputQty,
+                    'boxes' => $boxes + ($ppb > 0 ? ($loosePieces / $ppb) : 0),
                     'loose_pieces' => $loosePieces,
                     'price' => $price,
                     'item_discount' => $itemDisc,
-                    'unit' => 'pc',
+                    'unit' => $itemDisplayUnit,
                     'line_total' => $lineTotal,
                 ]);
-
-                // Calculate Stock Qty
-                // Return qty[] is in PCS for carton/size products and in KG for weight products.
-                // In both cases WarehouseStock.total_pieces holds the same unit (pcs OR kg),
-                // so restore directly with $qty. (Previously kg/gm was wrongly multiplied by conv_factor.)
-                $stockQty = $qty;
 
                 // Update Stock (INCREMENT - goods coming back)
                 $stock = WarehouseStock::where('warehouse_id', $validated['warehouse_id'])
@@ -582,6 +604,295 @@ class SaleReturnController extends Controller
         });
 
         return view('admin_panel.sale.sale_return.index', compact('returns'));
+    }
+
+    /**
+     * Show form to create a direct / standalone Sale Return (Full Page)
+     */
+    public function createDirectReturn()
+    {
+        $customers = Customer::where('status', 'active')->orderBy('customer_name')->get();
+        if ($customers->isEmpty()) {
+            $customers = Customer::orderBy('customer_name')->get();
+        }
+        $warehouses = Warehouse::all();
+        $accounts = Account::whereHas('head', function($q) {
+            $q->whereIn('name', ['Cash', 'Bank']);
+        })->where('status', 1)->orderBy('title')->get();
+
+        $nextInvoice = \App\Models\InvoiceSeries::generateNextNo('SR');
+
+        return view('admin_panel.sale.sale_return.create_direct', compact('customers', 'warehouses', 'accounts', 'nextInvoice'));
+    }
+
+    /**
+     * Store direct sale return
+     */
+    public function storeDirectReturn(Request $request)
+    {
+        $validated = $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'warehouse_id' => 'required|exists:warehouses,id',
+            'return_date' => 'required|date',
+            'product_id' => 'required|array',
+            'product_id.*' => 'required|exists:products,id',
+            'color' => 'nullable|array',
+            'unit' => 'nullable|array',
+            'qty' => 'required|array',
+            'qty.*' => 'required|numeric|min:0.001',
+            'price' => 'required|array',
+            'price.*' => 'required|numeric|min:0',
+            'item_disc' => 'nullable|array',
+            'extra_discount' => 'nullable|numeric|min:0',
+            'return_reason' => 'nullable|string',
+            'refund_type' => 'nullable|string',
+            'payment_account_id' => 'nullable|array',
+            'payment_amount' => 'nullable|array',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $hasItems = false;
+            foreach ($request->product_id as $idx => $pId) {
+                if ((float)($request->qty[$idx] ?? 0) > 0) {
+                    $hasItems = true;
+                    break;
+                }
+            }
+            if (!$hasItems) {
+                throw new \Exception("Please enter a return quantity for at least one item.");
+            }
+
+            // Generate Next Invoice Series
+            $nextInvoice = $request->invoice_no ?: \App\Models\InvoiceSeries::generateNextNo('SR');
+            \App\Models\InvoiceSeries::incrementCounterForInvoice($nextInvoice);
+
+            $return = SaleReturn::create([
+                'sale_id' => null,
+                'return_invoice' => $nextInvoice,
+                'customer_id' => $validated['customer_id'],
+                'warehouse_id' => $validated['warehouse_id'],
+                'return_date' => $validated['return_date'],
+                'remarks' => $validated['return_reason'] ?? 'Direct Sale Return',
+                'status' => 'posted',
+            ]);
+
+            $now = Carbon::now();
+            $movements = [];
+            $subtotal = 0;
+            $totalItemDiscount = 0;
+
+            foreach ($request->product_id as $idx => $productId) {
+                $qty = (float) $request->qty[$idx];
+                if ($qty <= 0) continue;
+
+                $price = (float) $request->price[$idx];
+                $itemDisc = (float) ($request->item_disc[$idx] ?? 0);
+
+                $product = Product::find($productId);
+                $sizeMode = $product->size_mode ?? 'by_pieces';
+                $ppm2 = $product->m2_of_box ?? 0;
+
+                $rColor = $request->color[$idx] ?? null;
+                $vData = [];
+                if (!empty($rColor)) {
+                    $b64 = base64_decode($rColor, true);
+                    $vData = ($b64 !== false) ? json_decode($b64, true) : json_decode($rColor, true);
+                    if (!is_array($vData)) $vData = [];
+                }
+
+                $liveVariant = null;
+                if ($product && !empty($product->color)) {
+                    $prodVariants = json_decode($product->color, true);
+                    if (is_array($prodVariants)) {
+                        if (!empty($vData['barcode'])) {
+                            $liveVariant = collect($prodVariants)->firstWhere('barcode', $vData['barcode']);
+                        }
+                        if (!$liveVariant && !empty($vData['name'])) {
+                            $liveVariant = collect($prodVariants)->first(function($v) use ($vData) {
+                                $n1 = strtolower(trim($v['name'] ?? ''));
+                                $n2 = strtolower(trim($vData['name'] ?? ''));
+                                return $n1 === $n2 || ($n1 && $n2 && (str_contains($n1, $n2) || str_contains($n2, $n1)));
+                            });
+                        }
+                        if (!$liveVariant && !empty($vData['size']) && $vData['size'] !== '-') {
+                            $liveVariant = collect($prodVariants)->first(function($v) use ($vData) {
+                                $s1 = strtolower(trim($v['size'] ?? ''));
+                                $s2 = strtolower(trim($vData['size'] ?? ''));
+                                return $s1 === $s2 || ($s1 && $s2 && (str_starts_with($s1, $s2) || str_starts_with($s2, $s1)));
+                            });
+                        }
+                        if (!$liveVariant && count($prodVariants) === 1) {
+                            $liveVariant = $prodVariants[0];
+                        }
+                    }
+                }
+
+                $ppb = 1;
+                if ($liveVariant && !empty($liveVariant['conv_factor']) && (float)$liveVariant['conv_factor'] > 0) {
+                    $ppb = (float)$liveVariant['conv_factor'];
+                } elseif ($liveVariant && !empty($liveVariant['pieces_per_box']) && (float)$liveVariant['pieces_per_box'] > 0) {
+                    $ppb = (float)$liveVariant['pieces_per_box'];
+                } elseif (!empty($vData['conv_factor']) && (float)$vData['conv_factor'] > 0) {
+                    $ppb = (float)$vData['conv_factor'];
+                } elseif (!empty($vData['pieces_per_box']) && (float)$vData['pieces_per_box'] > 0) {
+                    $ppb = (float)$vData['pieces_per_box'];
+                } elseif (!empty($vData['weight_per_piece']) && (float)$vData['weight_per_piece'] > 0) {
+                    $ppb = (float)$vData['weight_per_piece'] / 1000.0;
+                } elseif ($product && (float)$product->pieces_per_box > 0) {
+                    $ppb = (float)$product->pieces_per_box;
+                }
+
+                if ($ppb <= 0) $ppb = 1;
+
+                $saleUnit = strtolower($request->unit[$idx] ?? '');
+                $variantUnit = strtolower($liveVariant['unit'] ?? $vData['unit'] ?? '');
+                $variantName = strtolower($liveVariant['name'] ?? $vData['name'] ?? '');
+
+                $isWeightMode = in_array($sizeMode, ['by_kg', 'by_gm']);
+                $isPcsUnit = in_array($saleUnit, ['pcs', 'pc', 'piece', 'pieces']) 
+                    || in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])
+                    || str_contains($variantName, '(pcs)');
+
+                $inputQty = $qty;
+                $itemDisplayUnit = 'pc';
+
+                if ($isWeightMode) {
+                    if ($isPcsUnit) {
+                        // Returned in pieces for a weight product: stock in warehouse is in KG
+                        $stockQty = $inputQty * $ppb;
+                        $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
+                        $itemDisplayUnit = 'pcs';
+                        $boxes = 0;
+                        $loosePieces = 0;
+                    } elseif ($saleUnit === 'gm') {
+                        $stockQty = $inputQty / 1000;
+                        $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
+                        $itemDisplayUnit = 'gm';
+                        $boxes = 0;
+                        $loosePieces = 0;
+                    } else {
+                        $stockQty = $inputQty;
+                        $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
+                        $itemDisplayUnit = 'kg';
+                        $boxes = 0;
+                        $loosePieces = 0;
+                    }
+                } elseif ($sizeMode === 'by_size') {
+                    $stockQty = $inputQty;
+                    $lineTotal = round(($ppm2 * $inputQty * $price) - $itemDisc, 2);
+                    $itemDisplayUnit = $saleUnit ?: 'pc';
+                    $boxes = floor($inputQty / ($ppb > 0 ? $ppb : 1));
+                    $loosePieces = fmod((float)$inputQty, (float)($ppb > 0 ? $ppb : 1));
+                } elseif ($sizeMode === 'by_cartons' || $sizeMode === 'by_carton') {
+                    if ($saleUnit === 'pcs' || $saleUnit === 'pc') {
+                        $stockQty = $inputQty;
+                        $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
+                        $itemDisplayUnit = 'pcs';
+                        $boxes = floor($inputQty / ($ppb > 0 ? $ppb : 1));
+                        $loosePieces = fmod((float)$inputQty, (float)($ppb > 0 ? $ppb : 1));
+                    } else {
+                        $stockQty = $inputQty * $ppb;
+                        $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
+                        $itemDisplayUnit = 'ctn';
+                        $boxes = floor($inputQty);
+                        $loosePieces = fmod((float)$inputQty, 1) * $ppb;
+                    }
+                } else {
+                    $stockQty = $inputQty;
+                    $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
+                    $itemDisplayUnit = $saleUnit ?: 'pc';
+                    $boxes = floor($inputQty / ($ppb > 0 ? $ppb : 1));
+                    $loosePieces = fmod((float)$inputQty, (float)($ppb > 0 ? $ppb : 1));
+                }
+
+                SaleReturnItem::create([
+                    'sale_return_id' => $return->id,
+                    'product_id' => $productId,
+                    'color' => $request->color[$idx] ?? null,
+                    'warehouse_id' => $validated['warehouse_id'],
+                    'qty' => $inputQty,
+                    'boxes' => $boxes + ($ppb > 0 ? ($loosePieces / $ppb) : 0),
+                    'loose_pieces' => $loosePieces,
+                    'price' => $price,
+                    'item_discount' => $itemDisc,
+                    'unit' => $itemDisplayUnit,
+                    'line_total' => $lineTotal,
+                ]);
+
+                // Update Stock (INCREMENT - goods returned into warehouse)
+                $stock = WarehouseStock::where('warehouse_id', $validated['warehouse_id'])
+                    ->where('product_id', $productId)
+                    ->lockForUpdate()
+                    ->first();
+
+                $qtyDiv = ($isWeightMode || in_array($sizeMode, ['by_feet', 'by_meter', 'by_pieces']) || $ppb <= 1) ? 1 : $ppb;
+
+                if ($stock) {
+                    $currentTotalPieces = $stock->total_pieces;
+                    if ($currentTotalPieces == 0 && $stock->quantity > 0) {
+                        $currentTotalPieces = $stock->quantity * $ppb;
+                    }
+                    $newTotalPieces = $currentTotalPieces + $stockQty;
+                    $stock->total_pieces = $newTotalPieces;
+                    $stock->quantity = $newTotalPieces / $qtyDiv;
+                    $stock->save();
+                } else {
+                    WarehouseStock::create([
+                        'warehouse_id' => $validated['warehouse_id'],
+                        'product_id' => $productId,
+                        'total_pieces' => $stockQty,
+                        'quantity' => $stockQty / $qtyDiv,
+                        'price' => 0
+                    ]);
+                }
+
+                // Movement Record
+                $movements[] = [
+                    'product_id' => $productId,
+                    'type' => 'in',
+                    'qty' => $stockQty,
+                    'ref_type' => 'SALE_RETURN',
+                    'ref_id' => $return->id,
+                    'note' => "Return #{$nextInvoice}",
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+
+                $subtotal += $lineTotal;
+                $totalItemDiscount += $itemDisc;
+            }
+
+            if (!empty($movements)) {
+                DB::table('stock_movements')->insert($movements);
+            }
+
+            $netAmount = ($subtotal - $totalItemDiscount) - ($request->extra_discount ?? 0);
+
+            // Direct returns purely adjust customer balance in ledger (Credit Note)
+            $return->update([
+                'bill_amount' => $subtotal,
+                'item_discount' => $totalItemDiscount,
+                'net_amount' => $netAmount,
+                'paid' => 0,
+                'balance' => $netAmount,
+            ]);
+
+            // Create Journal Voucher (Credit Note) -> Credits Customer Ledger!
+            $transactionService = app(\App\Services\TransactionService::class);
+            if (method_exists($transactionService, 'createSaleReturnVoucher')) {
+                $transactionService->createSaleReturnVoucher($return);
+            }
+
+            DB::commit();
+
+            return redirect()->route('sale.return.index')->with('success', "Sale return #{$nextInvoice} created successfully. Stock increased and Rs. " . number_format($netAmount, 2) . " credited to customer ledger.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Error creating return: ' . $e->getMessage());
+        }
     }
 
     /**

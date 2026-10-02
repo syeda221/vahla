@@ -54,12 +54,13 @@
                         <table class="table table-bordered" id="itemsTable">
                             <thead>
                                 <tr>
-                                    <th style="width: 35%;">Product</th>
-                                    <th style="width: 12%;">Stock</th>
+                                    <th style="width: 28%;">Product</th>
+                                    <th style="width: 12%;" class="text-center">Item Code</th>
+                                    <th style="width: 10%;">Stock</th>
                                     <th style="width: 10%;">Qty</th>
                                     <th style="width: 12%;">Price</th>
                                     <th style="width: 10%;">Discount %</th>
-                                    <th style="width: 15%;">Amount</th>
+                                    <th style="width: 12%;">Amount</th>
                                     <th style="width: 6%;"><i class="fas fa-trash"></i></th>
                                 </tr>
                             </thead>
@@ -86,6 +87,7 @@
                                          <input type="hidden" class="size-mode-hidden" value="{{ $item->product->size_mode ?? '' }}">
                                          <input type="hidden" class="pack-qty-hidden" value="{{ $item->product->pieces_per_box ?? 1 }}">
                                      </td>
+                                     <td><input type="text" class="form-control item-code-display text-center bg-light font-monospace" readonly value="{{ $item->product->item_code ?? '' }}" placeholder="—" tabindex="-1"></td>
                                      @php
                                          $stockRec = \App\Models\WarehouseStock::where('warehouse_id', $item->warehouse_id ?? 1)
                                              ->where('product_id', $item->product_id)->first();
@@ -286,6 +288,7 @@ $(document).ready(function() {
             '<input type="hidden" name="color[]" class="variant-data-hidden">' +
             '<input type="hidden" class="size-mode-hidden">' +
             '<input type="hidden" class="pack-qty-hidden" value="1"></td>' +
+            '<td><input type="text" class="form-control item-code-display text-center bg-light font-monospace" readonly placeholder="—" tabindex="-1"></td>' +
             '<td><input type="text" class="form-control stock-display text-center" readonly tabindex="-1"></td>' +
             '<td><input type="text" class="form-control display-qty-input" required value="1">' +
             '<input type="hidden" name="qty[]" class="real-qty-hidden" value="1">' +
@@ -314,6 +317,7 @@ $(document).ready(function() {
         var tr = $(this).closest('tr');
         var data = e.params.data;
         
+        tr.find('.item-code-display').val(data.sku || data.item_code || '');
         tr.find('.stock-display').val(data.stock !== undefined ? data.stock : 0);
         tr.find('.size-mode-hidden').val(data.size_mode || '');
         tr.find('.pack-qty-hidden').val(data.pieces_per_box || 1);

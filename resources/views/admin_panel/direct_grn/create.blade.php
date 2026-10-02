@@ -100,11 +100,12 @@
                     <table class="table table-hover table-bordered align-middle mb-0" id="itemsTable">
                         <thead class="table-light">
                             <tr class="text-uppercase small fw-bold text-muted">
-                                <th style="width: 40%;">Product</th>
+                                <th style="width: 30%;">Product</th>
+                                <th style="width: 14%;">Item Code</th>
                                 <th style="width: 12%;" class="text-center">Current Stock</th>
                                 <th style="width: 12%;" class="text-center">Receiving Qty</th>
-                                <th style="width: 15%;" class="text-end">Purch. Price</th>
-                                <th style="width: 15%;" class="text-end">Amount</th>
+                                <th style="width: 13%;" class="text-end">Purch. Price</th>
+                                <th style="width: 13%;" class="text-end">Amount</th>
                                 <th style="width: 6%;" class="text-center"><i class="fas fa-trash text-danger"></i></th>
                             </tr>
                         </thead>
@@ -119,6 +120,7 @@
                                     <input type="hidden" class="size-mode-hidden">
                                     <input type="hidden" class="pack-qty-hidden" value="1">
                                 </td>
+                                <td><input type="text" class="form-control item-code-display text-center bg-light font-monospace" readonly placeholder="—" tabindex="-1"></td>
                                 <td><input type="text" class="form-control stock-display text-center bg-light" readonly tabindex="-1"></td>
                                 <td>
                                     <input type="number" step="any" min="0.01" name="qty[]" class="form-control display-qty-input text-center fw-bold" required value="1">
@@ -246,6 +248,7 @@ $(document).ready(function() {
             '<input type="hidden" name="color[]" class="variant-data-hidden">' +
             '<input type="hidden" class="size-mode-hidden">' +
             '<input type="hidden" class="pack-qty-hidden" value="1"></td>' +
+            '<td><input type="text" class="form-control item-code-display text-center bg-light font-monospace" readonly placeholder="—" tabindex="-1"></td>' +
             '<td><input type="text" class="form-control stock-display text-center bg-light" readonly tabindex="-1"></td>' +
             '<td><input type="number" step="any" min="0.01" name="qty[]" class="form-control display-qty-input text-center fw-bold" required value="1"></td>' +
             '<td><input type="number" step="any" min="0" name="price[]" class="form-control price-input text-end fw-bold" required value="0"></td>' +
@@ -271,6 +274,7 @@ $(document).ready(function() {
         var tr = $(this).closest('tr');
         var data = e.params.data;
         
+        tr.find('.item-code-display').val(data.sku || data.item_code || '');
         tr.find('.stock-display').val(data.stock !== undefined ? data.stock : 0);
         tr.find('.size-mode-hidden').val(data.size_mode || '');
         tr.find('.pack-qty-hidden').val(data.pieces_per_box || 1);

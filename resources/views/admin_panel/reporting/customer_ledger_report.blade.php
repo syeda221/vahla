@@ -172,6 +172,9 @@
 
                     {{-- Last Buttons with X-Axis Gap --}}
                     <div class="d-flex align-items-center ms-auto" style="gap: 10px !important;">
+                        <a href="{{ route('sale.return.create_direct') }}" class="btn btn-outline-danger btn-sm px-3 fw-bold d-inline-flex align-items-center" style="height: 32px; border-radius: 6px; font-size: .78rem; margin-right: 8px !important;" title="Create Sale Return">
+                            <i class="fas fa-undo me-1"></i> Return
+                        </a>
                         <a href="#" id="btnCombinedLedger" class="btn btn-warning btn-sm px-3 fw-bold d-none align-items-center" style="height: 32px; border-radius: 6px; font-size: .78rem; margin-right: 8px !important;">
                             <i class="fas fa-link me-1"></i> Combined
                         </a>

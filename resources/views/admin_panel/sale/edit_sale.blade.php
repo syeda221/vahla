@@ -200,6 +200,55 @@
             border-spacing: 0 !important;
             width: 100%;
             margin-bottom: 0 !important;
+            min-width: 960px;
+        }
+
+        .sales-table thead th.col-product,
+        .sales-table tbody td.col-product {
+            width: 220px !important;
+            min-width: 180px !important;
+            max-width: 250px !important;
+            text-align: left !important;
+            padding-left: 8px !important;
+        }
+        .sales-table tbody td.col-product .select2-container {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        .sales-table tbody td.col-product .select2-selection__rendered {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            display: block !important;
+            max-width: 220px !important;
+        }
+        .sales-table thead th.col-code,
+        .sales-table tbody td.col-code {
+            width: 110px !important;
+            min-width: 105px !important;
+            max-width: 120px !important;
+            text-align: center !important;
+        }
+        .sales-table tbody td.col-code input.item-code-display {
+            width: 100% !important;
+            min-width: 100px !important;
+            font-family: 'JetBrains Mono', monospace !important;
+            font-size: 0.78rem !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.3px !important;
+            text-align: center !important;
+            padding: 2px 4px !important;
+            background-color: #f8fafc !important;
+            color: #334155 !important;
+        }
+        .sales-table thead th.col-stock,
+        .sales-table tbody td.col-stock {
+            width: 80px !important;
+            min-width: 75px !important;
+        }
+        .sales-table tbody td.col-stock input.stock {
+            font-size: 0.75rem !important;
+            padding: 2px 4px !important;
         }
 
         .sales-table thead th {
@@ -796,8 +845,9 @@
                                     <thead>
                                         <tr>
                                             <th style="width:30px;" class="text-center">#</th>
-                                            <th class="col-product" style="min-width: 160px;">PRODUCT</th>
-                                            <th class="col-stock" style="width: 60px;">STOCK</th>
+                                            <th class="col-product" style="width: 220px; min-width: 180px; max-width: 250px;">PRODUCT</th>
+                                            <th class="col-code" style="width: 110px; min-width: 105px;">CODE</th>
+                                            <th class="col-stock" style="width: 80px; min-width: 75px;">STOCK</th>
                                             <th class="col-qty" style="width: 85px;">QTY</th>
                                             <th class="col-size" style="width: 55px;">SIZE</th>
                                             <th class="col-color" style="width: 65px;">COLOR</th>
@@ -1047,7 +1097,7 @@
                                                     <td class="text-center fw-bold text-muted row-index" style="vertical-align:middle; font-size:0.75rem;">{{ $index + 1 }}</td>
 
                                                     <!-- PRODUCT -->
-                                                    <td class="col-product">
+                                                    <td class="col-product" style="width: 220px; min-width: 180px; max-width: 250px;">
                                                         <select class="form-select product" style="width:100%">
                                                             @if ($prod)
                                                                 <option value="{{ $item->product_id }}" selected>
@@ -1056,17 +1106,21 @@
                                                         </select>
                                                         <input type="hidden" class="product-id-hidden" name="product_id[]" value="{{ $item->product_id }}">
                                                         <input type="hidden" class="variant-data-hidden" name="color[]" value="{{ $item->color ?? '' }}">
-                                                        <input type="hidden" class="item-code-display" value="{{ $prod->item_code ?? '' }}">
                                                         <input type="hidden" class="size-h" value="{{ $prod->height ?? '-' }}">
                                                         <input type="hidden" class="size-w" value="{{ $prod->width ?? '-' }}">
                                                         <input type="hidden" class="size-mode-text" value="{{ $sizeMode }}">
                                                     </td>
 
+                                                    <!-- ITEM CODE -->
+                                                    <td class="col-code" style="width: 110px; min-width: 105px;">
+                                                        <input type="text" class="form-control item-code-display text-center input-readonly" readonly value="{{ $prod->item_code ?? '' }}" placeholder="Code" tabindex="-1" style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600;">
+                                                    </td>
+
                                                     <!-- STOCK -->
-                                                    <td class="col-stock">
+                                                    <td class="col-stock" style="width: 80px; min-width: 75px;">
                                                         <input type="text"
                                                             class="form-control stock text-center input-readonly" readonly
-                                                            value="{{ $selStockDisp }}" tabindex="-1">
+                                                            value="{{ $selStockDisp }}" tabindex="-1" style="font-size: 0.75rem;">
                                                         <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ $item->warehouse_id ?? (auth()->user()->warehouse_id ?? 1) }}">
                                                         <input type="hidden" class="variant-stock-value" value="{{ $selStockDisp }}">
                                                     </td>
@@ -1172,15 +1226,17 @@
                                         @else
                                             <tr>
                                                 <td class="text-center fw-bold text-muted row-index" style="vertical-align:middle; font-size:0.75rem;">1</td>
-                                                <td class="col-product">
+                                                <td class="col-product" style="width: 220px; min-width: 180px; max-width: 250px;">
                                                     <select class="form-select product" style="width:100%"><option value=""></option></select>
                                                     <input type="hidden" class="product-id-hidden" name="product_id[]">
                                                     <input type="hidden" class="variant-data-hidden" name="color[]">
-                                                    <input type="hidden" class="item-code-display">
                                                     <input type="hidden" class="size-h"><input type="hidden" class="size-w"><input type="hidden" class="size-mode-text">
                                                 </td>
-                                                <td class="col-stock">
-                                                    <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1">
+                                                <td class="col-code" style="width: 110px; min-width: 105px;">
+                                                    <input type="text" class="form-control item-code-display text-center input-readonly" readonly placeholder="Code" tabindex="-1" style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600;">
+                                                </td>
+                                                <td class="col-stock" style="width: 80px; min-width: 75px;">
+                                                    <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1" style="font-size: 0.75rem;">
                                                     <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ auth()->user()->warehouse_id ?? 1 }}">
                                                     <input type="hidden" class="variant-stock-value">
                                                 </td>

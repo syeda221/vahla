@@ -393,6 +393,8 @@ Route::middleware('auth')->group(function () {
 
     // Sale Return Routes - NEW SYSTEM
     Route::get('sale/return', [App\Http\Controllers\SaleReturnController::class, 'saleReturnIndex'])->middleware('permission:sales.view')->name('sale.return.index');
+    Route::get('sale/return/create-direct', [App\Http\Controllers\SaleReturnController::class, 'createDirectReturn'])->middleware('permission:sales.create')->name('sale.return.create_direct');
+    Route::post('sale/return/store-direct', [App\Http\Controllers\SaleReturnController::class, 'storeDirectReturn'])->middleware('permission:sales.create')->name('sale.return.store_direct');
     Route::get('sale/return/{id}/view', [App\Http\Controllers\SaleReturnController::class, 'viewReturn'])->middleware('permission:sales.view')->name('sale.return.view');
     Route::get('sale/return/{id}', [App\Http\Controllers\SaleReturnController::class, 'showReturnForm'])->middleware('permission:sales.create')->name('sale.return.show');
     Route::post('sale/return/store', [App\Http\Controllers\SaleReturnController::class, 'processSaleReturn'])->middleware('permission:sales.create')->name('sale.return.store');

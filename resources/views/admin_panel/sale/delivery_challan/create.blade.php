@@ -157,6 +157,9 @@
                                     <tr>
                                         <td>
                                             <div class="product-title">{{ $productTitle }}</div>
+                                            @if(optional($item->product)->item_code)
+                                                <span class="badge bg-light text-secondary border font-monospace mt-1" style="font-size: 11px;">{{ $item->product->item_code }}</span>
+                                            @endif
                                             <div class="stock-badge {{ $stockColor }} d-inline-block mt-1">
                                                 <i class="fas fa-cubes me-1"></i> Stock Available: {{ $availStr }} {{ $dispUnit }}
                                             </div>

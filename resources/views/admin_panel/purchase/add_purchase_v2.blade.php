@@ -324,15 +324,17 @@
             border-collapse: collapse !important;
             margin-bottom: 0 !important;
             width: 100% !important;
+            min-width: 980px;
             table-layout: auto !important;
         }
 
-        .col-product { width: 36%; }
-        .col-unit { width: 10%; text-align: center; }
-        .col-qty { width: 12%; text-align: center; }
-        .col-price { width: 13%; text-align: right; }
+        .col-product { width: 25%; min-width: 200px; }
+        .col-code { width: 12%; min-width: 110px; text-align: center; }
+        .col-unit { width: 9%; text-align: center; }
+        .col-qty { width: 10%; text-align: center; }
+        .col-price { width: 12%; text-align: right; }
         .col-disc { width: 8%; text-align: right; }
-        .col-disc-amt { width: 9%; text-align: right; }
+        .col-disc-amt { width: 8%; text-align: right; }
         .col-amount { width: 12%; text-align: right; }
         .col-action { width: 4%; text-align: center; }
 
@@ -490,6 +492,7 @@
                             <thead>
                                 <tr>
                                     <th class="col-product">Product</th>
+                                    <th class="col-code" style="width: 110px;">Item Code</th>
                                     <th class="col-unit">Unit</th>
                                     <th class="col-qty">Qty</th>
                                     <th class="col-price">Purchase Price</th>
@@ -504,7 +507,7 @@
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <td colspan="6" class="text-end fw-bold text-muted">Total Amount:</td>
+                                    <td colspan="7" class="text-end fw-bold text-muted">Total Amount:</td>
                                     <td class="text-end fw-bold fs-6 text-dark"><span id="totalAmount">0.00</span>
                                     </td>
                                     <td></td>
@@ -982,6 +985,9 @@
                         <input type="hidden" name="width[]" class="hidden-width" value="">
                         <input type="hidden" name="color[]" class="hidden-variant-data" value="">
                     </td>
+                    <td class="col-code text-center align-middle">
+                        <input type="text" class="form-control item-code-display text-center input-readonly" readonly placeholder="—" tabindex="-1" style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600; background-color: #f8fafc;">
+                    </td>
                     <td class="text-center align-middle">
                         <button type="button" class="btn btn-sm btn-outline-info fw-bold unit-toggle-btn py-0 px-2" data-unit="Pcs" title="Click to toggle unit (Carton ↔ Pcs / Kg ↔ Gm)" style="font-size:0.75rem; min-width: 55px; cursor: pointer;">Pcs</button>
                         <input type="hidden" name="unit[]" class="unit-input-val" value="Pcs">
@@ -1045,6 +1051,8 @@
                 $el.on('select2:select', function(e) {
                     const data = e.params.data;
                     const $row = $(this).closest('tr');
+
+                    $row.find('.item-code-display').val(data.sku || data.item_code || '');
 
                     let unitName = data.unit_name || 'Pcs';
                     const ppb = parseFloat(data.pieces_per_box) || 1;

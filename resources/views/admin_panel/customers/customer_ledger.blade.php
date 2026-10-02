@@ -33,6 +33,9 @@
                         <p class="text-muted mb-0">Track all customer transactions, invoices, and receipts.</p>
                     </div>
                     <div class="d-flex gap-2">
+                        <a href="{{ route('sale.return.create_direct', ['customer_id' => request('customer_id')]) }}" class="btn btn-outline-danger shadow-sm">
+                            <i class="bi bi-arrow-counterclockwise"></i> Create Sale Return
+                        </a>
                         @if(isset($selectedCustomer) && $selectedCustomer->linked_vendor_id)
                             <a href="{{ route('customers.combined_ledger', ['customer_id' => $selectedCustomer->id]) }}" class="btn btn-warning shadow-sm"><i class="bi bi-link-45deg"></i>
                                 View Combined Ledger</a>

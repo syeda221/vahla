@@ -344,10 +344,16 @@
                         <p class="text-muted mb-0 small">{{ $pageDesc }}</p>
                     </div>
                     <div class="sales-hdr-actions">
-                        <a class="btn btn-outline-danger px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
-                            href="{{ route('sale.return.index') }}" style="border-radius: 8px;">
-                            <i class="fas fa-undo"></i> Returns
-                        </a>
+                        <div class="btn-group shadow-sm">
+                            <a class="btn btn-outline-danger px-3 fw-medium d-inline-flex align-items-center justify-content-center gap-1"
+                                href="{{ route('sale.return.index') }}" style="border-radius: 8px 0 0 8px;">
+                                <i class="fas fa-undo"></i> Returns
+                            </a>
+                            <a class="btn btn-danger px-2 fw-medium d-inline-flex align-items-center justify-content-center"
+                                href="{{ route('sale.return.create_direct') }}" style="border-radius: 0 8px 8px 0;" title="Create Direct Sale Return">
+                                <i class="fas fa-plus"></i>
+                            </a>
+                        </div>
                         <a class="btn btn-outline-primary px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
                             href="{{ url('bookings') }}" style="border-radius: 8px;">
                             <i class="fas fa-bookmark"></i> Bookings
