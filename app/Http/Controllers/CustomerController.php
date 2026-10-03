@@ -182,7 +182,7 @@ class CustomerController extends Controller
     /**
      * Synchronize opening balance in CustomerLedger and JournalEntry.
      */
-    private function syncOpeningBalance(Customer $customer, float $newOpening)
+    public static function syncOpeningBalance(Customer $customer, float $newOpening)
     {
         try {
             $balanceService = app(\App\Services\BalanceService::class);

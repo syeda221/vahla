@@ -1,4 +1,3 @@
-
 <?php
 
 use App\Http\Controllers\AccountsHeadController;
@@ -7,6 +6,7 @@ use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerImportExportController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\DiscountController;
 use App\Http\Controllers\HomeController;
@@ -194,7 +194,19 @@ Route::middleware('auth')->group(function () {
 
     // Single customer detail
     Route::get('sale/customers/{id}', [CustomerController::class, 'show'])->middleware('permission:customers.view')->name('salecustomers.show');
-    // Cutomer create
+    // ── Customer Import / Export ──
+    Route::get('/customers/export', [CustomerImportExportController::class, 'export'])
+        ->middleware('permission:customers.view')->name('customers.export');
+    Route::get('/customers/template', [CustomerImportExportController::class, 'template'])
+        ->middleware('permission:customers.view')->name('customers.template');
+    Route::post('/customers/import/validate', [CustomerImportExportController::class, 'importValidate'])
+        ->middleware('permission:customers.create|customers.edit')->name('customers.import.validate');
+    Route::get('/customers/import/preview', [CustomerImportExportController::class, 'importPreview'])
+        ->middleware('permission:customers.create|customers.edit')->name('customers.import.preview');
+    Route::post('/customers/import/confirm', [CustomerImportExportController::class, 'importConfirm'])
+        ->middleware('permission:customers.create|customers.edit')->name('customers.import.confirm');
+
+    // Customer create & list
     Route::get('/customers', [CustomerController::class, 'index'])->middleware('permission:customers.view')->name('customers.index');
     Route::get('/customers/create', [CustomerController::class, 'create'])->middleware('permission:customers.create')->name('customers.create');
     Route::post('/customers/store', [CustomerController::class, 'store'])->middleware('permission:customers.create')->name('customers.store');

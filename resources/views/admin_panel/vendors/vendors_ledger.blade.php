@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Vendor - Ledger')
+
 @section('content')
 
 <style>

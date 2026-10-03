@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', ($account->title ?? 'Account') . ' - Ledger')
+
 @section('content')
     <style>
         .ledger-header {
@@ -29,6 +31,14 @@
         .table-ledger td {
             vertical-align: middle;
         }
+
+        @media print {
+            body { background: #fff !important; }
+            .no-print, header, .sidebar, .navbar, .rt_nav_header, footer, form, .btn, .card-footer {
+                display: none !important;
+            }
+            .card { border: none !important; box-shadow: none !important; }
+        }
     </style>
 
     <div class="main-content">
@@ -50,7 +60,10 @@
                                 {{ number_format(abs($account->current_balance), 2) }}
                                 <small class="fs-6 text-muted">{{ $account->current_balance >= 0 ? 'Dr' : 'Cr' }}</small>
                             </h3>
-                            <span class="badge bg-secondary">Current Balance</span>
+                            <div class="d-flex align-items-center justify-content-end gap-2 mt-1">
+                                <span class="badge bg-secondary">Current Balance</span>
+                                <button type="button" onclick="printAccountLedger()" class="btn btn-sm btn-outline-primary"><i class="bi bi-printer"></i> Print</button>
+                            </div>
                         </div>
                     </div>
 
@@ -182,3 +195,20 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    function printAccountLedger() {
+        let name = "{{ addslashes($account->title ?? 'Account') }}";
+        let cleanName = name.replace(/[\/\\:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+        document.title = (cleanName || 'Account') + ' - Ledger';
+        window.print();
+    }
+
+    window.addEventListener('beforeprint', function() {
+        let name = "{{ addslashes($account->title ?? 'Account') }}";
+        let cleanName = name.replace(/[\/\\:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+        document.title = (cleanName || 'Account') + ' - Ledger';
+    });
+</script>
+@endpush

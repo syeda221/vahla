@@ -1,5 +1,15 @@
 @extends('admin_panel.layout.app')
 
+@php
+    $selectedCust = null;
+    if (request('customer_id')) {
+        $selectedCust = $customers->firstWhere('id', request('customer_id'));
+    }
+    $pageTitle = $selectedCust ? ($selectedCust->customer_name . ' - Ledger') : 'Customer - Ledger';
+@endphp
+
+@section('title', $pageTitle)
+
 @section('content')
     <style>
         .ledger-card {
@@ -20,6 +30,15 @@
             color: #6c757d;
             font-weight: 700;
         }
+
+        @media print {
+            body { background: #fff !important; }
+            .no-print, header, .sidebar, .navbar, .rt_nav_header, footer, form, .btn, .d-flex.justify-content-between.align-items-center.mb-4 > div:last-child {
+                display: none !important;
+            }
+            .card { border: none !important; box-shadow: none !important; }
+            .table-ledger th { background-color: #eee !important; color: #000 !important; }
+        }
     </style>
 
     <div class="main-content">
@@ -32,7 +51,9 @@
                         <h4 class="mb-1 text-primary"><i class="bi bi-people"></i> Customer Ledger (Statement)</h4>
                         <p class="text-muted mb-0">Track all customer transactions, invoices, and receipts.</p>
                     </div>
-                    <div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" onclick="printCustomerLedger()" class="btn btn-outline-primary"><i class="bi bi-printer"></i>
+                            Print</button>
                         <a href="{{ route('view_all') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i>
                             Back to Accounts</a>
                     </div>
@@ -173,6 +194,31 @@
 
 @push('scripts')
     <script>
+        function printCustomerLedger() {
+            let custName = "{{ $selectedCust ? addslashes($selectedCust->customer_name) : '' }}";
+            if (!custName && $('select[name="customer_id"]').length) {
+                let optText = $('select[name="customer_id"] option:selected').text();
+                if (optText && !optText.includes('-- All')) {
+                    custName = optText.trim();
+                }
+            }
+            let cleanName = (custName || 'Customer').replace(/[\/\\:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+            document.title = (cleanName || 'Customer') + ' - Ledger';
+            window.print();
+        }
+
+        window.addEventListener('beforeprint', function() {
+            let custName = "{{ $selectedCust ? addslashes($selectedCust->customer_name) : '' }}";
+            if (!custName && $('select[name="customer_id"]').length) {
+                let optText = $('select[name="customer_id"] option:selected').text();
+                if (optText && !optText.includes('-- All')) {
+                    custName = optText.trim();
+                }
+            }
+            let cleanName = (custName || 'Customer').replace(/[\/\\:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+            document.title = (cleanName || 'Customer') + ' - Ledger';
+        });
+
         $(document).ready(function() {
             // Init Select2 if available
             if ($('.select2').length > 0) {

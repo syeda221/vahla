@@ -285,7 +285,7 @@
     <!--=========================*
               Page Title
     *===========================-->
-    <title>{{ \App\Models\Setting::get('company_name', 'prowave technogies') }}</title>
+    <title>@yield('title', \App\Models\Setting::get('company_name', 'prowave technogies'))</title>
 
     <!--=========================*
                 Favicon

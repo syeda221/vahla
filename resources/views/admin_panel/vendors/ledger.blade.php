@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', ($vendor->name ?? 'Vendor') . ' - Ledger')
+
 @section('content')
 
 <style>
@@ -291,7 +293,7 @@
                         <i class="fas fa-filter me-1"></i> Filter
                     </button>
                     <a href="{{ route('vendor.ledger', $vendor->id) }}" class="btn btn-outline-secondary btn-filter-reset">Reset</a>
-                    <button type="button" onclick="window.print()" class="btn btn-light btn-filter-print" title="Print Ledger">
+                    <button type="button" onclick="printVendorLedger()" class="btn btn-light btn-filter-print" title="Print Ledger">
                         <i class="fas fa-print"></i>
                     </button>
                 </div>
@@ -456,3 +458,20 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+    function printVendorLedger() {
+        let name = "{{ addslashes($vendor->name ?? 'Vendor') }}";
+        let cleanName = name.replace(/[\/\\:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+        document.title = (cleanName || 'Vendor') + ' - Ledger';
+        window.print();
+    }
+
+    window.addEventListener('beforeprint', function() {
+        let name = "{{ addslashes($vendor->name ?? 'Vendor') }}";
+        let cleanName = name.replace(/[\/\\:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+        document.title = (cleanName || 'Vendor') + ' - Ledger';
+    });
+</script>
+@endpush

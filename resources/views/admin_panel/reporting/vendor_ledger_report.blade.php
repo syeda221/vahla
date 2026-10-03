@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Vendor - Ledger')
+
 @section('content')
 <style>
     /* Standardized Sale Report Pattern Styling */
@@ -459,7 +461,32 @@
                 loadLedger();
             });
 
-            $('.btnPrintReport').on('click', () => window.print());
+            function updateReportTitle(vendorName) {
+                let name = vendorName;
+                if (!name) {
+                    if ($('#printVendName').length && $('#printVendName').text().trim()) {
+                        name = $('#printVendName').text().trim();
+                    } else if ($('.vendorSelect option:selected').length) {
+                        name = $('.vendorSelect option:selected').text().replace(/^--\s*|\s*--$/g, '').trim();
+                    }
+                }
+                if (!name) {
+                    name = 'Vendor';
+                }
+                let cleanName = name.replace(/[\/\\:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+                let finalTitle = cleanName + ' - Ledger';
+                document.title = finalTitle;
+                return finalTitle;
+            }
+
+            $('.btnPrintReport').on('click', function() {
+                updateReportTitle();
+                window.print();
+            });
+
+            window.addEventListener('beforeprint', function() {
+                updateReportTitle();
+            });
 
             function loadLedger() {
                 let vid = $(".vendorSelect").val();
@@ -479,6 +506,8 @@
 
                     let displayStart = formatDisplayDate(start);
                     let displayEnd = formatDisplayDate(end);
+
+                    updateReportTitle(res.vendor ? res.vendor.name : null);
 
                     // Build Header
                     $("#ledgerHeader").html(`

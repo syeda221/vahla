@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Customer - Ledger')
+
 @section('content')
 <style>
     /* Standardized Sale Report Pattern Styling */
@@ -494,7 +496,32 @@
                 loadLedger();
             });
 
-            $('.btnPrintReport').on('click', () => window.print());
+            function updateReportTitle(customerName) {
+                let name = customerName;
+                if (!name) {
+                    if ($('#printCustName').length && $('#printCustName').text().trim()) {
+                        name = $('#printCustName').text().trim();
+                    } else if ($('.customerSelect option:selected').length) {
+                        name = $('.customerSelect option:selected').text().replace(/^--\s*|\s*--$/g, '').trim();
+                    }
+                }
+                if (!name) {
+                    name = 'Customer';
+                }
+                let cleanName = name.replace(/[\/\\:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+                let finalTitle = cleanName + ' - Ledger';
+                document.title = finalTitle;
+                return finalTitle;
+            }
+
+            $('.btnPrintReport').on('click', function() {
+                updateReportTitle();
+                window.print();
+            });
+
+            window.addEventListener('beforeprint', function() {
+                updateReportTitle();
+            });
 
             function loadLedger() {
                 let zid = $(".zoneSelect").val();
@@ -516,6 +543,8 @@
 
                     let displayStart = formatDisplayDate(start);
                     let displayEnd = formatDisplayDate(end);
+
+                    updateReportTitle(res.customer ? res.customer.customer_name : null);
 
                     // Build Header
                     $("#ledgerHeader").html(`
