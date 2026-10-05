@@ -37,7 +37,7 @@
 
         .invoice-page {
             max-width: 210mm;
-            min-height: 148mm;
+            min-height: auto;
             margin: 24px auto;
             background: #ffffff;
             padding: 30px;
@@ -342,10 +342,6 @@
                 </tr>
             </thead>
             <tbody>
-                @php
-                    $emptyRows = max(0, 15 - count($dc->items)); 
-                @endphp
-
                 @foreach ($dc->items as $item)
                     @php
                         $productTitle = optional($item->product)->item_name ?? (optional($item->saleItem)->product_name ?? 'Unknown Item');
@@ -405,18 +401,6 @@
                         
                     </tr>
                 @endforeach
-                
-                @for($i=0; $i<$emptyRows; $i++)
-                    <tr>
-                        <td>&nbsp;</td>
-                        <td class="desc-col"></td>
-                        <td></td>
-                        <td class="rate-col"></td>
-                        <td></td>
-                        </tr>
-                @endfor
-                
-                
             </tbody>
         </table>
 

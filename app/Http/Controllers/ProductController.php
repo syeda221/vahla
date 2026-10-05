@@ -1126,8 +1126,9 @@ class ProductController extends Controller
         $categories = Category::select('id', 'name')->get();
         $units = Unit::select('id', 'name')->get();
         $brands = Brand::select('id', 'name')->get();
+        $itemCodeSeries = \App\Models\ItemCodeSeries::all();
 
-        return view('admin_panel.product.create', compact('categories', 'units', 'brands'));
+        return view('admin_panel.product.create', compact('categories', 'units', 'brands', 'itemCodeSeries'));
     }
 
     // ===== Dependent subcategories =====
@@ -1286,8 +1287,41 @@ class ProductController extends Controller
         $userId = Auth::id();
 
         // Auto item_code
-        $lastProduct = Product::orderBy('id', 'desc')->first();
-        $nextCode = $lastProduct ? ('ITEM-'.str_pad($lastProduct->id + 1, 4, '0', STR_PAD_LEFT)) : 'ITEM-0001';
+        $prefix = $request->input('item_code_prefix', 'ITEM-');
+        $number = $request->input('item_code_number');
+
+        if (!empty($number)) {
+            $nextCode = str_starts_with($number, $prefix) ? $number : $prefix . $number;
+            
+            // Explicit Validation for Duplicates
+            if (\App\Models\Product::where('item_code', $nextCode)->exists()) {
+                if ($request->wantsJson()) {
+                    return response()->json(['status' => 'error', 'errors' => ['item_code_number' => ['Item code ' . $nextCode . ' already exists.']]], 422);
+                }
+                return redirect()->back()->withErrors(['item_code_number' => 'Item code ' . $nextCode . ' already exists. Please choose a different one.'])->withInput();
+            }
+            
+            // Update the series next_number if needed
+            $series = \App\Models\ItemCodeSeries::firstOrCreate(['prefix' => $prefix], ['next_number' => 1]);
+            // Extract the number part
+            $numPart = str_replace($prefix, '', $nextCode);
+            if (is_numeric($numPart) && (int)$numPart >= $series->next_number) {
+                $series->next_number = (int)$numPart + 1;
+                $series->save();
+            }
+        } else {
+            $series = \App\Models\ItemCodeSeries::firstOrCreate(
+                ['prefix' => $prefix],
+                ['next_number' => 1]
+            );
+
+            do {
+                $nextCode = $prefix . str_pad($series->next_number, 4, '0', STR_PAD_LEFT);
+                $series->next_number++;
+            } while (\App\Models\Product::where('item_code', $nextCode)->exists());
+            
+            $series->save();
+        }
 
         // Image upload
         if ($request->hasFile('image')) {
@@ -1858,11 +1892,32 @@ class ProductController extends Controller
                 $final_color = Product::where('id', $id)->value('color');
             }
 
+            if ($request->has('item_code_prefix') && $request->has('item_code_number')) {
+                $num = $request->item_code_number;
+                $pref = $request->item_code_prefix;
+                $item_code = str_starts_with($num, $pref) ? $num : $pref . $num;
+                
+                if (\App\Models\Product::where('item_code', $item_code)->where('id', '!=', $id)->exists()) {
+                    return redirect()->back()->withErrors(['item_code_number' => 'Item code ' . $item_code . ' already exists.'])->withInput();
+                }
+                
+                $series = \App\Models\ItemCodeSeries::where('prefix', $pref)->first();
+                if ($series) {
+                    $numPart = str_replace($pref, '', $item_code);
+                    if (is_numeric($numPart) && (int)$numPart >= $series->next_number) {
+                        $series->next_number = (int)$numPart + 1;
+                        $series->save();
+                    }
+                }
+            } else {
+                $item_code = $request->item_code ?? Product::where('id', $id)->value('item_code');
+            }
+
             Product::where('id', $id)->update([
                 'creater_id' => $userId,
                 'category_id' => $request->category_id,
                 'sub_category_id' => $request->sub_category_id,
-                'item_code' => $request->item_code ?? Product::where('id', $id)->value('item_code'),
+                'item_code' => $item_code,
                 'item_name' => $request->product_name,
                 'barcode_path' => $request->barcode_path ?? rand(100000000000, 999999999999),
                 'unit_id' => $request->unit,
@@ -2246,7 +2301,8 @@ class ProductController extends Controller
             }
         }
 
-        return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'variants'));
+        $itemCodeSeries = \App\Models\ItemCodeSeries::all();
+        return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'variants', 'itemCodeSeries'));
     }
 
     // ===== Barcode view =====

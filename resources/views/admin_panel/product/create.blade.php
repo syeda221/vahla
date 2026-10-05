@@ -556,9 +556,24 @@
                                 {{-- Sub-grid for left content, image on the right --}}
                                 <div class="col-md-9">
                                     <div class="row g-3">
-                                        <div class="col-md-12">
+                                        <div class="col-md-8">
                                             <label class="form-label-pro">Product Name <span class="text-danger">*</span></label>
                                             <input type="text" class="form-control-pro fs-6 fw-bold" name="product_name" required placeholder="e.g. Ceramic Floor Tile 60x60">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label-pro text-uppercase fw-bold text-muted" style="font-size:11px;">Item Code Series</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select text-white fw-bold" name="item_code_prefix" style="max-width: 100px; background-color: #0ea5e9; border: 1px solid #0ea5e9; cursor: pointer; padding-left: 8px; padding-right: 24px;" id="itemCodePrefixDropdown" onchange="updateNextNumber()">
+                                                    @foreach($itemCodeSeries as $series)
+                                                        <option value="{{ $series->prefix }}" data-next="{{ $series->prefix }}{{ str_pad($series->next_number, 4, '0', STR_PAD_LEFT) }}" {{ $series->is_default ? 'selected' : '' }}>{{ trim($series->prefix, '-') }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <input type="text" class="form-control text-center fw-bold text-dark" id="itemCodePreview" name="item_code_number" readonly placeholder="Auto" style="border-color: #0ea5e9; border-left: none;">
+                                                <button class="btn btn-light" style="border: 1px solid #0ea5e9; border-left: none; color: #475569;" type="button" title="Edit Number" onclick="document.getElementById('itemCodePreview').removeAttribute('readonly'); document.getElementById('itemCodePreview').focus();">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-light" style="border: 1px solid #0ea5e9; border-left: none; color: #475569;" type="button" title="Add Series" onclick="showNewSeriesModal()">+</button>
+                                            </div>
                                         </div>
 
                                         <div class="col-md-3">
@@ -1696,3 +1711,40 @@
 
     </script>
 @endsection
+
+
+<!-- New Series Modal -->
+<div class='modal fade' id='newSeriesModal' tabindex='-1'>
+  <div class='modal-dialog modal-sm'>
+    <div class='modal-content'>
+      <div class='modal-header'>
+        <h5 class='modal-title'>Add Series</h5>
+        <button type='button' class='btn-close' data-bs-dismiss='modal'></button>
+      </div>
+      <div class='modal-body'>
+        <form id='newSeriesForm' method='POST' action='{{ route("item-code-series.store") }}'>
+          @csrf
+          <div class='mb-2'>
+            <label>Prefix (e.g. PRD-)</label>
+            <input type='text' name='prefix' class='form-control' required>
+          </div>
+          <button type='submit' class='btn btn-primary w-100'>Save Series</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function showNewSeriesModal() {
+  new bootstrap.Modal(document.getElementById('newSeriesModal')).show();
+}
+function updateNextNumber() {
+  var s = document.getElementById('itemCodePrefixDropdown');
+  if(!s) return;
+  var opt = s.options[s.selectedIndex];
+  if(opt) {
+    document.getElementById('itemCodePreview').value = opt.getAttribute('data-next') || '';
+  }
+}
+document.addEventListener('DOMContentLoaded', updateNextNumber);
+</script>

@@ -947,22 +947,22 @@
                                                                 Customer</a></li>
                                                     @endcan
                                                     @can('customer_types.view')
-                                                        <li><a href="{{ route('customer-types.index') }}"><i class="fas fa-tags"></i>
-                                                                Customer Types</a></li>
+                                                        <!-- <li><a href="{{ route('customer-types.index') }}"><i class="fas fa-tags"></i>
+                                                                Customer Types</a></li> -->
                                                     @endcan
                                                     @can('receipts.voucher.view')
-                                                        <li><a href="{{ route('all_recepit_vochers') }}"><i
+                                                        <!-- <li><a href="{{ route('all_recepit_vochers') }}"><i
                                                                     class="fas fa-file-invoice-dollar"></i>
-                                                                Receipt Voucher</a></li>
+                                                                Receipt Voucher</a></li> -->
                                                     @endcan
                                                     {{--
                                                     @can('zones.view')
-                                                        <li><a href="{{ url('zone') }}"><i class="fas fa-map-marker-alt"></i>
-                                                                Zone</a></li>
+                                                        <!-- <li><a href="{{ url('zone') }}"><i class="fas fa-map-marker-alt"></i>
+                                                                Zone</a></li> -->
                                                     @endcan
                                                     @can('sales.officers.view')
-                                                        <li><a href="{{ url('sales-officers') }}"><i class="fas fa-user-tie"></i>
-                                                                Sales Officer</a></li>
+                                                        <!-- <li><a href="{{ url('sales-officers') }}"><i class="fas fa-user-tie"></i>
+                                                                Sales Officer</a></li> -->
                                                     @endcan
                                                     --}}
                                                 </ul>

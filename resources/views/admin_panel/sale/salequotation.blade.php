@@ -44,7 +44,7 @@
 
         .invoice-page {
             max-width: 210mm;
-            min-height: 148mm;
+            min-height: auto;
             margin: 24px auto;
             background: #ffffff;
             padding: 30px;
@@ -342,10 +342,6 @@
                 </tr>
             </thead>
             <tbody>
-                @php
-                    $emptyRows = max(0, 15 - count($saleItems)); 
-                @endphp
-
                 @foreach ($saleItems as $index => $item)
                     @php
                         $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
@@ -419,19 +415,7 @@
                     </tr>
                 @endforeach
                 
-                @for($i=0; $i<$emptyRows; $i++)
-                    <tr>
-                        <td>&nbsp;</td>
-                        <td class="desc-col"></td>
-                        <td></td>
-                        <td class="rate-col"></td>
-                        <td></td>
-                        <td class="amount-col"></td>
-                    </tr>
-                @endfor
-                
-                
-            <tr class="total-row">
+                <tr class="total-row">
                     <td colspan="5" style="text-align: right; font-weight: bold; padding-right: 15px;">TOTAL</td>
                     <td class="amount-col" style="text-align: right; font-weight: bold; color: #1e40af;">{{ number_format($sale->total_net, 2) }}</td>
                 </tr>

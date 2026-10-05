@@ -36,7 +36,7 @@
 
         .invoice-page {
             max-width: 210mm;
-            min-height: 148mm;
+            min-height: auto;
             margin: 24px auto;
             background: #ffffff;
             padding: 30px;
@@ -325,10 +325,6 @@
                 </tr>
             </thead>
             <tbody>
-                @php
-                    $emptyRows = max(0, 15 - count($saleItems)); 
-                @endphp
-
                 @foreach ($saleItems as $item)
                     @php
                         $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
@@ -401,18 +397,6 @@
                         
                     </tr>
                 @endforeach
-                
-                @for($i=0; $i<$emptyRows; $i++)
-                    <tr>
-                        <td>&nbsp;</td>
-                        <td class="desc-col"></td>
-                        <td></td>
-                        <td class="rate-col"></td>
-                        <td></td>
-                        </tr>
-                @endfor
-                
-                
             </tbody>
         </table>
 

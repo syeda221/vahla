@@ -644,3 +644,28 @@ Route::get('/notifications/fetch', [\App\Http\Controllers\SystemNotificationCont
 require __DIR__.'/auth.php';
 
 require __DIR__.'/hr.php';
+
+Route::post('/item-code-series', function(Illuminate\Http\Request $request) {
+    $prefix = $request->prefix;
+    if (!str_ends_with($prefix, '-')) {
+        $prefix .= '-';
+    }
+    
+    // validate after modifying
+    if(\App\Models\ItemCodeSeries::where('prefix', $prefix)->exists()) {
+        return back()->withErrors(['prefix' => 'This series already exists.']);
+    }
+    
+    // Find highest existing number for this prefix in products
+    $existingMax = \App\Models\Product::where('item_code', 'LIKE', $prefix.'%')
+                    ->pluck('item_code')
+                    ->map(function($code) use ($prefix) {
+                        return (int) str_replace($prefix, '', $code);
+                    })
+                    ->max();
+                    
+    $next_number = $existingMax ? $existingMax + 1 : 1;
+    
+    \App\Models\ItemCodeSeries::create(['prefix' => $prefix, 'next_number' => $next_number]);
+    return back()->with('success', 'Series created');
+})->name('item-code-series.store');
