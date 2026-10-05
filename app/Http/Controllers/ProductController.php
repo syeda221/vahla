@@ -139,7 +139,8 @@ class ProductController extends Controller
             ->where(function ($q) use ($term) {
                 $q->where('item_name', 'like', "%{$term}%")
                     ->orWhere('item_code', 'like', "%{$term}%")
-                    ->orWhere('barcode_path', 'like', "%{$term}%");
+                    ->orWhere('barcode_path', $term)
+                    ->orWhere('color', 'like', "%\"barcode\":\"{$term}\"%");
             });
 
         $products = $query->paginate(10); // Lazy loading (10 per request)
@@ -462,6 +463,8 @@ class ProductController extends Controller
             ->when($term, function ($query) use ($term) {
                 $query->where('item_name', 'like', "%{$term}%")
                     ->orWhere('item_code', 'like', "%{$term}%")
+                    ->orWhere('barcode_path', $term)
+                    ->orWhere('color', 'like', "%\"barcode\":\"{$term}\"%")
                     ->orWhereHas('category_relation', fn ($q) => $q->where('name', 'like', "%{$term}%"))
                     ->orWhereHas('sub_category_relation', fn ($q) => $q->where('name', 'like', "%{$term}%"))
                     ->orWhereHas('brand', fn ($q) => $q->where('name', 'like', "%{$term}%"));

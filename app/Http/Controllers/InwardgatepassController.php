@@ -282,7 +282,9 @@ class InwardgatepassController extends Controller
         $products = Product::with('brand')
             ->where(function ($x) use ($q) {
                 $x->where('item_name', 'like', "%{$q}%")
-                    ->orWhere('item_code', 'like', "%{$q}%");
+                    ->orWhere('item_code', 'like', "%{$q}%")
+                    ->orWhere('barcode_path', $q)
+                    ->orWhere('color', 'like', "%\"barcode\":\"{$q}\"%");
             })
             ->limit(10)
             ->get();

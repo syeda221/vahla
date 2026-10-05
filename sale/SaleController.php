@@ -48,7 +48,8 @@ class SaleController extends Controller
             ->where(function ($query) use ($q) {
                 $query->where('products.item_name', 'like', "%{$q}%")
                     ->orWhere('products.item_code', 'like', "%{$q}%")
-                    ->orWhere('products.barcode_path', 'like', "%{$q}%");
+                    ->orWhere('products.barcode_path', $q)
+                    ->orWhere('products.color', 'like', "%\"barcode\":\"{$q}\"%");
             })
             ->select(
                 'products.*',

@@ -205,7 +205,9 @@ class WarehouseStockController extends Controller
             ->select('id', 'item_name', 'item_code', 'pieces_per_box', 'image')
             ->when($term, function ($query) use ($term) {
                 $query->where('item_name', 'like', "%{$term}%")
-                    ->orWhere('item_code', 'like', "%{$term}%");
+                    ->orWhere('item_code', 'like', "%{$term}%")
+                    ->orWhere('barcode_path', $term)
+                    ->orWhere('color', 'like', "%\"barcode\":\"{$term}\"%");
             })
             ->limit(20)
             ->get();
