@@ -217,24 +217,26 @@
             width: 44px;
             height: 44px;
             border-radius: 12px;
-            background: var(--pos-blue-soft);
-            color: var(--pos-blue);
+            background: #0A2540;
+            color: #FFFFFF;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 20px;
             flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(10, 37, 64, 0.25);
         }
         .sale-title-main h5 {
-            font-size: 19px;
+            font-size: 22px;
             font-weight: 800;
-            letter-spacing: -.3px;
-            color: var(--pos-text);
+            letter-spacing: -.4px;
+            color: #0A2540;
             margin-bottom: 2px;
         }
         .sale-subtitle {
             font-size: 13px;
             color: var(--pos-muted);
+            font-weight: 500;
         }
 
         /* ---------- SALE TYPE SEGMENTED TOGGLE ---------- */
@@ -242,14 +244,14 @@
             display: flex;
             height: var(--pos-input-h);
             background: #F1F5F9;
-            border: 1px solid var(--pos-border);
-            border-radius: 8px;
+            border: 1px solid #CBD5E1;
+            border-radius: 10px;
             padding: 3px;
             width: 100%;
         }
         .seg-toggle .btn {
             flex: 1;
-            border-radius: 6px;
+            border-radius: 8px;
             border: none;
             font-size: 13px;
             font-weight: 600;
@@ -258,28 +260,36 @@
             justify-content: center;
             gap: 6px;
             padding: 0 10px;
+            transition: all .15s ease;
         }
         .seg-toggle .btn.btn-outline-primary {
             background: transparent;
+            color: #475569;
         }
-        .seg-toggle .btn-outline-primary:hover {
+        .seg-toggle .btn.btn-outline-primary:hover {
             background: rgba(37, 99, 235, .08);
+            color: var(--pos-blue);
         }
 
         /* ---------- INVOICE GROUP ---------- */
         .invoice-group {
             flex-wrap: nowrap;
+            border: 1px solid #CBD5E1;
+            border-radius: 10px;
+            background: #ffffff;
+            overflow: hidden;
+            height: var(--pos-input-h);
         }
         .invoice-group .btn-prefix {
-            height: var(--pos-input-h);
-            border: 1px solid var(--pos-border);
-            border-right: none;
+            height: 100%;
+            border: none;
+            border-right: 1px solid #E2E8F0 !important;
             background: #F8FAFC;
-            color: var(--pos-text);
+            color: #0A2540;
             font-weight: 700;
-            font-size: 13px;
-            border-radius: 8px 0 0 8px;
-            padding: 0 12px;
+            font-size: 12.5px;
+            border-radius: 0;
+            padding: 0 10px;
             white-space: nowrap;
             display: inline-flex;
             align-items: center;
@@ -289,77 +299,75 @@
             background: #F1F5F9;
         }
         .invoice-group #inputInvoiceNo {
-            border-radius: 0;
-            border-left: none;
-            border-right: none;
-            font-family: Consolas, 'JetBrains Mono', monospace;
+            border: none !important;
+            border-radius: 0 !important;
+            font-family: inherit;
             font-size: 13.5px;
             font-weight: 700 !important;
+            color: #0A2540;
+            height: 100% !important;
+            background: #ffffff !important;
         }
         .invoice-group .btn-refresh {
-            height: var(--pos-input-h);
-            border: 1px solid var(--pos-border);
-            border-left: none;
+            height: 100%;
+            border: none;
             background: #ffffff;
             color: var(--pos-muted);
-            border-radius: 0 8px 8px 0;
-            padding: 0 12px;
+            border-radius: 0;
+            padding: 0 10px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             transition: all .15s ease;
         }
         .invoice-group .btn-refresh:hover {
-            background: #F1F5F9;
+            background: #F8FAFC;
             color: var(--pos-blue);
         }
 
         /* ---------- CUSTOMER BALANCE CARD ---------- */
         .cust-bal-card {
-            background: linear-gradient(180deg, #EEF6FF 0%, #F7FBFF 70%, #FFFFFF 100%);
-            border: 1px solid #CFE2FA;
-            border-radius: 10px;
-            padding: 8px 12px;
+            background: #FFFFFF;
+            border: 1px solid #DBEAFE;
+            border-radius: 14px;
+            padding: 16px 18px;
             box-sizing: border-box;
-            height: 136px;
-            min-height: 136px;
-            max-height: 136px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px -4px rgba(37, 99, 235, .12);
+            box-shadow: 0 4px 15px rgba(37, 99, 235, .04);
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: space-between;
+            min-height: 140px;
         }
         .cb-head {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             justify-content: space-between;
             gap: 8px;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
         }
         .cb-id {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             min-width: 0;
         }
         .cb-avatar {
-            width: 30px;
-            height: 30px;
-            border-radius: 9px;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
             background: var(--pos-blue);
             color: #FFFFFF;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 13px;
+            font-size: 15px;
             flex-shrink: 0;
-            box-shadow: 0 2px 6px -2px rgba(37, 99, 235, .45);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, .3);
         }
         .cb-name {
-            font-size: 13px;
+            font-size: 15px;
             font-weight: 700;
-            color: var(--pos-text);
+            color: #0A2540;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -375,12 +383,12 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 6px;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
         .cb-ext {
-            background: #FFFFFF;
-            border: 1px solid #E3EEFC;
-            border-radius: 7px;
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
             padding: 4px 7px;
         }
         .cb-ext-label {
@@ -388,7 +396,7 @@
             text-transform: uppercase;
             letter-spacing: .3px;
             font-weight: 600;
-            color: #5B84C4;
+            color: #64748B;
             margin-bottom: 1px;
         }
         .cb-ext-val {
@@ -402,38 +410,42 @@
         .cb-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
+            gap: 8px;
+            margin-top: 6px;
         }
         .cb-cell {
             background: #FFFFFF;
-            border: 1px solid #E3EEFC;
-            border-radius: 7px;
-            padding: 5px 2px;
+            border: 1px solid #F1F5F9;
+            border-radius: 10px;
+            padding: 8px 4px;
             text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
         .cb-label {
-            font-size: 9px;
+            font-size: 9.5px;
             text-transform: uppercase;
-            letter-spacing: .3px;
-            font-weight: 600;
-            color: #5B84C4;
-            margin-bottom: 2px;
+            letter-spacing: .5px;
+            font-weight: 700;
+            color: #64748B;
+            margin-bottom: 3px;
             white-space: nowrap;
         }
         .cb-value {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--pos-text);
+            font-size: 13px;
+            font-weight: 800;
             white-space: nowrap;
         }
-        .cust-bal-card .text-danger {
-            color: var(--pos-red) !important;
+        #cc_prev_bal_val, #cc_prev_bal_suffix {
+            color: #E11D48 !important;
         }
-        .cust-bal-card .text-success {
-            color: var(--pos-green) !important;
+        #cc_current_bill {
+            color: #2563EB !important;
         }
         #cc_paid_now {
-            color: var(--pos-green) !important;
+            color: #16A34A !important;
+        }
+        #cc_closing_bal_val, #cc_closing_bal_suffix {
+            color: #E11D48 !important;
         }
 
         /* ---------- ITEMS HEADER ---------- */
@@ -552,33 +564,36 @@
             table-layout: fixed;
         }
         .sales-table thead th {
-            background: #F8FAFC;
-            color: #475569;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: .5px;
-            padding: 11px 8px;
-            border-bottom: 1px solid var(--pos-border);
-            text-align: center;
-            vertical-align: middle;
-            white-space: nowrap;
+            background: #0A2540 !important;
+            color: #FFFFFF !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: .5px !important;
+            padding: 12px 8px !important;
+            border: none !important;
+            text-align: center !important;
+            vertical-align: middle !important;
+            white-space: nowrap !important;
         }
         .sales-table thead th.col-product {
-            text-align: left;
-            padding-left: 14px;
+            text-align: left !important;
+            padding-left: 14px !important;
+        }
+        .sales-table thead tr th:first-child {
+            border-top-left-radius: 8px !important;
+        }
+        .sales-table thead tr th:last-child {
+            border-top-right-radius: 8px !important;
         }
         .sales-table tbody td {
-            padding: 7px;
+            padding: 7px 6px;
             height: 52px;
             border-bottom: 1px solid #F1F5F9;
             vertical-align: middle;
         }
-        .sales-table tbody tr:last-child td {
-            border-bottom: none;
-        }
         .sales-table tbody tr:hover td {
-            background: #FBFDFF;
+            background: #F8FAFC;
         }
         .row-index-cell {
             font-size: 13px;
@@ -591,39 +606,52 @@
         .sales-table tbody .form-control,
         .sales-table tbody .form-select {
             height: 38px !important;
-            border: 1px solid transparent !important;
-            border-radius: 6px !important;
-            padding: 4px 9px !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 8px !important;
+            padding: 4px 10px !important;
             font-size: 13.5px !important;
             font-weight: 500 !important;
-            background: transparent !important;
+            background: #ffffff !important;
             box-shadow: none !important;
             color: var(--pos-text) !important;
             width: 100% !important;
-            transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
-        }
-        .sales-table tbody .form-control:hover,
-        .sales-table tbody .form-select:hover {
-            border-color: var(--pos-border) !important;
-            background: #ffffff !important;
+            transition: border-color .15s ease, box-shadow .15s ease;
         }
         .sales-table tbody .form-control:focus,
         .sales-table tbody .form-select:focus,
         .sales-table tbody .form-control:focus-visible {
             border-color: var(--pos-blue) !important;
             background: #ffffff !important;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, .10) !important;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, .12) !important;
             outline: none !important;
         }
         .sales-table tbody input[readonly],
         .sales-table tbody .input-readonly {
-            background: #FAFBFC !important;
+            background: #F8FAFC !important;
             color: var(--pos-muted) !important;
             cursor: default !important;
             font-weight: 600 !important;
         }
-        .sales-table tbody input[readonly]:hover {
-            border-color: transparent !important;
+        .sales-table tbody input.stock {
+            background: #EFF6FF !important;
+            color: #2563EB !important;
+            border-color: #DBEAFE !important;
+            font-weight: 800 !important;
+            font-size: 13.5px !important;
+            text-align: center !important;
+        }
+        .sales-table tbody input.sales-amount {
+            background: #F1F5F9 !important;
+            border-color: #E2E8F0 !important;
+            color: #0A2540 !important;
+            font-weight: 800 !important;
+            font-size: 13.5px !important;
+            text-align: right !important;
+        }
+        .sales-table .c-pcs-th,
+        .sales-table .col-pieces,
+        .sales-table col.c-pcs {
+            display: none !important;
         }
 
         /* Stock badge style inside stock cell */
@@ -650,35 +678,38 @@
         }
         .sales-table tbody .select2-container .select2-selection--single {
             height: 38px !important;
-            border: 1px solid transparent !important;
-            border-radius: 6px !important;
-            background: transparent !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 8px !important;
+            background: #ffffff !important;
             padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
         }
         .sales-table tbody .select2-container:hover .select2-selection--single {
-            border-color: var(--pos-border) !important;
-            background: #ffffff !important;
+            border-color: #CBD5E1 !important;
         }
         .sales-table tbody .select2-container--focus .select2-selection--single,
         .sales-table tbody .select2-container--open .select2-selection--single {
             border-color: var(--pos-blue) !important;
             box-shadow: 0 0 0 3px rgba(37, 99, 235, .10) !important;
-            background: #ffffff !important;
         }
         .sales-table tbody .select2-container .select2-selection__rendered {
             line-height: 36px !important;
-            padding-left: 9px !important;
-            padding-right: 18px !important;
-            font-size: 13.5px !important;
-            font-weight: 600 !important;
+            padding-left: 10px !important;
+            padding-right: 24px !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
             color: var(--pos-text) !important;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        .sales-table tbody .select2-container .select2-selection__placeholder {
+            color: #94A3B8 !important;
+        }
         .sales-table tbody .select2-container .select2-selection__arrow {
             height: 36px !important;
-            right: 6px !important;
+            right: 8px !important;
         }
 
         /* Qty cell */
@@ -767,24 +798,24 @@
 
         /* Row delete button */
         .sales-table .del-row {
-            width: 34px;
-            height: 34px;
-            border-radius: 8px;
-            border: 1px solid #FECACA;
-            background: #ffffff;
-            color: var(--pos-red);
-            font-size: 12px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            cursor: pointer;
-            transition: all .15s ease;
+            width: 36px !important;
+            height: 36px !important;
+            border-radius: 8px !important;
+            border: 1px solid #FEE2E2 !important;
+            background: #FEF2F2 !important;
+            color: #EF4444 !important;
+            font-size: 13px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 0 !important;
+            cursor: pointer !important;
+            transition: all .15s ease !important;
         }
         .sales-table .del-row:hover {
-            background: var(--pos-red);
-            border-color: var(--pos-red);
-            color: #ffffff;
+            background: #EF4444 !important;
+            border-color: #EF4444 !important;
+            color: #ffffff !important;
         }
 
         /* Responsive: compress controls on smaller screens so the table always fits its container */
@@ -865,24 +896,28 @@
 
         /* Grid total footer */
         .sales-table tfoot td {
-            background: #F8FAFC;
-            border-top: 1px solid var(--pos-border);
-            padding: 13px 16px;
+            background: transparent !important;
+            border: none !important;
+            padding: 14px 0 2px 0 !important;
         }
-        .grid-total-label {
-            font-size: 12px;
+        .grid-total-label-custom {
+            font-size: 13px;
             font-weight: 800;
-            text-transform: uppercase;
+            color: #0A2540;
             letter-spacing: .5px;
-            color: var(--pos-muted);
-            text-align: right;
+            text-transform: uppercase;
         }
-        .grid-total-val {
-            font-size: 17px;
-            font-weight: 800;
-            color: var(--pos-text);
-            text-align: right;
-            font-variant-numeric: tabular-nums;
+        .grid-total-badge-custom {
+            background: #0A2540;
+            color: #FFFFFF;
+            font-size: 16px;
+            font-weight: 700;
+            padding: 9px 28px;
+            border-radius: 8px;
+            min-width: 145px;
+            text-align: center;
+            display: inline-block;
+            box-shadow: 0 2px 6px rgba(10, 37, 64, 0.15);
         }
 
         /* ---------- PAYMENT METHODS ---------- */
@@ -1033,36 +1068,39 @@
             justify-content: space-between;
             gap: 12px 18px;
             background: #ffffff;
-            border: 1px solid var(--pos-border);
+            border: 1px solid #E2E8F0;
             border-radius: 12px;
-            box-shadow: 0 -8px 24px -12px rgba(15, 23, 42, .18);
-            padding: 12px 18px;
+            box-shadow: 0 -6px 20px -8px rgba(15, 23, 42, .12);
+            padding: 10px 18px;
             margin-top: 18px;
         }
-        .bb-left {
-            display: flex;
+        .bb-pill-stats {
+            display: inline-flex;
             align-items: center;
-            gap: 20px;
-            font-size: 13.5px;
-            color: var(--pos-muted);
-            flex-wrap: wrap;
+            gap: 12px;
+            background: #ECFDF5;
+            border: 1px solid #A7F3D0;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 13px;
+            color: #334155;
         }
-        .bb-left b {
-            color: var(--pos-text);
+        .bb-pill-stats .bb-sep {
+            color: #CBD5E1;
+            font-size: 12px;
+        }
+        .bb-pill-stats .bb-green {
+            color: #059669;
             font-weight: 700;
-            font-variant-numeric: tabular-nums;
-        }
-        .bb-left .text-success {
-            color: var(--pos-green) !important;
         }
         .btn-ghost {
-            border: 1px solid var(--pos-border);
+            border: 1px solid #E2E8F0;
             background: #ffffff;
-            color: var(--pos-muted);
+            color: #475569;
             border-radius: 8px;
             font-weight: 600;
             font-size: 12.5px;
-            padding: 6px 12px;
+            padding: 7px 14px;
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -1070,8 +1108,75 @@
         }
         .btn-ghost:hover {
             background: #F8FAFC;
-            color: var(--pos-text);
-            border-color: var(--pos-border-strong);
+            color: #0A2540;
+            border-color: #CBD5E1;
+        }
+        .btn-cancel-custom {
+            background: #F1F5F9;
+            border: 1px solid #E2E8F0;
+            color: #475569;
+            font-weight: 600;
+            font-size: 13px;
+            border-radius: 8px;
+            padding: 8px 18px;
+            transition: all .15s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+        .btn-cancel-custom:hover {
+            background: #E2E8F0;
+            color: #1E293B;
+        }
+        .btn-quotation-custom {
+            background: #FFFBEB;
+            border: 1px solid #FDE68A;
+            color: #D97706;
+            font-weight: 600;
+            font-size: 13px;
+            border-radius: 8px;
+            padding: 8px 18px;
+            transition: all .15s ease;
+            display: inline-flex;
+            align-items: center;
+        }
+        .btn-quotation-custom:hover {
+            background: #FEF3C7;
+            color: #B45309;
+        }
+        .btn-booking-custom {
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            color: #2563EB;
+            font-weight: 600;
+            font-size: 13px;
+            border-radius: 8px;
+            padding: 8px 18px;
+            transition: all .15s ease;
+            display: inline-flex;
+            align-items: center;
+        }
+        .btn-booking-custom:hover {
+            background: #DBEAFE;
+            color: #1D4ED8;
+        }
+        .btn-save-print-custom {
+            background: #059669;
+            border: 1px solid #059669;
+            color: #FFFFFF;
+            font-weight: 700;
+            font-size: 13.5px;
+            border-radius: 8px;
+            padding: 8px 20px;
+            box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+            transition: all .15s ease;
+            display: inline-flex;
+            align-items: center;
+        }
+        .btn-save-print-custom:hover {
+            background: #047857;
+            border-color: #047857;
+            color: #FFFFFF;
         }
         .bb-actions {
             display: flex;
@@ -1159,30 +1264,36 @@
                         <i class="fas fa-arrow-left"></i>
                     </a>
                     <div class="sale-title-ic">
-                        <i class="fas fa-shopping-cart"></i>
+                        <i class="fas fa-file-alt"></i>
                     </div>
                     <div class="sale-title-main">
                         <h5 class="header-text mb-0">Edit Sale #{{ $sale->invoice_no }}</h5>
                         <div class="sale-subtitle">Update invoice for {{ optional($sale->customer_relation)->customer_name ? $sale->customer_relation->customer_name : 'Walk-in Customer' }}</div>
                     </div>
                 </div>
-
+                <div class="d-none d-md-flex align-items-center gap-2" style="font-size: 13px; font-weight: 600;">
+                    <i class="fas fa-home" style="color: #0A2540; font-size: 14px;"></i>
+                    <span style="color: #64748B;">Sale</span>
+                    <span style="color: #94A3B8; font-size: 12px;">&gt;</span>
+                    <span style="color: #0A2540; font-weight: 700;">Edit Sale</span>
+                </div>
             </div>
 
             {{-- ============================ SALE INFORMATION CARD ============================ --}}
-            <div class="sale-card mb-3 p-4">
-                <div class="row g-4">
-                    <div class="col-xl-8">
+            <div class="row g-3 mb-3">
+                <div class="col-xl-8">
+                    <div class="sale-card h-100 p-4" style="border: 1px solid #E2E8F0; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.03);">
                         <div class="row g-3">
                             {{-- Invoice No --}}
                             <div class="col-6 col-md-3">
                                 <label class="field-label" for="inputInvoiceNo">Invoice No.</label>
-                                <div class="input-group invoice-group">
-                                    <button class="btn btn-prefix dropdown-toggle d-flex align-items-center gap-1"
+                                <div class="input-group invoice-group" style="border: 1px solid #CBD5E1; border-radius: 10px; overflow: hidden; background: #ffffff;">
+                                    <button class="btn btn-prefix dropdown-toggle d-flex align-items-center gap-1 border-0"
                                             type="button"
                                             id="btnInvoicePrefix"
                                             data-bs-toggle="dropdown"
-                                            aria-expanded="false">
+                                            aria-expanded="false"
+                                            style="background: #F8FAFC; font-weight: 700; font-size: 12.5px; padding: 0 10px; border-right: 1px solid #E2E8F0 !important;">
                                         <span id="activePrefixLabel">{{ $activePrefix ?? 'INV' }}</span>
                                     </button>
                                     <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownInvoiceSeriesList" aria-labelledby="btnInvoicePrefix" style="min-width: 160px; font-size: 13px; z-index: 1050;">
@@ -1210,31 +1321,37 @@
                                         </li>
                                     </ul>
 
-                                    <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $sale->invoice_no }}" readonly>
+                                    <input type="text" class="form-control text-center fw-bold border-0 bg-white" name="Invoice_no" id="inputInvoiceNo" value="{{ $sale->invoice_no }}" readonly style="font-size: 13.5px; color: #0A2540;">
 
-                                    <button class="btn btn-refresh"
+                                    <button class="btn btn-refresh border-0 text-muted px-2"
                                             type="button"
                                             id="btnRefreshInvoiceNo"
-                                            title="Regenerate Invoice Number">
-                                        <i class="fas fa-sync-alt" id="iconRefreshInvoice"></i>
+                                            title="Regenerate Invoice Number"
+                                            style="background: #ffffff;">
+                                        <i class="fas fa-sync-alt" id="iconRefreshInvoice" style="font-size: 12px;"></i>
                                     </button>
                                 </div>
                             </div>
 
                             {{-- Credit Days --}}
-                            <div class="col-6 col-md-2">
+                            <div class="col-6 col-md-3">
                                 <label class="field-label" for="creditDaysInput">Credit Days</label>
-                                <input type="number" class="form-control text-center" id="creditDaysInput" name="credit_days" placeholder="Days" min="0" value="{{ $sale->credit_days ?? '0' }}">
+                                <div class="input-group" style="border: 1px solid #CBD5E1; border-radius: 10px; overflow: hidden; background: #ffffff;">
+                                    <span class="input-group-text bg-white border-0 pe-0 text-muted" style="font-size: 13px;">
+                                        <i class="far fa-calendar-alt"></i>
+                                    </span>
+                                    <input type="number" class="form-control border-0 text-center fw-bold" id="creditDaysInput" name="credit_days" placeholder="0" min="0" value="{{ $sale->credit_days ?? '0' }}" style="font-size: 13.5px; height: 40px;">
+                                </div>
                             </div>
 
                             {{-- Sale Type --}}
-                            <div class="col-12 col-md-4">
+                            <div class="col-12 col-md-3">
                                 <label class="field-label">Sale Type</label>
-                                <div class="seg-toggle" role="group" aria-label="Sale Type">
-                                    <button type="button" class="btn {{ $sale->walkin_name ? 'btn-outline-primary' : 'btn-primary active text-white' }}" id="btnTypeCustomer">
+                                <div class="seg-toggle" role="group" aria-label="Sale Type" style="background: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 10px; padding: 3px; height: 42px;">
+                                    <button type="button" class="btn {{ $sale->walkin_name ? 'btn-outline-primary' : 'btn-primary active text-white' }}" id="btnTypeCustomer" style="{{ !$sale->walkin_name ? 'background: #2563EB;' : 'background: transparent; color: #475569;' }} border-radius: 8px; font-weight: 600; font-size: 12.5px; border: none;">
                                         <i class="fas fa-users me-1"></i> Customer
                                     </button>
-                                    <button type="button" class="btn {{ $sale->walkin_name ? 'btn-primary active text-white' : 'btn-outline-primary' }}" id="btnTypeWalkin">
+                                    <button type="button" class="btn {{ $sale->walkin_name ? 'btn-primary active text-white' : 'btn-outline-primary' }}" id="btnTypeWalkin" style="{{ $sale->walkin_name ? 'background: #2563EB;' : 'background: transparent; color: #475569;' }} border-radius: 8px; font-weight: 600; font-size: 12.5px; border: none;">
                                         <i class="fas fa-walking me-1"></i> Walk-in
                                     </button>
                                 </div>
@@ -1248,17 +1365,22 @@
                             {{-- Date --}}
                             <div class="col-6 col-md-3">
                                 <label class="field-label" for="displayDateInput">Date</label>
-                                <input type="text" name="sale_date" class="form-control datepicker-custom" id="displayDateInput" value="{{ $sale->created_at ? $sale->created_at->format('d/m/Y') : date('d/m/Y') }}">
+                                <div class="input-group" style="border: 1px solid #CBD5E1; border-radius: 10px; overflow: hidden; background: #ffffff;">
+                                    <span class="input-group-text bg-white border-0 pe-0 text-muted" style="font-size: 13px;">
+                                        <i class="far fa-calendar-alt"></i>
+                                    </span>
+                                    <input type="text" name="sale_date" class="form-control border-0 datepicker-custom text-center fw-semibold" id="displayDateInput" value="{{ $sale->created_at ? $sale->created_at->format('d/m/Y') : date('d/m/Y') }}" style="font-size: 13.5px; height: 40px;">
+                                </div>
                             </div>
 
                             {{-- Reference / Remarks --}}
-                            <div class="col-6 col-md-3">
+                            <div class="col-12 col-md-5">
                                 <label class="field-label" for="remarks">Reference / Remarks</label>
-                                <input type="text" class="form-control" name="reference" id="remarks" placeholder="Optional" value="{{ $sale->reference ?? '' }}">
+                                <input type="text" class="form-control" name="reference" id="remarks" placeholder="Optional" value="{{ $sale->reference ?? '' }}" style="border: 1px solid #CBD5E1; border-radius: 10px; height: 42px; font-size: 13.5px;">
                             </div>
 
                             {{-- Customer --}}
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 col-md-7">
                                 <label class="field-label" for="customerSelect">Customer</label>
                                 <div class="d-flex gap-2">
                                     <div id="customerInputWrapper" class="flex-grow-1" style="min-width: 0;">
@@ -1270,8 +1392,8 @@
                                         </select>
                                     </div>
                                     <button type="button" id="btnOpenAddCustomerModal"
-                                            class="btn btn-outline-primary flex-shrink-0 align-self-stretch"
-                                            style="width: var(--pos-input-h); padding: 0; display: inline-flex; align-items: center; justify-content: center;"
+                                            class="btn flex-shrink-0"
+                                            style="width: 42px; height: 42px; border: 1px solid #BFDBFE; background: #EFF6FF; color: #2563EB; border-radius: 10px; font-size: 16px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center;"
                                             data-toggle="modal" data-target="#addCustomerModal"
                                             data-bs-toggle="modal" data-bs-target="#addCustomerModal"
                                             title="Quick Add Customer (Alt+C or F2)">
@@ -1281,56 +1403,58 @@
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    {{-- Customer Balance Card (right) --}}
-                    <div class="col-xl-4">
-                        <div class="cust-bal-card">
-                            <div class="cb-head">
-                                <div class="cb-id">
-                                    <div class="cb-avatar"><i class="fas fa-user"></i></div>
-                                    <div style="min-width:0;">
-                                        <div class="cb-name" id="cc_customer_name">Select Customer</div>
-                                        <div class="cb-code">Code: <span id="ci_code">—</span></div>
-                                    </div>
+                {{-- Customer Balance Card (right) --}}
+                <div class="col-xl-4">
+                    <div class="cust-bal-card h-100" style="background: #FFFFFF; border: 1px solid #DBEAFE; border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.04); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div class="cb-head d-flex align-items-center justify-content-between mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width: 38px; height: 38px; border-radius: 10px; background: #2563EB; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);">
+                                    <i class="fas fa-user"></i>
                                 </div>
-                                <button type="button" class="btn btn-link btn-sm text-muted text-decoration-none p-0" id="clearCustomerData" style="font-size:12px;">Clear</button>
-                            </div>
-
-                            <div id="customerInfoCard" class="d-none cb-extras">
-                                <div class="cb-ext">
-                                    <div class="cb-ext-label">Full Name</div>
-                                    <div class="cb-ext-val" id="ci_name">—</div>
-                                </div>
-                                <div class="cb-ext">
-                                    <div class="cb-ext-label">Mobile</div>
-                                    <div class="cb-ext-val" id="ci_mobile">—</div>
-                                </div>
-                                <div class="cb-ext">
-                                    <div class="cb-ext-label">Address</div>
-                                    <div class="cb-ext-val" id="ci_address">—</div>
+                                <div>
+                                    <div class="cb-name" id="cc_customer_name" style="font-size: 15px; font-weight: 700; color: #0A2540;">{{ optional($sale->customer_relation)->customer_name ? $sale->customer_relation->customer_name : 'Select Customer' }}</div>
+                                    <div class="cb-code" style="font-size: 11px; color: #64748B;">Code: <span id="ci_code">{{ optional($sale->customer_relation)->customer_id ?? '—' }}</span></div>
                                 </div>
                             </div>
+                            <button type="button" class="btn btn-link p-0 text-decoration-none" id="clearCustomerData" style="color: #2563EB; font-weight: 600; font-size: 13px;">Clear</button>
+                        </div>
 
-                            <div class="cb-grid">
-                                <div class="cb-cell">
-                                    <div class="cb-label">Prev. Due</div>
-                                    <div class="cb-value">
-                                        <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span>
-                                    </div>
+                        <div id="customerInfoCard" class="d-none cb-extras mb-2">
+                            <div class="cb-ext">
+                                <div class="cb-ext-label">Full Name</div>
+                                <div class="cb-ext-val" id="ci_name">{{ optional($sale->customer_relation)->customer_name ?? '—' }}</div>
+                            </div>
+                            <div class="cb-ext">
+                                <div class="cb-ext-label">Mobile</div>
+                                <div class="cb-ext-val" id="ci_mobile">{{ optional($sale->customer_relation)->mobile ?? '—' }}</div>
+                            </div>
+                            <div class="cb-ext">
+                                <div class="cb-ext-label">Address</div>
+                                <div class="cb-ext-val" id="ci_address">{{ optional($sale->customer_relation)->address ?? '—' }}</div>
+                            </div>
+                        </div>
+
+                        <div class="cb-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                            <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #F1F5F9; border-radius: 10px; padding: 10px 4px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                                <div class="cb-label" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; color: #64748B; margin-bottom: 3px;">Prev. Due</div>
+                                <div class="cb-value" style="font-size: 13px; font-weight: 800; color: #E11D48;">
+                                    <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span>
                                 </div>
-                                <div class="cb-cell">
-                                    <div class="cb-label">Current Due</div>
-                                    <div class="cb-value" id="cc_current_bill">Rs 0</div>
-                                </div>
-                                <div class="cb-cell">
-                                    <div class="cb-label">Paid</div>
-                                    <div class="cb-value" id="cc_paid_now">Rs 0</div>
-                                </div>
-                                <div class="cb-cell">
-                                    <div class="cb-label">Closing</div>
-                                    <div class="cb-value">
-                                        <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span>
-                                    </div>
+                            </div>
+                            <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #F1F5F9; border-radius: 10px; padding: 10px 4px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                                <div class="cb-label" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; color: #64748B; margin-bottom: 3px;">Current Due</div>
+                                <div class="cb-value" id="cc_current_bill" style="font-size: 13px; font-weight: 800; color: #2563EB;">Rs 0</div>
+                            </div>
+                            <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #F1F5F9; border-radius: 10px; padding: 10px 4px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                                <div class="cb-label" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; color: #64748B; margin-bottom: 3px;">Paid</div>
+                                <div class="cb-value" id="cc_paid_now" style="font-size: 13px; font-weight: 800; color: #16A34A;">Rs 0</div>
+                            </div>
+                            <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #F1F5F9; border-radius: 10px; padding: 10px 4px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                                <div class="cb-label" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; color: #64748B; margin-bottom: 3px;">Closing</div>
+                                <div class="cb-value" style="font-size: 13px; font-weight: 800; color: #E11D48;">
+                                    <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span>
                                 </div>
                             </div>
                         </div>
@@ -1346,17 +1470,18 @@
             <input type="hidden" id="rangeBalance" value="0">
 
             {{-- ============================ ITEMS SECTION ============================ --}}
-            <div class="sale-card mb-3 p-4">
+            <div class="sale-card mb-3 p-4" style="border: 1px solid #E2E8F0; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.03);">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                    <div class="items-title">
-                        Items
-                        <span class="items-count" id="itemsRowCount">0</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-cube text-primary" style="font-size: 22px;"></i>
+                        <span style="font-size: 18px; font-weight: 800; color: #0A2540;">Items</span>
+                        <span id="itemsRowCount" style="background: #EFF6FF; color: #2563EB; font-weight: 700; font-size: 13px; padding: 2px 10px; border-radius: 20px;">0</span>
                     </div>
                     <div class="d-flex gap-2 flex-wrap">
-                        <button type="button" class="btn btn-outline-primary px-3" id="btnNewProductHeader">
+                        <button type="button" class="btn px-3" id="btnNewProductHeader" style="background: #ffffff; border: 1px solid #BFDBFE; color: #2563EB; font-weight: 600; font-size: 13px; border-radius: 8px;">
                             <i class="fas fa-box-open me-1"></i> New Product
                         </button>
-                        <button type="button" class="btn btn-primary px-3" id="btnAdd">
+                        <button type="button" class="btn px-3" id="btnAdd" style="background: #2563EB; border: 1px solid #2563EB; color: #ffffff; font-weight: 600; font-size: 13px; border-radius: 8px;">
                             <i class="fas fa-plus me-1"></i> Add Product
                         </button>
                     </div>
@@ -1365,31 +1490,31 @@
                 <div class="pos-table-wrap">
                     <table class="table sales-table mb-0">
                         <colgroup>
-                            <col style="width:3%;">
-                            <col style="width:27%;">
+                            <col style="width:4%;">
+                            <col style="width:28%;">
                             <col class="c-stock" style="width:6%;">
                             <col style="width:8%;">
-                            <col style="width:6%;">
-                            <col class="c-pcs" style="width:6%;">
-                            <col class="c-pc" style="width:7%;">
-                            <col style="width:9%;">
                             <col style="width:8%;">
+                            <col class="c-pcs" style="display:none;">
+                            <col class="col-pcs-ctn" style="width:7%;">
                             <col style="width:12%;">
-                            <col style="width:5%;">
+                            <col style="width:10%;">
+                            <col style="width:11%;">
+                            <col style="width:6%;">
                         </colgroup>
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th class="col-product">Product</th>
-                                <th class="c-stock-th">Stock</th>
-                                <th>Qty</th>
-                                <th>Size</th>
-                                <th class="c-pcs-th">Pcs</th>
-                                <th class="col-pcs-ctn-th">Pcs/Ctn</th>
-                                <th>Price</th>
-                                <th>Discount</th>
-                                <th>Amount</th>
-                                <th>Action</th>
+                                <th class="col-product text-start ps-3">PRODUCT</th>
+                                <th class="c-stock-th text-center">STOCK</th>
+                                <th class="text-center">QTY</th>
+                                <th class="text-center">SIZE</th>
+                                <th class="c-pcs-th" style="display:none;">PCS</th>
+                                <th class="col-pcs-ctn-th text-center">PCS/CTN</th>
+                                <th class="text-center">PRICE</th>
+                                <th class="text-center">DISCOUNT</th>
+                                <th class="text-center">AMOUNT</th>
+                                <th class="text-center">ACTION</th>
                             </tr>
                         </thead>
                         <tbody id="salesTableBody">
@@ -1411,7 +1536,7 @@
 
                                 <!-- STOCK -->
                                 <td class="col-stock text-center">
-                                    <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1">
+                                    <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1" value="0">
                                     <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ auth()->user()->warehouse_id ?? 1 }}">
                                     <input type="hidden" class="variant-stock-value">
                                 </td>
@@ -1419,7 +1544,7 @@
                                 <!-- QTY -->
                                 <td class="col-qty-wrapper">
                                     <div class="qty-cell-flex">
-                                        <input type="number" step="any" class="form-control carton-qty text-start fw-bold" name="carton_qty[]" placeholder="0" min="0" value="">
+                                        <input type="number" step="any" class="form-control carton-qty text-center fw-bold" name="carton_qty[]" placeholder="0" min="0" value="">
                                         <button type="button" class="btn btn-sm qty-unit-toggle px-1 py-0 d-none"
                                                 data-unit-mode="main" title="Toggle Unit"
                                                 style="background: #fff; color: #2563EB; border: 1px solid #BFDBFE;">
@@ -1431,28 +1556,28 @@
 
                                 <!-- SIZE -->
                                 <td class="col-size">
-                                    <input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-">
+                                    <input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-" value="-">
                                     <input type="hidden" class="pack-qty" name="pack_qty[]" value="1">
                                 </td>
 
                                 <!-- PCS -->
-                                <td class="col-pieces">
+                                <td class="col-pieces" style="display:none;">
                                     <input type="text" class="form-control total-pieces text-end input-readonly fw-semibold" name="total_pieces[]" readonly placeholder="0" tabindex="-1">
                                     <input type="hidden" class="sales-qty" name="qty[]" value="0">
                                 </td>
 
-                                <!-- PCS/CTN (always visible; shows value when unit is Carton, "–" otherwise) -->
+                                <!-- PCS/CTN -->
                                 <td class="col-pcs-ctn text-center">
-                                    <input type="text" class="form-control pcs-per-ctn text-center input-readonly fw-semibold" readonly tabindex="-1" placeholder="–">
+                                    <input type="text" class="form-control pcs-per-ctn text-center input-readonly fw-semibold" readonly tabindex="-1" placeholder="0" value="0">
                                 </td>
 
                                 <!-- PRICE -->
                                 <td class="col-price-p">
-                                    <div class="price-cell-flex">
-                                        <input type="text" class="form-control visible-price text-end fw-semibold" name="visible_price[]" placeholder="0">
-                                        <button type="button" class="btn btn-sm price-mode-row-toggle px-1 py-0"
-                                                data-mode="retail" title="Retail Mode"
-                                                style="background: #fff; border: 1px solid #BFDBFE; color: #2563EB;">
+                                    <div class="input-group input-group-sm price-cell-group" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: #ffffff;">
+                                        <span class="input-group-text border-0 bg-transparent text-muted px-2 fw-semibold" style="font-size: 12px;">Rs</span>
+                                        <input type="text" class="form-control visible-price text-end fw-semibold border-0" name="visible_price[]" placeholder="0" value="0" style="height: 38px; box-shadow: none;">
+                                        <button type="button" class="btn btn-sm price-mode-row-toggle d-none"
+                                                data-mode="retail" title="Retail Mode">
                                             R
                                         </button>
                                     </div>
@@ -1464,17 +1589,17 @@
 
                                 <!-- DISCOUNT -->
                                 <td class="col-disc">
-                                    <div class="discount-wrapper">
-                                        <input type="number" class="form-control discount-value text-end" name="item_disc[]" placeholder="0">
+                                    <div class="input-group input-group-sm discount-wrapper" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: #ffffff;">
+                                        <button type="button" class="btn btn-sm discount-toggle border-0 text-muted px-2 bg-transparent fw-bold" data-type="percent" tabindex="-1" style="font-size: 12px;">%</button>
+                                        <input type="number" class="form-control discount-value text-end border-0" name="item_disc[]" placeholder="0" value="0" style="height: 38px; box-shadow: none;">
                                         <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="percent">
-                                        <button type="button" class="btn btn-outline-secondary discount-toggle" data-type="percent" tabindex="-1">%</button>
                                     </div>
                                     <input type="hidden" class="discount-amount" value="0">
                                 </td>
 
                                 <!-- AMOUNT -->
                                 <td class="col-amount">
-                                    <input type="text" class="form-control sales-amount text-end input-readonly" name="total[]" value="0" readonly tabindex="-1">
+                                    <input type="text" class="form-control sales-amount text-end input-readonly" name="total[]" value="0.00" readonly tabindex="-1">
                                     <input type="hidden" class="gross-amount" name="gross_amount[]">
                                 </td>
 
@@ -1488,9 +1613,14 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="9" class="grid-total-label">Grid Total:</td>
-                                <td class="grid-total-val">Rs <span id="totalAmount">0.00</span></td>
-                                <td></td>
+                                <td colspan="11" class="border-0 pt-3 pb-0 px-0 bg-transparent text-end">
+                                    <div class="d-inline-flex align-items-center gap-3">
+                                        <span class="grid-total-label-custom">GRID TOTAL:</span>
+                                        <div class="grid-total-badge-custom">
+                                            Rs <span id="totalAmount">{{ number_format($sale->total_net ?? 0, 2) }}</span>
+                                        </div>
+                                    </div>
+                                </td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1596,30 +1726,35 @@
 
             {{-- ============================ STICKY BOTTOM ACTION BAR ============================ --}}
             <div class="sale-bottom-bar">
-                <div class="bb-left">
+                <div class="bb-pill-stats">
+                    <i class="fas fa-coins me-1" style="font-size: 15px; color: #059669 !important;"></i>
                     <span>Items: <b id="footerItemCount">0</b></span>
-                    <span>Total: <b>Rs <span id="footerTotal">0.00</span></b></span>
-                    <span>Paid: <b class="text-success">Rs <span id="footerPaid">0.00</span></b></span>
+                    <span class="bb-sep">|</span>
+                    <span>Total: <b class="bb-green">Rs <span id="footerTotal">0.00</span></b></span>
+                    <span class="bb-sep">|</span>
+                    <span>Paid: <b class="bb-green">Rs <span id="footerPaid">0.00</span></b></span>
                 </div>
 
-                <div class="bb-secondary">
-                    <button type="button" class="btn-ghost" id="btnPrint"><i class="fas fa-print"></i> A4 Print</button>
-                    <button type="button" class="btn-ghost" id="btnEstimate"><i class="fas fa-file-invoice"></i> Estimate</button>
-                    <button type="button" class="btn-ghost" id="btnPrint2"><i class="fas fa-receipt"></i> Thermal</button>
-                    <button type="button" class="btn-ghost" id="btnDcThermal"><i class="fas fa-truck"></i> DC</button>
+                <div class="bb-secondary d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-ghost" id="btnPrint"><i class="fas fa-print me-1"></i> A4 Print</button>
+                    <button type="button" class="btn btn-ghost" id="btnEstimate"><i class="fas fa-file-invoice me-1"></i> Estimate</button>
+                    <button type="button" class="btn btn-ghost" id="btnPrint2"><i class="fas fa-receipt me-1"></i> Thermal</button>
+                    <button type="button" class="btn btn-ghost" id="btnDcThermal"><i class="fas fa-truck me-1"></i> DC</button>
                     <button type="button" class="d-none" id="btnPosted">Sale</button>
+                    <button type="button" class="d-none" id="btnHeaderSaveDraft"></button>
+                    <button type="button" class="d-none" id="btnHeaderPosted"></button>
                 </div>
 
-                <div class="bb-actions">
-                    <a href="{{ route('sale.index') }}" class="btn btn-outline-secondary px-3">Cancel</a>
-                    <button type="button" class="btn btn-outline-warning px-3" id="btnQuotation">
+                <div class="bb-actions d-flex align-items-center gap-2">
+                    <a href="{{ route('sale.index') }}" class="btn btn-cancel-custom">Cancel</a>
+                    <button type="button" class="btn btn-quotation-custom" id="btnQuotation">
                         <i class="fas fa-file-alt me-1"></i> Quotation
                     </button>
-                    <button type="button" class="btn btn-outline-primary px-3" id="btnSave">
-                        <i class="fas fa-save me-1"></i> Booking
+                    <button type="button" class="btn btn-booking-custom" id="btnSave">
+                        <i class="far fa-calendar-check me-1"></i> Booking
                     </button>
-                    <button type="button" class="btn btn-primary btn-save-print px-3" id="btnSaveAndComplete">
-                        <i class="fas fa-print me-1"></i> Save &amp; Print Invoice
+                    <button type="button" class="btn btn-save-print-custom" id="btnSaveAndComplete">
+                        <i class="fas fa-print me-1"></i> Update &amp; Print Invoice <i class="fas fa-chevron-right ms-1"></i>
                     </button>
                 </div>
             </div>

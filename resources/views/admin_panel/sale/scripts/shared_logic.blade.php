@@ -132,7 +132,7 @@
         const rowHtml = `
   <tr>
     <!-- # ROW INDEX -->
-    <td class="text-center fw-bold text-muted row-index" style="vertical-align:middle; font-size:0.75rem;">1</td>
+    <td class="row-index-cell row-index">1</td>
 
     <!-- PRODUCT -->
     <td class="col-product">
@@ -148,18 +148,18 @@
     </td>
 
     <!-- STOCK -->
-    <td class="col-stock">
-      <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1">
+    <td class="col-stock text-center">
+      <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1" value="0">
       <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ auth()->user()->warehouse_id ?? 1 }}">
       <input type="hidden" class="variant-stock-value">
     </td>
 
-    <!-- Qty cell with Sub-Unit toggle on Right and Left-Aligned Cursor -->
-    <td style="width:95px;min-width:95px;" class="col-qty-wrapper">
-      <div class="d-flex align-items-center gap-1">
-        <input type="number" step="any" class="form-control carton-qty text-start" name="carton_qty[]" placeholder="0" min="0" value="" style="flex: 1; min-width: 0; height: 26px; font-size: 0.85rem; padding-left: 6px;">
-        <button type="button" class="btn btn-sm btn-outline-primary qty-unit-toggle px-1 py-0 d-none" 
-                data-unit-mode="main" title="Toggle Unit (Ctn ↔ Pcs / Kg ↔ Gm / Ft ↔ In)" style="font-size: 0.65rem; height: 26px; min-width: 28px; font-weight: 700; border-radius: 4px; flex-shrink: 0;">
+    <!-- QTY -->
+    <td class="col-qty-wrapper">
+      <div class="qty-cell-flex">
+        <input type="number" step="any" class="form-control carton-qty text-center fw-bold" name="carton_qty[]" placeholder="0" min="0" value="">
+        <button type="button" class="btn btn-sm qty-unit-toggle px-1 py-0 d-none" 
+                data-unit-mode="main" title="Toggle Unit" style="background: #fff; color: #2563EB; border: 1px solid #BFDBFE;">
           Kg
         </button>
       </div>
@@ -171,35 +171,30 @@
       <input type="number" class="form-control loose-pcs-input text-end" name="loose_qty[]" placeholder="" min="0" value="">
     </td>
 
-    <!-- Size -->
+    <!-- SIZE -->
     <td class="col-size">
-       <input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-">
+       <input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-" value="-">
        <input type="hidden" class="pack-qty" name="pack_qty[]" value="1">
     </td>
 
-    <!-- Color (Display - readonly) -->
-    {{-- <td class="col-color">
-      <input type="text" class="form-control color-display text-center input-readonly" readonly tabindex="-1" placeholder="-">
-    </td> --}}
-
     <!-- Total Pieces (Calculated) -->
-    <td class="col-pieces">
-      <input type="text" class="form-control total-pieces text-end input-readonly" name="total_pieces[]" readonly placeholder="0" tabindex="-1">
-      <!-- Hidden qty field for backend compatibility -->
+    <td class="col-pieces" style="display:none;">
+      <input type="text" class="form-control total-pieces text-end input-readonly fw-semibold" name="total_pieces[]" readonly placeholder="0" tabindex="-1">
       <input type="hidden" class="sales-qty" name="qty[]" value="0">
     </td>
 
-    <!-- PCS/CTN (always visible; shows value when unit is Carton, "–" otherwise) -->
+    <!-- PCS/CTN -->
     <td class="col-pcs-ctn text-center">
-      <input type="text" class="form-control pcs-per-ctn text-center input-readonly" readonly tabindex="-1" placeholder="-">
+      <input type="text" class="form-control pcs-per-ctn text-center input-readonly fw-semibold" readonly tabindex="-1" placeholder="0" value="0">
     </td>
  
-    <!-- Price/Piece (EDITABLE) -->
+    <!-- Price/Piece -->
     <td class="col-price-p">
-      <div class="d-flex align-items-center gap-1">
-        <input type="text" class="form-control visible-price text-end" name="visible_price[]" placeholder="0" style="flex: 1; min-width: 0;">
-        <button type="button" class="btn btn-sm ${btnClass} price-mode-row-toggle px-1 py-0" 
-                data-mode="${lastSelectedPriceMode}" title="${btnTitle}" style="font-size: 0.65rem; height: 24px; min-width: 20px; font-weight: bold;">
+      <div class="input-group input-group-sm price-cell-group" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: #ffffff;">
+        <span class="input-group-text border-0 bg-transparent text-muted px-2 fw-semibold" style="font-size: 12px;">Rs</span>
+        <input type="text" class="form-control visible-price text-end fw-semibold border-0" name="visible_price[]" placeholder="0" value="0" style="height: 38px; box-shadow: none;">
+        <button type="button" class="btn btn-sm ${btnClass} price-mode-row-toggle d-none" 
+                data-mode="${lastSelectedPriceMode}" title="${btnTitle}">
           ${btnText}
         </button>
       </div>
@@ -209,30 +204,25 @@
       <input type="hidden" class="weight-per-piece">
     </td>
 
-    <!-- SINGLE DISCOUNT COLUMN -->
+    <!-- DISCOUNT -->
     <td class="col-disc">
-      <div class="discount-wrapper">
-        <input type="number"
-               class="form-control discount-value text-end"
-               name="item_disc[]"
-               placeholder="0">
+      <div class="input-group input-group-sm discount-wrapper" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: #ffffff;">
+        <button type="button" class="btn btn-sm discount-toggle border-0 text-muted px-2 bg-transparent fw-bold" data-type="percent" tabindex="-1" style="font-size: 12px;">%</button>
+        <input type="number" class="form-control discount-value text-end border-0" name="item_disc[]" placeholder="0" value="0" style="height: 38px; box-shadow: none;">
         <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="percent">
-        <button type="button"
-                class="btn btn-outline-secondary discount-toggle"
-                data-type="percent" tabindex="-1">%</button>
       </div>
       <input type="hidden" class="discount-amount" value="0">
     </td>
 
     <!-- NET AMOUNT -->
     <td class="col-amount">
-      <input type="text" class="form-control sales-amount text-end input-readonly" name="total[]" value="0" readonly tabindex="-1">
+      <input type="text" class="form-control sales-amount text-end input-readonly" name="total[]" value="0.00" readonly tabindex="-1">
       <input type="hidden" class="gross-amount" name="gross_amount[]">
     </td>
 
     <!-- ACTION -->
     <td class="col-action text-center">
-      <button type="button" class="btn btn-sm btn-outline-danger del-row" tabindex="-1" title="Delete Row"><i class="fas fa-trash-alt"></i></button>
+      <button type="button" class="del-row" tabindex="-1" title="Delete Row"><i class="fas fa-trash-alt"></i></button>
     </td>
   </tr>`;
 
