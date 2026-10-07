@@ -160,6 +160,9 @@ class POSController extends Controller
                         }
                     }
 
+                    $vConv = (float)($v['conv_factor'] ?? 1);
+                    if ($vConv <= 0) $vConv = 1;
+
                     if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
                         $factor = (float) $v['conv_factor'];
                         $factor = $factor > 0 ? $factor : 1;
@@ -168,6 +171,11 @@ class POSController extends Controller
                         } else {
                             $vBalance = (int) floor(max(0, $totalStockPieces) / $factor);
                         }
+                    } elseif (in_array($p->size_mode, ['by_cartons', 'by_bandal'])) {
+                        // Shared carton pool based on warehouse stocks & movements
+                        $poolPieces = (float)($p->warehouseStocks->sum('total_pieces') ?? 0);
+                        $vBalance = $poolPieces;
+                        $totalStockPieces = $poolPieces;
                     } else {
                         $vBalance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned);
                         $totalStockPieces += $vBalance;
@@ -189,10 +197,15 @@ class POSController extends Controller
                             $pcsCount = (int) floor($vBalance);
                             $vStockDisplay = "{$pcsCount}";
                         }
-                    } elseif ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') && $ppb > 1) {
-                        $vBoxes = floor($vBalance / $ppb);
-                        $vLoose = $vBalance % $ppb;
-                        $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes;
+                    } elseif (in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') {
+                        $vUnitLower = strtolower(trim($v['unit'] ?? ''));
+                        if ($vUnitLower === 'carton' || $vConv > 1) {
+                            $vBoxes = floor($vBalance / $vConv);
+                            $vLoose = $vBalance % $vConv;
+                            $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose Ctn" : "$vBoxes Ctn";
+                        } else {
+                            $vStockDisplay = "$vBalance Pcs";
+                        }
                     }
 
                     $v['current_stock'] = $vStockDisplay;
@@ -203,6 +216,9 @@ class POSController extends Controller
                         'name' => $vName,
                         'size_val' => $v['size'] ?? '-',
                         'color_val' => $v['color'] ?? '-',
+                        'barcode' => $v['barcode'] ?? '',
+                        'conv_factor' => $vConv,
+                        'unit' => $v['unit'] ?? 'Pcs',
                         'price' => $v['sale_price'] ?? $p->sale_price_per_piece ?? 0,
                         'wholesale_price' => $v['wholesale_price'] ?? $p->wholesale_price ?? 0,
                         'weight_per_piece' => $v['weight_per_piece'] ?? $p->weight_per_piece ?? 0,
@@ -223,6 +239,7 @@ class POSController extends Controller
                     'id' => $p->id,
                     'name' => $p->item_name,
                     'sku' => $p->item_code ?? '',
+                    'barcode' => $p->barcode_path ?? '',
                     'stock' => $totalStockDisplay,
                     'stock_pieces' => $totalStockPieces,
                     'size_mode' => $p->size_mode,

@@ -581,6 +581,7 @@
                                  data-id="{{ $product['id'] }}" 
                                  data-name="{{ $product['name'] }}" 
                                  data-sku="{{ $product['sku'] }}" 
+                                 data-barcode="{{ $product['barcode'] ?? '' }}"
                                  data-price="{{ $product['price'] }}"
                                  data-wholesale-price="{{ $product['wholesale_price'] }}"
                                  data-weight-per-piece="{{ $product['weight_per_piece'] }}"
@@ -1193,13 +1194,119 @@
             $('#walkinNameInput').val('');
         });
 
-        // Filter Grid Products via Search Input
-        $('#posSearch').on('input', function() {
-            let term = $(this).val().toLowerCase();
+        // Barcode Scanning & Filter Grid Products via Search Input
+        function tryProcessBarcode(code) {
+            code = (code || '').toString().trim();
+            if (!code) return false;
+
+            let found = false;
+
             $('.product-card').each(function() {
-                let name = $(this).data('name').toLowerCase();
-                let sku = $(this).data('sku').toLowerCase();
-                if (name.includes(term) || sku.includes(term)) {
+                if (found) return;
+                let $card = $(this);
+                let variants = $card.data('variants') || [];
+                let hasVariants = $card.data('has-variants') === 1;
+                let baseBarcode = ($card.data('barcode') || '').toString().trim();
+                let baseSku = ($card.data('sku') || '').toString().trim();
+                let sizeMode = $card.data('size-mode');
+                let piecesPerBox = parseFloat($card.data('pieces-per-box')) || 1;
+
+                // 1. Check if matches any variant barcode
+                if (hasVariants && Array.isArray(variants)) {
+                    for (let i = 0; i < variants.length; i++) {
+                        let v = variants[i];
+                        let vBarcode = (v.barcode || '').toString().trim();
+                        if (vBarcode && vBarcode === code) {
+                            found = true;
+                            if (v.stock_pieces <= 0) {
+                                Swal.fire('Out of Stock', `${v.name} has no available stock.`, 'warning');
+                                return;
+                            }
+                            let retailPrice = parseFloat(v.price) || 0;
+                            let wholesalePrice = parseFloat(v.wholesale_price) || 0;
+                            let weightPerPiece = parseFloat(v.weight_per_piece) || 0;
+                            let activePriceMode = $('input[name="pos_price_mode"]:checked').val() || 'retail';
+                            let price = (activePriceMode === 'wholesale' && wholesalePrice > 0) ? wholesalePrice : retailPrice;
+                            let vConv = parseFloat(v.conv_factor) || piecesPerBox;
+
+                            addToCart(v.id, v.name, price, v.stock_pieces, 1, sizeMode, vConv, v.variant_data, retailPrice, wholesalePrice, weightPerPiece);
+                            return;
+                        }
+                    }
+                }
+
+                // 2. Check if matches base product barcode or sku
+                if (!found && (baseBarcode === code || (baseSku && baseSku.toLowerCase() === code.toLowerCase()))) {
+                    found = true;
+                    if (hasVariants) {
+                        $card.trigger('click');
+                    } else {
+                        let stockPieces = parseFloat($card.data('stock-pieces'));
+                        if (stockPieces <= 0) {
+                            Swal.fire('Out of Stock', 'This product has no stock available.', 'warning');
+                            return;
+                        }
+                        let id = $card.data('id');
+                        let name = $card.data('name');
+                        let retailPrice = parseFloat($card.data('price'));
+                        let wholesalePrice = parseFloat($card.data('wholesale-price')) || 0;
+                        let weightPerPiece = parseFloat($card.data('weight-per-piece')) || 0;
+                        let activePriceMode = $('input[name="pos_price_mode"]:checked').val() || 'retail';
+                        let price = (activePriceMode === 'wholesale' && wholesalePrice > 0) ? wholesalePrice : retailPrice;
+                        
+                        addToCart(id, name, price, stockPieces, 1, sizeMode, piecesPerBox, '', retailPrice, wholesalePrice, weightPerPiece);
+                    }
+                    return;
+                }
+            });
+
+            return found;
+        }
+
+        $('#posSearch').on('keydown', function(e) {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
+                let code = $(this).val().trim();
+                if (code) {
+                    let handled = tryProcessBarcode(code);
+                    if (handled) {
+                        $(this).val('');
+                        $('.product-card').show();
+                    }
+                }
+            }
+        });
+
+        $('#posSearch').on('input', function() {
+            let term = $(this).val().trim().toLowerCase();
+            if (term.length >= 8) {
+                let exactMatched = tryProcessBarcode(term);
+                if (exactMatched) {
+                    $(this).val('');
+                    $('.product-card').show();
+                    return;
+                }
+            }
+
+            $('.product-card').each(function() {
+                let name = ($(this).data('name') || '').toLowerCase();
+                let sku = ($(this).data('sku') || '').toLowerCase();
+                let barcode = ($(this).data('barcode') || '').toLowerCase();
+                let variants = $(this).data('variants') || [];
+                let variantMatch = false;
+
+                if (Array.isArray(variants)) {
+                    for (let i = 0; i < variants.length; i++) {
+                        let vBc = (variants[i].barcode || '').toLowerCase();
+                        let vNm = (variants[i].name || '').toLowerCase();
+                        if (vBc.includes(term) || vNm.includes(term)) {
+                            variantMatch = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (name.includes(term) || sku.includes(term) || barcode.includes(term) || variantMatch) {
                     $(this).show();
                 } else {
                     $(this).hide();

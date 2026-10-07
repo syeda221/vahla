@@ -487,7 +487,7 @@ class ReportingController extends Controller
             }
 
             if (count($parsedVariants) > 0) {
-                if ($product->size_mode === 'by_kg') {
+                if (in_array($product->size_mode, ['by_kg', 'by_cartons', 'by_bandal'])) {
                     // Fetch parent level weight stock and transactions
                     if ($warehouseId && $warehouseId !== 'all') {
                         $parentClosing = (float) $product->warehouseStocks->where('warehouse_id', $warehouseId)->sum('total_pieces');
@@ -642,7 +642,7 @@ class ReportingController extends Controller
                         }
                     }
                 }
-                foreach ($parsedVariants as $v) {
+                foreach ($parsedVariants as $vIndex => $v) {
                     $vName = $v['name'] ?? $product->item_name;
                     $vSize = $v['size'] ?? '-';
                     $vColor = $v['color'] ?? '-';
@@ -659,14 +659,13 @@ class ReportingController extends Controller
                     if ($product->size_mode === 'by_bandal' && strtolower($vUnitName) === 'carton') {
                         $vUnitName = 'Bundal';
                     }
-                    $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($vUnitName) === 'carton');
+                    $vConv = (float) ($v['conv_factor'] ?? 1);
+                    if ($vConv <= 0) $vConv = 1;
 
-                    // Cartons / Loose / Unit Formatting
+                    $isCartonVariant = in_array(strtolower($vUnitName), ['carton', 'ctn', 'box', 'boxes', 'bandal', 'bundal', 'bndl']) || ($vConv > 1);
+
                     $ppb = (float) ($product->pieces_per_box ?? 1);
-                    if ($isCartonMode) {
-                        $vConv = (float) ($v['conv_factor'] ?? 0);
-                        if ($vConv > 0) $ppb = $vConv;
-                    }
+                    if ($ppb <= 0) $ppb = 1;
 
                     if ($product->size_mode === 'by_kg') {
                         $factor = isset($v['conv_factor']) ? (float)$v['conv_factor'] : 1.0;
@@ -681,10 +680,35 @@ class ReportingController extends Controller
                         $pReturned      = $parentPReturned / $factor;
                         $adjustments    = $parentAdjustments / $factor;
                         $balance        = $parentClosing / $factor;
+                    } elseif (in_array($product->size_mode, ['by_cartons', 'by_bandal'])) {
+                        // Shared physical pieces stock pool
+                        $poolPieces = $parentClosing;
+                        $balance    = $poolPieces;
+
+                        if ($isCartonVariant) {
+                            $initial        = $vConv > 0 ? ($parentOpening / $vConv) : $parentOpening;
+                            $purchased      = $vConv > 0 ? ($parentPurchased / $vConv) : $parentPurchased;
+                            $purchaseAmount = $parentPurchaseAmount;
+                            $sold           = $vConv > 0 ? ($parentSold / $vConv) : $parentSold;
+                            $saleAmount     = $parentSaleAmount;
+                            $returnedQty    = $vConv > 0 ? ($parentReturnedQty / $vConv) : $parentReturnedQty;
+                            $pReturned      = $vConv > 0 ? ($parentPReturned / $vConv) : $parentPReturned;
+                            $adjustments    = $vConv > 0 ? ($parentAdjustments / $vConv) : $parentAdjustments;
+                        } else {
+                            $vUnitName      = 'Pcs';
+                            $initial        = $parentOpening;
+                            $purchased      = $parentPurchased;
+                            $purchaseAmount = $parentPurchaseAmount;
+                            $sold           = $parentSold;
+                            $saleAmount     = $parentSaleAmount;
+                            $returnedQty    = $parentReturnedQty;
+                            $pReturned      = $parentPReturned;
+                            $adjustments    = $parentAdjustments;
+                        }
                     } else {
                         // Initial Stock in Pieces
                         $vRawStock = (string) ($v['stock'] ?? '0');
-                        if ($isCartonMode && $ppb > 1) {
+                        if ($ppb > 1) {
                             if (strpos($vRawStock, '.') !== false) {
                                 $parts = explode('.', $vRawStock);
                                 $boxes = (int) ($parts[0] ?? 0);
@@ -768,24 +792,44 @@ class ReportingController extends Controller
                     }
 
                     // Weighted Average Purchase Price
-                    $vPurchPrice = (float) ($v['purch_price'] ?? $productPurchPrice);
-                    $initialAmount = $initial * $vPurchPrice;
-                    $totalQtyIn = $initial + $purchased;
-                    $totalAmountIn = $initialAmount + $purchaseAmount;
-                    $averagePrice = $totalQtyIn > 0 ? ($totalAmountIn / $totalQtyIn) : $vPurchPrice;
+                    $vPurchPrice = (float) ($v['purch_price'] ?? 0);
+                    if ($vPurchPrice <= 0) {
+                        $vPurchPrice = $isCartonVariant ? ($productPurchPrice * $vConv) : $productPurchPrice;
+                    }
+                    $averagePrice = $vPurchPrice;
 
-                    $stockValue = $balance * $averagePrice;
-                    $grandTotalValue += $stockValue;
-                    $totalCurrentStock += $balance;
-                    $totalAdjustments  += $adjustments;
-                    $totalSoldAmount   += $saleAmount;
+                    if ($isCartonVariant && $vConv > 0) {
+                        $stockValue = ($balance / $vConv) * $vPurchPrice;
+                    } else {
+                        $stockValue = $balance * $vPurchPrice;
+                    }
 
-                    if ($isCartonMode) {
-                        $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
-                        $cartons = (int) floor($balance / $ppb);
-                        $loose   = (int) round($balance - ($cartons * $ppb));
-                        $formattedStock = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs" : "{$cartons} {$ctnLbl}";
-                        $cartonDisplay = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>" : "{$cartons} {$ctnLbl} <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>";
+                    $isSharedPool = in_array($product->size_mode, ['by_kg', 'by_cartons', 'by_bandal']);
+                    if (!$isSharedPool || $vIndex === 0 || ($variantKey && $variantKey !== 'all')) {
+                        $grandTotalValue += $stockValue;
+                        $totalCurrentStock += $balance;
+                        $totalAdjustments  += $adjustments;
+                        $totalSoldAmount   += $saleAmount;
+                    }
+
+                    if ($product->size_mode === 'by_kg') {
+                        $cartons = '-';
+                        $loose   = $balance;
+                        $formattedStock = number_format($balance, 2) . " {$vUnitName}";
+                        $cartonDisplay = '—';
+                    } elseif (in_array($product->size_mode, ['by_cartons', 'by_bandal'])) {
+                        if ($isCartonVariant) {
+                            $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
+                            $cartons = (int) floor($balance / $vConv);
+                            $loose   = (int) round($balance - ($cartons * $vConv));
+                            $formattedStock = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs" : "{$cartons} {$ctnLbl}";
+                            $cartonDisplay = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs <span class='text-muted small'>({$vConv} pcs/" . strtolower($ctnLbl) . ")</span>" : "{$cartons} {$ctnLbl} <span class='text-muted small'>({$vConv} pcs/" . strtolower($ctnLbl) . ")</span>";
+                        } else {
+                            $cartons = '-';
+                            $loose   = $balance;
+                            $formattedStock = number_format($balance, 0) . " {$vUnitName}";
+                            $cartonDisplay = '—';
+                        }
                     } elseif ($ppb > 1 && $product->size_mode === 'by_size') {
                         $cartons = (int) floor($balance / $ppb);
                         $loose   = (int) round($balance - ($cartons * $ppb));
@@ -794,14 +838,14 @@ class ReportingController extends Controller
                     } else {
                         $cartons = '-';
                         $loose   = $balance;
-                        $formattedStock = number_format($balance, (in_array($product->size_mode, ['by_kg','by_gm','by_ton','by_meter','by_feet']) ? 2 : 0)) . " {$vUnitName}";
+                        $formattedStock = number_format($balance, (in_array($product->size_mode, ['by_gm','by_ton','by_meter','by_feet']) ? 2 : 0)) . " {$vUnitName}";
                         $cartonDisplay = '—';
                     }
 
                     // Stock Status Badge
                     $status = 'healthy';
-                    $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
-                    $minQ = $product->alert_quantity ?? (($product->alert_carton_quantity ?? 0) * $ppb);
+                    $alertPpb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
+                    $minQ = $product->alert_quantity ?? (($product->alert_carton_quantity ?? 0) * $alertPpb);
                     if ($balance <= 0) $status = 'out_of_stock';
                     elseif ($minQ > 0 && $balance < $minQ) $status = 'low_stock';
 

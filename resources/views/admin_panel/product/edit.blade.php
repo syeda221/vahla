@@ -724,10 +724,17 @@
                 const baseWholesaleInp = tr.querySelector('input[name="variant_wholesale_price[]"]');
                 const baseStockInp = tr.querySelector('input[name="variant_stock[]"]');
 
+                const baseConvInp = tr.querySelector('.conv-factor-input');
                 if (baseSaleInp) baseSaleInp.addEventListener('input', updatePriceSuggestions);
                 if (basePurchInp) basePurchInp.addEventListener('input', updatePriceSuggestions);
                 if (baseWholesaleInp) baseWholesaleInp.addEventListener('input', updatePriceSuggestions);
                 if (baseStockInp) baseStockInp.addEventListener('input', updateVariantStocksFromBase);
+                if (baseConvInp) {
+                    baseConvInp.addEventListener('input', function() {
+                        updateAllCartonPrices();
+                        updateVariantStocksFromBase();
+                    });
+                }
                 
                 const baseNameInp = tr.querySelector('.base-name-input');
                 if (baseNameInp) {
@@ -739,27 +746,54 @@
             }
 
             function updateVariantStocksFromBase() {
-                if (variantMode !== 'weight' && variantMode !== 'carton') return;
-                if (!variantsBody) return;
-
-                const baseRow = variantsBody.querySelector('tr');
+                const baseRow = variantsBody ? variantsBody.querySelector('tr') : null;
                 if (!baseRow) return;
+
+                const mode = unitDropdown ? unitDropdown.value : 'by_pieces';
+                const isCartonMode = (mode === 'by_cartons' || mode === 'by_bandal');
+                const isWeightMode = (variantMode === 'weight');
+
+                if (!isWeightMode && !isCartonMode) return;
 
                 const baseStockInp = baseRow.querySelector('input[name="variant_stock[]"]');
                 const baseStock = parseFloat(baseStockInp?.value || 0);
+
+                const baseConvInp = baseRow.querySelector('.conv-factor-input');
+                let baseConv = parseFloat(baseConvInp?.value || 0);
+                if (isCartonMode && baseConv <= 0) baseConv = 1;
+
+                // Calculate base pieces / units pool
+                let totalBaseUnits = 0;
+                if (isCartonMode) {
+                    totalBaseUnits = baseStock * baseConv;
+                } else if (isWeightMode) {
+                    totalBaseUnits = baseStock;
+                }
 
                 const rows = variantsBody.querySelectorAll('tr');
                 rows.forEach((row, index) => {
                     if (index === 0) return;
 
                     const factorInp = row.querySelector('.conv-factor-input');
+                    const pieceWtInp = row.querySelector('input[name="variant_weight_per_piece[]"]');
                     const stockInp = row.querySelector('input[name="variant_stock[]"]');
+                    const unitSelect = row.querySelector('select[name="variant_unit[]"]');
 
                     let factor = parseFloat(factorInp?.value || 0);
 
-                    if (baseStock > 0 && factor > 0 && stockInp) {
-                        const calcPcs = Math.round(baseStock / factor);
-                        stockInp.value = calcPcs;
+                    if (isCartonMode) {
+                        if (factor <= 0 && unitSelect && ['pcs', 'piece', 'pieces', 'pc'].includes(unitSelect.value.toLowerCase())) {
+                            factor = 1;
+                            if (factorInp) factorInp.value = '1';
+                        }
+                        if (totalBaseUnits >= 0 && factor > 0 && stockInp) {
+                            stockInp.value = Math.round(totalBaseUnits / factor);
+                        }
+                    } else if (isWeightMode) {
+                        if (baseStock > 0 && factor > 0 && stockInp) {
+                            const calcPcs = Math.round(baseStock / factor);
+                            stockInp.value = calcPcs;
+                        }
                     }
                 });
             }
@@ -847,9 +881,9 @@
 
                 const sizeVal = v ? (v.size || '') : '';
                 const colorVal = v ? (v.color || '') : '';
-                const unitVal = v ? (v.unit || (isCartonMode ? 'Carton' : 'Pcs')) : (isCartonMode ? 'Carton' : 'Pcs');
+                const unitVal = v ? (v.unit || (isCartonMode ? 'Carton' : 'Pcs')) : (isCartonMode ? 'Pcs' : 'Pcs');
                 const stockVal = (v && v.stock !== undefined && v.stock !== null && v.stock !== '') ? v.stock : '0';
-                const convVal = (v && v.conv_factor !== undefined && v.conv_factor !== null && v.conv_factor !== '') ? v.conv_factor : (isCartonMode ? '0' : '');
+                const convVal = (v && v.conv_factor !== undefined && v.conv_factor !== null && v.conv_factor !== '') ? v.conv_factor : (isCartonMode ? '1' : '');
                 const weightVal = (v && v.weight_per_piece !== undefined && v.weight_per_piece !== null && v.weight_per_piece !== '') ? v.weight_per_piece : (weightGrams || (factor < 10 ? (factor * 1000).toFixed(1).replace(/\.0$/, '') : factor));
                 const saleDiscVal = (v && v.sale_discount_percent !== undefined && v.sale_discount_percent !== null && v.sale_discount_percent !== '') ? v.sale_discount_percent : '0';
                 const purchDiscVal = (v && v.purchase_discount_percent !== undefined && v.purchase_discount_percent !== null && v.purchase_discount_percent !== '') ? v.purchase_discount_percent : '0';
@@ -867,8 +901,8 @@
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_color[]" value="${escapeHtml(colorVal)}" placeholder="Color"></td>
                     <td class="p-1">
                         <select class="form-select form-select-sm px-1 fw-bold text-dark" name="variant_unit[]" style="font-size:11px;">
-                            <option value="Carton" ${uNorm==='carton'||(isCartonMode && !v)?'selected':''}>Carton</option>
-                            <option value="Pcs" ${(!isCartonMode && (uNorm==='pcs'||uNorm==='piece'||uNorm==='pieces'||uNorm==='pc'))?'selected':''}>Pcs</option>
+                            <option value="Carton" ${uNorm==='carton'?'selected':''}>Carton</option>
+                            <option value="Pcs" ${(uNorm==='pcs'||uNorm==='piece'||uNorm==='pieces'||uNorm==='pc'||(!v&&isCartonMode))?'selected':''}>Pcs</option>
                             <option value="Kg" ${uNorm==='kg'?'selected':''}>Kg</option>
                             <option value="Gm" ${uNorm==='gm'||uNorm==='g'?'selected':''}>Gm</option>
                             <option value="Ft" ${uNorm==='ft'||uNorm==='feet'?'selected':''}>Ft</option>
@@ -878,10 +912,10 @@
                         </select>
                     </td>
                     <td class="p-1">
-                        <input type="number" class="form-control-pro form-control-sm text-center fw-bold text-primary stock-input" name="variant_stock[]" step="any" value="${escapeHtml(stockVal)}" placeholder="0" title="${isCartonMode ? 'Initial Stock (Cartons)' : 'Initial Stock'}" ${variantMode === 'weight' ? 'readonly style="background:#f8f9ff;color:#0d6efd;font-weight:bold;"' : ''}>
+                        <input type="number" class="form-control-pro form-control-sm text-center fw-bold text-primary stock-input" name="variant_stock[]" step="any" value="${escapeHtml(stockVal)}" placeholder="0" title="${isCartonMode ? 'Calculated Piece Stock' : 'Initial Stock'}" ${variantMode === 'weight' || isCartonMode ? 'readonly style="background:#f8f9ff;color:#0d6efd;font-weight:bold;"' : ''}>
                     </td>
                     <td class="p-0 conv-col">
-                        <input type="text" inputmode="decimal" class="form-control-pro form-control-sm conv-factor-input text-center fw-bold text-success" name="variant_conv_factor[]" value="${escapeHtml(convVal)}" placeholder="0" title="${isCartonMode ? 'Pieces per Carton' : 'Conv Factor: weight per Pcs in base unit'}" style="border-radius:0; border:1px solid #198754; height:30px; border-width:1.5px;">
+                        <input type="text" inputmode="decimal" class="form-control-pro form-control-sm conv-factor-input text-center fw-bold text-success" name="variant_conv_factor[]" value="${escapeHtml(convVal)}" placeholder="${isCartonMode ? '1' : '0'}" title="${isCartonMode ? 'Pack Size (1 for loose piece)' : 'Conv Factor: weight per Pcs in base unit'}" style="border-radius:0; border:1px solid #198754; height:30px; border-width:1.5px;">
                     </td>
                     <td class="p-0 piece-wt-only-col">
                         <div style="position:relative;">
@@ -947,12 +981,12 @@
             function updateCartonPriceRow(row) {
                 if (!row) return;
                 const mode = unitDropdown ? unitDropdown.value : 'by_pieces';
-                const rowUnit = row.querySelector('[name="variant_unit[]"]')?.value || '';
-                const isCarton = (['by_cartons', 'by_bandal'].includes(mode) || rowUnit.toLowerCase() === 'carton');
+                const rowUnit = (row.querySelector('[name="variant_unit[]"]')?.value || '').toLowerCase();
+                const isCartonMode = (['by_cartons', 'by_bandal'].includes(mode));
 
                 const convInp = row.querySelector('.conv-factor-input');
                 let ppb = parseFloat(convInp?.value || 0);
-                if (isNaN(ppb)) ppb = 0;
+                if (isNaN(ppb) || ppb <= 0) ppb = 1;
 
                 const saleInp = row.querySelector('.sale-price-input, .base-sale-input');
                 const purchInp = row.querySelector('.purch-price-input, .base-purch-input');
@@ -962,21 +996,42 @@
                 const purchBadge = row.querySelector('.carton-purch-badge');
                 const wsBadge = row.querySelector('.carton-wsale-badge');
 
-                if (isCarton && ppb > 0) {
-                    if (saleBadge && saleInp) {
-                        const s = parseFloat(saleInp.value) || 0;
-                        saleBadge.querySelector('.ctn-sale-val').textContent = (s * ppb).toFixed(2);
-                        saleBadge.classList.remove('d-none');
-                    }
-                    if (purchBadge && purchInp) {
-                        const p = parseFloat(purchInp.value) || 0;
-                        purchBadge.querySelector('.ctn-purch-val').textContent = (p * ppb).toFixed(2);
-                        purchBadge.classList.remove('d-none');
-                    }
-                    if (wsBadge && wsInp) {
-                        const w = parseFloat(wsInp.value) || 0;
-                        wsBadge.querySelector('.ctn-wsale-val').textContent = (w * ppb).toFixed(2);
-                        wsBadge.classList.remove('d-none');
+                const isCartonRow = ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl'].includes(rowUnit) || (ppb > 1 && rowUnit !== 'pcs');
+
+                if (isCartonMode && ppb > 1) {
+                    if (isCartonRow) {
+                        if (saleBadge && saleInp) {
+                            const s = parseFloat(saleInp.value) || 0;
+                            saleBadge.innerHTML = `<span class="text-muted small">1 Pc: ${(s / ppb).toFixed(2)}</span>`;
+                            saleBadge.classList.remove('d-none');
+                        }
+                        if (purchBadge && purchInp) {
+                            const p = parseFloat(purchInp.value) || 0;
+                            purchBadge.innerHTML = `<span class="text-muted small">1 Pc: ${(p / ppb).toFixed(2)}</span>`;
+                            purchBadge.classList.remove('d-none');
+                        }
+                        if (wsBadge && wsInp) {
+                            const w = parseFloat(wsInp.value) || 0;
+                            wsBadge.innerHTML = `<span class="text-muted small">1 Pc: ${(w / ppb).toFixed(2)}</span>`;
+                            wsBadge.classList.remove('d-none');
+                        }
+                    } else {
+                        const baseConv = parseFloat(document.querySelector('.conv-factor-input')?.value) || ppb;
+                        if (saleBadge && saleInp) {
+                            const s = parseFloat(saleInp.value) || 0;
+                            saleBadge.innerHTML = `<span class="text-muted small">Ctn: ${(s * baseConv).toFixed(2)}</span>`;
+                            saleBadge.classList.remove('d-none');
+                        }
+                        if (purchBadge && purchInp) {
+                            const p = parseFloat(purchInp.value) || 0;
+                            purchBadge.innerHTML = `<span class="text-muted small">Ctn: ${(p * baseConv).toFixed(2)}</span>`;
+                            purchBadge.classList.remove('d-none');
+                        }
+                        if (wsBadge && wsInp) {
+                            const w = parseFloat(wsInp.value) || 0;
+                            wsBadge.innerHTML = `<span class="text-muted small">Ctn: ${(w * baseConv).toFixed(2)}</span>`;
+                            wsBadge.classList.remove('d-none');
+                        }
                     }
                 } else {
                     if (saleBadge) saleBadge.classList.add('d-none');
@@ -1057,15 +1112,9 @@
                 const saleH = document.getElementById('salePriceHeader');
                 const purchH = document.getElementById('purchPriceHeader');
                 const wsH = document.getElementById('wholesalePriceHeader');
-                if (isCarton) {
-                    if (saleH) saleH.textContent = 'Sale (1 Pc)';
-                    if (purchH) purchH.textContent = 'Purch (1 Pc)';
-                    if (wsH) wsH.textContent = 'Wholesale (1 Pc)';
-                } else {
-                    if (saleH) saleH.textContent = 'Sale Price';
-                    if (purchH) purchH.textContent = 'Purch Price';
-                    if (wsH) wsH.textContent = 'Wholesale';
-                }
+                if (saleH) saleH.textContent = 'Sale Price';
+                if (purchH) purchH.textContent = 'Purch Price';
+                if (wsH) wsH.textContent = 'Wholesale';
                 updateAllCartonPrices();
             }
 

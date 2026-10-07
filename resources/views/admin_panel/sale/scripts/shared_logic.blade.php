@@ -254,11 +254,15 @@
 
              const ppb = parseFloat(pRes.pieces_per_box) || 1;
              const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
+             let isVariant = Boolean($row.find('.variant-data-hidden').val());
              if (pRes.size_mode == "by_cartons") {
-                 let piecePrice = parseFloat(pRes.sale_price_per_piece || rate || 0);
-                 let cartonPrice = ppb > 1 ? (piecePrice * ppb) : piecePrice;
-                 $row.find('.visible-price').val(unitMode === 'pcs' ? piecePrice : cartonPrice);
-                 $row.find('.price-per-piece').val(unitMode === 'pcs' ? piecePrice : cartonPrice);
+                 let finalPrice = rate;
+                 if (!isVariant && unitMode !== 'pcs' && ppb > 1) {
+                     let piecePrice = parseFloat(pRes.sale_price_per_piece || rate || 0);
+                     finalPrice = piecePrice * ppb;
+                 }
+                 $row.find('.visible-price').val(finalPrice);
+                 $row.find('.price-per-piece').val(finalPrice);
              } else if (pRes.size_mode == "by_pieces" || pRes.size_mode == "by_kg" || pRes.size_mode == "by_gm" || pRes.size_mode == "by_meter") {
                  $row.find('.visible-price').val(pRes.sale_price_per_piece || rate || 0);
                  $row.find('.price-per-piece').val($row.find('.visible-price').val() || 0);
@@ -988,11 +992,16 @@
             let variantSize = '-';
             let variantColor = '-';
             let variantStock = null;
+            let variantUnit = '';
+            let variantConv = 1;
+            let isVariant = Boolean(data.variant_data);
             if (data.variant_data) {
                 try {
                     const vd = JSON.parse(atob(data.variant_data));
                     variantSize = (vd.size && vd.size !== '-') ? vd.size : '-';
                     variantColor = (vd.color && vd.color !== '-') ? vd.color : '-';
+                    variantUnit = vd.unit || '';
+                    variantConv = parseFloat(vd.conv_factor) || 1;
                     // Prefer vd.current_stock from parsed variant_data (highly reliable), fallback to data.stock or vd.stock
                     variantStock = vd.current_stock !== undefined ? vd.current_stock : (data.stock !== undefined ? data.stock : (vd.stock !== undefined ? vd.stock : null));
                 } catch(ex) {}
@@ -1022,17 +1031,6 @@
             let wsPrice = parseFloat(data.wholesale_price) || 0;
             let rate = (rowMode === 'wholesale' && wsPrice > 0) ? wsPrice : (data.retail_price || data.trade_price || 0);
 
-            const ppb = parseFloat(data.pieces_per_box) || 1;
-            const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
-            if (['by_cartons', 'by_bandal'].includes(data.size_mode)) {
-                let cartonPrice = ppb > 1 ? (rate * ppb) : rate;
-                $row.find('.visible-price').val(unitMode === 'pcs' ? rate : cartonPrice);
-                $row.find('.price-per-piece').val(unitMode === 'pcs' ? rate : cartonPrice);
-            } else {
-                $row.find('.visible-price').val(rate);
-                $row.find('.price-per-piece').val(rate);
-            }
-            
             $row.find('.pack-qty').val(data.pieces_per_box || 1);
             $row.find('.size-h').val(data.height || '-');
             $row.find('.size-w').val(data.width || '-');
@@ -1044,6 +1042,20 @@
             $row.data('pieces_per_box', data.pieces_per_box || 1);
             
             setupRowQtyToggle($row, data.size_mode);
+
+            const ppb = parseFloat(data.pieces_per_box) || 1;
+            const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
+            if (['by_cartons', 'by_bandal'].includes(data.size_mode)) {
+                let finalPrice = rate;
+                if (!isVariant && unitMode !== 'pcs' && ppb > 1) {
+                    finalPrice = rate * ppb;
+                }
+                $row.find('.visible-price').val(finalPrice);
+                $row.find('.price-per-piece').val(finalPrice);
+            } else {
+                $row.find('.visible-price').val(rate);
+                $row.find('.price-per-piece').val(rate);
+            }
 
             computeRow($row);
         });
@@ -1067,14 +1079,35 @@
     function setupRowQtyToggle($row, sizeMode) {
         const $toggleBtn = $row.find('.qty-unit-toggle');
         updatePcsCtnColumn($row, sizeMode);
+
+        let isVariant = Boolean($row.find('.variant-data-hidden').val());
+        let variantUnit = '';
+        let variantConv = 1;
+        if (isVariant) {
+            try {
+                const vd = JSON.parse(atob($row.find('.variant-data-hidden').val()));
+                variantUnit = (vd.unit || '').toLowerCase();
+                variantConv = parseFloat(vd.conv_factor) || 1;
+            } catch(e) {}
+        }
+
         if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
             let label = (sizeMode === 'by_bandal') ? 'Bundal' : 'Ctn';
-            $toggleBtn.removeClass('d-none')
-                      .attr('data-unit-mode', 'ctn')
-                      .text(label)
-                      .removeClass('btn-outline-primary btn-outline-info btn-outline-warning')
-                      .addClass('btn-outline-success');
-            $row.find('.hidden-sub-unit-mode').val('ctn');
+            if (isVariant && (variantUnit === 'pcs' || variantUnit === 'piece' || (variantConv === 1 && !['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl'].includes(variantUnit)))) {
+                $toggleBtn.removeClass('d-none')
+                          .attr('data-unit-mode', 'pcs')
+                          .text('Pcs')
+                          .removeClass('btn-outline-primary btn-outline-success btn-outline-warning')
+                          .addClass('btn-outline-info');
+                $row.find('.hidden-sub-unit-mode').val('pcs');
+            } else {
+                $toggleBtn.removeClass('d-none')
+                          .attr('data-unit-mode', 'ctn')
+                          .text(label)
+                          .removeClass('btn-outline-primary btn-outline-info btn-outline-warning')
+                          .addClass('btn-outline-success');
+                $row.find('.hidden-sub-unit-mode').val('ctn');
+            }
             $row.find('.carton-qty').attr('placeholder', '0');
         } else if (sizeMode === 'by_kg') {
             $toggleBtn.removeClass('d-none')

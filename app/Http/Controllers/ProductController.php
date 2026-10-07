@@ -215,11 +215,12 @@ class ProductController extends Controller
                     $vName = ($v['name'] ?? $p->item_name) . $size . $color;
                     
                     $vUnitName = $v['unit'] ?? $unitName;
-                    $isCartonMode = (in_array($p->size_mode, ['by_cartons', 'by_bandal']) || strtolower($vUnitName) === 'carton');
+                    $vConv = (float) ($v['conv_factor'] ?? 1);
+                    if ($vConv <= 0) $vConv = 1;
+                    $isCartonVariant = in_array(strtolower($vUnitName), ['carton', 'ctn', 'box', 'boxes', 'bandal', 'bundal', 'bndl']) || ($vConv > 1 && in_array($p->size_mode, ['by_cartons', 'by_bandal']));
                     $vPpb = (float) ($p->pieces_per_box ?? 1);
-                    if ($isCartonMode) {
-                        $vConv = (float) ($v['conv_factor'] ?? 0);
-                        if ($vConv > 0) $vPpb = $vConv;
+                    if ($isCartonVariant && $vConv > 1) {
+                        $vPpb = $vConv;
                     }
                     if ($vPpb <= 0) $vPpb = 1;
 
@@ -234,10 +235,13 @@ class ProductController extends Controller
                         } else {
                             $vBalance = (int) floor(max(0, $stockPieces) / $factor);
                         }
+                    } elseif (in_array($p->size_mode, ['by_cartons', 'by_bandal'])) {
+                        // Shared carton pool based on warehouse total pieces
+                        $vBalance = max(0, $stockPieces);
                     } else {
                         // Initial Stock in Pieces
                         $vRawStock = (string) ($v['stock'] ?? '0');
-                        if ($isCartonMode && $vPpb >= 1) {
+                        if ($vPpb > 1) {
                             if (strpos($vRawStock, '.') !== false) {
                                 $parts = explode('.', $vRawStock);
                                 $boxes = (int) ($parts[0] ?? 0);
@@ -332,7 +336,20 @@ class ProductController extends Controller
                             $pcsCount = (int) floor($vBalance);
                             $vStockDisplay = "{$pcsCount}";
                         }
-                    } elseif ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') && $vPpb > 1) {
+                    } elseif (in_array($p->size_mode, ['by_cartons', 'by_bandal'])) {
+                        $vConv = (float)($v['conv_factor'] ?? 1);
+                        if ($vConv <= 0) $vConv = 1;
+                        $isCartonVariant = in_array(strtolower($vUnitName), ['carton', 'ctn', 'box', 'boxes', 'bandal', 'bundal', 'bndl']) || ($vConv > 1);
+
+                        if ($isCartonVariant) {
+                            $vBoxes = (int) floor($vBalance / $vConv);
+                            $vLoose = (int) round($vBalance - ($vBoxes * $vConv));
+                            $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose" : "$vBoxes";
+                        } else {
+                            $vUnitName = 'Pcs';
+                            $vStockDisplay = $vBalance;
+                        }
+                    } elseif ($p->size_mode === 'by_size' && $vPpb > 1) {
                         $vBoxes = (int) floor($vBalance / $vPpb);
                         $vLoose = (int) round($vBalance - ($vBoxes * $vPpb));
                         $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes;
@@ -356,8 +373,8 @@ class ProductController extends Controller
                         'retail_price' => $v['sale_price'] ?? $p->sale_price_per_piece ?? 0,
                         'wholesale_price' => $v['wholesale_price'] ?? $p->wholesale_price ?? 0,
                         'weight_per_piece' => $v['weight_per_piece'] ?? $p->weight_per_piece ?? 0,
-                        'purchase_price_per_piece' => $v['purch_price'] ?? $p->purchase_price_per_piece ?? 0,
-                        'purchase_price_per_box' => ($v['purch_price'] ?? $p->purchase_price_per_piece ?? 0) * $vPpb,
+                        'purchase_price_per_piece' => ($isCartonVariant && $vConv > 1) ? (($v['purch_price'] ?? 0) / $vConv) : ($v['purch_price'] ?? $p->purchase_price_per_piece ?? 0),
+                        'purchase_price_per_box' => $isCartonVariant ? ($v['purch_price'] ?? 0) : (($v['purch_price'] ?? 0) * $vPpb),
                         'purchase_price_per_m2' => $p->purchase_price_per_m2 ?? 0,
                         'sale_discount_percent' => (float)($v['sale_discount_percent'] ?? 0),
                         'purchase_discount_percent' => (float)($v['purchase_discount_percent'] ?? 0),
@@ -780,14 +797,14 @@ class ProductController extends Controller
                         } elseif (in_array($mode, ['by_cartons', 'by_bandal'])) {
                             if ($isBase === 1 || $baseConvForCarton === null) {
                                 $baseConvForCarton = $vConvFactor;
-                            }
-                            if (strpos($vStockRaw, '.') !== false) {
-                                $parts = explode('.', $vStockRaw);
-                                $boxes = (int)($parts[0] ?? 0);
-                                $loose = (int)($parts[1] ?? 0);
-                                $variantStockSum += ($boxes * $vConvFactor) + $loose;
-                            } else {
-                                $variantStockSum += ($vStock * $vConvFactor);
+                                if (strpos($vStockRaw, '.') !== false) {
+                                    $parts = explode('.', $vStockRaw);
+                                    $boxes = (int)($parts[0] ?? 0);
+                                    $loose = (int)($parts[1] ?? 0);
+                                    $variantStockSum = ($boxes * $vConvFactor) + $loose;
+                                } else {
+                                    $variantStockSum = ($vStock * $vConvFactor);
+                                }
                             }
                         } else {
                             $variantStockSum += $vStock;
@@ -828,10 +845,19 @@ class ProductController extends Controller
 
                     $baseVariant = collect($variants)->firstWhere('is_base_variant', 1) ?? $variants[0];
                     if ($baseVariant && (in_array($mode, ['by_cartons', 'by_bandal']) || strtolower($baseVariant['unit'] ?? '') === 'carton')) {
-                        $salePricePerPiece = (float)($baseVariant['sale_price'] ?? 0);
-                        $purchasePricePerPiece = (float)($baseVariant['purch_price'] ?? 0);
-                        $purchasePricePerBox = round($purchasePricePerPiece * $piecesPerBox, 2);
-                        $salePricePerBox = round($salePricePerPiece * $piecesPerBox, 2);
+                        $baseUnit = strtolower(trim($baseVariant['unit'] ?? ''));
+                        $baseIsCarton = in_array($baseUnit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || ($piecesPerBox > 1);
+                        if ($baseIsCarton) {
+                            $salePricePerBox = (float)($baseVariant['sale_price'] ?? 0);
+                            $purchasePricePerBox = (float)($baseVariant['purch_price'] ?? 0);
+                            $salePricePerPiece = $piecesPerBox > 0 ? round($salePricePerBox / $piecesPerBox, 4) : $salePricePerBox;
+                            $purchasePricePerPiece = $piecesPerBox > 0 ? round($purchasePricePerBox / $piecesPerBox, 4) : $purchasePricePerBox;
+                        } else {
+                            $salePricePerPiece = (float)($baseVariant['sale_price'] ?? 0);
+                            $purchasePricePerPiece = (float)($baseVariant['purch_price'] ?? 0);
+                            $purchasePricePerBox = round($purchasePricePerPiece * $piecesPerBox, 2);
+                            $salePricePerBox = round($salePricePerPiece * $piecesPerBox, 2);
+                        }
                     }
                 }
 
@@ -1222,10 +1248,19 @@ class ProductController extends Controller
                     $piecesPerBox = (int)$baseConvForCarton;
                     $baseVariant = collect($variants)->firstWhere('is_base_variant', 1) ?? $variants[0];
                     if ($baseVariant) {
-                        $salePricePerPiece = (float)($baseVariant['sale_price'] ?? 0);
-                        $purchasePricePerPiece = (float)($baseVariant['purch_price'] ?? 0);
-                        $purchasePricePerBox = round($purchasePricePerPiece * $piecesPerBox, 2);
-                        $salePricePerBox = round($salePricePerPiece * $piecesPerBox, 2);
+                        $baseUnit = strtolower(trim($baseVariant['unit'] ?? ''));
+                        $baseIsCarton = in_array($baseUnit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || ($piecesPerBox > 1);
+                        if ($baseIsCarton) {
+                            $salePricePerBox = (float)($baseVariant['sale_price'] ?? 0);
+                            $purchasePricePerBox = (float)($baseVariant['purch_price'] ?? 0);
+                            $salePricePerPiece = $piecesPerBox > 0 ? round($salePricePerBox / $piecesPerBox, 4) : $salePricePerBox;
+                            $purchasePricePerPiece = $piecesPerBox > 0 ? round($purchasePricePerBox / $piecesPerBox, 4) : $purchasePricePerBox;
+                        } else {
+                            $salePricePerPiece = (float)($baseVariant['sale_price'] ?? 0);
+                            $purchasePricePerPiece = (float)($baseVariant['purch_price'] ?? 0);
+                            $purchasePricePerBox = round($purchasePricePerPiece * $piecesPerBox, 2);
+                            $salePricePerBox = round($salePricePerPiece * $piecesPerBox, 2);
+                        }
                     }
                 }
 

@@ -994,19 +994,41 @@
 
                     let unitName = data.unit_name || 'Pcs';
                     const ppb = parseFloat(data.pieces_per_box) || 1;
+                    let isVariant = Boolean(data.variant_data);
+                    let variantUnit = '';
+                    let variantConv = 1;
+                    if (isVariant) {
+                        try {
+                            const vd = JSON.parse(atob(data.variant_data));
+                            variantUnit = (vd.unit || '').toLowerCase();
+                            variantConv = parseFloat(vd.conv_factor) || 1;
+                        } catch(e) {}
+                    }
+
                     const isCartonMode = (['by_cartons', 'by_bandal'].includes(data.size_mode) || unitName.toLowerCase() === 'carton' || unitName.toLowerCase() === 'ctn' || ppb > 1);
 
                     // Dynamic Unit & Style
+                    let finalUnit = unitName;
                     if (isCartonMode) {
-                        unitName = (data.size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
-                        $row.find('.unit-toggle-btn')
-                            .removeClass('btn-outline-primary btn-outline-info')
-                            .addClass('btn-outline-success')
-                            .attr('data-unit', unitName)
-                            .text(unitName);
-                        $row.find('.unit-input-val').val(unitName);
+                        if (isVariant && (variantUnit === 'pcs' || variantUnit === 'piece' || (variantConv === 1 && !['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl'].includes(variantUnit)))) {
+                            finalUnit = 'Pcs';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-primary btn-outline-success')
+                                .addClass('btn-outline-info')
+                                .attr('data-unit', 'Pcs')
+                                .text('Pcs');
+                            $row.find('.unit-input-val').val('Pcs');
+                        } else {
+                            finalUnit = (data.size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-primary btn-outline-info')
+                                .addClass('btn-outline-success')
+                                .attr('data-unit', finalUnit)
+                                .text(finalUnit);
+                            $row.find('.unit-input-val').val(finalUnit);
+                        }
                     } else if (data.size_mode === 'by_kg' || data.size_mode === 'by_gm') {
-                        unitName = 'Kg';
+                        finalUnit = 'Kg';
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-info btn-outline-success')
                             .addClass('btn-outline-primary')
@@ -1051,7 +1073,11 @@
                     if (sizeMode === 'by_size') {
                         finalPrice = pM2;
                     } else if (isCartonMode) {
-                        finalPrice = pBox > 0 ? pBox : (pPiece * ppb);
+                        if (isVariant) {
+                            finalPrice = parseFloat(data.trade_price) || pPiece;
+                        } else {
+                            finalPrice = (finalUnit === 'Pcs') ? pPiece : (pBox > 0 ? pBox : (pPiece * ppb));
+                        }
                     } else {
                         finalPrice = pPiece;
                     }

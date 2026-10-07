@@ -1921,18 +1921,16 @@ class SaleController extends Controller
             }
 
             if ($productMode === 'by_kg' || $productMode === 'by_gm') {
-
                 if ($unit === 'gm' || $unit === 'g') {
                     $qtyPieces = ((float)$item->qty) / 1000.0;
                 } else if ($unit === 'pcs' || $unit === 'piece' || $unit === 'pieces' || ($factor > 0 && $factor != 1.0)) {
                     $qtyPieces = ((float)$item->qty) * $factor;
                 } else {
-                    $qtyPieces = (float)$item->qty > 0 ? (float)$item->qty : (float)$item->total_pieces;
+                    $qtyPieces = (float)$item->total_pieces > 0 ? (float)$item->total_pieces : (float)$item->qty;
                 }
             } else {
-                // Ensure we respect the unit toggle for by_pieces and by_cartons products as well
-                if ($unit === 'pcs' || $unit === 'piece' || $unit === 'pieces') {
-                    $qtyPieces = (float)$item->qty;
+                if ((float)$item->total_pieces > 0) {
+                    $qtyPieces = (float)$item->total_pieces;
                 } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'cbn' || $unit === 'box') {
                     $ppb = (float)($item->product->pieces_per_box ?? 1);
                     if (isset($factor) && $factor > 0 && $factor != 1.0) {
@@ -1941,7 +1939,7 @@ class SaleController extends Controller
                     if ($ppb <= 0) $ppb = 1;
                     $qtyPieces = ((float)$item->qty) * $ppb;
                 } else {
-                    $qtyPieces = (float)$item->total_pieces > 0 ? (float)$item->total_pieces : (float)$item->qty;
+                    $qtyPieces = (float)$item->qty;
                 }
             }
 
