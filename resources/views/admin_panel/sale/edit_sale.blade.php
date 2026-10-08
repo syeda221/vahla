@@ -2348,9 +2348,15 @@
                 $stockDisplay = $vStock > 0 ? rtrim(rtrim(number_format($vStock, 2), '0'), '.') : 0;
             }
 
+            $baseName = $prod->item_name ?? $it->product_name ?? 'Product #'.$it->product_id;
+            $vNamePart = $vData['name'] ?? '';
+            $vSizePart = ($vData['size'] ?? '') !== '-' ? ($vData['size'] ?? '') : '';
+            $fullName = trim($baseName . ' ' . $vNamePart . ' ' . $vSizePart);
+            $fullName = preg_replace('/\s+/', ' ', $fullName);
+
             return [
                 'id' => $it->product_id,
-                'name' => $it->product_name ?: ($prod->item_name ?? 'Product #'.$it->product_id),
+                'name' => $fullName,
                 'warehouse_id' => $it->warehouse_id,
                 'size_mode' => $it->size_mode ?: 'pieces',
                 'variant_data' => $it->color,
@@ -2385,7 +2391,7 @@
                 var $btn = $row.find('.qty-unit-toggle');
                 var meta = {
                     by_cartons: ['ctn', 'Ctn', 'btn-outline-success'],
-                    by_bandal: ['ctn', 'Bundal', 'btn-outline-success'],
+                    by_bandal: ['ctn', 'Bndl', 'btn-outline-success'],
                     by_kg: ['kg', 'Kg', 'btn-outline-primary'],
                     by_gm: ['gm', 'Gm', 'btn-outline-info'],
                     by_feet: ['ft', 'Ft', 'btn-outline-primary'],
@@ -2481,6 +2487,22 @@
                 $row.find('.visible-price').val(priceDisplay);
                 $row.find('.price-per-piece').val(priceDisplay);
                 $row.find('.hidden-sub-unit-mode').val($row.find('.qty-unit-toggle').attr('data-unit-mode') || 'main');
+
+                var expectedWholesaleDisplay = (unitMode === 'pcs' || !['by_cartons', 'by_bandal'].includes(it.size_mode)) 
+                    ? it.wholesale_price 
+                    : (it.wholesale_price * it.ppb);
+
+                if (it.wholesale_price > 0 && Math.abs(priceDisplay - expectedWholesaleDisplay) < 0.01) {
+                    $row.find('.price-mode-row-toggle')
+                        .attr('data-mode', 'wholesale')
+                        .text('W')
+                        .attr('title', 'Wholesale Mode');
+                } else {
+                    $row.find('.price-mode-row-toggle')
+                        .attr('data-mode', 'retail')
+                        .text('R')
+                        .attr('title', 'Retail Mode');
+                }
 
                 if (it.discount_amount > 0 && it.discount_percent <= 0) {
                     $row.find('.discount-value').val(it.discount_amount);

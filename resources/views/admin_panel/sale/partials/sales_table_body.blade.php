@@ -3,7 +3,25 @@
         $pNames = 'N/A';
         if ($sale->items && $sale->items->count() > 0) {
             $pNames = $sale->items
-                ->map(fn($item) => optional($item->product)->item_name ?? '?')
+                ->map(function($item) {
+                    $baseName = $item->product_name ?: (optional($item->product)->item_name ?? '?');
+                    $vData = [];
+                    if (!empty($item->color)) {
+                        $decoded = base64_decode($item->color, true);
+                        $vData = ($decoded !== false) ? json_decode($decoded, true) : json_decode($item->color, true);
+                        if (!is_array($vData)) $vData = [];
+                    }
+                    $vNamePart = $vData['name'] ?? '';
+                    $vSizePart = ($vData['size'] ?? '') !== '-' ? ($vData['size'] ?? '') : '';
+                    
+                    if (!empty($vNamePart)) {
+                        $fullName = trim($vNamePart . ' ' . $vSizePart);
+                    } else {
+                        $fullName = trim($baseName . ' ' . $vSizePart);
+                    }
+                    
+                    return preg_replace('/\s+/', ' ', $fullName);
+                })
                 ->implode(', ');
         } elseif ($sale->product) {
             $pNames = $sale->product;

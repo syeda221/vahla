@@ -8,6 +8,11 @@
     <!-- Use Bootstrap for grid and utilities -->
    <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
     <style>
+        @font-face {
+            font-family: 'Jameel Noori Nastaleeq';
+            src: url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/JameelNooriNastaleeq.woff') format('woff');
+            font-display: swap;
+        }
         :root {
             --primary-color: #2c3e50;
             --accent-color: #3498db;
@@ -414,14 +419,14 @@
             <div class="col-7">
                 <div class="terms-box pt-2">
                     <p class="fw-bold mb-1">Terms & Conditions:</p>
-                    <ul style="font-size: 10px;">
+                    <ul style="font-size: 13px; font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', 'Jameel Noori Nastaleeq', serif; line-height: 1.5; padding-inline-start: 20px; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased;">
                         @php
                             $dcTerms = \App\Models\Setting::get('invoice_terms', "Please check items upon delivery.\nThis is a Delivery Challan, not a final invoice.\nSign and stamp to confirm receipt of goods in good condition.");
                             $termLines = explode("\n", $dcTerms);
                         @endphp
                         @foreach($termLines as $line)
                             @if(trim($line))
-                                <li>{{ trim($line) }}</li>
+                                <li><span dir="auto">{{ trim($line) }}</span></li>
                             @endif
                         @endforeach
                     </ul>

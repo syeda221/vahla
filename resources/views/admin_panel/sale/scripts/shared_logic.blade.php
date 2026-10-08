@@ -1066,7 +1066,7 @@
         const $toggleBtn = $row.find('.qty-unit-toggle');
         updatePcsCtnColumn($row, sizeMode);
         if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
-            let label = (sizeMode === 'by_bandal') ? 'Bundal' : 'Ctn';
+            let label = (sizeMode === 'by_bandal') ? 'Bndl' : 'Ctn';
             $toggleBtn.removeClass('d-none')
                       .attr('data-unit-mode', 'ctn')
                       .text(label)
@@ -1158,7 +1158,7 @@
                 $row.find('.price-per-piece').val($priceInp.val());
             } else {
                 currentMode = 'ctn';
-                let label = (sizeMode === 'by_bandal') ? 'Bundal' : 'Ctn';
+                let label = (sizeMode === 'by_bandal') ? 'Bndl' : 'Ctn';
                 $btn.attr('data-unit-mode', 'ctn').text(label).removeClass('btn-outline-info').addClass('btn-outline-success');
                 $row.find('.carton-qty').attr('placeholder', '0');
 

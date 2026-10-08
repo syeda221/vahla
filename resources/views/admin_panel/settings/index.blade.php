@@ -1,6 +1,14 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
+        .settings-textarea {
+            font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', 'Noto Nastaliq Urdu', serif !important;
+            font-size: 16px !important;
+            line-height: 1.8 !important;
+        }
+    </style>
     <div class="container-fluid">
         <div class="row">
             <div class="col-12">
@@ -65,7 +73,7 @@
                                             <div class="form-group">
                                                 <label>{{ $setting['label'] }}</label>
                                                 @if ($setting['type'] === 'text')
-                                                    <textarea name="settings[{{ $setting['key'] }}]" class="form-control" rows="3" {{ !$canEditSettings ? 'disabled' : '' }}>{{ $setting['value'] }}</textarea>
+                                                    <textarea name="settings[{{ $setting['key'] }}]" class="form-control settings-textarea" rows="3" dir="auto" {{ !$canEditSettings ? 'disabled' : '' }}>{{ $setting['value'] }}</textarea>
                                                 @else
                                                     <input type="text" name="settings[{{ $setting['key'] }}]"
                                                         class="form-control" value="{{ $setting['value'] }}" {{ !$canEditSettings ? 'disabled' : '' }}>
@@ -86,7 +94,7 @@
                                             <div class="form-group">
                                                 <label>{{ $setting['label'] }}</label>
                                                 @if ($setting['type'] === 'text')
-                                                    <textarea name="settings[{{ $setting['key'] }}]" class="form-control" rows="3" {{ !$canEditSettings ? 'disabled' : '' }}>{{ $setting['value'] }}</textarea>
+                                                    <textarea name="settings[{{ $setting['key'] }}]" class="form-control settings-textarea" rows="3" dir="auto" {{ !$canEditSettings ? 'disabled' : '' }}>{{ $setting['value'] }}</textarea>
                                                 @elseif($setting['type'] === 'integer')
                                                     <input type="number" name="settings[{{ $setting['key'] }}]"
                                                         class="form-control" value="{{ $setting['value'] }}" {{ !$canEditSettings ? 'disabled' : '' }}>

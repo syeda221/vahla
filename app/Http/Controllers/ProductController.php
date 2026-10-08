@@ -343,7 +343,7 @@ class ProductController extends Controller
 
                     $expanded[] = [
                         'id' => $p->id . '|variant|' . base64_encode($variantJson),
-                        'text' => $vName." (SKU: {$p->item_code})",
+                        'text' => $vName,
                         'sku' => $p->item_code ?? '',
                         'stock' => $vStockDisplay,
                         'stock_pieces' => $vBalance,
@@ -369,7 +369,7 @@ class ProductController extends Controller
 
             return [[
                 'id' => $p->id,
-                'text' => $p->item_name." (SKU: {$p->item_code})",
+                'text' => $p->item_name,
                 'sku' => $p->item_code ?? '',
                 'stock' => $stockDisplay,
                 'stock_pieces' => $stockPieces,
