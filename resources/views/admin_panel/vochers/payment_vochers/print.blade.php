@@ -262,9 +262,6 @@
                         <td style="text-align: center;">{{ $key + 1 }}</td>
                         <td>
                             <strong>{{ $row['account_name'] ?? '-' }}</strong>
-                            @if(!empty($row['narration']))
-                                <div style="font-size: 9px; color: #555;">({{ $row['narration'] }})</div>
-                            @endif
                         </td>
                         <td class="text-end" style="font-weight: bold;">
                             {{ number_format($row['amount'], 2) }}

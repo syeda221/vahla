@@ -14,9 +14,14 @@
                         <p class="text-muted mb-0 small">View and manage all receipts vouchers</p>
                     </div>
                     @can('receipts.voucher.create')
-                        <a class="btn btn-primary shadow-sm fw-bold d-inline-flex align-items-center" href="{{ route('recepit_vochers') }}" style="height: 38px; border-radius: 6px;">
-                            <i class="fas fa-plus mr-1" style="margin-right: 5px;"></i> Add Receipts Voucher
-                        </a>
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-success shadow-sm fw-bold d-inline-flex align-items-center" href="{{ route('vouchers.receive_payment') }}" style="height: 38px; border-radius: 6px;">
+                                <i class="fa-solid fa-file-invoice-dollar me-1"></i> Receive Payment (Invoices)
+                            </a>
+                            <a class="btn btn-outline-primary shadow-sm fw-bold d-inline-flex align-items-center" href="{{ route('recepit_vochers') }}" style="height: 38px; border-radius: 6px;">
+                                <i class="fas fa-plus me-1"></i> Generic Voucher
+                            </a>
+                        </div>
                     @endcan
                 </div>
                 <div class="card shadow border-0 rounded-4">

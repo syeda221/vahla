@@ -12,9 +12,14 @@
                         <p class="text-muted mb-0 small">View and manage all payment vouchers</p>
                     </div>
                     @can('payment.voucher.create')
-                        <a class="btn btn-primary shadow-sm fw-bold d-inline-flex align-items-center" href="{{ route('Payment_vochers') }}" style="height: 38px; border-radius: 6px;">
-                            <i class="fas fa-plus mr-1" style="margin-right: 5px;"></i> Add Payment Voucher
-                        </a>
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-primary shadow-sm fw-bold d-inline-flex align-items-center" href="{{ route('vouchers.make_payment') }}" style="height: 38px; border-radius: 6px;">
+                                <i class="fa-solid fa-money-bill-transfer me-1"></i> Make Payment (Bills)
+                            </a>
+                            <a class="btn btn-outline-primary shadow-sm fw-bold d-inline-flex align-items-center" href="{{ route('Payment_vochers') }}" style="height: 38px; border-radius: 6px;">
+                                <i class="fas fa-plus me-1"></i> Generic Voucher
+                            </a>
+                        </div>
                     @endcan
                 </div>
                 <div class="card shadow border-0 rounded-4">

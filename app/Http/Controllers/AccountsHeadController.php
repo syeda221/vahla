@@ -14,9 +14,19 @@ class AccountsHeadController extends Controller
     {
         $heads = AccountHead::all();
 
-        // Exclude system control accounts (AR, AP, SALES, PURCHASE)
-        $excludedCodes = ['AR', 'AP', 'SALES', 'PURCHASE'];
-        $excludedTitles = ['Accounts Receivable', 'Accounts Payable', 'Sales Revenue', 'Purchase Expense'];
+        // Exclude system control accounts (AR, AP, SALES, PURCHASE, DISCOUNT, TAX)
+        $excludedCodes = ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP', 'DISC-EXP', 'DISC-INC', 'TAX-REC', 'WHT-PAY'];
+        $excludedTitles = [
+            'Accounts Receivable',
+            'Accounts Payable',
+            'Sales Revenue',
+            'Purchase Expense',
+            'General Expense',
+            'Discount Allowed',
+            'Discount Received',
+            'Advance Income Tax / WHT Deducted',
+            'Withholding Tax Payable'
+        ];
 
         $accounts = Account::with(['head', 'histories.user'])
             ->whereNotIn('account_code', $excludedCodes)

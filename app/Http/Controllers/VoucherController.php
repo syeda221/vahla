@@ -2536,7 +2536,7 @@ class VoucherController extends Controller
                   ->orWhereRaw('LOWER(title) LIKE ?', ['%bank%'])
                   ->orWhereRaw('LOWER(title) LIKE ?', ['%cheque%']);
             })
-            ->whereNotIn('account_code', ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP'])
+            ->whereNotIn('account_code', ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP', 'DISC-EXP', 'DISC-INC', 'TAX-REC', 'WHT-PAY'])
             ->orderBy('title')
             ->get();
 
@@ -2774,7 +2774,7 @@ class VoucherController extends Controller
                         'account_id' => $depositAccount->id,
                         'debit' => $cashReceived,
                         'credit' => 0,
-                        'narration' => "Deposit via {$paymentMode}: " . $narrationList,
+                        'narration' => "Deposit via {$paymentMode}",
                     ];
                 }
 
@@ -2784,7 +2784,7 @@ class VoucherController extends Controller
                         'account_id' => $taxAccountId,
                         'debit' => $taxAmount,
                         'credit' => 0,
-                        'narration' => "Tax Deducted (WHT) on Settlement: " . $narrationList,
+                        'narration' => "Tax Deducted (WHT)",
                     ];
                 }
 
@@ -2794,7 +2794,7 @@ class VoucherController extends Controller
                         'account_id' => $discAccountId,
                         'debit' => $discountAmount,
                         'credit' => 0,
-                        'narration' => "Discount Allowed on Settlement: " . $narrationList,
+                        'narration' => "Discount Allowed",
                     ];
                 }
 
@@ -2803,7 +2803,7 @@ class VoucherController extends Controller
                         'account_id' => $creditAccountId,
                         'debit' => 0,
                         'credit' => $totalSettlement,
-                        'narration' => "Credit Settlement: " . $narrationList,
+                        'narration' => "Credit Settlement",
                     ];
                 }
 
@@ -2968,7 +2968,7 @@ class VoucherController extends Controller
                   ->orWhereRaw('LOWER(title) LIKE ?', ['%bank%'])
                   ->orWhereRaw('LOWER(title) LIKE ?', ['%cheque%']);
             })
-            ->whereNotIn('account_code', ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP'])
+            ->whereNotIn('account_code', ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP', 'DISC-EXP', 'DISC-INC', 'TAX-REC', 'WHT-PAY'])
             ->orderBy('title')
             ->get();
 
@@ -3208,7 +3208,7 @@ class VoucherController extends Controller
                         'account_id' => $debitAccountId,
                         'debit' => $totalSettlement,
                         'credit' => 0,
-                        'narration' => "Debit Payable: " . $narrationList,
+                        'narration' => "Debit Payable",
                     ];
                 }
 
@@ -3217,7 +3217,7 @@ class VoucherController extends Controller
                         'account_id' => $paidFromAccount->id,
                         'debit' => 0,
                         'credit' => $cashPaid,
-                        'narration' => "Paid via {$paymentMode}: " . $narrationList,
+                        'narration' => "Paid via {$paymentMode}",
                     ];
                 }
 
@@ -3227,7 +3227,7 @@ class VoucherController extends Controller
                         'account_id' => $taxPayableAccountId,
                         'debit' => 0,
                         'credit' => $taxAmount,
-                        'narration' => "Withholding Tax Payable on Settlement: " . $narrationList,
+                        'narration' => "Withholding Tax (WHT)",
                     ];
                 }
 
@@ -3237,7 +3237,7 @@ class VoucherController extends Controller
                         'account_id' => $discIncomeAccountId,
                         'debit' => 0,
                         'credit' => $discountAmount,
-                        'narration' => "Discount Received on Settlement: " . $narrationList,
+                        'narration' => "Discount Received",
                     ];
                 }
 
