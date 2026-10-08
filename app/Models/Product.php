@@ -80,6 +80,16 @@ class Product extends Model
     protected static function booted()
     {
         static::saved(function ($product) {
+            // Naya product create hone par fauran alert na bhejein (kyunke stock 0 hota hai)
+            if ($product->wasRecentlyCreated) {
+                return;
+            }
+            
+            // Sirf tab alert check karein jab alert_quantity ya alert_carton_quantity update hui ho
+            if (!$product->isDirty('alert_quantity') && !$product->isDirty('alert_carton_quantity')) {
+                return;
+            }
+
             $alertQty = $product->alert_quantity;
             if (is_null($alertQty) && !is_null($product->alert_carton_quantity)) {
                 $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
@@ -88,7 +98,7 @@ class Product extends Model
             
             if (!is_null($alertQty) && $alertQty > 0) {
                 $totalPieces = \App\Models\WarehouseStock::where('product_id', $product->id)->sum('total_pieces');
-                if ($totalPieces < $alertQty) {
+                if ($totalPieces <= $alertQty) {
                     \App\Models\SystemNotification::createStockAlertNotification($product, $totalPieces);
                 }
             }

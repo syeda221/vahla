@@ -758,17 +758,17 @@
         }
 
         /* Discount cell */
-        .discount-wrapper {
+        .discount-wrapper, .price-cell-group {
             display: flex;
             align-items: stretch;
             gap: 4px;
         }
-        .discount-wrapper .discount-value {
+        .discount-wrapper .discount-value, .price-cell-group .visible-price {
             flex: 1;
             min-width: 0;
             text-align: right;
         }
-        .discount-wrapper .discount-toggle {
+        .discount-wrapper .discount-toggle, .price-cell-group .price-mode-row-toggle {
             width: 32px;
             flex-shrink: 0;
             height: 38px !important;
@@ -784,7 +784,7 @@
             padding: 0 !important;
             transition: all .15s ease;
         }
-        .discount-wrapper .discount-toggle:hover {
+        .discount-wrapper .discount-toggle:hover, .price-cell-group .price-mode-row-toggle:hover {
             background: #EEF2F7 !important;
             color: var(--pos-blue) !important;
         }
@@ -1404,10 +1404,10 @@
 
                 {{-- Customer Balance Card (right) --}}
                 <div class="col-xl-4">
-                    <div class="cust-bal-card h-100" style="background: #FFFFFF; border: 1px solid #DBEAFE; border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.04); display: flex; flex-direction: column; justify-content: space-between;">
+                    <div class="cust-bal-card h-100" style="background: #F4F9FF; border: 1px solid #DBEAFE; border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.04); display: flex; flex-direction: column; justify-content: space-between;">
                         <div class="cb-head d-flex align-items-center justify-content-between mb-2">
                             <div class="d-flex align-items-center gap-2">
-                                <div style="width: 38px; height: 38px; border-radius: 10px; background: #2563EB; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);">
+                                <div style="width: 38px; height: 38px; border-radius: 10px; background: #2563EB; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 16px;">
                                     <i class="fas fa-user"></i>
                                 </div>
                                 <div>
@@ -1415,7 +1415,7 @@
                                     <div class="cb-code" style="font-size: 11px; color: #64748B;">Code: <span id="ci_code">—</span></div>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-link p-0 text-decoration-none" id="clearCustomerData" style="color: #2563EB; font-weight: 600; font-size: 13px;">Clear</button>
+                            <button type="button" class="btn btn-link p-0 text-decoration-none" id="clearCustomerData" style="color: #47659A; font-weight: 600; font-size: 13px;">Clear</button>
                         </div>
 
                         <div id="customerInfoCard" class="d-none cb-extras mb-2">
@@ -1434,22 +1434,22 @@
                         </div>
 
                         <div class="cb-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
-                            <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #F1F5F9; border-radius: 10px; padding: 10px 4px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                                <div class="cb-label" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; color: #64748B; margin-bottom: 3px;">Prev. Due</div>
+                            <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px; text-align: center;">
+                                <div class="cb-label" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; color: #47659A; margin-bottom: 3px;">Prev. Due</div>
                                 <div class="cb-value" style="font-size: 13px; font-weight: 800; color: #E11D48;">
                                     <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span>
                                 </div>
                             </div>
-                            <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #F1F5F9; border-radius: 10px; padding: 10px 4px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                                <div class="cb-label" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; color: #64748B; margin-bottom: 3px;">Current Due</div>
-                                <div class="cb-value" id="cc_current_bill" style="font-size: 13px; font-weight: 800; color: #2563EB;">Rs 0</div>
+                            <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px; text-align: center;">
+                                <div class="cb-label" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; color: #47659A; margin-bottom: 3px;">Current Due</div>
+                                <div class="cb-value" id="cc_current_bill" style="font-size: 13px; font-weight: 800; color: #111827;">Rs 0</div>
                             </div>
-                            <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #F1F5F9; border-radius: 10px; padding: 10px 4px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                                <div class="cb-label" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; color: #64748B; margin-bottom: 3px;">Paid</div>
+                            <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px; text-align: center;">
+                                <div class="cb-label" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; color: #47659A; margin-bottom: 3px;">Paid</div>
                                 <div class="cb-value" id="cc_paid_now" style="font-size: 13px; font-weight: 800; color: #16A34A;">Rs 0</div>
                             </div>
-                            <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #F1F5F9; border-radius: 10px; padding: 10px 4px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                                <div class="cb-label" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; color: #64748B; margin-bottom: 3px;">Closing</div>
+                            <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 4px; text-align: center;">
+                                <div class="cb-label" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; color: #47659A; margin-bottom: 3px;">Closing</div>
                                 <div class="cb-value" style="font-size: 13px; font-weight: 800; color: #E11D48;">
                                     <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span>
                                 </div>
@@ -1571,12 +1571,11 @@
                                 <!-- PRICE -->
                                 <td class="col-price-p">
                                     <div class="input-group input-group-sm price-cell-group" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: #ffffff;">
-                                        <span class="input-group-text border-0 bg-transparent text-muted px-2 fw-semibold" style="font-size: 12px;">Rs</span>
-                                        <input type="text" class="form-control visible-price text-end fw-semibold border-0" name="visible_price[]" placeholder="0" value="0" style="height: 38px; box-shadow: none;">
-                                        <button type="button" class="btn btn-sm price-mode-row-toggle d-none"
-                                                data-mode="retail" title="Retail Mode">
+                                        <button type="button" class="btn btn-sm price-mode-row-toggle border-0 text-muted px-2 bg-transparent fw-bold"
+                                                data-mode="retail" title="Retail Mode" tabindex="-1" style="font-size: 12px;">
                                             R
                                         </button>
+                                        <input type="text" class="form-control visible-price text-end fw-semibold border-0" name="visible_price[]" placeholder="0" value="0" style="height: 38px; box-shadow: none;">
                                     </div>
                                     <input type="hidden" class="price-per-piece" name="price_per_piece[]">
                                     <input type="hidden" class="retail-price">

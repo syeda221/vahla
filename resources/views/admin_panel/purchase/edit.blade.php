@@ -1,623 +1,640 @@
-@extends('admin_panel.layout.app')
+﻿@extends('admin_panel.layout.app')
 
 @section('content')
-  <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
-    <style>
-        /* ================= RESPONSIVE PURCHASE UI (Modernized) ================= */
-        body {
-            background-color: #f4f6f9;
-            /* Light gray background for contrast */
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        }
+<link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<style>
+    body {
+        background-color: #f4f7f6;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .main-wrapper {
+        padding: 10px;
+        max-width: 99%;
+        margin: 0 auto;
+    }
+    .card-custom {
+        background-color: #ffffff;
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    /* Header Styles */
+    .header-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .btn-back {
+        color: #0d6efd;
+        border: 1px solid #0d6efd;
+        background: transparent;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 8px 16px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-back:hover {
+        background: #f0f4f8;
+        color: #0b5ed7;
+    }
+    .header-title-container {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .icon-box {
+        width: 45px;
+        height: 45px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        color: white;
+    }
+    .bg-blue { background-color: #0d6efd; }
+    .bg-cyan { background-color: #0dcaf0; }
+    .header-title {
+        color: #0f172a;
+        font-weight: 700;
+        font-size: 1.5rem;
+        margin: 0;
+    }
+    .header-date {
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
 
-        .table-responsive {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
+    /* Form Styles */
+    .form-label {
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 0.85rem;
+        margin-bottom: 6px;
+    }
+    .input-with-icon {
+        position: relative;
+    }
+    .input-with-icon .bi {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 1rem;
+        z-index: 4;
+        pointer-events: none;
+    }
+        .input-with-icon .form-select {
+        padding-left: 38px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        height: 42px;
+        font-size: 0.9rem;
+    }
+    .input-with-icon .form-control {
+        padding-left: 38px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        height: 42px;
+        font-size: 0.9rem;
+    }
+    .input-with-icon .select2-container--default .select2-selection--single {
+        padding-left: 30px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        height: 42px;
+        display: flex;
+        align-items: center;
+    }
+    .input-with-icon .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 40px;
+    }
+    .form-control:focus, .select2-container--default.select2-container--focus .select2-selection--single {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    }
+    .input-readonly {
+        background-color: #f1f5f9 !important;
+        color: #64748b;
+    }
 
-        .sales-table {
-            border-collapse: collapse !important;
-            margin-bottom: 0 !important;
-            min-width: 1000px;
-        }
+    /* Table Styles */
+    .card-title-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .card-title {
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        font-size: 1.1rem;
+    }
+    .card-subtitle {
+        color: #64748b;
+        font-size: 0.85rem;
+        margin: 0;
+    }
+    .btn-add-row {
+        background-color: #0d6efd;
+        color: white;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 8px 16px;
+        border: none;
+    }
+    .btn-add-row:hover {
+        background-color: #0b5ed7;
+    }
+    
+    .table-container {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 20px;
+    }
+    .sales-table {
+        margin-bottom: 0;
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .sales-table thead th {
+        background-color: #f8fafc;
+        color: #0f172a;
+        font-weight: 700;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        padding: 12px 10px;
+        border-bottom: 1px solid #e2e8f0;
+        text-align: center;
+        white-space: nowrap;
+    }
+    .sales-table tbody td {
+        padding: 8px;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+        text-align: center;
+    }
+    
+    /* Inputs inside table */
+    .sales-table .form-control, .sales-table .form-select {
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        height: 36px;
+        font-size: 0.85rem;
+        text-align: center;
+    }
+    .sales-table .product-col .select2-container--default .select2-selection--single {
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        text-align: left;
+        padding-left: 30px;
+    }
+    .sales-table .product-col .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 34px;
+    }
+    
+    .remove-row {
+        color: #64748b;
+        background: transparent;
+        border: none;
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+    .remove-row:hover { color: #ef4444; }
+    
+    .action-btn {
+        background: transparent;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        color: #64748b;
+        padding: 4px 8px;
+    }
+    
+    .unit-toggle-btn {
+        background-color: #ecfdf5;
+        color: #10b981;
+        border: 1px solid #10b981;
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .unit-toggle-btn.btn-outline-info { background-color: #eff6ff; color: #3b82f6; border-color: #3b82f6; }
+    .unit-toggle-btn.btn-outline-primary { background-color: #f5f3ff; color: #8b5cf6; border-color: #8b5cf6; }
+    
+    .disc-wrapper {
+        display: flex;
+        align-items: center;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .disc-wrapper input {
+        border: none !important;
+        border-radius: 0 !important;
+        width: 100%;
+        height: 34px !important;
+    }
+    .disc-addon {
+        background-color: #f1f5f9;
+        color: #64748b;
+        padding: 0 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        height: 34px;
+        border-left: 1px solid #e2e8f0;
+    }
+    
+    .amount-cell {
+        background-color: #f0f9ff !important;
+        color: #0369a1 !important;
+        font-weight: 600;
+        border: 1px solid #bae6fd !important;
+    }
+    
+    .total-amount-row {
+        background-color: #f8fafc;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 15px;
+        border-top: 1px solid #e2e8f0;
+    }
+    .total-amount-label {
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .total-amount-value {
+        font-weight: 800;
+        color: #1e3a8a;
+        font-size: 1.25rem;
+    }
+    
+    /* Bottom Cards */
+    .summary-box {
+        background-color: #f0f9ff;
+        border-radius: 10px;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 15px;
+    }
+    .summary-box-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        color: #0369a1;
+    }
+    .summary-box-value {
+        font-weight: 800;
+        color: #0f172a;
+        font-size: 1.25rem;
+    }
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px dashed #e2e8f0;
+        font-size: 0.9rem;
+        color: #475569;
+        align-items: center;
+    }
+    .summary-row:last-child {
+        border-bottom: none;
+    }
+    .summary-row.fw-bold {
+        color: #0f172a;
+    }
 
-        .sales-table thead th {
-            background-color: #f8fafc !important; /* Light clean header */
-            color: #0f172a !important;
-            font-weight: 700 !important;
-            text-transform: uppercase;
-            font-size: 11px !important;
-            letter-spacing: 0.5px;
-            padding: 10px 8px !important;
-            border: 1px solid #cbd5e1 !important;
-            border-bottom: 2px solid #94a3b8 !important; /* Thick header separator border */
-            vertical-align: middle !important;
-            text-align: center;
-        }
+    .btn-submit {
+        background-color: #10b981;
+        color: white;
+        font-weight: 700;
+        padding: 12px 30px;
+        border-radius: 8px;
+        border: none;
+        font-size: 1rem;
+        box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+    }
+    .btn-submit:hover {
+        background-color: #059669;
+    }
+</style>
 
-        .sales-table thead th.col-product {
-            text-align: left !important;
-            padding-left: 12px !important;
-        }
+<div class="main-wrapper">
+    <form id="purchaseForm" action="{{ route('purchase.update', $purchase->id) }}" method="POST" autocomplete="off">
+        @csrf
+        @method('PUT')
 
-        .sales-table tbody td {
-            border: 1px solid #cbd5e1 !important; /* Flat interior cell borders */
-            padding: 0 !important; /* Zero padding to let input fill cell completely */
-            background-color: #ffffff;
-            vertical-align: middle !important;
-        }
+        <!-- Header Card -->
+        <div class="card-custom header-card mb-3">
+            <a href="{{ route('Purchase.home') }}" class="btn-back">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+            
+            <div class="header-title-container">
+                <div class="icon-box bg-blue">
+                    <i class="bi bi-file-earmark-text"></i>
+                </div>
+                <h1 class="header-title">Edit Purchase #{{ $purchase->invoice_no }}</h1>
+            </div>
+            
+            <div class="header-date">
+                <i class="bi bi-calendar3"></i>
+                <span id="entryDate">Date: {{ date('m/d/Y', strtotime($purchase->purchase_date ?? now())) }}</span>
+            </div>
+        </div>
 
-        /* ⚡ FLAT BORDERLESS GRID INPUTS ⚡ */
-        .sales-table tbody .form-control,
-        .sales-table tbody .form-select {
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            height: 38px !important; /* Uniform height */
-            margin: 0 !important;
-            padding: 6px 8px !important;
-            width: 100% !important;
-            background-color: transparent !important;
-            text-align: center; /* Center-align text in grid inputs */
-            color: #1e293b !important;
-            font-weight: 500 !important;
-            font-size: 0.82rem !important;
-        }
+        <!-- General Info Card -->
+        <div class="card-custom mb-3">
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label">System No.</label>
+                    <div class="input-with-icon">
+                        <i class="bi bi-file-earmark"></i>
+                        <input type="text" class="form-control input-readonly" name="invoice_no" value="{{ $purchase->invoice_no }}" readonly>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Vendor Inv#</label>
+                    <div class="input-with-icon">
+                        <i class="bi bi-file-earmark-text"></i>
+                        <input type="text" class="form-control" name="purchase_order_no" placeholder="Manual Ref" value="{{ $purchase->purchase_order_no }}">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Select Vendor</label>
+                    <div class="input-with-icon">
+                        <i class="bi bi-building"></i>
+                        <select class="form-select select2" id="vendorSelect" name="vendor_id">
+                            <option value="" selected disabled>Select Vendor</option>
+                            @foreach ($Vendor as $v)
+                                <option value="{{ $v->id }}" data-phone="{{ $v->phone }}" data-address="{{ $v->address }}" {{ $purchase->vendor_id == $v->id ? 'selected' : '' }}>{{ $v->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date</label>
+                    <div class="input-with-icon">
+                        <i class="bi bi-calendar"></i>
+                        <input type="date" name="purchase_date" class="form-control" value="{{ $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : date('Y-m-d') }}">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">M.Bill / Remarks</label>
+                    <div class="input-with-icon">
+                        <i class="bi bi-chat-left-text"></i>
+                        <input type="text" class="form-control" name="note" id="remarks" placeholder="Optional notes..." value="{{ $purchase->note }}">
+                    </div>
+                </div>
+                <div class="col-md-3 mt-3">
+                    <label class="form-label">Warehouse</label>
+                    <div class="input-with-icon">
+                        <i class="bi bi-shop"></i>
+                        <select name="warehouse_id" class="form-control select2">
+                            @foreach ($Warehouse as $w)
+                                <option value="{{ $w->id }}"
+                                    {{ $w->id == $purchase->warehouse_id ? 'selected' : '' }}>
+                                    {{ $w->warehouse_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        .sales-table tbody td.col-product .form-select {
-            text-align: left !important;
-            padding-left: 12px !important;
-        }
-
-        /* Calculations and Read-Only cells get a neat slate tone background */
-        .sales-table tbody .input-readonly,
-        .sales-table tbody input[readonly],
-        .sales-table tbody select[disabled] {
-            background-color: #f1f5f9 !important;
-            cursor: not-allowed !important;
-            color: #475569 !important;
-            font-weight: 600 !important;
-        }
-
-        /* Subtle focus highlight inside cell */
-        .sales-table tbody .form-control:focus,
-        .sales-table tbody .form-select:focus {
-            outline: none !important;
-            background-color: #f8fafc !important;
-            box-shadow: inset 0 0 0 2px #2563eb !important;
-        }
-
-        /* Select2 Specific flat borderless styling */
-        .sales-table tbody .select2-container--default .select2-selection--single {
-            height: 38px !important;
-            padding: 0 !important;
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            background-color: transparent !important;
-            display: flex;
-            align-items: center;
-        }
-
-        .sales-table tbody .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 38px !important;
-            padding-left: 12px !important;
-            padding-right: 20px !important;
-            font-size: 0.82rem !important;
-            color: #1e293b !important;
-            font-weight: 500 !important;
-            text-align: left !important;
-        }
-
-        .sales-table tbody .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 38px !important;
-            right: 8px !important;
-        }
-
-        /* Select2 Focus state */
-        .sales-table tbody .select2-container--default.select2-container--focus .select2-selection--single {
-            background-color: #f8fafc !important;
-            box-shadow: inset 0 0 0 2px #2563eb !important;
-        }
-
-        /* Elegant flat block layout for discount input + toggle */
-        .sales-table tbody .discount-wrapper {
-            display: flex !important;
-            align-items: stretch !important;
-            width: 100% !important;
-            height: 38px !important;
-            gap: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        .sales-table tbody .discount-wrapper .discount-value {
-            flex-grow: 1 !important;
-            border: none !important;
-            border-radius: 0 !important;
-            height: 100% !important;
-            text-align: center;
-            background-color: transparent !important;
-            padding: 6px 8px !important;
-        }
-
-        .sales-table tbody .discount-wrapper .discount-toggle {
-            border: none !important;
-            border-radius: 0 !important;
-            background-color: #e2e8f0 !important;
-            color: #475569 !important;
-            font-weight: 700 !important;
-            font-size: 0.75rem !important;
-            width: 32px !important;
-            min-width: 32px !important;
-            height: 100% !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            padding: 0 !important;
-            cursor: pointer !important;
-            transition: background-color 0.2s !important;
-        }
-
-        .sales-table tbody .discount-wrapper .discount-toggle:hover {
-            background-color: #cbd5e1 !important;
-            color: #0f172a !important;
-        }
-
-        .sales-table tfoot td {
-            background-color: #f8fafc !important;
-            border: 1px solid #cbd5e1 !important;
-            border-top: 2px solid #94a3b8 !important; /* Thick tfoot separator */
-            padding: 8px 10px !important;
-            font-weight: 700 !important;
-            color: #0f172a !important;
-        }
-
-        /* Row hover */
-        .sales-table tbody tr:hover td {
-            background-color: #f8fafc !important;
-        }
-
-        /* Column widths */
-        .col-product {
-            width: 300px;
-            min-width: 250px;
-        }
-
-        .col-warehouse {
-            width: 140px;
-        }
-
-        .col-stock {
-            width: 90px;
-        }
-
-        .col-qty {
-            width: 100px;
-        }
-
-        .col-pieces {
-            width: 100px;
-        }
-
-        .col-price {
-            width: 120px;
-        }
-
-        .col-disc {
-            width: 80px;
-        }
-
-        .col-disc-amt {
-            width: 95px;
-        }
-
-        .col-price-p {
-            width: 100px;
-        }
-
-        .col-amount {
-            width: 120px;
-            text-align: right;
-        }
-
-        .col-action {
-            width: 50px;
-            text-align: center;
-        }
-
-        .main-container {
-            font-size: .85rem;
-            max-width: 99%;
-            border-radius: 12px !important;
-            border: none !important;
-            box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.08) !important;
-        }
-
-        .btn {
-            font-size: .82rem;
-            padding: .35rem .8rem;
-            border-radius: 5px;
-            font-weight: 500;
-        }
-
-        .btn-primary {
-            background-color: #0d6efd;
-            border-color: #0d6efd;
-        }
-
-        .btn-success {
-            background-color: #198754;
-            border-color: #198754;
-        }
-
-        /* Mobile Breakpoints (< 768px) */
-        @media (max-width: 768px) {
-            .header-text {
-                font-size: 1.1rem !important;
-            }
-            .main-container {
-                padding: 12px !important;
-                border-radius: 8px !important;
-            }
-            .sales-table {
-                min-width: 780px !important;
-            }
-            .discount-wrapper {
-                min-width: 70px !important;
-            }
-            .btn-submit-update {
-                width: 100% !important;
-                height: 46px !important;
-                font-size: 1rem !important;
-            }
-            .payment-row select, .payment-row input {
-                width: 100% !important;
-                max-width: 100% !important;
-            }
-        }
-
-        .section-title {
-            font-weight: 700;
-            color: #6c757d;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.8px;
-            margin-bottom: 10px;
-            border-left: 3px solid #0d6efd;
-            padding-left: 8px;
-        }
-
-        /* Product Search Dropdown */
-        .search-results {
-            position: absolute;
-            background: white;
-            border: 1px solid #ddd;
-            z-index: 1000;
-            max-height: 250px;
-            overflow-y: auto;
-            width: 100%;
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            border-radius: 6px;
-        }
-
-        .search-result-item {
-            padding: 10px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #f1f1f1;
-            transition: background 0.1s;
-        }
-
-        .search-result-item:last-child {
-            border-bottom: none;
-        }
-
-        .search-result-item:hover,
-        .search-result-item.active {
-            background-color: #e7f1ff;
-            color: #0b5ed7;
-        }
-
-        /* Layout Helpers */
-        .card-panel {
-            background-color: #fff;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            padding: 1rem;
-            height: 100%;
-        }
-
-        .summary-card {
-            background-color: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-        }
-
-        .select2-container .select2-selection--single {
-            height: 36px !important;
-            padding: 3px 12px;
-            border-color: #ced4da;
-        }
-
-        .select2-container--default .select2-selection--single .select2-selection__arrow {
-            top: 5px !important;
-        }
-    </style>
-
-    <div class="container-fluid py-2">
-        <div class="main-container bg-white border shadow-sm mx-auto p-2 rounded-3">
-
-            <form id="purchaseForm" action="{{ route('purchase.update', $purchase->id) }}" method="POST" autocomplete="off">
-                @csrf
-                @method('PUT')
-
-                {{-- HEADER --}}
-                <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+        <!-- Purchase Items Card -->
+        <div class="card-custom mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="card-title-container">
+                    <div class="icon-box bg-cyan">
+                        <i class="bi bi-cart3"></i>
+                    </div>
                     <div>
-                        <a href="{{ route('Purchase.home') }}" class="btn btn-sm btn-outline-secondary">
-                            <i class="bi bi-arrow-left"></i> Back to List
-                        </a>
-                    </div>
-                    <h2 class="header-text text-secondary fw-bold mb-0">Edit Purchase #{{ $purchase->invoice_no }}</h2>
-                    <div class="d-flex align-items-center gap-2">
-                        <small class="text-secondary" id="entryDate">Date: {{ date('d/m/Y') }}</small>
+                        <h3 class="card-title">Purchase Items</h3>
+                        <p class="card-subtitle">Manage items for this purchase</p>
                     </div>
                 </div>
+                <button type="button" class="btn-add-row shadow-sm" onclick="addBlankRow()">
+                    <i class="bi bi-plus-lg"></i> Add Row
+                </button>
+            </div>
 
-                                {{-- TOP HEADER & INVOICE / VENDOR CARD --}}
-                <div class="card-panel shadow-sm mb-3 p-3">
-                    <div class="row g-2 align-items-end">
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold mb-1 text-muted small">System No.</label>
-                            <input type="text" class="form-control input-readonly" name="invoice_no" value="{{ $purchase->invoice_no }}" readonly>
+            <div class="table-container">
+                <table class="sales-table" id="purchaseTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 3%;">#</th>
+                            <th class="text-start ps-3" style="width: 32%;">PRODUCT & VARIANT</th>
+                            <th style="width: 10%;">UNIT</th>
+                            <th style="width: 9%;">QTY</th>
+                            <th style="width: 11%;">PURCHASE PRICE</th>
+                            <th style="width: 10%;">DISC %</th>
+                            <th style="width: 10%;">DISC AMT</th>
+                            <th style="width: 11%;">AMOUNT</th>
+                            <th style="width: 4%;">ACTION</th>
+                        </tr>
+                    </thead>
+                    <tbody id="purchaseTableBody">
+                        @foreach ($purchase->items as $item)
+                            @php
+                                $sizeMode = $item->size_mode ?? 'by_pieces';
+                                $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : 1);
+                                $unitName = !empty($item->unit) ? $item->unit : ($item->product->unit->name ?? 'Pcs');
+                                $uVal = strtolower($unitName ?? 'pcs');
+                                $isCtn = in_array($uVal, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']);
+                                $isKg = in_array($uVal, ['kg', 'gm', 'g']);
+
+                                $displayQty = (float) $item->qty;
+                                if ($isCtn && ($item->loose_qty > 0 || $item->boxes_qty > 0)) {
+                                    $b = (int) $item->boxes_qty;
+                                    $l = (int) $item->loose_qty;
+                                    if ($l > 0) {
+                                        $displayQty = $b . '.' . $l;
+                                    } else {
+                                        $displayQty = $b;
+                                    }
+                                }
+
+                                $baseProductName = $item->product->item_name ?? 'Product';
+                                $variantNameDisplay = $baseProductName;
+                                $variantInfo = '';
+                                $rawVariantData = $item->color ?? '';
+
+                                if (!empty($item->color)) {
+                                    $decodedColor = base64_decode($item->color, true);
+                                    $vData = ($decodedColor !== false) ? json_decode($decodedColor, true) : null;
+                                    if (!$vData) {
+                                        $vData = json_decode($item->color, true);
+                                    }
+                                    if (is_array($vData)) {
+                                        $vName = trim($vData['name'] ?? ($vData['variant_name'] ?? ''));
+                                        $vColorName = trim($vData['color'] ?? '');
+                                        $vSize = trim($vData['size'] ?? '');
+                                        if (empty($item->unit) && !empty($vData['unit'])) {
+                                            $unitName = $vData['unit'];
+                                        }
+                                        $vParts = [];
+                                        $sStr = ($vSize !== '' && $vSize !== '-') ? " {$vSize}" : '';
+                                        $cStr = ($vColorName !== '' && $vColorName !== '-') ? " ({$vColorName})" : '';
+
+                                        if ($vName !== '') {
+                                            if (stripos($vName, $baseProductName) !== false) {
+                                                $variantNameDisplay = $vName;
+                                            } else {
+                                                $variantNameDisplay = $baseProductName . ' â€” ' . $vName;
+                                            }
+                                        } else {
+                                            $variantNameDisplay = $baseProductName;
+                                        }
+
+                                        if ($sStr !== '' && stripos($variantNameDisplay, trim($vSize)) === false) {
+                                            $variantNameDisplay .= $sStr;
+                                        }
+                                        if ($cStr !== '' && stripos($variantNameDisplay, trim($vColorName)) === false) {
+                                            $variantNameDisplay .= $cStr;
+                                        }
+
+                                        if ($vColorName && $vColorName !== '-') {
+                                            $vParts[] = 'Color: ' . $vColorName;
+                                        }
+                                        if ($vSize && $vSize !== '-') {
+                                            $vParts[] = 'Size: ' . $vSize;
+                                        }
+                                        if (!empty($vParts)) {
+                                            $variantInfo = implode(' | ', $vParts);
+                                        }
+                                    } elseif (is_string($item->color) && trim($item->color) !== '' && trim($item->color) !== '-') {
+                                        $variantNameDisplay = $baseProductName . ' (' . trim($item->color) . ')';
+                                        $variantInfo = trim($item->color);
+                                    }
+                                }
+
+                                $optionVal = $item->product_id;
+                                if (!empty($rawVariantData)) {
+                                    $encodedVar = (base64_decode($rawVariantData, true) !== false) ? $rawVariantData : base64_encode($rawVariantData);
+                                    $optionVal = $item->product_id . '|variant|' . $encodedVar;
+                                }
+
+                                $gross = $item->line_total + $item->item_discount;
+                                $dPct = $gross > 0 ? ($item->item_discount / $gross) * 100 : 0;
+                            @endphp
+                            <tr data-sizemode="{{ $sizeMode }}" data-pieces_per_m2="{{ $item->pieces_per_m2 }}">
+                                <td class="text-center fw-bold text-muted">
+                                    {{ $loop->iteration }}
+                                </td>
+                                <td class="product-col text-start ps-3">
+                                    <div class="input-with-icon">
+                                        <i class="bi bi-box-seam" style="z-index:100; color: #64748b;"></i>
+                                        <select class="form-select product-select2" name="product_id[]">
+                                            <option value="{{ $optionVal }}" selected>
+                                                {{ $variantNameDisplay }} ({{ $item->product->item_code ?? 'SKU' }})
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="variant-badge-wrapper px-2 py-1 small text-muted d-flex gap-2 align-items-center {{ empty($variantInfo) ? 'd-none' : '' }}">
+                                        <span class="badge bg-light text-dark border variant-badge">{{ $variantInfo }}</span>
+                                    </div>
+                                    {{-- Snapshots --}}
+                                    <input type="hidden" name="size_mode[]" class="hidden-size-mode" value="{{ $sizeMode }}">
+                                    <input type="hidden" name="pieces_per_box[]" class="hidden-pieces-per-box" value="{{ $ppb }}">
+                                    <input type="hidden" name="pieces_per_m2[]" class="hidden-pieces-per-m2" value="{{ $item->pieces_per_m2 }}">
+                                    <input type="hidden" name="boxes_qty[]" class="hidden-boxes-qty" value="{{ $item->boxes_qty ?? 0 }}">
+                                    <input type="hidden" name="loose_qty[]" class="hidden-loose-qty" value="{{ $item->loose_qty ?? 0 }}">
+                                    <input type="hidden" name="length[]" class="hidden-length" value="{{ $item->length }}">
+                                    <input type="hidden" name="width[]" class="hidden-width" value="{{ $item->width }}">
+                                    <input type="hidden" name="color[]" class="hidden-variant-data" value="{{ $rawVariantData }}">
+                                </td>
+                                <td>
+                                    @php
+                                        $btnClass = $isCtn ? 'btn-outline-success' : ($isKg ? 'btn-outline-primary' : 'btn-outline-info');
+                                    @endphp
+                                    <button type="button" class="unit-toggle-btn {{ $btnClass }}" data-unit="{{ $unitName }}" title="Toggle unit">
+                                        <i class="bi bi-box"></i> <span class="unit-text ms-1">{{ $unitName }}</span> <i class="bi bi-chevron-down ms-1" style="font-size:0.7rem"></i>
+                                    </button>
+                                    <input type="hidden" name="unit[]" class="unit-input-val" value="{{ $unitName }}">
+                                </td>
+                                <td>
+                                    <input type="number" step="any" min="0.0001" name="qty[]" class="form-control main-qty-input" value="{{ $displayQty }}">
+                                </td>
+                                <td>
+                                    <input type="number" name="price[]" class="form-control price" step="0.01" value="{{ (float) $item->price }}">
+                                </td>
+                                <td>
+                                    <div class="disc-wrapper">
+                                        <input type="number" name="item_discount[]" class="form-control item-disc-percent" step="0.01" value="{{ round($dPct, 2) }}">
+                                        <span class="disc-addon">%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control amount-cell item-disc-amt" value="{{ (float) $item->item_discount }}" readonly>
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control amount-cell row-total" value="{{ (float) $item->line_total }}" readonly>
+                                </td>
+                                <td>
+                                    <button type="button" class="action-btn remove-row text-danger border-danger"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+                <div class="total-amount-row">
+                    <span class="total-amount-label">Total Amount:</span>
+                    <span class="total-amount-value" id="totalAmount">0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <!-- Payment Card -->
+            <div class="col-lg-7">
+                <div class="card-custom h-100">
+                    <div class="card-title-container mb-4">
+                        <div class="icon-box bg-blue">
+                            <i class="bi bi-wallet2"></i>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold mb-1 text-muted small">Vendor Inv#</label>
-                            <input type="text" class="form-control" name="purchase_order_no" placeholder="Manual Ref" value="{{ $purchase->purchase_order_no }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold mb-1 text-muted small">Select Vendor</label>
-                            <div class="d-flex align-items-center gap-1">
-                                <div class="flex-grow-1">
-                                    <select class="form-select select2" id="vendorSelect" name="vendor_id">
-                                        <option value="" selected disabled>Select Vendor</option>
-                                        @foreach ($Vendor as $v)
-                                            <option value="{{ $v->id }}" data-phone="{{ $v->phone }}" data-address="{{ $v->address }}" {{ $purchase->vendor_id == $v->id ? 'selected' : '' }}>{{ $v->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold mb-1 text-muted small">Date</label>
-                            <input type="date" name="purchase_date" class="form-control" value="{{ $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : date('Y-m-d') }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-bold mb-1 text-muted small">M.Bill / Remarks</label>
-                            <input type="text" class="form-control" name="note" id="remarks" placeholder="Optional notes..." value="{{ $purchase->note }}">
-                        </div>
-                        <div class="col-md-3 mt-3">
-                            <label class="form-label fw-bold mb-1 text-muted small">Warehouse</label>
-                            <select name="warehouse_id" class="form-control select2">
-                                @foreach ($Warehouse as $w)
-                                    <option value="{{ $w->id }}"
-                                        {{ $w->id == $purchase->warehouse_id ? 'selected' : '' }}>
-                                        {{ $w->warehouse_name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                        <div>
+                            <h3 class="card-title">Payment / Receipt Voucher</h3>
+                            <p class="card-subtitle">Payment details and receipt voucher information</p>
                         </div>
                     </div>
-                </div>
-                <div class="row g-3 pb-4 mb-3 mt-2">
-                    <div class="col-12">
-                        <div class="card-panel shadow-sm p-3">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div class="section-title mb-0">Purchase Items</div>
-                                <button type="button" class="btn btn-sm btn-primary px-3 shadow-sm"
-                                    onclick="addBlankRow()">
-                                    <i class="bi bi-plus-lg"></i> Add Row
-                                </button>
-                            </div>
-
-                            <div class="table-responsive border rounded-3 bg-white">
-                                <table class="table table-bordered sales-table mb-0" id="purchaseTable">
-                                    <thead>
-                                        <tr>
-                                            <th class="col-product">Product & Variant</th>
-                                            <th class="col-unit" style="width: 100px;">Unit</th>
-                                            <th class="col-qty" style="width: 110px;">Qty</th>
-                                            <th class="col-price" style="width: 130px;">Purchase Price</th>
-                                            <th class="col-disc" style="width: 90px;">Disc %</th>
-                                            <th class="col-disc-amt" style="width: 110px;">Disc Amt</th>
-                                            <th class="col-amount" style="width: 130px;">Amount</th>
-                                            <th class="col-action" style="width: 50px;">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="purchaseTableBody">
-                                        @foreach ($purchase->items as $item)
-                                            @php
-                                                $sizeMode = $item->size_mode ?? 'by_pieces';
-                                                $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : 1);
-                                                $uVal = strtolower($unitName ?? 'pcs');
-                                                $isCtn = in_array($uVal, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || in_array($sizeMode, ['by_cartons', 'by_bandal']);
-                                                $isKg = in_array($uVal, ['kg', 'gm', 'g']);
-
-                                                $displayQty = (float) $item->qty;
-                                                if ($isCtn && ($item->loose_qty > 0 || $item->boxes_qty > 0)) {
-                                                    $b = (int) $item->boxes_qty;
-                                                    $l = (int) $item->loose_qty;
-                                                    if ($l > 0) {
-                                                        $displayQty = $b . '.' . $l;
-                                                    } else {
-                                                        $displayQty = $b;
-                                                    }
-                                                }
-
-                                                $baseProductName = $item->product->item_name ?? 'Product';
-                                                $variantNameDisplay = $baseProductName;
-                                                $variantInfo = '';
-                                                $rawVariantData = $item->color ?? '';
-                                                $unitName = !empty($item->unit) ? $item->unit : ($item->product->unit->name ?? 'Pcs');
-
-                                                if (!empty($item->color)) {
-                                                    $decodedColor = base64_decode($item->color, true);
-                                                    $vData = ($decodedColor !== false) ? json_decode($decodedColor, true) : null;
-                                                    if (!$vData) {
-                                                        $vData = json_decode($item->color, true);
-                                                    }
-                                                    if (is_array($vData)) {
-                                                        $vName = trim($vData['name'] ?? ($vData['variant_name'] ?? ''));
-                                                        $vColorName = trim($vData['color'] ?? '');
-                                                        $vSize = trim($vData['size'] ?? '');
-                                                        if (empty($item->unit) && !empty($vData['unit'])) {
-                                                            $unitName = $vData['unit'];
-                                                        }
-                                                        $vParts = [];
-                                                        $sStr = ($vSize !== '' && $vSize !== '-') ? " {$vSize}" : '';
-                                                        $cStr = ($vColorName !== '' && $vColorName !== '-') ? " ({$vColorName})" : '';
-
-                                                        if ($vName !== '') {
-                                                            if (stripos($vName, $baseProductName) !== false) {
-                                                                $variantNameDisplay = $vName;
-                                                            } else {
-                                                                $variantNameDisplay = $baseProductName . ' — ' . $vName;
-                                                            }
-                                                        } else {
-                                                            $variantNameDisplay = $baseProductName;
-                                                        }
-
-                                                        if ($sStr !== '' && stripos($variantNameDisplay, trim($vSize)) === false) {
-                                                            $variantNameDisplay .= $sStr;
-                                                        }
-                                                        if ($cStr !== '' && stripos($variantNameDisplay, trim($vColorName)) === false) {
-                                                            $variantNameDisplay .= $cStr;
-                                                        }
-
-                                                        if ($vColorName && $vColorName !== '-') {
-                                                            $vParts[] = 'Color: ' . $vColorName;
-                                                        }
-                                                        if ($vSize && $vSize !== '-') {
-                                                            $vParts[] = 'Size: ' . $vSize;
-                                                        }
-                                                        if (!empty($vParts)) {
-                                                            $variantInfo = implode(' | ', $vParts);
-                                                        }
-                                                    } elseif (is_string($item->color) && trim($item->color) !== '' && trim($item->color) !== '-') {
-                                                        $variantNameDisplay = $baseProductName . ' (' . trim($item->color) . ')';
-                                                        $variantInfo = trim($item->color);
-                                                    }
-                                                }
-
-                                                $optionVal = $item->product_id;
-                                                if (!empty($rawVariantData)) {
-                                                    $encodedVar = (base64_decode($rawVariantData, true) !== false) ? $rawVariantData : base64_encode($rawVariantData);
-                                                    $optionVal = $item->product_id . '|variant|' . $encodedVar;
-                                                }
-
-                                                $gross = $item->line_total + $item->item_discount;
-                                                $dPct = $gross > 0 ? ($item->item_discount / $gross) * 100 : 0;
-                                            @endphp
-                                            <tr data-sizemode="{{ $sizeMode }}"
-                                                data-pieces_per_m2="{{ $item->pieces_per_m2 }}">
-                                                <td>
-                                                    <select class="form-select product-select2" name="product_id[]">
-                                                        <option value="{{ $optionVal }}" selected>
-                                                            {{ $variantNameDisplay }} ({{ $item->product->item_code ?? 'SKU' }})
-                                                        </option>
-                                                    </select>
-                                                    <div class="variant-badge-wrapper px-2 py-1 small text-muted d-flex gap-2 align-items-center {{ empty($variantInfo) ? 'd-none' : '' }}">
-                                                        <span class="badge bg-light text-dark border variant-badge">{{ $variantInfo }}</span>
-                                                    </div>
-                                                    {{-- Snapshots --}}
-                                                    <input type="hidden" name="size_mode[]" class="hidden-size-mode"
-                                                        value="{{ $sizeMode }}">
-                                                    <input type="hidden" name="pieces_per_box[]"
-                                                        class="hidden-pieces-per-box" value="{{ $ppb }}">
-                                                    <input type="hidden" name="pieces_per_m2[]"
-                                                        class="hidden-pieces-per-m2" value="{{ $item->pieces_per_m2 }}">
-                                                    <input type="hidden" name="boxes_qty[]" class="hidden-boxes-qty" value="{{ $item->boxes_qty ?? 0 }}">
-                                                    <input type="hidden" name="loose_qty[]" class="hidden-loose-qty" value="{{ $item->loose_qty ?? 0 }}">
-                                                    <input type="hidden" name="length[]" class="hidden-length"
-                                                        value="{{ $item->length }}">
-                                                    <input type="hidden" name="width[]" class="hidden-width"
-                                                        value="{{ $item->width }}">
-                                                    <input type="hidden" name="color[]" class="hidden-variant-data"
-                                                        value="{{ $rawVariantData }}">
-                                                </td>
-                                                <td class="text-center align-middle">
-                                                    @php
-                                                        $uVal = strtolower($unitName ?? 'pcs');
-                                                        $isCtn = in_array($uVal, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']);
-                                                        $isKg = in_array($uVal, ['kg', 'gm', 'g']);
-                                                        $btnClass = $isCtn ? 'btn-outline-success' : ($isKg ? 'btn-outline-primary' : 'btn-outline-info');
-                                                    @endphp
-                                                    <button type="button" class="btn btn-sm {{ $btnClass }} fw-bold unit-toggle-btn py-0 px-2" data-unit="{{ $unitName }}" title="Click to toggle unit (Carton ↔ Pcs / Kg ↔ Gm)" style="font-size:0.75rem; min-width: 55px; cursor: pointer;">{{ $unitName }}</button>
-                                                    <input type="hidden" name="unit[]" class="unit-input-val" value="{{ $unitName }}">
-                                                </td>
-                                                <td>
-                                                    <input type="number" step="any" min="0.0001" name="qty[]"
-                                                        class="form-control text-center main-qty-input"
-                                                        value="{{ $displayQty }}" placeholder="Qty">
-                                                </td>
-                                                <td>
-                                                    <div class="input-group input-group-sm">
-                                                        <input type="number" name="price[]" class="form-control text-end price"
-                                                            step="0.01" value="{{ (float) $item->price }}">
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <input type="number" name="item_discount[]" class="form-control text-end item-disc-percent"
-                                                        step="0.01" value="{{ round($dPct, 2) }}">
-                                                </td>
-                                                <td>
-                                                    <input type="number"
-                                                        class="form-control text-end input-readonly item-disc-amt"
-                                                        value="{{ (float) $item->item_discount }}" readonly>
-                                                </td>
-                                                <td>
-                                                    <input type="number" class="form-control text-end input-readonly row-total"
-                                                        value="{{ (float) $item->line_total }}" readonly>
-                                                </td>
-                                                <td class="text-center align-middle">
-                                                    <button type="button"
-                                                        class="btn btn-sm btn-outline-danger remove-row border-0"><i
-                                                             class="bi bi-x-lg"></i></button>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td colspan="5" class="text-end fw-bold text-muted">Total Amount:</td>
-                                            <td class="text-end fw-bold fs-6 text-dark" colspan="2"><span id="totalAmount">0.00</span>
-                                            </td>
-                                            <td></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- SUMMARY --}}
-                <div class="row g-3 mt-1">
-                    {{-- LEFT: Payment / Receipt Voucher --}}
-                    <div class="col-lg-7">
-                        <div class="card-panel shadow-sm">
-                            <div class="section-title mb-3">Payment / Receipt Voucher</div>
-                            <div id="paymentWrapper" class="border rounded p-3 bg-light mb-3">
-                                @if (isset($existingPayments) && $existingPayments->isNotEmpty())
-                                    @foreach ($existingPayments as $pIndex => $pDetail)
-                                        <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
-                                            <select class="form-select rv-account" name="payment_account_id[]"
-                                                style="max-width: 300px; flex-grow: 1;">
+                    
+                    <div id="paymentWrapper">
+                        @if (isset($existingPayments) && $existingPayments->isNotEmpty())
+                            @foreach ($existingPayments as $pIndex => $pDetail)
+                                <div class="row g-3 payment-row mb-3 align-items-end">
+                                    <div class="col-md-5">
+                                        <label class="form-label">Payment Method</label>
+                                        <div class="input-with-icon">
+                                            <i class="bi bi-box"></i>
+                                            <select class="form-select rv-account" name="payment_account_id[]">
                                                 <option value="" disabled>Select Account</option>
                                                 @foreach ($accounts as $acc)
                                                     <option value="{{ $acc->id }}" {{ $acc->id == $pDetail->account_id ? 'selected' : '' }}>
@@ -625,100 +642,126 @@
                                                     </option>
                                                 @endforeach
                                             </select>
-                                            <input type="number" class="form-control text-end payment-amount"
-                                                name="payment_amount[]" value="{{ (float) $pDetail->credit }}" placeholder="Amount" style="width:140px" step="0.01">
-                                            @if ($loop->first)
-                                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPayment">
-                                                    <i class="bi bi-plus"></i> Add
-                                                </button>
-                                            @else
-                                                <button type="button" class="btn btn-sm btn-outline-danger remove-payment">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            @endif
                                         </div>
-                                    @endforeach
-                                @else
-                                    <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
-                                        <select class="form-select rv-account" name="payment_account_id[]"
-                                            style="max-width: 300px; flex-grow: 1;">
+                                    </div>
+                                    <div class="col-md-5">
+                                        <label class="form-label">Amount</label>
+                                        <div class="input-with-icon">
+                                            <i class="bi bi-cash"></i>
+                                            <input type="number" class="form-control payment-amount" name="payment_amount[]" value="{{ (float) $pDetail->credit }}" placeholder="Amount" step="0.01">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 pb-1">
+                                        @if ($loop->first)
+                                            <button type="button" class="btn btn-outline-primary w-100 h-100" id="btnAddPayment" style="height: 42px;">
+                                                <i class="bi bi-plus"></i> Add
+                                            </button>
+                                        @else
+                                            <button type="button" class="btn btn-outline-danger remove-payment w-100 h-100" style="height: 42px;">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        @else
+                            <div class="row g-3 payment-row mb-3 align-items-end">
+                                <div class="col-md-5">
+                                    <label class="form-label">Payment Method</label>
+                                    <div class="input-with-icon">
+                                        <i class="bi bi-box"></i>
+                                        <select class="form-select rv-account" name="payment_account_id[]">
                                             <option value="" selected disabled>Select Account</option>
                                             @foreach ($accounts as $acc)
                                                 <option value="{{ $acc->id }}">{{ $acc->title }}</option>
                                             @endforeach
                                         </select>
-                                        <input type="number" class="form-control text-end payment-amount"
-                                            name="payment_amount[]" placeholder="Amount" style="width:140px" step="0.01">
-                                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddPayment">
-                                            <i class="bi bi-plus"></i> Add
-                                        </button>
                                     </div>
-                                @endif
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label">Amount</label>
+                                    <div class="input-with-icon">
+                                        <i class="bi bi-cash"></i>
+                                        <input type="number" class="form-control payment-amount" name="payment_amount[]" placeholder="Enter amount..." step="0.01">
+                                    </div>
+                                </div>
+                                <div class="col-md-2 pb-1">
+                                    <button type="button" class="btn btn-outline-primary w-100" id="btnAddPayment" style="height: 42px;">
+                                        <i class="bi bi-plus"></i> Add
+                                    </button>
+                                </div>
                             </div>
-                            <div class="text-end">
-                                <span class="me-2 fw-bold text-muted">Total Paid:</span>
-                                <span class="fw-bold fs-6 text-success" id="totalPaid">0.00</span>
-                            </div>
-                        </div>
+                        @endif
                     </div>
-
-                    {{-- RIGHT: Summary --}}
-                    <div class="col-lg-5">
-                        <div class="card-panel shadow-sm">
-                            <div class="section-title mb-3">Summary</div>
-                            <div class="row py-1 align-items-center">
-                                <div class="col-7 text-muted fw-medium">Total Qty (Pieces)</div>
-                                <div class="col-5 text-end"><span id="tQty" class="fw-bold">0</span></div>
-                            </div>
-                            <div class="row py-1 align-items-center">
-                                <div class="col-7 text-muted fw-medium">Sub-Total</div>
-                                <div class="col-5 text-end fw-bold"><span id="tSub">0.00</span></div>
-                                <input type="hidden" name="subtotal" id="subtotalInput">
-                            </div>
-                            <div class="row py-1 align-items-center">
-                                <div class="col-7 text-muted fw-medium">Bill Discount</div>
-                                <div class="col-5 text-end d-flex gap-1">
-                                    @php
-                                        $inlineVal = $purchase->items->sum('item_discount');
-                                        $bSub = (float) $purchase->subtotal + $inlineVal;
-                                        $bDisc = (float) $purchase->discount + $inlineVal;
-                                        $bPct = $bSub > 0 ? ($bDisc / $bSub) * 100 : 0;
-                                    @endphp
-                                    <input type="number" class="form-control text-end form-control-sm"
-                                        id="billDiscountPct" value="{{ round($bPct, 2) }}" placeholder="%" style="width: 70px;" step="0.01">
-                                    <input type="number" class="form-control text-end form-control-sm"
-                                        id="billDiscount" value="{{ (float) $bDisc }}" step="0.01">
-                                    <input type="hidden" name="discount" id="discountInput" value="{{ (float) $purchase->discount }}">
-                                </div>
-                            </div>
-                            <div class="row py-1 align-items-center">
-                                <div class="col-7 text-muted fw-medium">Extra Cost</div>
-                                <div class="col-5 text-end">
-                                    <input type="number" class="form-control text-end form-control-sm" name="extra_cost"
-                                        id="extraCost" value="{{ (float) $purchase->extra_cost }}">
-                                </div>
-                            </div>
-                            <hr class="my-2 border-secondary">
-                            <div class="row py-2">
-                                <div class="col-6 fw-bold fs-5 text-primary">Net Payable</div>
-                                <div class="col-6 text-end fw-bold fs-5 text-primary"><span id="tPayable">0.00</span>
-                                </div>
-                                <input type="hidden" name="net_amount" id="netAmountInput">
-                            </div>
-                        </div>
+                    <div class="text-end mt-3 d-none">
+                        <span class="me-2 fw-bold text-muted">Total Paid:</span>
+                        <span class="fw-bold fs-6 text-success" id="totalPaid">0.00</span>
                     </div>
                 </div>
+            </div>
 
-                <div class="text-end mt-4">
-                    <button type="submit" class="btn btn-success btn-submit-update px-5 fw-bold shadow-sm">
-                        <i class="bi bi-save me-2"></i> Update Purchase
-                    </button>
+            <!-- Summary Card -->
+            <div class="col-lg-5">
+                <div class="card-custom h-100">
+                    <div class="card-title-container mb-3">
+                        <div class="icon-box bg-cyan">
+                            <i class="bi bi-file-earmark-text"></i>
+                        </div>
+                        <h3 class="card-title">Summary</h3>
+                    </div>
+                    
+                    <div class="summary-row">
+                        <span>Total Qty / Pieces</span>
+                        <span id="tQty" class="fw-bold">0.00</span>
+                    </div>
+                    <div class="summary-row">
+                        <span>Sub-Total</span>
+                        <span id="tSub" class="fw-bold">0.00</span>
+                        <input type="hidden" name="subtotal" id="subtotalInput">
+                    </div>
+                    <div class="summary-row">
+                        <span>Bill Discount</span>
+                        <div class="d-flex gap-2" style="width: 140px;">
+                            @php
+                                $inlineVal = $purchase->items->sum('item_discount');
+                                $bSub = (float) $purchase->subtotal + $inlineVal;
+                                $bDisc = (float) $purchase->discount + $inlineVal;
+                                $bPct = $bSub > 0 ? ($bDisc / $bSub) * 100 : 0;
+                            @endphp
+                            <input type="number" class="form-control form-control-sm text-center" id="billDiscountPct" value="{{ round($bPct, 2) }}" placeholder="%" step="0.01">
+                            <input type="number" class="form-control form-control-sm text-end" id="billDiscount" value="{{ (float) $bDisc }}" step="0.01">
+                            <input type="hidden" name="discount" id="discountInput" value="{{ (float) $purchase->discount }}">
+                        </div>
+                    </div>
+                    <div class="summary-row">
+                        <span>Extra Cost</span>
+                        <div style="width: 140px;">
+                            <input type="number" class="form-control form-control-sm text-end" name="extra_cost" id="extraCost" value="{{ (float) $purchase->extra_cost }}">
+                        </div>
+                    </div>
+                    
+                    <div class="summary-box">
+                        <div class="summary-box-label">
+                            <i class="bi bi-coin fs-4"></i>
+                            Total Amount (PKR)
+                        </div>
+                        <div class="summary-box-value" id="tPayable">0.00</div>
+                        <input type="hidden" name="net_amount" id="netAmountInput">
+                    </div>
                 </div>
-
-            </form>
+            </div>
         </div>
-    </div>
+
+        <div class="text-end mt-4">
+            <button type="submit" class="btn-submit">
+                <i class="bi bi-check2-circle me-2"></i> Update Purchase
+            </button>
+        </div>
+
+    </form>
+</div>
 @endsection
+
 
 @section('js')
     <script>
@@ -739,8 +782,9 @@
             });
             recalcPayments();
             recalcAll();
+                updateRowNumbers();
 
-            // Unit Toggle Handler (Carton ↔ Pcs / Kg ↔ Gm)
+            // Unit Toggle Handler (Carton â†” Pcs / Kg â†” Gm)
             $(document).on('click', '.unit-toggle-btn', function() {
                 const $btn = $(this);
                 const $row = $btn.closest('tr');
@@ -756,10 +800,8 @@
                     if (['carton', 'ctn', 'bandal', 'bundal', 'bndl'].includes(currentUnit.toLowerCase())) {
                         // Switch from Carton to Pcs
                         currentUnit = 'Pcs';
-                        $btn.text('Pcs')
-                            .removeClass('btn-outline-success btn-outline-primary')
-                            .addClass('btn-outline-info')
-                            .attr('data-unit', 'Pcs');
+                        $btn.removeClass('btn-outline-success btn-outline-primary').addClass('btn-outline-info').attr('data-unit', 'Pcs');
+                        $btn.find('.unit-text').text('Pcs');
                         $row.find('.unit-input-val').val('Pcs');
 
                         if (packQty > 1 && curPrice > 0) {
@@ -769,10 +811,8 @@
                     } else {
                         // Switch from Pcs to Carton
                         currentUnit = (sizeMode === 'by_bandal') ? 'Bundal' : 'Carton';
-                        $btn.text(currentUnit)
-                            .removeClass('btn-outline-info btn-outline-primary')
-                            .addClass('btn-outline-success')
-                            .attr('data-unit', currentUnit);
+                        $btn.removeClass('btn-outline-info btn-outline-primary').addClass('btn-outline-success').attr('data-unit', currentUnit);
+                        $btn.find('.unit-text').text(currentUnit);
                         $row.find('.unit-input-val').val(currentUnit);
 
                         if (packQty > 1 && curPrice > 0) {
@@ -782,17 +822,21 @@
                     }
                     recalcRow($row);
                     recalcAll();
+                updateRowNumbers();
                 } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
                     if (currentUnit.toLowerCase() === 'kg') {
                         currentUnit = 'Gm';
-                        $btn.text('Gm').removeClass('btn-outline-primary').addClass('btn-outline-info').attr('data-unit', 'Gm');
+                        $btn.removeClass('btn-outline-primary').addClass('btn-outline-info').attr('data-unit', 'Gm');
+                        $btn.find('.unit-text').text('Gm');
                     } else {
                         currentUnit = 'Kg';
-                        $btn.text('Kg').removeClass('btn-outline-info').addClass('btn-outline-primary').attr('data-unit', 'Kg');
+                        $btn.removeClass('btn-outline-info').addClass('btn-outline-primary').attr('data-unit', 'Kg');
+                        $btn.find('.unit-text').text('Kg');
                     }
                     $row.find('.unit-input-val').val(currentUnit);
                     recalcRow($row);
                     recalcAll();
+                updateRowNumbers();
                 }
             });
 
@@ -800,8 +844,12 @@
             window.addBlankRow = function() {
                 const html = `
                 <tr>
-                    <td>
-                        <select class="form-select product-select2" name="product_id[]"></select>
+                    <td class="text-center fw-bold text-muted row-number">#</td>
+                    <td class="product-col text-start ps-3">
+                        <div class="input-with-icon">
+                            <i class="bi bi-box-seam" style="z-index:100; color: #64748b;"></i>
+                            <select class="form-select product-select2" name="product_id[]"></select>
+                        </div>
                         <div class="variant-badge-wrapper px-2 py-1 small text-muted d-flex gap-2 align-items-center d-none">
                             <span class="badge bg-light text-dark border variant-badge"></span>
                         </div>
@@ -815,29 +863,32 @@
                         <input type="hidden" name="width[]" class="hidden-width">
                         <input type="hidden" name="color[]" class="hidden-variant-data">
                     </td>
-                    <td class="text-center align-middle">
-                        <button type="button" class="btn btn-sm btn-outline-info fw-bold unit-toggle-btn py-0 px-2" data-unit="Pcs" title="Click to toggle unit (Carton ↔ Pcs / Kg ↔ Gm)" style="font-size:0.75rem; min-width: 55px; cursor: pointer;">Pcs</button>
+                    <td>
+                        <button type="button" class="unit-toggle-btn btn-outline-info" data-unit="Pcs" title="Toggle unit">
+                            <i class="bi bi-box"></i> <span class="unit-text ms-1">Pcs</span> <i class="bi bi-chevron-down ms-1" style="font-size:0.7rem"></i>
+                        </button>
                         <input type="hidden" name="unit[]" class="unit-input-val" value="Pcs">
                     </td>
                     <td>
-                        <input type="number" step="any" min="0.01" name="qty[]" class="form-control text-center main-qty-input" value="1" placeholder="Qty">
+                        <input type="number" step="any" min="0.0001" name="qty[]" class="form-control main-qty-input" value="1">
                     </td>
                     <td>
-                        <div class="input-group input-group-sm">
-                            <input type="number" step="0.01" name="price[]" class="form-control text-end price" value="0">
+                        <input type="number" step="0.01" name="price[]" class="form-control price" value="0">
+                    </td>
+                    <td>
+                        <div class="disc-wrapper">
+                            <input type="number" step="0.01" name="item_discount[]" class="form-control item-disc-percent" value="0">
+                            <span class="disc-addon">%</span>
                         </div>
                     </td>
                     <td>
-                        <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-percent" value="0">
+                        <input type="number" class="form-control amount-cell item-disc-amt" value="0.00" readonly>
                     </td>
                     <td>
-                        <input type="number" class="form-control text-end input-readonly item-disc-amt" value="0.00" readonly>
+                        <input type="number" class="form-control amount-cell row-total" value="0.00" readonly>
                     </td>
                     <td>
-                        <input type="number" class="form-control text-end input-readonly row-total" value="0.00" readonly>
-                    </td>
-                    <td class="text-center align-middle">
-                        <button type="button" class="btn btn-sm btn-outline-danger remove-row border-0"><i class="bi bi-x-lg"></i></button>
+                        <button type="button" class="action-btn remove-row text-danger border-danger"><i class="bi bi-trash"></i></button>
                     </td>
                 </tr>`;
                 const $row = $(html);
@@ -845,22 +896,26 @@
                 initProductSelect2($row.find('.product-select2'));
                 recalcRow($row);
                 recalcAll();
+                updateRowNumbers();
             };
 
             // Remove Row
             $(document).on('click', '.remove-row', function() {
                 $(this).closest('tr').remove();
                 recalcAll();
+                updateRowNumbers();
             });
 
             // Inputs -> Calc
             $('#purchaseTableBody').on('input', '.main-qty-input, .price, .item-disc-percent', function() {
                 recalcRow($(this).closest('tr'));
                 recalcAll();
+                updateRowNumbers();
             });
 
             $('#billDiscount, #billDiscountPct, #extraCost').on('input', function() {
                 recalcAll();
+                updateRowNumbers();
             });
 
             function normalizeDiscountInput() {
@@ -875,6 +930,7 @@
                     $('#billDiscount').val(totalInlineDiscount.toFixed(2));
                 }
                 recalcAll();
+                updateRowNumbers();
             }
 
             $('#billDiscount, #billDiscountPct').on('blur', function() {
@@ -970,6 +1026,12 @@
 
                 $row.find('.item-disc-amt').val(discAmt.toFixed(2));
                 $row.find('.row-total').val(lineTotal.toFixed(2));
+            }
+
+                        function updateRowNumbers() {
+                $('#purchaseTableBody tr').each(function(index) {
+                    $(this).find('td:first').text(index + 1);
+                });
             }
 
             function recalcAll() {
@@ -1072,7 +1134,7 @@
                             .removeClass('btn-outline-primary btn-outline-info')
                             .addClass('btn-outline-success')
                             .attr('data-unit', unitName)
-                            .text(unitName);
+                            .find('.unit-text').text(unitName);
                         $row.find('.unit-input-val').val(unitName);
                     } else if (data.size_mode === 'by_kg' || data.size_mode === 'by_gm') {
                         unitName = 'Kg';
@@ -1080,14 +1142,14 @@
                             .removeClass('btn-outline-info btn-outline-success')
                             .addClass('btn-outline-primary')
                             .attr('data-unit', 'Kg')
-                            .text('Kg');
+                            .find('.unit-text').text('Kg');
                         $row.find('.unit-input-val').val('Kg');
                     } else {
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-primary btn-outline-success')
                             .addClass('btn-outline-info')
                             .attr('data-unit', unitName)
-                            .text(unitName);
+                            .find('.unit-text').text(unitName);
                         $row.find('.unit-input-val').val(unitName);
                     }
 
@@ -1158,6 +1220,7 @@
                     $row.find('.main-qty-input').focus().select();
                     recalcRow($row);
                     recalcAll();
+                updateRowNumbers();
                 });
             }
 
@@ -1188,3 +1251,10 @@
         });
     </script>
 @endsection
+
+
+
+
+
+
+

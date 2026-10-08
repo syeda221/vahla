@@ -126,7 +126,6 @@
     function addNewRow() {
         const isWholesale = lastSelectedPriceMode === 'wholesale';
         const btnText = isWholesale ? 'W' : 'R';
-        const btnClass = isWholesale ? 'btn-outline-info' : 'btn-outline-success';
         const btnTitle = isWholesale ? 'Wholesale Mode' : 'Retail Mode';
 
         const rowHtml = `
@@ -191,12 +190,11 @@
     <!-- Price/Piece -->
     <td class="col-price-p">
       <div class="input-group input-group-sm price-cell-group" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: #ffffff;">
-        <span class="input-group-text border-0 bg-transparent text-muted px-2 fw-semibold" style="font-size: 12px;">Rs</span>
-        <input type="text" class="form-control visible-price text-end fw-semibold border-0" name="visible_price[]" placeholder="0" value="0" style="height: 38px; box-shadow: none;">
-        <button type="button" class="btn btn-sm ${btnClass} price-mode-row-toggle d-none" 
-                data-mode="${lastSelectedPriceMode}" title="${btnTitle}">
+        <button type="button" class="btn btn-sm price-mode-row-toggle border-0 text-muted px-2 bg-transparent fw-bold" 
+                data-mode="${lastSelectedPriceMode}" title="${btnTitle}" tabindex="-1" style="font-size: 12px;">
           ${btnText}
         </button>
+        <input type="text" class="form-control visible-price text-end fw-semibold border-0" name="visible_price[]" placeholder="0" value="0" style="height: 38px; box-shadow: none;">
       </div>
       <input type="hidden" class="price-per-piece" name="price_per_piece[]">
       <input type="hidden" class="retail-price">
@@ -1368,9 +1366,9 @@
             
             $btn.attr('data-mode', newMode);
             if (newMode === 'wholesale') {
-                $btn.removeClass('btn-outline-success').addClass('btn-outline-info').text('W').attr('title', 'Wholesale Mode');
+                $btn.text('W').attr('title', 'Wholesale Mode');
             } else {
-                $btn.removeClass('btn-outline-info').addClass('btn-outline-success').text('R').attr('title', 'Retail Mode');
+                $btn.text('R').attr('title', 'Retail Mode');
             }
             
             lastSelectedPriceMode = newMode;

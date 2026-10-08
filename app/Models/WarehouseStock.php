@@ -58,7 +58,7 @@ class WarehouseStock extends Model
                 
                 if (!is_null($alertQty) && $alertQty > 0) {
                     $totalPieces = self::where('product_id', $product->id)->sum('total_pieces');
-                    if ($totalPieces < $alertQty) {
+                    if ($totalPieces <= $alertQty) {
                         \App\Models\SystemNotification::createStockAlertNotification($product, $totalPieces);
                     }
                 }

@@ -369,6 +369,176 @@
             color: #1e293b;
         }
     </style>
+<style>
+/* UI Match Styles injected */
+body {
+    background-color: #f4f7fe !important; /* light blue/gray background */
+    font-family: 'Inter', sans-serif;
+}
+.main-container {
+    border: none !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+    max-width: 1400px;
+}
+.card-panel {
+    background-color: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Icon styles to match image */
+.bg-primary {
+    background-color: #3b82f6 !important; /* bright blue */
+}
+.text-primary {
+    color: #3b82f6 !important;
+}
+h3.header-text, h4.header-text {
+    color: #1e293b !important; /* dark navy */
+}
+
+/* Back to List button */
+a.btn-outline-primary {
+    background-color: #eff6ff !important;
+    border: 1px solid #bfdbfe !important;
+    color: #3b82f6 !important;
+    border-radius: 20px !important;
+}
+a.btn-outline-primary:hover {
+    background-color: #dbeafe !important;
+}
+
+/* Form Inputs */
+.form-control, .form-select, .select2-container--default .select2-selection--single {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    background-color: #ffffff !important;
+    color: #475569 !important;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: #2563eb !important;
+    border: none !important;
+    border-radius: 8px !important;
+}
+.btn-outline-success {
+    background-color: #f0fdf4 !important;
+    border: 1px solid #86efac !important;
+    color: #16a34a !important;
+    border-radius: 8px !important;
+}
+.btn-outline-primary { /* For + Add in payment */
+    background-color: #eff6ff !important;
+    border: 1px solid #bfdbfe !important;
+    color: #3b82f6 !important;
+    border-radius: 8px !important;
+}
+
+/* Table styling */
+.table-responsive {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+.sales-table {
+    border-collapse: separate !important;
+    border-spacing: 0;
+    width: 100%;
+}
+.sales-table thead th {
+    background-color: #f1f5f9 !important; /* Matches image header */
+    border: none !important;
+    border-right: 1px solid #e2e8f0 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    color: #475569 !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    text-transform: none !important;
+    padding: 12px 10px !important;
+}
+.sales-table thead th:last-child {
+    border-right: none !important;
+}
+.sales-table tbody td {
+    background-color: #ffffff !important;
+    border: none !important;
+    border-right: 1px solid #e2e8f0 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 10px !important;
+    vertical-align: middle;
+}
+.sales-table tbody td:last-child {
+    border-right: none !important;
+}
+.sales-table tfoot td {
+    background-color: #f1f5f9 !important; /* Matches image footer */
+    border: none !important;
+    border-top: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+    padding: 15px 10px !important;
+}
+
+/* Remove/Trash Button in Table */
+.remove-row {
+    background-color: #fef2f2 !important;
+    border: 1px solid #fecaca !important;
+    color: #ef4444 !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+}
+
+/* Inputs in Table */
+.sales-table tbody .form-control, .sales-table tbody .form-select, .sales-table tbody .select2-container--default .select2-selection--single {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    height: 36px !important;
+}
+.sales-table tbody .input-readonly, .sales-table tbody input[readonly] {
+    background-color: #f8fafc !important; /* slight gray for readonly */
+    border-color: #e2e8f0 !important;
+}
+.unit-toggle-btn {
+    border-radius: 6px !important;
+}
+
+/* Summary Net Total */
+.bg-warning-subtle {
+    background-color: #dcfce7 !important; /* light green */
+}
+.bg-warning-subtle .text-dark {
+    color: #16a34a !important; /* bold green */
+}
+
+/* Section Titles with Icons */
+.section-title {
+    border-left: none !important;
+    font-size: 1.1rem !important;
+    text-transform: capitalize !important;
+    color: #1e293b !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700 !important;
+}
+.section-title::before {
+    content: '\F3E0'; /* bi-file-earmark-text */
+    font-family: 'bootstrap-icons';
+    color: #3b82f6;
+    font-size: 1.3rem;
+    line-height: 1;
+}
+.summary-title::before {
+    content: '\F23D'; /* bi-calculator */
+    color: #16a34a;
+}
+.payment-title::before {
+    content: '\F28B'; /* bi-credit-card */
+    color: #3b82f6;
+}
+</style>
 
     <div class="container-fluid py-2 px-1">
         <div class="main-container bg-white border shadow-sm mx-auto p-3 rounded-3">
@@ -379,54 +549,67 @@
                 @csrf
                 <input type="hidden" id="action" name="action" value="purchase">
 
-                {{-- TOP HEADER & INVOICE / VENDOR CARD --}}
-                <div class="card-panel shadow-sm mb-3 p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <a href="{{ route('Purchase.home') }}" class="btn btn-sm btn-outline-secondary">
-                                <i class="bi bi-arrow-left"></i> Back to List
-                            </a>
-                            <h4 class="header-text text-dark fw-bold mb-0 ms-2">Purchase Entry</h4>
+                                {{-- TOP HEADER & INVOICE / VENDOR CARD --}}
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-primary text-white rounded-3 p-2 d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 50px; background-color: #4371e9 !important;">
+                             <i class="bi bi-file-earmark-text fs-3"></i>
                         </div>
                         <div>
-                            <span class="badge bg-light text-secondary border px-3 py-2 fs-6 fw-semibold" id="entryDate">
-                                Date: {{ date('d/m/Y') }}
-                            </span>
+                            <h3 class="header-text text-dark fw-bolder mb-1" style="color: #0d1b46 !important;">Purchase Entry</h3>
+                            <small class="text-secondary fw-medium">Add new purchase record and manage your vendor invoices</small>
                         </div>
                     </div>
+                    <div>
+                        <div class="d-flex align-items-center bg-white border rounded-3 px-3 py-2 shadow-sm" style="min-width: 150px;">
+                            <i class="bi bi-calendar3 text-muted me-3 fs-5"></i>
+                            <div>
+                                 <small class="text-muted d-block fw-semibold" style="font-size: 11px;">Date</small>
+                                 <span class="fw-bold text-dark" style="font-size: 14px;">{{ date('d/m/Y') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                    <div class="row g-2 align-items-end">
+                <div class="mb-3">
+                     <a href="{{ route('Purchase.home') }}" class="btn btn-sm rounded-pill px-3 py-1 fw-bold text-primary" style="background-color: #f1f5f9; border: 1px solid #cbd5e1;">
+                          <i class="bi bi-arrow-left"></i> Back to List
+                     </a>
+                </div>
+
+                <div class="card-panel shadow-sm mb-4 p-4 bg-white border-0" style="border-radius: 12px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;">
+                    <div class="row g-3 align-items-end">
                         <div class="col-md-2">
-                            <label class="form-label fw-bold mb-1 text-muted small">System No.</label>
-                            <input type="text" class="form-control input-readonly" name="invoice_no" value="{{ $nextInvoice ?? 'NEW' }}" readonly>
+                            <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-file-text text-muted fs-6"></i> System No.</label>
+                            <input type="text" class="form-control bg-light" name="invoice_no" value="{{ $nextInvoice ?? 'NEW' }}" readonly style="border: 1px solid #e2e8f0 !important; color: #94a3b8 !important;">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label fw-bold mb-1 text-muted small">Vendor Inv#</label>
-                            <input type="text" class="form-control" name="purchase_order_no" placeholder="Manual Ref">
+                            <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-receipt text-muted fs-6"></i> Vendor Inv#</label>
+                            <input type="text" class="form-control" name="purchase_order_no" placeholder="Manual Ref" style="border: 1px solid #e2e8f0 !important;">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-bold mb-1 text-muted small">Select Vendor</label>
-                            <div class="d-flex align-items-center gap-1">
+                            <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-person text-muted fs-6"></i> Select Vendor</label>
+                            <div class="d-flex align-items-center gap-2">
                                 <div class="flex-grow-1">
-                                    <select class="form-select select2" id="vendorSelect" name="vendor_id">
+                                    <select class="form-select select2" id="vendorSelect" name="vendor_id" style="border: 1px solid #e2e8f0 !important;">
                                         <option value="" selected disabled>Select Vendor</option>
                                         @foreach ($Vendor as $v)
                                             <option value="{{ $v->id }}" data-phone="{{ $v->phone }}" data-address="{{ $v->address }}">{{ $v->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
-                                <button type="button" class="btn btn-primary shadow-sm" data-toggle="modal" data-target="#addVendorModal" style="padding: 0.38rem 0.75rem;" title="Add New Vendor">
-                                    <i class="bi bi-plus-lg"></i>
+                                <button type="button" class="btn btn-primary rounded-3 px-3 py-2" data-toggle="modal" data-target="#addVendorModal" title="Add New Vendor" style="background-color: #0d6efd; border: none;">
+                                    <i class="bi bi-plus-lg text-white"></i>
                                 </button>
                             </div>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label fw-bold mb-1 text-muted small">Date</label>
-                            <input type="text" name="purchase_date" class="form-control datepicker-custom" value="{{ date('Y-m-d') }}">
+                            <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-calendar3 text-muted fs-6"></i> Date</label>
+                            <input type="text" name="purchase_date" class="form-control datepicker-custom" value="{{ date('d/m/Y') }}" style="border: 1px solid #e2e8f0 !important;">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label fw-bold mb-1 text-muted small">M.Bill / Remarks</label>
-                            <input type="text" class="form-control" name="note" id="remarks" placeholder="Optional notes...">
+                            <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-chat-left-text text-muted fs-6"></i> M.BILL / Remarks</label>
+                            <input type="text" class="form-control" name="note" id="remarks" placeholder="Optional notes..." style="border: 1px solid #e2e8f0 !important;">
                         </div>
                     </div>
 
@@ -501,7 +684,7 @@
                 <div class="row g-3 mt-1">
                     <div class="col-lg-7">
                         <div class="card-panel shadow-sm">
-                            <div class="section-title mb-3">Payment / Receipt Voucher</div>
+                            <div class="section-title payment-title mb-3">Payment / Receipt Voucher</div>
                             <div id="paymentWrapper" class="border rounded p-3 bg-light mb-3">
                                 <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
                                     <select class="form-select rv-account" name="payment_account_id[]"
@@ -527,7 +710,7 @@
 
                     <div class="col-lg-5">
                         <div class="bg-white shadow-sm rounded-3 p-3 h-100 border">
-                            <div class="section-title mb-3">Summary</div>
+                            <div class="section-title summary-title mb-3">Summary</div>
                             <div class="p-3 bg-light rounded-3 border">
                                 <div class="row py-1 align-items-center">
                                     <div class="col-7 text-muted fw-medium">Total Qty</div>
@@ -1256,3 +1439,8 @@
         });
     </script>
 @endsection
+
+
+
+
+

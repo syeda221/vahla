@@ -97,23 +97,7 @@
         }
 
         /* Premium Action Dropdown Button */
-        .btn-premium-action {
-            background-color: #f8fafc !important;
-            border: 2px solid #cbd5e1 !important;
-            color: #475569 !important;
-            font-weight: 700 !important;
-            border-radius: 6px !important;
-            height: 32px !important;
-            padding: 0 12px !important;
-            font-size: 11px !important;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            transition: all 0.2s ease-in-out !important;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
-        }
+        .btn-premium-action { background-color: #ffffff !important; border: 1px solid #cce5ff !important; color: #0d6efd !important; font-weight: 700 !important; border-radius: 20px !important; height: 32px !important; padding: 0 12px !important; font-size: 11px !important; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s ease-in-out !important; box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important; } .btn-premium-action i.fa-eye { background: #e6f2ff; border-radius: 50%; padding: 4px; margin-right: 6px; }
         .btn-premium-action:hover, 
         .btn-premium-action:focus, 
         .btn-premium-action[aria-expanded="true"] {
@@ -159,17 +143,7 @@
             overflow: visible !important;
         }
         
-        .premium-table thead th {
-            background-color: #f1f5f9 !important;
-            color: #1e293b !important;
-            font-weight: 700 !important;
-            text-transform: uppercase;
-            font-size: 11px;
-            letter-spacing: 0.5px;
-            border-bottom: 3px solid #475569 !important; /* Thick bottom border under headers */
-            border-right: 2px solid #cbd5e1 !important;
-            padding: 12px 10px !important;
-        }
+        .premium-table thead th { background-color: #0c336b !important; color: #ffffff !important; font-weight: 700 !important; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; border-bottom: none !important; border-right: 1px solid rgba(255,255,255,0.1) !important; padding: 12px 10px !important; white-space: nowrap; }
         
         .premium-table thead th:last-child {
             border-right: none !important;
@@ -256,24 +230,28 @@
         <div class="main-content-inner">
             <div class="container-fluid py-4">
 
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-                    <div>
-                        <h4 class="fw-bold mb-0 text-dark">Purchase Management</h4>
-                        <p class="text-muted mb-0 small">View and manage your purchase invoices</p>
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 p-3" style="background: linear-gradient(to right, #f8fbff, #eef5ff); border-radius: 12px;">
+                    <div class="d-flex align-items-center">
+                        <div class="d-flex align-items-center justify-content-center flex-shrink-0 mr-3 me-3" style="width: 52px; height: 52px; min-width: 52px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); border-radius: 14px; color: white; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);">
+                            <i class="fas fa-shopping-cart fs-5"></i>
+                        </div>
+                        <div>
+                            <h4 class="fw-bolder mb-0" style="color: #0f172a; font-size: 1.35rem; letter-spacing: -0.5px;">Purchase Management</h4>
+                            <p class="mb-0" style="color: #64748b; font-size: 0.85rem; font-weight: 500;">View and manage your purchase invoices</p>
+                        </div>
                     </div>
-                    <div class="purch-hdr-actions">
-                        <a class="btn btn-outline-danger px-3 shadow-sm fw-medium d-inline-flex align-items-center gap-1 justify-content-center"
-                            href="{{ route('purchase.return.index') }}" style="border-radius: 8px;">
+                    <div class="purch-hdr-actions d-flex gap-2">
+                        <a class="btn bg-white fw-bold d-inline-flex align-items-center gap-1 justify-content-center" href="{{ route('purchase.return.index') }}" style="border-radius: 8px; color: #f43f5e; border: 1px solid #f43f5e; padding: 8px 16px; font-size: 0.9rem;">
                             <i class="fas fa-undo"></i> Returns
                         </a>
 
                         @can('purchases.create')
-                            <a class="btn btn-success px-3 shadow-sm fw-medium d-inline-flex align-items-center gap-1 justify-content-center"
-                                href="{{ route('purchase.quick_create') }}" style="border-radius: 8px;">
+                            <a class="btn fw-bold text-white d-inline-flex align-items-center gap-1 justify-content-center"
+                                href="{{ route('purchase.quick_create') }}" style="border-radius: 8px; background-color: #10b981; border: none; padding: 8px 16px; font-size: 0.9rem;">
                                 <i class="fas fa-bolt"></i> Quick Purchase
                             </a>
-                            <a class="btn btn-primary px-3 shadow-sm fw-medium d-inline-flex align-items-center gap-1 justify-content-center"
-                                href="{{ route('add_purchase') }}" style="border-radius: 8px;">
+                            <a class="btn fw-bold text-white d-inline-flex align-items-center gap-1 justify-content-center"
+                                href="{{ route('add_purchase') }}" style="border-radius: 8px; background-color: #2563eb; border: none; padding: 8px 16px; font-size: 0.9rem;">
                                 <i class="fas fa-plus"></i> Add Purchase
                             </a>
                         @endcan
@@ -281,25 +259,30 @@
                 </div>
 
                 {{-- Status Filters --}}
-                <div class="mb-4 purch-status-pills">
+                <div class="mb-4 purch-status-pills d-flex gap-3">
+                    @php
+                        $allCount = \App\Models\Purchase::count();
+                        $approvedCount = \App\Models\Purchase::where('status_purchase', 'approved')->count();
+                        $draftCount = \App\Models\Purchase::where('status_purchase', 'draft')->count();
+                        $returnedCount = \App\Models\Purchase::where('status_purchase', 'Returned')->count();
+                    @endphp
                     <a href="{{ route('Purchase.home', ['status' => 'all']) }}"
-                        class="btn btn-sm {{ request('status') == 'all' || !request('status') ? 'btn-secondary' : 'btn-outline-secondary' }} rounded-3 shadow-sm px-3">
-                        All
+                        class="btn btn-sm {{ request('status') == 'all' || !request('status') ? 'btn-primary text-white border-primary' : 'bg-white text-dark border' }} shadow-sm px-3 py-2 d-inline-flex align-items-center gap-2 fw-bold" style="border-radius: 8px; font-size: 13px;">
+                        All <span class="badge {{ request('status') == 'all' || !request('status') ? 'bg-primary text-white' : 'bg-primary text-white' }} rounded-circle p-1" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 11px; filter: brightness(1.2);">{{ $allCount }}</span>
                     </a>
                     <a href="{{ route('Purchase.home', ['status' => 'approved']) }}"
-                        class="btn btn-sm {{ request('status') == 'approved' ? 'btn-success' : 'btn-outline-success' }} rounded-3 shadow-sm px-3">
-                        Approved
+                        class="btn btn-sm bg-white shadow-sm px-3 py-2 d-inline-flex align-items-center gap-2 fw-bold border" style="border-radius: 8px; font-size: 13px; color: #198754;">
+                        Approved <span class="badge bg-success text-white rounded-circle p-1" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 11px;">{{ $approvedCount }}</span>
                     </a>
                     <a href="{{ route('Purchase.home', ['status' => 'draft']) }}"
-                        class="btn btn-sm {{ request('status') == 'draft' ? 'btn-warning text-dark' : 'btn-outline-warning' }} rounded-3 shadow-sm px-3">
-                        Draft
+                        class="btn btn-sm bg-white shadow-sm px-3 py-2 d-inline-flex align-items-center gap-2 fw-bold border" style="border-radius: 8px; font-size: 13px; color: #ffc107;">
+                        Draft <span class="badge bg-warning text-dark rounded-circle p-1" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 11px;">{{ $draftCount }}</span>
                     </a>
                     <a href="{{ route('Purchase.home', ['status' => 'Returned']) }}"
-                        class="btn btn-sm {{ request('status') == 'Returned' ? 'btn-danger' : 'btn-outline-danger' }} rounded-3 shadow-sm px-3">
-                        Returned
+                        class="btn btn-sm bg-white shadow-sm px-3 py-2 d-inline-flex align-items-center gap-2 fw-bold border" style="border-radius: 8px; font-size: 13px; color: #dc3545;">
+                        Returned <span class="badge bg-danger text-white rounded-circle p-1" style="width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 11px;">{{ $returnedCount }}</span>
                     </a>
                 </div>
-
                 <div class="card premium-card">
                     <div class="card-body p-4">
                         @if (session('success'))
@@ -383,8 +366,8 @@
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Bill#</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Date</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Invoice No</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Vendor Inv#</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Remarks</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Vendor Inv#</th><th class="d-none">Note</th>
+                                        
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Status</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Vendor</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Location</th>
@@ -798,3 +781,6 @@
         });
     </script>
 @endsection
+
+
+

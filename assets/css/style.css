@@ -1766,12 +1766,12 @@ blockquote span:before {
 }
 
 .rt_nav_header.horizontal-layout .nav-bottom .page-navigation>.nav-item>.nav-link .menu-arrow:before {
-    font-family: 'ionicons';
-    content: "\f3d0";
+    font-family: 'Font Awesome 6 Free';
+    content: "\f107";
     speak: none;
     font-size: .625rem;
     font-style: normal;
-    font-weight: 600;
+    font-weight: 900;
     font-variant: normal;
     text-transform: none;
     line-height: 1;

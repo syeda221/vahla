@@ -1,4 +1,4 @@
-@foreach ($Purchase as $purchase)
+﻿@foreach ($Purchase as $purchase)
     {{-- Table Row --}}
     <tr class="border-bottom-0">
         <td class="ps-3 text-center" style="width: 40px; vertical-align: middle;">
@@ -10,14 +10,14 @@
         </td>
         <td class="font-monospace text-dark">{{ $purchase->invoice_no }}</td>
         <td class="font-monospace text-primary fw-medium">{{ $purchase->purchase_order_no ?? '-' }}</td>
-        <td class="font-monospace text-dark small">{{ $purchase->note ?? '-' }}</td>
+        <td class="font-monospace text-dark small d-none">{{ $purchase->note ?? '-' }}</td>
         <td>
             @if ($purchase->status_purchase == 'draft')
                 <span class="badge badge-warning text-dark border border-warning">Draft</span>
             @elseif ($purchase->status_purchase == 'Returned')
                 <span class="badge bg-danger text-white border border-danger">Returned</span>
             @else
-                <span class="badge badge-success border border-success">Approved</span>
+                <span class="badge bg-success text-white border border-success d-inline-flex align-items-center gap-1 px-2 py-1" style="border-radius: 4px;"><i class="fas fa-check"></i> Approved</span>
             @endif
         </td>
         <td>
@@ -82,7 +82,7 @@
                 $displayDue = $purchase->total_returned > 0 ? $purchase->updated_due_amount : $purchase->due_amount;
             @endphp
             @if ($displayDue > 0)
-                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill">{{ number_format($displayDue, 2) }}</span>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1" style="border-radius: 4px; font-weight: bold; background-color: #ffe6e6 !important;">{{ number_format($displayDue, 2) }}</span>
             @else
                 <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Paid</span>
             @endif
@@ -96,9 +96,7 @@
 
         <td class="pe-3 text-center">
             <div class="dropdown">
-                <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-ellipsis-v small me-1"></i> Actions
-                </button>
+                <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="false" style="color: #0d6efd !important; border-color: #cce5ff !important; background-color: #ffffff !important; border-radius: 20px !important;"><i class="fas fa-eye" style="color: #0d6efd; background-color: #e6f2ff; padding: 4px; border-radius: 50%; margin-right: 6px; font-size: 10px;"></i> ACTIONS</button>
                 <ul class="dropdown-menu dropdown-menu-right border-0 shadow-lg rounded-3">
                     @can('purchases.edit')
                         <li>
@@ -165,3 +163,5 @@
         </td>
     </tr>
 @endforeach
+
+

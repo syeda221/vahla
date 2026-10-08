@@ -736,32 +736,47 @@
         }
 
         /* Price cell */
-        .price-cell-flex {
+        .price-cell-group {
             display: flex;
-            align-items: center;
-            gap: 4px;
+            align-items: stretch;
+            flex-wrap: nowrap !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 8px !important;
+            overflow: hidden !important;
         }
-        .price-cell-flex .visible-price {
+        .price-cell-group .visible-price {
             flex: 1;
             min-width: 0;
         }
         .price-mode-row-toggle {
             height: 38px !important;
             min-width: 32px !important;
-            border-radius: 6px !important;
             font-size: 11px !important;
             font-weight: 700 !important;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             padding: 0 !important;
+            background: #F8FAFC !important;
+            border: none !important;
+            border-right: 1px solid #E2E8F0 !important;
+            color: #64748b !important;
+            border-radius: 0 !important;
+            transition: all 0.15s ease;
+        }
+        .price-mode-row-toggle:hover {
+            background: #EEF2F7 !important;
+            color: #2563eb !important;
         }
 
         /* Discount cell */
         .discount-wrapper {
             display: flex;
             align-items: stretch;
-            gap: 4px;
+            flex-wrap: nowrap !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 8px !important;
+            overflow: hidden !important;
         }
         .discount-wrapper .discount-value {
             flex: 1;
@@ -1574,12 +1589,11 @@
                                 <!-- PRICE -->
                                 <td class="col-price-p">
                                     <div class="input-group input-group-sm price-cell-group" style="border: 1px solid #E2E8F0; border-radius: 8px; overflow: hidden; background: #ffffff;">
-                                        <span class="input-group-text border-0 bg-transparent text-muted px-2 fw-semibold" style="font-size: 12px;">Rs</span>
-                                        <input type="text" class="form-control visible-price text-end fw-semibold border-0" name="visible_price[]" placeholder="0" value="0" style="height: 38px; box-shadow: none;">
-                                        <button type="button" class="btn btn-sm price-mode-row-toggle d-none"
-                                                data-mode="retail" title="Retail Mode">
+                                        <button type="button" class="btn btn-sm price-mode-row-toggle border-0 text-muted px-2 bg-transparent fw-bold"
+                                                data-mode="retail" title="Retail Mode" tabindex="-1" style="font-size: 12px;">
                                             R
                                         </button>
+                                        <input type="text" class="form-control visible-price text-end fw-semibold border-0" name="visible_price[]" placeholder="0" value="0" style="height: 38px; box-shadow: none;">
                                     </div>
                                     <input type="hidden" class="price-per-piece" name="price_per_piece[]">
                                     <input type="hidden" class="retail-price">
@@ -2432,11 +2446,31 @@
                 var cartonQty, priceDisplay;
 
                 if (['by_cartons', 'by_bandal'].includes(it.size_mode)) {
-                    var boxes = Math.floor(it.total_pieces / it.ppb);
-                    var loose = (it.total_pieces % it.ppb);
-                    cartonQty = (loose > 0) ? boxes + '.' + loose : String(boxes);
-                    var baseQty = it.total_pieces / it.ppb;
-                    priceDisplay = baseQty > 0 ? ((it.total + it.discount_amount) / baseQty) : it.price;
+                    var isPcsMode = false;
+                    if (it.total_pieces > 0) {
+                        var grossTotal = it.total + it.discount_amount;
+                        var pricePerPieceCalc = grossTotal / it.total_pieces;
+                        if (Math.abs(pricePerPieceCalc - it.price) < 0.01) {
+                            isPcsMode = true;
+                        }
+                    }
+
+                    if (isPcsMode) {
+                        cartonQty = it.total_pieces;
+                        priceDisplay = it.price;
+                        unitMode = 'pcs';
+                        $row.find('.qty-unit-toggle')
+                            .attr('data-unit-mode', 'pcs')
+                            .text('Pcs')
+                            .removeClass('btn-outline-success')
+                            .addClass('btn-outline-info');
+                    } else {
+                        var boxes = Math.floor(it.total_pieces / it.ppb);
+                        var loose = (it.total_pieces % it.ppb);
+                        cartonQty = (loose > 0) ? boxes + '.' + loose : String(boxes);
+                        var baseQty = it.total_pieces / it.ppb;
+                        priceDisplay = baseQty > 0 ? ((it.total + it.discount_amount) / baseQty) : it.price;
+                    }
                 } else {
                     cartonQty = it.total_pieces;
                     priceDisplay = it.total_pieces > 0 ? ((it.total + it.discount_amount) / it.total_pieces) : it.price;
