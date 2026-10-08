@@ -412,7 +412,7 @@
                         <input type="text" class="form-control" name="note" id="remarks" placeholder="Optional notes..." value="{{ $purchase->note }}">
                     </div>
                 </div>
-                <div class="col-md-3 mt-3">
+                <div class="col-md-3 mt-3 d-none">
                     <label class="form-label">Warehouse</label>
                     <div class="input-with-icon">
                         <i class="bi bi-shop"></i>
