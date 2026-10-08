@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Models\AccountHead;
 use App\Models\Customer;
 use App\Models\JournalEntry;
 use App\Models\VoucherDetail;
@@ -727,6 +728,114 @@ class BalanceService
                 'account_code' => 'PURCHASE',
                 'type' => 'Debit', // Expense is Dr nature
                 'head_id' => null, // Or look for Expense head
+                'opening_balance' => 0,
+                'status' => 1,
+                'is_active' => 1,
+            ]);
+        }
+
+        return $account->id;
+    }
+
+    /**
+     * Get Discount Allowed account ID (Expense - Dr)
+     */
+    public function getDiscountAllowedAccountId(): int
+    {
+        $account = Account::where('account_code', 'DISC-EXP')
+            ->orWhere('title', 'like', '%Discount Allowed%')
+            ->orWhere('title', 'like', '%Discount Expense%')
+            ->first();
+
+        if (! $account) {
+            $head = AccountHead::whereRaw('LOWER(name) LIKE ?', ['%expense%'])->first();
+            $account = Account::create([
+                'title' => 'Discount Allowed',
+                'account_code' => 'DISC-EXP',
+                'type' => 'Debit',
+                'head_id' => $head ? $head->id : null,
+                'opening_balance' => 0,
+                'status' => 1,
+                'is_active' => 1,
+            ]);
+        }
+
+        return $account->id;
+    }
+
+    /**
+     * Get Discount Received account ID (Income - Cr)
+     */
+    public function getDiscountReceivedAccountId(): int
+    {
+        $account = Account::where('account_code', 'DISC-INC')
+            ->orWhere('title', 'like', '%Discount Received%')
+            ->orWhere('title', 'like', '%Discount Income%')
+            ->first();
+
+        if (! $account) {
+            $head = AccountHead::whereRaw('LOWER(name) LIKE ?', ['%income%'])
+                ->orWhereRaw('LOWER(name) LIKE ?', ['%revenue%'])
+                ->first();
+            $account = Account::create([
+                'title' => 'Discount Received',
+                'account_code' => 'DISC-INC',
+                'type' => 'Credit',
+                'head_id' => $head ? $head->id : null,
+                'opening_balance' => 0,
+                'status' => 1,
+                'is_active' => 1,
+            ]);
+        }
+
+        return $account->id;
+    }
+
+    /**
+     * Get Tax Deducted Receivable account ID (Advance Tax / Asset - Dr)
+     */
+    public function getTaxDeductedReceivableAccountId(): int
+    {
+        $account = Account::where('account_code', 'TAX-REC')
+            ->orWhere('title', 'like', '%Advance Tax%')
+            ->orWhere('title', 'like', '%Tax Deducted%')
+            ->orWhere('title', 'like', '%WHT Receivable%')
+            ->first();
+
+        if (! $account) {
+            $head = AccountHead::whereRaw('LOWER(name) LIKE ?', ['%asset%'])->first();
+            $account = Account::create([
+                'title' => 'Advance Income Tax / WHT Deducted',
+                'account_code' => 'TAX-REC',
+                'type' => 'Debit',
+                'head_id' => $head ? $head->id : null,
+                'opening_balance' => 0,
+                'status' => 1,
+                'is_active' => 1,
+            ]);
+        }
+
+        return $account->id;
+    }
+
+    /**
+     * Get Tax Withheld Payable account ID (WHT Payable / Liability - Cr)
+     */
+    public function getTaxWithheldPayableAccountId(): int
+    {
+        $account = Account::where('account_code', 'WHT-PAY')
+            ->orWhere('title', 'like', '%Tax Payable%')
+            ->orWhere('title', 'like', '%WHT Payable%')
+            ->orWhere('title', 'like', '%Withholding Tax%')
+            ->first();
+
+        if (! $account) {
+            $head = AccountHead::whereRaw('LOWER(name) LIKE ?', ['%liabilit%'])->first();
+            $account = Account::create([
+                'title' => 'Withholding Tax Payable',
+                'account_code' => 'WHT-PAY',
+                'type' => 'Credit',
+                'head_id' => $head ? $head->id : null,
                 'opening_balance' => 0,
                 'status' => 1,
                 'is_active' => 1,

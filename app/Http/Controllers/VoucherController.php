@@ -2577,7 +2577,9 @@ class VoucherController extends Controller
             'customer_id' => 'required',
             'payment_date' => 'required|date',
             'deposit_account_id' => 'nullable',
-            'total_amount' => 'required|numeric|min:0.01',
+            'total_amount' => 'nullable|numeric|min:0',
+            'tax_amount' => 'nullable|numeric|min:0',
+            'discount_amount' => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -2588,7 +2590,15 @@ class VoucherController extends Controller
                 return response()->json(['success' => false, 'message' => 'Customer not found.'], 404);
             }
 
-            $totalAmount = (float) $request->total_amount;
+            $cashReceived = (float) ($request->total_amount ?? 0);
+            $taxAmount = (float) ($request->tax_amount ?? 0);
+            $discountAmount = (float) ($request->discount_amount ?? 0);
+            $totalSettlement = $cashReceived + $taxAmount + $discountAmount;
+
+            if ($totalSettlement <= 0) {
+                return response()->json(['success' => false, 'message' => 'Please enter received cash, tax deduction, or discount amount.'], 422);
+            }
+
             $paymentMode = $request->payment_mode ?: 'Cash';
             $referenceNo = $request->reference_no ?: '';
             $chequeNo = $request->cheque_no ?: '';
@@ -2636,9 +2646,15 @@ class VoucherController extends Controller
                     }
                 }
             } else {
-                $depositAccount = DB::table('accounts')->where('id', $request->deposit_account_id)->first();
+                $depositAccount = null;
+                if (!empty($request->deposit_account_id)) {
+                    $depositAccount = DB::table('accounts')->where('id', $request->deposit_account_id)->first();
+                }
+                if (!$depositAccount && $cashReceived > 0) {
+                    return response()->json(['success' => false, 'message' => 'Please select the Deposit Account (Cash/Bank).'], 422);
+                }
                 if (!$depositAccount) {
-                    return response()->json(['success' => false, 'message' => 'Deposit Account not found.'], 404);
+                    $depositAccount = DB::table('accounts')->where('status', 1)->first();
                 }
             }
 
@@ -2659,6 +2675,11 @@ class VoucherController extends Controller
                 foreach ($allocations as $saleId => $allocatedAmt) {
                     $allocatedAmt = (float) $allocatedAmt;
                     if ($allocatedAmt > 0) {
+                        if (str_starts_with((string)$saleId, 'ob_')) {
+                            $settledInvoices[] = "Opening/Prior Due (PKR " . number_format($allocatedAmt, 2) . ")";
+                            $totalAllocated += $allocatedAmt;
+                            continue;
+                        }
                         $sale = \App\Models\Sale::find($saleId);
                         if ($sale && $sale->customer_id == $customerId) {
                             $sale->cash = (float)($sale->cash ?? 0) + $allocatedAmt;
@@ -2678,10 +2699,23 @@ class VoucherController extends Controller
                 if ($chequeBank) $chequeInfo[] = "Bank: {$chequeBank}";
             }
 
+            $breakdownParts = ["Received: PKR " . number_format($cashReceived, 2)];
+            if ($taxAmount > 0) {
+                $breakdownParts[] = "Tax WHT: PKR " . number_format($taxAmount, 2);
+            }
+            if ($discountAmount > 0) {
+                $breakdownParts[] = "Discount: PKR " . number_format($discountAmount, 2);
+            }
+            if ($taxAmount > 0 || $discountAmount > 0) {
+                $breakdownParts[] = "Total Settle: PKR " . number_format($totalSettlement, 2);
+            }
+
             $narrationParts = [];
             if ($remarks) {
                 $narrationParts[] = $remarks;
             }
+            $narrationParts[] = implode(' | ', $breakdownParts);
+
             if (!empty($chequeInfo)) {
                 $narrationParts[] = "Cheque (" . implode(', ', $chequeInfo) . ")";
             } elseif ($referenceNo) {
@@ -2717,33 +2751,61 @@ class VoucherController extends Controller
                 'narration_id' => json_encode(['Receive Payment - Invoices']),
                 'reference_no' => json_encode([$primaryRef]),
                 'row_account_head' => json_encode([$depositAccount->head_id ?? 1]),
-                'row_account_id' => json_encode([$depositAccount->id]),
-                'discount_value' => json_encode([0]),
-                'rate' => json_encode([$totalAmount]),
-                'amount' => json_encode([$totalAmount]),
-                'total_amount' => $totalAmount,
+                'row_account_id' => json_encode([$depositAccount->id ?? 1]),
+                'discount_value' => json_encode([$discountAmount]),
+                'rate' => json_encode([$cashReceived]),
+                'amount' => json_encode([$cashReceived]),
+                'tax_amount' => $taxAmount,
+                'discount_amount' => $discountAmount,
+                'received_amount' => $cashReceived,
+                'total_amount' => $totalSettlement,
             ]);
 
-            // 2. Accounts & Voucher Master (GL Posting)
+            // 2. Accounts & Voucher Master (GL Posting: Debit Cash/Bank, Debit Tax, Debit Discount, Credit AR)
             $balanceService = app(\App\Services\BalanceService::class);
             $creditAccountId = $balanceService->getAccountsReceivableId();
             $v2Master = null;
 
             if ($creditAccountId) {
-                $v2Lines = [
-                    [
+                $v2Lines = [];
+
+                if ($cashReceived > 0 && $depositAccount) {
+                    $v2Lines[] = [
                         'account_id' => $depositAccount->id,
-                        'debit' => $totalAmount,
+                        'debit' => $cashReceived,
                         'credit' => 0,
                         'narration' => "Deposit via {$paymentMode}: " . $narrationList,
-                    ],
-                    [
+                    ];
+                }
+
+                if ($taxAmount > 0) {
+                    $taxAccountId = $balanceService->getTaxDeductedReceivableAccountId();
+                    $v2Lines[] = [
+                        'account_id' => $taxAccountId,
+                        'debit' => $taxAmount,
+                        'credit' => 0,
+                        'narration' => "Tax Deducted (WHT) on Settlement: " . $narrationList,
+                    ];
+                }
+
+                if ($discountAmount > 0) {
+                    $discAccountId = $balanceService->getDiscountAllowedAccountId();
+                    $v2Lines[] = [
+                        'account_id' => $discAccountId,
+                        'debit' => $discountAmount,
+                        'credit' => 0,
+                        'narration' => "Discount Allowed on Settlement: " . $narrationList,
+                    ];
+                }
+
+                if ($totalSettlement > 0) {
+                    $v2Lines[] = [
                         'account_id' => $creditAccountId,
                         'debit' => 0,
-                        'credit' => $totalAmount,
+                        'credit' => $totalSettlement,
                         'narration' => "Credit Settlement: " . $narrationList,
-                    ]
-                ];
+                    ];
+                }
 
                 $v2Master = app(\App\Services\VoucherService::class)->createVoucher([
                     'voucher_type' => 'receipt',
@@ -2754,8 +2816,13 @@ class VoucherController extends Controller
                     'remarks' => $narrationList,
                 ], $v2Lines, auth()->id());
 
-                if ($v2Master && $attachmentPath) {
-                    $v2Master->attachment = $attachmentPath;
+                if ($v2Master) {
+                    $v2Master->tax_amount = $taxAmount;
+                    $v2Master->discount_amount = $discountAmount;
+                    $v2Master->net_amount = $cashReceived;
+                    if ($attachmentPath) {
+                        $v2Master->attachment = $attachmentPath;
+                    }
                     $v2Master->save();
                 }
             }
@@ -2772,7 +2839,7 @@ class VoucherController extends Controller
                 'admin_or_user_id' => auth()->id(),
                 'previous_balance' => $prevBal,
                 'opening_balance'  => 0,
-                'closing_balance'  => $prevBal - $totalAmount,
+                'closing_balance'  => $prevBal - $totalSettlement,
                 'description'      => "Receive Payment {$rvid}: " . $narrationList,
             ]);
 
@@ -2797,6 +2864,11 @@ class VoucherController extends Controller
     public function getCustomerUnpaidInvoices($customerId)
     {
         try {
+            $customer = DB::table('customers')->where('id', $customerId)->first();
+            if (!$customer) {
+                return response()->json(['success' => false, 'message' => 'Customer not found.'], 404);
+            }
+
             $sales = \App\Models\Sale::where('customer_id', $customerId)
                 ->where(function ($q) {
                     $q->whereNull('sale_type')->orWhereNotIn('sale_type', ['quotation', 'sales_order']);
@@ -2805,6 +2877,8 @@ class VoucherController extends Controller
                 ->get();
 
             $invoices = [];
+            $totalSalesDue = 0;
+
             foreach ($sales as $sale) {
                 $totalNet = (float) ($sale->total_net > 0 ? $sale->total_net : ($sale->total_bill_amount ?? 0));
                 $paid = (float) ($sale->cash ?? 0) + (float) ($sale->card ?? 0);
@@ -2831,10 +2905,42 @@ class VoucherController extends Controller
                         'raw_paid' => round($paid, 2),
                         'raw_due' => round($due, 2),
                     ];
+                    $totalSalesDue += $due;
                 }
             }
 
-            return response()->json(['success' => true, 'invoices' => $invoices]);
+            // Customer total ledger balance
+            $latestLedger = DB::table('customer_ledgers')
+                ->where('customer_id', $customerId)
+                ->orderByDesc('id')
+                ->first();
+            $totalLedgerBalance = $latestLedger ? (float)$latestLedger->closing_balance : (float)($customer->opening_balance ?? 0);
+
+            // If there are prior balance / opening balance dues beyond sales
+            $obDue = max(0, $totalLedgerBalance - $totalSalesDue);
+            if ($obDue > 0.01 || (count($invoices) === 0 && $totalLedgerBalance > 0.01)) {
+                $balanceToShow = ($obDue > 0.01) ? $obDue : $totalLedgerBalance;
+                $obDate = $customer->created_at ? \Carbon\Carbon::parse($customer->created_at)->format('Y-m-d') : now()->format('Y-m-d');
+                array_unshift($invoices, [
+                    'id' => 'ob_' . $customer->id,
+                    'invoice_no' => 'OB-' . str_pad($customer->id, 5, '0', STR_PAD_LEFT) . ' (Opening / Prior Due)',
+                    'date' => $obDate,
+                    'due_date' => '-',
+                    'days_old' => 0,
+                    'total_net' => number_format($balanceToShow, 2, '.', ''),
+                    'paid' => number_format(0, 2, '.', ''),
+                    'due' => number_format($balanceToShow, 2, '.', ''),
+                    'raw_total' => round($balanceToShow, 2),
+                    'raw_paid' => 0,
+                    'raw_due' => round($balanceToShow, 2),
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'invoices' => $invoices,
+                'customer_balance' => $totalLedgerBalance
+            ]);
         } catch (\Exception $e) {
             \Log::error('getCustomerUnpaidInvoices error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
@@ -2903,7 +3009,9 @@ class VoucherController extends Controller
             'vendor_id' => 'required',
             'payment_date' => 'required|date',
             'paid_from_account_id' => 'nullable',
-            'total_amount' => 'required|numeric|min:0.01',
+            'total_amount' => 'nullable|numeric|min:0',
+            'tax_amount' => 'nullable|numeric|min:0',
+            'discount_amount' => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -2914,7 +3022,15 @@ class VoucherController extends Controller
                 return response()->json(['success' => false, 'message' => 'Vendor not found.'], 404);
             }
 
-            $totalAmount = (float) $request->total_amount;
+            $cashPaid = (float) ($request->total_amount ?? 0);
+            $taxAmount = (float) ($request->tax_amount ?? 0);
+            $discountAmount = (float) ($request->discount_amount ?? 0);
+            $totalSettlement = $cashPaid + $taxAmount + $discountAmount;
+
+            if ($totalSettlement <= 0) {
+                return response()->json(['success' => false, 'message' => 'Please enter paid cash, tax deduction, or discount amount.'], 422);
+            }
+
             $paymentMode = $request->payment_mode ?: 'Cash';
             $referenceNo = $request->reference_no ?: '';
             $chequeNo = $request->cheque_no ?: '';
@@ -2962,9 +3078,15 @@ class VoucherController extends Controller
                     }
                 }
             } else {
-                $paidFromAccount = DB::table('accounts')->where('id', $request->paid_from_account_id)->first();
+                $paidFromAccount = null;
+                if (!empty($request->paid_from_account_id)) {
+                    $paidFromAccount = DB::table('accounts')->where('id', $request->paid_from_account_id)->first();
+                }
+                if (!$paidFromAccount && $cashPaid > 0) {
+                    return response()->json(['success' => false, 'message' => 'Please select the Paid From Account (Cash/Bank).'], 422);
+                }
                 if (!$paidFromAccount) {
-                    return response()->json(['success' => false, 'message' => 'Paid From Account not found.'], 404);
+                    $paidFromAccount = DB::table('accounts')->where('status', 1)->first();
                 }
             }
 
@@ -2985,6 +3107,11 @@ class VoucherController extends Controller
                 foreach ($allocations as $purchaseId => $allocatedAmt) {
                     $allocatedAmt = (float) $allocatedAmt;
                     if ($allocatedAmt > 0) {
+                        if (str_starts_with((string)$purchaseId, 'ob_')) {
+                            $settledBills[] = "Opening/Prior Due (PKR " . number_format($allocatedAmt, 2) . ")";
+                            $totalAllocated += $allocatedAmt;
+                            continue;
+                        }
                         $purchase = \App\Models\Purchase::find($purchaseId);
                         if ($purchase && $purchase->vendor_id == $vendorId) {
                             $newPaid = (float)($purchase->paid_amount ?? 0) + $allocatedAmt;
@@ -3007,10 +3134,23 @@ class VoucherController extends Controller
                 if ($chequeBank) $chequeInfo[] = "Bank: {$chequeBank}";
             }
 
+            $breakdownParts = ["Paid: PKR " . number_format($cashPaid, 2)];
+            if ($taxAmount > 0) {
+                $breakdownParts[] = "Tax WHT: PKR " . number_format($taxAmount, 2);
+            }
+            if ($discountAmount > 0) {
+                $breakdownParts[] = "Discount: PKR " . number_format($discountAmount, 2);
+            }
+            if ($taxAmount > 0 || $discountAmount > 0) {
+                $breakdownParts[] = "Total Settle: PKR " . number_format($totalSettlement, 2);
+            }
+
             $narrationParts = [];
             if ($remarks) {
                 $narrationParts[] = $remarks;
             }
+            $narrationParts[] = implode(' | ', $breakdownParts);
+
             if (!empty($chequeInfo)) {
                 $narrationParts[] = "Cheque (" . implode(', ', $chequeInfo) . ")";
             } elseif ($referenceNo) {
@@ -3045,11 +3185,14 @@ class VoucherController extends Controller
                 'narration_id' => json_encode(['Pay Bill - Purchase Settlement']),
                 'reference_no' => json_encode([$primaryRef]),
                 'row_account_head' => $paidFromAccount->head_id ?? 1,
-                'row_account_id' => $paidFromAccount->id,
-                'discount_value' => json_encode([0]),
-                'rate' => json_encode([$totalAmount]),
-                'amount' => json_encode([$totalAmount]),
-                'total_amount' => $totalAmount,
+                'row_account_id' => $paidFromAccount->id ?? 1,
+                'discount_value' => json_encode([$discountAmount]),
+                'rate' => json_encode([$cashPaid]),
+                'amount' => json_encode([$cashPaid]),
+                'tax_amount' => $taxAmount,
+                'discount_amount' => $discountAmount,
+                'paid_amount' => $cashPaid,
+                'total_amount' => $totalSettlement,
             ]);
 
             // 2. Accounts & Voucher Master (GL Posting: Debit AP, Credit Cash/Bank)
@@ -3058,20 +3201,45 @@ class VoucherController extends Controller
             $v2Master = null;
 
             if ($debitAccountId) {
-                $v2Lines = [
-                    [
+                $v2Lines = [];
+
+                if ($totalSettlement > 0) {
+                    $v2Lines[] = [
                         'account_id' => $debitAccountId,
-                        'debit' => $totalAmount,
+                        'debit' => $totalSettlement,
                         'credit' => 0,
                         'narration' => "Debit Payable: " . $narrationList,
-                    ],
-                    [
+                    ];
+                }
+
+                if ($cashPaid > 0 && $paidFromAccount) {
+                    $v2Lines[] = [
                         'account_id' => $paidFromAccount->id,
                         'debit' => 0,
-                        'credit' => $totalAmount,
+                        'credit' => $cashPaid,
                         'narration' => "Paid via {$paymentMode}: " . $narrationList,
-                    ]
-                ];
+                    ];
+                }
+
+                if ($taxAmount > 0) {
+                    $taxPayableAccountId = $balanceService->getTaxWithheldPayableAccountId();
+                    $v2Lines[] = [
+                        'account_id' => $taxPayableAccountId,
+                        'debit' => 0,
+                        'credit' => $taxAmount,
+                        'narration' => "Withholding Tax Payable on Settlement: " . $narrationList,
+                    ];
+                }
+
+                if ($discountAmount > 0) {
+                    $discIncomeAccountId = $balanceService->getDiscountReceivedAccountId();
+                    $v2Lines[] = [
+                        'account_id' => $discIncomeAccountId,
+                        'debit' => 0,
+                        'credit' => $discountAmount,
+                        'narration' => "Discount Received on Settlement: " . $narrationList,
+                    ];
+                }
 
                 $v2Master = app(\App\Services\VoucherService::class)->createVoucher([
                     'voucher_type' => 'payment',
@@ -3082,8 +3250,13 @@ class VoucherController extends Controller
                     'remarks' => $narrationList,
                 ], $v2Lines, auth()->id());
 
-                if ($v2Master && $attachmentPath) {
-                    $v2Master->attachment = $attachmentPath;
+                if ($v2Master) {
+                    $v2Master->tax_amount = $taxAmount;
+                    $v2Master->discount_amount = $discountAmount;
+                    $v2Master->net_amount = $cashPaid;
+                    if ($attachmentPath) {
+                        $v2Master->attachment = $attachmentPath;
+                    }
                     $v2Master->save();
                 }
             }
@@ -3100,7 +3273,7 @@ class VoucherController extends Controller
                 'admin_or_user_id' => auth()->id(),
                 'previous_balance' => $prevBal,
                 'opening_balance'  => 0,
-                'closing_balance'  => $prevBal - $totalAmount, // Payment made reduces vendor payable
+                'closing_balance'  => $prevBal - $totalSettlement, // Payment made reduces vendor payable
             ]);
 
             DB::commit();
@@ -3124,12 +3297,19 @@ class VoucherController extends Controller
     public function getVendorUnpaidBills($vendorId)
     {
         try {
+            $vendor = DB::table('vendors')->where('id', $vendorId)->first();
+            if (!$vendor) {
+                return response()->json(['success' => false, 'message' => 'Vendor not found.'], 404);
+            }
+
             $purchases = \App\Models\Purchase::where('vendor_id', $vendorId)
                 ->whereIn('purchase_type', ['purchase_invoice', 'direct_purchase', 'purchase'])
                 ->orderBy('id', 'asc')
                 ->get();
 
             $bills = [];
+            $totalPurchasesDue = 0;
+
             foreach ($purchases as $purchase) {
                 $net = (float) $purchase->net_amount;
                 $paid = (float) $purchase->paid_amount;
@@ -3160,10 +3340,42 @@ class VoucherController extends Controller
                         'raw_paid' => round($paid, 2),
                         'raw_due' => round($due, 2),
                     ];
+                    $totalPurchasesDue += $due;
                 }
             }
 
-            return response()->json(['success' => true, 'bills' => $bills]);
+            // Vendor total ledger balance
+            $latestLedger = DB::table('vendor_ledgers')
+                ->where('vendor_id', $vendorId)
+                ->orderByDesc('id')
+                ->first();
+            $totalLedgerBalance = $latestLedger ? (float)$latestLedger->closing_balance : (float)($vendor->opening_balance ?? 0);
+
+            // If there are prior balance / opening balance dues beyond purchases
+            $obDue = max(0, $totalLedgerBalance - $totalPurchasesDue);
+            if ($obDue > 0.01 || (count($bills) === 0 && $totalLedgerBalance > 0.01)) {
+                $balanceToShow = ($obDue > 0.01) ? $obDue : $totalLedgerBalance;
+                $obDate = $vendor->created_at ? \Carbon\Carbon::parse($vendor->created_at)->format('Y-m-d') : now()->format('Y-m-d');
+                array_unshift($bills, [
+                    'id' => 'ob_' . $vendor->id,
+                    'bill_no' => 'OB-' . str_pad($vendor->id, 5, '0', STR_PAD_LEFT) . ' (Opening / Prior Due)',
+                    'date' => $obDate,
+                    'due_date' => '-',
+                    'days_old' => 0,
+                    'total_net' => number_format($balanceToShow, 2, '.', ''),
+                    'paid' => number_format(0, 2, '.', ''),
+                    'due' => number_format($balanceToShow, 2, '.', ''),
+                    'raw_total' => round($balanceToShow, 2),
+                    'raw_paid' => 0,
+                    'raw_due' => round($balanceToShow, 2),
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'bills' => $bills,
+                'vendor_balance' => $totalLedgerBalance
+            ]);
         } catch (\Exception $e) {
             \Log::error('getVendorUnpaidBills error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);

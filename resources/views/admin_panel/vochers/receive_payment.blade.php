@@ -431,26 +431,63 @@
                         <input type="text" name="reference_no" id="referenceNo" class="form-control rp-input" placeholder="e.g. Slip # / Memo / Receipt #">
                     </div>
 
-                    <!-- Total Received Amount -->
+                    <!-- Cash / Bank Received Amount -->
                     <div class="col-md-3">
-                        <label class="rp-label">Total Received Amount (PKR) <span class="req">*</span></label>
+                        <label class="rp-label">Received Cash / Bank (PKR) <span class="req">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text bg-success text-white fw-bold">PKR</span>
-                            <input type="number" step="0.01" min="0.01" name="total_amount" id="totalAmount" 
+                            <input type="number" step="0.01" min="0" name="total_amount" id="totalAmount" 
                                    class="form-control rp-input rp-amount-hero text-end" 
                                    placeholder="0.00" required autocomplete="off">
                         </div>
-                        <small class="text-muted" style="font-size: 11px;" id="lblAmountHint">Distributed among selected invoices.</small>
+                        <small class="text-muted" style="font-size: 11px;">Actual money received in cash/bank.</small>
+                    </div>
+
+                    <!-- Tax / WHT Deduction -->
+                    <div class="col-md-3">
+                        <label class="rp-label fw-bold text-dark">
+                            <i class="fa-solid fa-percent me-1 text-warning"></i> Tax Deduction / WHT (PKR)
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-warning-subtle text-dark fw-bold">PKR</span>
+                            <input type="number" step="0.01" min="0" name="tax_amount" id="taxAmount" 
+                                   class="form-control rp-input text-end fw-bold" 
+                                   placeholder="0.00" autocomplete="off" value="0.00">
+                        </div>
+                        <small class="text-muted" style="font-size: 11px;">Customer tax deduction (Advance Tax).</small>
+                    </div>
+
+                    <!-- Settlement Discount -->
+                    <div class="col-md-3">
+                        <label class="rp-label fw-bold text-dark">
+                            <i class="fa-solid fa-tag me-1 text-danger"></i> Discount Given (PKR)
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-danger-subtle text-danger fw-bold">PKR</span>
+                            <input type="number" step="0.01" min="0" name="discount_amount" id="discountAmount" 
+                                   class="form-control rp-input text-end fw-bold" 
+                                   placeholder="0.00" autocomplete="off" value="0.00">
+                        </div>
+                        <small class="text-muted" style="font-size: 11px;">Discount allowed on settlement.</small>
+                    </div>
+
+                    <!-- Total Settlement Amount Display -->
+                    <div class="col-md-4">
+                        <label class="rp-label">Total Invoice Settlement</label>
+                        <div class="p-2 px-3 rounded border bg-light d-flex justify-content-between align-items-center" style="height: 42px;">
+                            <span class="small fw-bold text-muted">Cash + Tax + Discount:</span>
+                            <span class="fs-6 fw-bold text-success" id="lblTotalSettlementDisplay">PKR 0.00</span>
+                        </div>
                     </div>
 
                     <!-- Remarks / Narration -->
-                    <div class="col-md-3" id="remarksCol">
+                    <div class="col-md-4" id="remarksCol">
                         <label class="rp-label">Remarks / Narration</label>
                         <input type="text" name="remarks" id="remarks" class="form-control rp-input" placeholder="e.g. Received payment against invoice dues">
                     </div>
 
                     <!-- Attachment / Slip -->
-                    <div class="col-md-3" id="attachmentCol">
+                    <div class="col-md-4" id="attachmentCol">
                         <label class="rp-label"><i class="fa-solid fa-paperclip text-success me-1"></i> Attachment / Slip (Image/PDF)</label>
                         <input type="file" name="attachment" id="attachment" class="form-control rp-input" accept="image/*,.pdf,.doc,.docx">
                     </div>
@@ -707,6 +744,9 @@ $(document).ready(function() {
         handleCustomerChange();
     });
 
+    // Initial calculations on load
+    updateTotalSettlementDisplay();
+
     // Auto-trigger if preselected
     if ($('#customerId').val()) {
         handleCustomerChange();
@@ -865,8 +905,21 @@ $(document).ready(function() {
         }
     }
 
-    // Amount change in Total Received Amount triggers distribution strictly across selected invoices
-    $(document).on('input keyup change paste', '#totalAmount', function() {
+    function getTotalSettlementAmount() {
+        let cash = parseFloat($('#totalAmount').val()) || 0;
+        let tax = parseFloat($('#taxAmount').val()) || 0;
+        let disc = parseFloat($('#discountAmount').val()) || 0;
+        return Math.max(0, cash + tax + disc);
+    }
+
+    function updateTotalSettlementDisplay() {
+        let total = getTotalSettlementAmount();
+        $('#lblTotalSettlementDisplay').text('PKR ' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    }
+
+    // Amount, Tax or Discount change triggers total settlement update and distribution
+    $(document).on('input keyup change paste', '#totalAmount, #taxAmount, #discountAmount', function() {
+        updateTotalSettlementDisplay();
         applyCurrentDistribution();
     });
 
@@ -897,7 +950,7 @@ $(document).ready(function() {
 
         updateSelectedBadge();
 
-        // Check sum of allocations, sync totalAmount if 0 or manual edit
+        // Check sum of allocations, sync totalAmount if manual edit exceeds
         let sumAllocated = 0;
         $('.alloc-input').each(function() {
             if (!$(this).prop('disabled')) {
@@ -905,9 +958,13 @@ $(document).ready(function() {
             }
         });
 
-        let currentTotal = parseFloat($('#totalAmount').val()) || 0;
-        if (currentTotal === 0 || sumAllocated > currentTotal) {
-            $('#totalAmount').val(sumAllocated.toFixed(2));
+        let currentSettlement = getTotalSettlementAmount();
+        if (currentSettlement === 0 || sumAllocated > currentSettlement) {
+            let tax = parseFloat($('#taxAmount').val()) || 0;
+            let disc = parseFloat($('#discountAmount').val()) || 0;
+            let requiredCash = Math.max(0, sumAllocated - tax - disc);
+            $('#totalAmount').val(requiredCash.toFixed(2));
+            updateTotalSettlementDisplay();
         }
 
         recalcSummary();
@@ -927,7 +984,7 @@ $(document).ready(function() {
         runEqualAllocation();
     });
 
-    // Pay Selected Dues Button (Allocates full dues for currently checked invoices and sets totalAmount)
+    // Pay Selected Dues Button (Allocates full dues for currently checked invoices and sets cash received)
     $('#btnPayAllDues').on('click', function() {
         let totalDueSum = 0;
         $('.invoice-row').each(function() {
@@ -943,7 +1000,11 @@ $(document).ready(function() {
                 $(this).removeClass('row-allocated');
             }
         });
-        $('#totalAmount').val(totalDueSum.toFixed(2));
+        let tax = parseFloat($('#taxAmount').val()) || 0;
+        let disc = parseFloat($('#discountAmount').val()) || 0;
+        let netCash = Math.max(0, totalDueSum - tax - disc);
+        $('#totalAmount').val(netCash.toFixed(2));
+        updateTotalSettlementDisplay();
         recalcSummary();
     });
 
@@ -958,9 +1019,9 @@ $(document).ready(function() {
         recalcSummary();
     });
 
-    // Equal Allocation Function (Strictly among SELECTED/CHECKED invoices)
+    // Equal Allocation Function (Strictly among SELECTED/CHECKED invoices based on TOTAL SETTLEMENT)
     function runEqualAllocation() {
-        let totalAmt = parseFloat($('#totalAmount').val()) || 0;
+        let totalAmt = getTotalSettlementAmount();
         let selectedRows = $('.invoice-row').filter(function() {
             return $(this).find('.row-chk').is(':checked');
         });
@@ -1052,9 +1113,9 @@ $(document).ready(function() {
         recalcSummary();
     }
 
-    // FIFO Allocation Function (Strictly among SELECTED/CHECKED invoices)
+    // FIFO Allocation Function (Strictly among SELECTED/CHECKED invoices based on TOTAL SETTLEMENT)
     function runFifoAllocation() {
-        let totalAmt = parseFloat($('#totalAmount').val()) || 0;
+        let totalAmt = getTotalSettlementAmount();
         let remaining = totalAmt;
 
         $('.invoice-row').each(function() {
@@ -1101,8 +1162,8 @@ $(document).ready(function() {
             sumAllocated += alloc;
         });
 
-        let totalRecAmt = parseFloat($('#totalAmount').val()) || 0;
-        let excessOrAdvance = Math.max(0, totalRecAmt - sumAllocated);
+        let totalSettlement = getTotalSettlementAmount();
+        let excessOrAdvance = Math.max(0, totalSettlement - sumAllocated);
 
         // Update Top Metric Cards
         $('#cardTotalInvoiced').text('PKR ' + sumTotalNet.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -1123,7 +1184,10 @@ $(document).ready(function() {
 
         let custId = $('#customerId').val();
         let depAccId = $('#depositAccountId').val();
-        let totalAmt = parseFloat($('#totalAmount').val()) || 0;
+        let cashAmt = parseFloat($('#totalAmount').val()) || 0;
+        let taxAmt = parseFloat($('#taxAmount').val()) || 0;
+        let discAmt = parseFloat($('#discountAmount').val()) || 0;
+        let totalSettlement = cashAmt + taxAmt + discAmt;
 
         if (!custId) {
             Swal.fire({ icon: 'warning', title: 'Customer Required', text: 'Please select a customer.' });
@@ -1135,8 +1199,8 @@ $(document).ready(function() {
             Swal.fire({ icon: 'warning', title: 'Account Required', text: 'Please select the Deposit Account (Cash/Bank).' });
             return;
         }
-        if (totalAmt <= 0) {
-            Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: 'Please enter a valid Total Received Amount.' });
+        if (totalSettlement <= 0) {
+            Swal.fire({ icon: 'warning', title: 'Invalid Amount', text: 'Please enter received amount, tax, or discount.' });
             return;
         }
 
@@ -1155,9 +1219,14 @@ $(document).ready(function() {
         let formElem = document.getElementById('receivePaymentForm');
         let formData = new FormData(formElem);
 
+        let confirmDesc = `Receive Cash/Bank: PKR ${cashAmt.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        if (taxAmt > 0) confirmDesc += ` | Tax: PKR ${taxAmt.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        if (discAmt > 0) confirmDesc += ` | Discount: PKR ${discAmt.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        confirmDesc += ` (Total Settlement: PKR ${totalSettlement.toLocaleString('en-US', {minimumFractionDigits: 2})}) from ${custName}?`;
+
         window.showConfirmPopup({
             title: 'Receive & Settle Payment?',
-            text: `Are you sure you want to receive PKR ${totalAmt.toLocaleString('en-US', {minimumFractionDigits: 2})} from ${custName} and settle invoice dues?`,
+            text: confirmDesc,
             confirmBtnText: '<i class="fa-solid fa-check-circle me-1"></i> Yes, Post Payment'
         }, function() {
             let $submitBtns = $('#btnSubmitSave, #btnSubmitPrint');
@@ -1200,8 +1269,24 @@ $(document).ready(function() {
             },
             error: function(xhr) {
                 $submitBtns.prop('disabled', false);
-                let err = xhr.responseJSON ? (xhr.responseJSON.message || xhr.responseJSON.error) : 'An error occurred.';
-                Swal.fire({ icon: 'error', title: 'Failed to Save', text: err });
+                let err = 'An error occurred while saving the voucher.';
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.message) {
+                        err = xhr.responseJSON.message;
+                    } else if (xhr.responseJSON.error) {
+                        err = xhr.responseJSON.error;
+                    }
+                    if (xhr.responseJSON.errors) {
+                        let fieldErrors = [];
+                        $.each(xhr.responseJSON.errors, function(key, val) {
+                            fieldErrors.push(Array.isArray(val) ? val.join(' ') : val);
+                        });
+                        if (fieldErrors.length > 0) {
+                            err = fieldErrors.join('<br>');
+                        }
+                    }
+                }
+                Swal.fire({ icon: 'error', title: 'Failed to Save', html: err });
             }
         });
         });
