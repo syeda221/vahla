@@ -1906,6 +1906,9 @@ class SaleController extends Controller
                         $q->where('sale_id', $sale->id)->orWhere('invoice_id', $sale->id);
                     })
                     ->where('status', 'confirmed')
+                    ->where(function($q) {
+                        $q->whereNull('remarks')->orWhere('remarks', 'not like', 'Auto-generated DC for Direct Sale%');
+                    })
                     ->exists();
                 
                 if (!$hasInvoicedDCs) {
@@ -2085,9 +2088,15 @@ class SaleController extends Controller
                     \Log::error('Professional Ledger Posting Error: '.$e->getMessage());
                 }
 
-                // Auto-generate or sync Delivery Challan (DC) for Direct Sale
+                // Direct sales do not generate Delivery Challans.
+                // Mark sale and items as delivered directly.
                 if (in_array($sale->sale_type, ['direct_sale', null])) {
-                    $this->syncDeliveryChallanForDirectSale($sale);
+                    $sale->delivery_status = 'delivered';
+                    $sale->save();
+                    foreach ($sale->items as $item) {
+                        $item->delivered_qty = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
+                        $item->save();
+                    }
                 }
             } elseif ($status === 'booked' && $sale->is_booking) {
                 // For Bookings, we don't deduct stock or post the sales invoice to the ledger,
@@ -2201,8 +2210,16 @@ class SaleController extends Controller
                 $transactionService = app(\App\Services\TransactionService::class);
                 $transactionService->createReceiptFromSale($newSale);
 
-                // Auto-generate Delivery Challan (DC) for converted Direct Sale
-                $this->syncDeliveryChallanForDirectSale($newSale);
+                // Direct sales do not generate Delivery Challans.
+                // Mark sale and items as delivered directly.
+                if (in_array($newSale->sale_type, ['direct_sale', null])) {
+                    $newSale->delivery_status = 'delivered';
+                    $newSale->save();
+                    foreach ($newSale->items as $item) {
+                        $item->delivered_qty = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
+                        $item->save();
+                    }
+                }
 
                 if ($request->ajax() || $request->wantsJson()) {
                     return response()->json([
@@ -2269,86 +2286,20 @@ class SaleController extends Controller
     }
 
     /**
-     * Auto-generate or re-sync Delivery Challan (DC) for a Direct Sale.
-     * Ensures stock deduction remains with the sale, and DC is confirmed & marked invoiced.
+     * For Direct Sales, auto Delivery Challan creation is disabled.
+     * Direct Sales directly deduct warehouse stock and maintain customer ledger.
      */
     public function syncDeliveryChallanForDirectSale(Sale $sale)
     {
-        if (!in_array($sale->sale_type, ['direct_sale', null]) || $sale->sale_status !== 'posted') {
-            return null;
-        }
-
-        $sale->load('items');
-        if ($sale->items->isEmpty()) {
-            return null;
-        }
-
-        // Check if there are already consolidated DCs linked to this sale as invoice_id
-        $consolidatedCount = DeliveryChallan::where('invoice_id', $sale->id)->count();
-        $existingDc = DeliveryChallan::where('sale_id', $sale->id)->first();
-
-        // If multiple DCs are linked or if the existing DC is from Direct DC module (e.g. DDC-), preserve them
-        if ($consolidatedCount > 1 || ($existingDc && Str::startsWith($existingDc->dc_number, 'DDC-'))) {
+        if (in_array($sale->sale_type, ['direct_sale', null])) {
             $sale->delivery_status = 'delivered';
             $sale->save();
-            return $existingDc;
-        }
-
-        if ($existingDc) {
-            $existingDc->customer_id = $sale->customer_id;
-            $existingDc->dc_date = $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d');
-            $existingDc->status = 'confirmed';
-            $existingDc->is_invoiced = 1;
-            $existingDc->invoice_id = $sale->id;
-            $existingDc->remarks = 'Auto-generated DC for Direct Sale #' . ($sale->invoice_no ?: $sale->id);
-            $existingDc->save();
-
-            DeliveryChallanItem::where('delivery_challan_id', $existingDc->id)->delete();
-            $dc = $existingDc;
-        } else {
-            $baseNo = $sale->invoice_no ?: ('#' . str_pad($sale->id, 4, '0', STR_PAD_LEFT));
-            $dcCount = DeliveryChallan::where('sale_id', $sale->id)->count() + 1;
-            $dcNumber = $baseNo . '-DC' . str_pad($dcCount, 2, '0', STR_PAD_LEFT);
-            while (DeliveryChallan::where('dc_number', $dcNumber)->exists()) {
-                $dcCount++;
-                $dcNumber = $baseNo . '-DC' . str_pad($dcCount, 2, '0', STR_PAD_LEFT);
+            foreach ($sale->items as $item) {
+                $item->delivered_qty = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
+                $item->save();
             }
-
-            $dc = DeliveryChallan::create([
-                'sale_id' => $sale->id,
-                'customer_id' => $sale->customer_id,
-                'dc_number' => $dcNumber,
-                'dc_date' => $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d'),
-                'status' => 'confirmed',
-                'is_invoiced' => 1,
-                'invoice_id' => $sale->id,
-                'remarks' => 'Auto-generated DC for Direct Sale #' . ($sale->invoice_no ?: $sale->id),
-                'created_by' => auth()->id() ?? 1,
-            ]);
         }
-
-        foreach ($sale->items as $item) {
-            $qty = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
-            DeliveryChallanItem::create([
-                'delivery_challan_id' => $dc->id,
-                'sale_item_id' => $item->id,
-                'product_id' => $item->product_id,
-                'warehouse_id' => $item->warehouse_id ?? (auth()->user()->warehouse_id ?? 1),
-                'delivered_qty' => $qty,
-                'boxes' => (float) $item->qty,
-                'loose_pieces' => (float) ($item->loose_pieces ?? 0),
-                'color' => $item->color,
-                'price' => (float) ($item->price ?? 0),
-            ]);
-
-            $item->delivered_qty = $qty;
-            $item->save();
-        }
-
-        $sale->delivery_status = 'delivered';
-        $sale->save();
-
-        return $dc;
+        return null;
     }
 
     public function handleStockImpact(Sale $sale, $type = 'out')
@@ -2649,6 +2600,9 @@ class SaleController extends Controller
                 $q->where('sale_id', $sale->id)->orWhere('invoice_id', $sale->id);
             })
             ->where('status', 'confirmed')
+            ->where(function($q) {
+                $q->whereNull('remarks')->orWhere('remarks', 'not like', 'Auto-generated DC for Direct Sale%');
+            })
             ->exists();
         
         if (!$hasInvoicedDCs) {
@@ -2758,9 +2712,15 @@ class SaleController extends Controller
                 $transactionService->createReceiptFromSale($sale);
             }
 
-            // AUTO GENERATE DELIVERY CHALLAN FOR DIRECT SALE
+            // Direct sales do not generate Delivery Challans.
+            // Mark sale and items as delivered directly.
             if (in_array($sale->sale_type, ['direct_sale', null])) {
-                $this->syncDeliveryChallanForDirectSale($sale);
+                $sale->delivery_status = 'delivered';
+                $sale->save();
+                foreach ($sale->items as $item) {
+                    $item->delivered_qty = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
+                    $item->save();
+                }
             }
 
             DB::commit();

@@ -1625,8 +1625,24 @@ class ReportingController extends Controller
             $end = $request->end_date;
             $customerId = $request->customer_id;
 
-            // Use Eloquent to handle relations and new table structure
-            $query = \App\Models\Sale::with(['customer_relation', 'items.product', 'returns']);
+            // Use Eloquent to handle relations and new table structure (Only include finalized sale invoices, exclude quotations and sales orders)
+            $query = \App\Models\Sale::with(['customer_relation', 'items.product', 'returns'])
+                ->where(function ($q) {
+                    $q->whereNull('sale_type')
+                      ->orWhere('sale_type', 'direct_sale')
+                      ->orWhere(function ($q2) {
+                          $q2->where('sale_type', 'sales_order')
+                             ->where('sale_status', 'posted')
+                             ->where('invoice_no', 'not like', 'SO-%');
+                      });
+                })
+                ->where(function ($q) {
+                    $q->whereNull('sale_status')
+                      ->orWhereIn('sale_status', ['posted', 'returned']);
+                })
+                ->where('sale_type', '!=', 'quotation')
+                ->where('invoice_no', 'not like', 'SO-%')
+                ->where('invoice_no', 'not like', 'QUO-%');
 
             if ($start && $end) {
                 $query->whereBetween('created_at', [
@@ -3208,7 +3224,22 @@ class ReportingController extends Controller
                 DB::raw("SUM(sale_items.total) as gross_amount"),
                 DB::raw("COUNT(DISTINCT sales.id) as invoice_count")
             )
-            ->whereIn('sales.sale_status', ['posted', 'completed', 'booked', 'draft']);
+            ->where(function ($q) {
+                $q->whereNull('sales.sale_type')
+                  ->orWhere('sales.sale_type', 'direct_sale')
+                  ->orWhere(function ($q2) {
+                      $q2->where('sales.sale_type', 'sales_order')
+                         ->where('sales.sale_status', 'posted')
+                         ->where('sales.invoice_no', 'not like', 'SO-%');
+                  });
+            })
+            ->where(function ($q) {
+                $q->whereNull('sales.sale_status')
+                  ->orWhereIn('sales.sale_status', ['posted', 'completed', 'returned']);
+            })
+            ->where('sales.sale_type', '!=', 'quotation')
+            ->where('sales.invoice_no', 'not like', 'SO-%')
+            ->where('sales.invoice_no', 'not like', 'QUO-%');
 
         if ($fromDate) {
             $salesQuery->whereDate('sales.created_at', '>=', $fromDate);

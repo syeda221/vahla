@@ -1,6 +1,7 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
@@ -23,8 +24,12 @@
         --cyan: #06b6d4;
     }
 
-    .db-wrap, .db-wrap * {
+    .db-wrap, .db-wrap *:not(i):not([class*="fa-"]):not(.fa):not(.fas):not(.far):not(.fab) {
         font-family: var(--f) !important;
+    }
+    .db-wrap i, .db-wrap .fa, .db-wrap .fas, .db-wrap .far, .db-wrap .fab, .db-wrap [class*="fa-"] {
+        font-family: "Font Awesome 5 Free", "FontAwesome" !important;
+        font-style: normal !important;
     }
 
     .db-wrap {
@@ -144,29 +149,43 @@
     }
 
     /* =============================================
-       KPI STAT CARDS (TOP ROW)
+       KPI STAT CARDS (TOP ROW - 1 SINGLE LINE)
     ============================================= */
     .kpi-grid {
         display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 1rem;
-        margin-bottom: 2rem;
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+        gap: 0.65rem;
+        margin-bottom: 1.5rem;
+    }
+    @media (max-width: 1400px) {
+        .kpi-grid {
+            display: flex;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            gap: 0.6rem;
+            padding-bottom: 6px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .kpi-grid .kpi-card {
+            flex: 0 0 160px;
+            min-width: 150px;
+        }
     }
 
     .kpi-card {
         background: var(--card);
         border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 1.1rem 1.15rem;
+        border-radius: 12px;
+        padding: 0.75rem 0.8rem;
         position: relative;
         overflow: hidden;
         transition: all 0.25s;
         box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-        box-sizing: border-radius;
+        box-sizing: border-box;
     }
     .kpi-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.07);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.07);
     }
     .kpi-card::before {
         content: '';
@@ -174,46 +193,52 @@
         top: 0; left: 0; right: 0;
         height: 3px;
         background: var(--kpi-color, var(--indigo));
-        border-radius: 14px 14px 0 0;
+        border-radius: 12px 12px 0 0;
     }
 
     .kpi-top {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.45rem;
+        gap: 0.35rem;
     }
     .kpi-label {
-        font-size: 0.72rem;
+        font-size: 0.67rem;
         font-weight: 700;
         color: var(--muted);
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.03em;
         line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .kpi-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 8px;
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.95rem;
+        font-size: 0.8rem;
         background: var(--kpi-icon-bg, #eef2ff);
         color: var(--kpi-color, var(--indigo));
         flex-shrink: 0;
     }
     .kpi-value {
-        font-size: 1.25rem;
+        font-size: 1.12rem;
         font-weight: 800;
         color: var(--text);
-        margin-bottom: 0.3rem;
+        margin-bottom: 0.25rem;
         letter-spacing: -0.02em;
         line-height: 1.2;
-        word-break: break-word;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .kpi-trend {
-        font-size: 0.72rem;
+        font-size: 0.65rem;
         font-weight: 700;
         display: inline-flex;
         align-items: center;
@@ -342,17 +367,18 @@
 
     /* Gradient Card Variations (Matching Screenshot Style) */
     .kpi-gradient-card {
-        border-radius: 16px !important;
+        border-radius: 12px !important;
+        padding: 0.75rem 0.8rem !important;
         border: none !important;
         color: #ffffff !important;
         position: relative !important;
         overflow: hidden !important;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
-        transition: transform 0.25s ease, box-shadow 0.25s ease !important;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08) !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease !important;
     }
     .kpi-gradient-card:hover {
-        transform: translateY(-3px) !important;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15) !important;
     }
     .kpi-gradient-card::before {
         display: none !important;
@@ -360,10 +386,10 @@
     .kpi-gradient-card::after {
         content: '';
         position: absolute;
-        right: -15px;
-        bottom: -15px;
-        width: 85px;
-        height: 85px;
+        right: -10px;
+        bottom: -10px;
+        width: 55px;
+        height: 55px;
         background: rgba(255, 255, 255, 0.14);
         border-radius: 50%;
         pointer-events: none;
@@ -383,6 +409,15 @@
     .kpi-gradient-emerald {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
     }
+    .kpi-gradient-teal {
+        background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%) !important;
+    }
+    .kpi-gradient-cyan {
+        background: linear-gradient(135deg, #0284c7 0%, #06b6d4 100%) !important;
+    }
+    .kpi-gradient-indigo {
+        background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%) !important;
+    }
     .kpi-gradient-blue {
         background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%) !important;
     }
@@ -397,9 +432,12 @@
         letter-spacing: -0.02em !important;
     }
     .kpi-gradient-card .kpi-icon {
-        background: rgba(255, 255, 255, 0.24) !important;
+        width: 26px !important;
+        height: 26px !important;
+        font-size: 0.8rem !important;
+        background: rgba(255, 255, 255, 0.25) !important;
         color: #ffffff !important;
-        border-radius: 10px !important;
+        border-radius: 6px !important;
         backdrop-filter: blur(4px);
     }
     .kpi-gradient-card .kpi-trend {
@@ -722,12 +760,14 @@
        RESPONSIVE
     ============================================= */
     @media (max-width: 1400px) {
-        .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+        .kpi-grid { grid-template-columns: repeat(4, 1fr); gap: 0.9rem; }
+    }
+    @media (max-width: 1100px) {
+        .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
     }
     @media (max-width: 991px) {
         .db-wrap { padding: 1.25rem 1rem 2.5rem; }
         .grid-3col, .grid-4col, .grid-2col { grid-template-columns: 1fr; gap: 1rem; }
-        .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.85rem; }
         .spark-grid { grid-template-columns: repeat(2, 1fr); gap: 0.85rem; }
         .db-nav-pills { margin-bottom: 1.25rem; }
         .db-conclusion-grid { flex-direction: column; align-items: flex-start; gap: 1.25rem; }
@@ -737,7 +777,7 @@
     }
     @media (max-width: 768px) {
         .spark-grid { grid-template-columns: 1fr !important; gap: 0.75rem; }
-        .kpi-grid { grid-template-columns: 1fr !important; gap: 0.75rem; }
+        .kpi-grid { grid-template-columns: 1fr !important; gap: 0.85rem; }
     }
     @media (max-width: 576px) {
         .db-wrap { padding: 0.75rem 0.5rem 2rem; }
@@ -843,58 +883,108 @@
     <div class="db-section-label"><i class="fas fa-chart-bar text-primary"></i> Key Performance Indicators</div>
     <div class="kpi-grid">
 
-        <div class="kpi-card kpi-gradient-card kpi-gradient-purple">
+        {{-- 1. Today's Sales (Billed Only) --}}
+        <div class="kpi-card kpi-gradient-card kpi-gradient-teal" style="cursor: pointer;" onclick="window.location.href='{{ route('sale.index', ['from_date' => date('Y-m-d'), 'to_date' => date('Y-m-d'), 'status' => 'posted']) }}'" title="Click to view today's sales invoices">
             <div class="kpi-top">
-                <span class="kpi-label">Total Sales (This Month)</span>
-                <div class="kpi-icon"><i class="fa-solid fa-cart-shopping"></i></div>
+                <span class="kpi-label">Today Sales</span>
+                <div class="kpi-icon"><i class="fas fa-receipt"></i></div>
             </div>
-            <div class="kpi-value">Rs {{ number_format($salesThisMonth, 0) }}</div>
-            <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> 18.6% <span class="kpi-trend-sub">vs last month</span></span>
+            <div class="kpi-value">Rs {{ number_format($salesToday ?? 0, 0) }}</div>
+            <div class="d-flex align-items-center justify-content-between mt-1" style="font-size:0.68rem; color:rgba(255,255,255,0.95); font-weight:700;">
+                <span><i class="fas fa-file-invoice me-1"></i>{{ $salesTodayCount ?? 0 }} Billed</span>
+                <span style="color:#ffffff;">View →</span>
+            </div>
         </div>
 
-        <div class="kpi-card kpi-gradient-card kpi-gradient-rose">
+        {{-- 2. Total Sales (This Month) --}}
+        <div class="kpi-card kpi-gradient-card kpi-gradient-purple" style="cursor: pointer;" onclick="window.location.href='{{ route('sale.index', ['from_date' => date('Y-m-01'), 'to_date' => date('Y-m-t'), 'status' => 'posted']) }}'" title="Click to view this month's sales invoices">
             <div class="kpi-top">
-                <span class="kpi-label">Total Purchases (This Month)</span>
-                <div class="kpi-icon"><i class="fa-solid fa-bag-shopping"></i></div>
+                <span class="kpi-label">Month Sales</span>
+                <div class="kpi-icon"><i class="fas fa-shopping-cart"></i></div>
             </div>
-            <div class="kpi-value">Rs {{ number_format($purchasesThisMonth, 0) }}</div>
-            <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> 12.3% <span class="kpi-trend-sub">vs last month</span></span>
+            <div class="kpi-value">Rs {{ number_format($salesThisMonth ?? 0, 0) }}</div>
+            <div class="d-flex align-items-center justify-content-between mt-1" style="font-size:0.68rem; color:rgba(255,255,255,0.95); font-weight:700;">
+                <span><i class="fas fa-file-invoice me-1"></i>{{ $salesThisMonthCount ?? 0 }} Inv</span>
+                <span style="color:#ffffff;">View →</span>
+            </div>
         </div>
 
-        <div class="kpi-card kpi-gradient-card kpi-gradient-amber">
+        {{-- 3. Today's Purchases --}}
+        <div class="kpi-card kpi-gradient-card kpi-gradient-blue" style="cursor: pointer;" onclick="window.location.href='{{ route('Purchase.home') }}'" title="Click to view purchases">
             <div class="kpi-top">
-                <span class="kpi-label">Gross Profit (This Month)</span>
-                <div class="kpi-icon"><i class="fa-solid fa-chart-line"></i></div>
+                <span class="kpi-label">Today Purchase</span>
+                <div class="kpi-icon"><i class="fas fa-truck-loading"></i></div>
             </div>
-            <div class="kpi-value">Rs {{ number_format($grossProfitThisMonth, 0) }}</div>
-            <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> 22.5% <span class="kpi-trend-sub">vs last month</span></span>
+            <div class="kpi-value">Rs {{ number_format($purchasesToday ?? 0, 0) }}</div>
+            <div class="d-flex align-items-center justify-content-between mt-1" style="font-size:0.68rem; color:rgba(255,255,255,0.95); font-weight:700;">
+                <span>Procurement</span>
+                <span style="color:#ffffff;">View →</span>
+            </div>
         </div>
 
-        <div class="kpi-card kpi-gradient-card kpi-gradient-coral">
+        {{-- 4. Total Purchases (This Month) --}}
+        <div class="kpi-card kpi-gradient-card kpi-gradient-rose" style="cursor: pointer;" onclick="window.location.href='{{ route('Purchase.home') }}'" title="Click to view purchases">
             <div class="kpi-top">
-                <span class="kpi-label">Total Expenses (This Month)</span>
-                <div class="kpi-icon"><i class="fa-solid fa-file-invoice"></i></div>
+                <span class="kpi-label">Month Purchase</span>
+                <div class="kpi-icon"><i class="fas fa-shopping-bag"></i></div>
             </div>
-            <div class="kpi-value">Rs {{ number_format($expensesThisMonth, 0) }}</div>
-            <span class="kpi-trend down"><i class="fas fa-arrow-down"></i> 5.4% <span class="kpi-trend-sub">vs last month</span></span>
+            <div class="kpi-value">Rs {{ number_format($purchasesThisMonth ?? 0, 0) }}</div>
+            <div class="d-flex align-items-center justify-content-between mt-1" style="font-size:0.68rem; color:rgba(255,255,255,0.95); font-weight:700;">
+                <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> 12.3%</span>
+                <span style="color:#ffffff;">View →</span>
+            </div>
         </div>
 
-        <div class="kpi-card kpi-gradient-card kpi-gradient-emerald">
+        {{-- 5. Gross Profit (This Month) --}}
+        <div class="kpi-card kpi-gradient-card kpi-gradient-amber" style="cursor: pointer;" onclick="window.location.href='{{ route('report.profit_loss') }}'" title="Click to view profit & loss report">
             <div class="kpi-top">
-                <span class="kpi-label">Net Profit (This Month)</span>
-                <div class="kpi-icon"><i class="fa-solid fa-circle-dollar-to-slot"></i></div>
+                <span class="kpi-label">Gross Profit</span>
+                <div class="kpi-icon"><i class="fas fa-chart-line"></i></div>
             </div>
-            <div class="kpi-value">Rs {{ number_format($netProfitThisMonth, 0) }}</div>
-            <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> 28.7% <span class="kpi-trend-sub">vs last month</span></span>
+            <div class="kpi-value">Rs {{ number_format($grossProfitThisMonth ?? 0, 0) }}</div>
+            <div class="d-flex align-items-center justify-content-between mt-1" style="font-size:0.68rem; color:rgba(255,255,255,0.95); font-weight:700;">
+                <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> 22.5%</span>
+                <span style="color:#ffffff;">Report →</span>
+            </div>
         </div>
 
-        <div class="kpi-card kpi-gradient-card kpi-gradient-blue">
+        {{-- 6. Total Expenses (This Month) --}}
+        <div class="kpi-card kpi-gradient-card kpi-gradient-coral" style="cursor: pointer;" onclick="window.location.href='{{ route('all_expense_vochers') }}'" title="Expenses">
             <div class="kpi-top">
-                <span class="kpi-label">Cash Balance</span>
-                <div class="kpi-icon"><i class="fa-solid fa-wallet"></i></div>
+                <span class="kpi-label">Expenses</span>
+                <div class="kpi-icon"><i class="fas fa-file-invoice-dollar"></i></div>
             </div>
-            <div class="kpi-value">Rs {{ number_format($totalCashAndBankBalance, 0) }}</div>
-            <span class="kpi-sub-text">Available Liquid Balance</span>
+            <div class="kpi-value">Rs {{ number_format($expensesThisMonth ?? 0, 0) }}</div>
+            <div class="d-flex align-items-center justify-content-between mt-1" style="font-size:0.68rem; color:rgba(255,255,255,0.95); font-weight:700;">
+                <span class="kpi-trend down"><i class="fas fa-arrow-down"></i> 5.4%</span>
+                <span>Operating</span>
+            </div>
+        </div>
+
+        {{-- 7. Net Profit (This Month) --}}
+        <div class="kpi-card kpi-gradient-card kpi-gradient-emerald" style="cursor: pointer;" onclick="window.location.href='{{ route('report.profit_loss') }}'" title="Click to view net profit">
+            <div class="kpi-top">
+                <span class="kpi-label">Net Profit</span>
+                <div class="kpi-icon"><i class="fas fa-coins"></i></div>
+            </div>
+            <div class="kpi-value">Rs {{ number_format($netProfitThisMonth ?? 0, 0) }}</div>
+            <div class="d-flex align-items-center justify-content-between mt-1" style="font-size:0.68rem; color:rgba(255,255,255,0.95); font-weight:700;">
+                <span class="kpi-trend up"><i class="fas fa-arrow-up"></i> 28.7%</span>
+                <span style="color:#ffffff;">Report →</span>
+            </div>
+        </div>
+
+        {{-- 8. Cash & Bank Balance --}}
+        <div class="kpi-card kpi-gradient-card kpi-gradient-indigo" style="cursor: pointer;" onclick="window.location.href='{{ route('view_all') }}'" title="Click to view accounts">
+            <div class="kpi-top">
+                <span class="kpi-label">Cash & Bank</span>
+                <div class="kpi-icon"><i class="fas fa-wallet"></i></div>
+            </div>
+            <div class="kpi-value">Rs {{ number_format($totalCashAndBankBalance ?? 0, 0) }}</div>
+            <div class="d-flex align-items-center justify-content-between mt-1" style="font-size:0.68rem; color:rgba(255,255,255,0.95); font-weight:700;">
+                <span class="kpi-sub-text">Liquid Bal</span>
+                <span style="color:#ffffff;">Accounts →</span>
+            </div>
         </div>
 
     </div>

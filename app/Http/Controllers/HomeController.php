@@ -31,7 +31,7 @@ class HomeController extends Controller
             // Stats
             $totalPurchases = Auth::user()->can('purchases.view') ? DB::table('purchases')->sum('net_amount') : 0;
             $totalPurchaseReturns = Auth::user()->can('purchase.returns.view') ? DB::table('purchase_returns')->sum('net_amount') : 0;
-            $totalSales = Auth::user()->can('sales.view') ? DB::table('sales')->sum('total_net') : 0;
+            $totalSales = Auth::user()->can('sales.view') ? DB::table('sales')->where(function($q) { $q->whereNull('sale_type')->orWhere('sale_type', 'direct_sale'); })->where('sale_status', 'posted')->sum('total_net') : 0;
             $totalSalesReturns = Auth::user()->can('sales.returns.view') ? DB::table('sale_returns')->sum('net_amount') : 0;
 
             // Financial Summary (Accounting Based)
@@ -50,31 +50,46 @@ class HomeController extends Controller
             // ===== SALES REPORT CHARTS =====
             $salesChartStats = ['daily' => ['series' => [], 'categories' => []]];
             if (Auth::user()->can('sales.view')) {
-                // DAILY (last 7 days)
+                // DAILY (last 7 days - Billed Sales Only)
                 $dailyLabels = collect(range(6, 0))->map(fn($i) => \Carbon\Carbon::today()->subDays($i)->format('Y-m-d'));
                 $dailyData = $dailyLabels->map(function ($date) {
                     return DB::table('sales')
                         ->whereDate('created_at', $date)
+                        ->where(function($q) {
+                            $q->whereNull('sale_type')
+                              ->orWhere('sale_type', 'direct_sale');
+                        })
+                        ->where('sale_status', 'posted')
                         ->sum('total_net');
                 });
 
-                // WEEKLY (This + Last 2 weeks)
+                // WEEKLY (This + Last 2 weeks - Billed Sales Only)
                 $weeklyLabels = ['This Week', 'Last Week', '2 Weeks Ago'];
                 $weeklyData = collect([0, 1, 2])->map(function ($i) {
                     $start = \Carbon\Carbon::now()->startOfWeek()->subWeeks($i);
                     $end = $start->copy()->endOfWeek();
                     return DB::table('sales')
                         ->whereBetween('created_at', [$start, $end])
+                        ->where(function($q) {
+                            $q->whereNull('sale_type')
+                              ->orWhere('sale_type', 'direct_sale');
+                        })
+                        ->where('sale_status', 'posted')
                         ->sum('total_net');
                 })->reverse()->values();
 
-                // MONTHLY (Jan → Current month)
+                // MONTHLY (Jan → Current month - Billed Sales Only)
                 $months = range(1, \Carbon\Carbon::now()->month);
                 $monthLabels = collect($months)->map(fn($m) => \Carbon\Carbon::create()->month($m)->format('F'));
                 $monthlyData = collect($months)->map(function ($month) {
                     return DB::table('sales')
                         ->whereMonth('created_at', $month)
                         ->whereYear('created_at', \Carbon\Carbon::now()->year)
+                        ->where(function($q) {
+                            $q->whereNull('sale_type')
+                              ->orWhere('sale_type', 'direct_sale');
+                        })
+                        ->where('sale_status', 'posted')
                         ->sum('total_net');
                 });
 
@@ -231,19 +246,34 @@ class HomeController extends Controller
             $startOfMonth = \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d 00:00:00');
             $endOfMonth   = \Carbon\Carbon::now()->endOfMonth()->format('Y-m-d 23:59:59');
 
-            $salesThisMonth = DB::table('sales')
+            // Strictly Billed Sales for This Month (Excluding Quotations, Sales Orders, Drafts, DCs)
+            $salesThisMonthQuery = DB::table('sales')
                 ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                ->whereNotIn('sale_status', ['cancelled', 'returned'])
-                ->sum('total_net');
+                ->where(function($q) {
+                    $q->whereNull('sale_type')
+                      ->orWhere('sale_type', 'direct_sale');
+                })
+                ->where('sale_status', 'posted');
+
+            $salesThisMonth = (float) $salesThisMonthQuery->sum('total_net');
+            $salesThisMonthCount = (int) $salesThisMonthQuery->count();
 
             $purchasesThisMonth = DB::table('purchases')
                 ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
                 ->sum('net_amount');
 
-            $salesToday = DB::table('sales')
+            // Strictly Billed Sales for Today (Excluding Quotations, Sales Orders, Drafts, DCs)
+            $salesTodayQuery = DB::table('sales')
                 ->whereDate('created_at', \Carbon\Carbon::today())
-                ->whereNotIn('sale_status', ['cancelled', 'returned'])
-                ->sum('total_net');
+                ->where(function($q) {
+                    $q->whereNull('sale_type')
+                      ->orWhere('sale_type', 'direct_sale');
+                })
+                ->where('sale_status', 'posted');
+
+            $salesToday = (float) $salesTodayQuery->sum('total_net');
+            $salesTodayCount = (int) $salesTodayQuery->count();
+            $salesTodayCash = (float) $salesTodayQuery->sum('cash');
 
             $purchasesToday = DB::table('purchases')
                 ->whereDate('created_at', \Carbon\Carbon::today())
@@ -460,7 +490,12 @@ class HomeController extends Controller
                 'cashAndBankAccounts',
                 'totalCashAndBankBalance',
                 'lowStockProducts',
+                'salesToday',
+                'salesTodayCount',
+                'salesTodayCash',
                 'salesThisMonth',
+                'salesThisMonthCount',
+                'purchasesToday',
                 'purchasesThisMonth',
                 'profitThisMonth',
                 'totalRevenueThisMonth',

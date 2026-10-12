@@ -292,7 +292,7 @@ class DeliveryChallanController extends Controller
 
             $sale = new Sale();
             $sale->customer_id = $customerId;
-            $sale->sale_type = 'sales_order';
+            $sale->sale_type = 'direct_sale';
             $sale->sale_status = 'posted';
             $sale->delivery_status = 'delivered';
             
