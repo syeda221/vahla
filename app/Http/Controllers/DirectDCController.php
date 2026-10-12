@@ -524,11 +524,26 @@ class DirectDCController extends Controller
             }
         }
 
-        $seriesList = [
-            'INV' => ['label' => 'Standard Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('INV')],
-            'TAX' => ['label' => 'Tax Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('TAX')],
-            'CO'  => ['label' => 'Company Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('CO')],
-        ];
+        $exclude = ['PO', 'PINV', 'DC', 'DDC', 'GRN', 'DGRN', 'SR', 'PRET', 'QUO', 'SO', 'SQ', 'INVSLE'];
+        $dbSeries = \App\Models\InvoiceSeries::whereNotIn('prefix', $exclude)->orderByRaw("CASE WHEN prefix = 'INV' THEN 0 ELSE 1 END, is_default DESC, id ASC")->get();
+        $standardDefs = \App\Models\InvoiceSeries::standardDefinitions();
+        $seriesList = [];
+        foreach ($dbSeries as $s) {
+            $label = $standardDefs[$s->prefix]['name'] ?? ($s->prefix . ' Invoice');
+            $seriesList[$s->prefix] = [
+                'label' => $label,
+                'next_no' => \App\Models\InvoiceSeries::generateNextNo($s->prefix)
+            ];
+        }
+        
+        // Fallback if table is empty
+        if (empty($seriesList)) {
+            $seriesList = [
+                'INV' => ['label' => 'Standard Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('INV')],
+                'TAX' => ['label' => 'Tax Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('TAX')],
+                'CO'  => ['label' => 'Company Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('CO')],
+            ];
+        }
 
         return view('admin_panel.direct_dc.consolidate_preview', compact('dcs', 'customer', 'mergedItems', 'dcIds', 'customerId', 'seriesList'));
     }
@@ -575,7 +590,7 @@ class DirectDCController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'dc_ids' => 'required|array',
             'dc_ids.*' => 'required|exists:delivery_challans,id',
-            'prefix' => 'nullable|string|in:INV,TAX,CO',
+            'prefix' => 'nullable|string|max:20',
             'sale_date' => 'nullable|date',
         ]);
 
@@ -637,9 +652,9 @@ class DirectDCController extends Controller
             }
             $invoiceDate = $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d');
 
-            // Assign Invoice Number according to user input or selected prefix (INV, TAX, CO)
+            // Assign Invoice Number according to user input or selected prefix
             $chosenPrefix = $request->input('prefix');
-            $prefix = in_array(strtoupper($chosenPrefix), ['TAX', 'CO', 'INV']) ? strtoupper($chosenPrefix) : 'INV';
+            $prefix = !empty($chosenPrefix) ? strtoupper(trim($chosenPrefix)) : 'INV';
             $invInput = $request->input('invoice_no') ?: $request->input('Invoice_no');
 
             if ($invInput) {

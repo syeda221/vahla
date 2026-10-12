@@ -934,8 +934,9 @@
                 // Set form action dynamically
                 $('#formGenerateOrderInvoice').attr('action', '/sales/' + saleId + '/generate-invoice');
 
-                // Pre-fetch live next invoice numbers for INV, TAX, CO
-                ['INV', 'TAX', 'CO'].forEach(function(pref) {
+                // Pre-fetch live next invoice numbers for all series in modal
+                $('#modalGenerateOrderInvoice input[name="prefix"]').each(function() {
+                    var pref = $(this).val();
                     $.ajax({
                         url: "{{ route('invoice_series.generate_no') }}",
                         type: "GET",
@@ -943,7 +944,7 @@
                         success: function(res) {
                             if (res.invoice_no) {
                                 $('#nextNoBadge_' + pref).text(res.invoice_no);
-                                if ($('input[name="prefix"]:checked').val() === pref) {
+                                if ($('#modalGenerateOrderInvoice input[name="prefix"]:checked').val() === pref) {
                                     $('#orderModalInvoiceNo').val(res.invoice_no);
                                 }
                             }
@@ -1004,39 +1005,36 @@
                             <label class="form-label fw-bold small text-secondary mb-2">
                                 <i class="fas fa-layer-group text-primary me-1"></i> Choose Invoice Series
                             </label>
-                            <div class="d-flex flex-column gap-2">
-                                <label class="border rounded-3 p-2 px-3 d-flex align-items-center justify-content-between cursor-pointer series-radio-card bg-white" style="cursor: pointer;">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <input type="radio" name="prefix" value="INV" class="form-check-input mt-0" checked>
-                                        <span class="badge bg-primary text-white font-monospace px-2 py-1">INV</span>
-                                        <span class="fw-bold small text-dark">Standard Invoice</span>
-                                    </div>
-                                    <span class="badge bg-light text-primary border font-monospace" id="nextNoBadge_INV">
-                                        {{ \App\Models\InvoiceSeries::generateNextNo('INV') }}
-                                    </span>
-                                </label>
-
-                                <label class="border rounded-3 p-2 px-3 d-flex align-items-center justify-content-between cursor-pointer series-radio-card bg-white" style="cursor: pointer;">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <input type="radio" name="prefix" value="TAX" class="form-check-input mt-0">
-                                        <span class="badge bg-primary text-white font-monospace px-2 py-1">TAX</span>
-                                        <span class="fw-bold small text-dark">Tax Invoice</span>
-                                    </div>
-                                    <span class="badge bg-light text-primary border font-monospace" id="nextNoBadge_TAX">
-                                        {{ \App\Models\InvoiceSeries::generateNextNo('TAX') }}
-                                    </span>
-                                </label>
-
-                                <label class="border rounded-3 p-2 px-3 d-flex align-items-center justify-content-between cursor-pointer series-radio-card bg-white" style="cursor: pointer;">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <input type="radio" name="prefix" value="CO" class="form-check-input mt-0">
-                                        <span class="badge bg-primary text-white font-monospace px-2 py-1">CO</span>
-                                        <span class="fw-bold small text-dark">Company Invoice</span>
-                                    </div>
-                                    <span class="badge bg-light text-primary border font-monospace" id="nextNoBadge_CO">
-                                        {{ \App\Models\InvoiceSeries::generateNextNo('CO') }}
-                                    </span>
-                                </label>
+                            <div class="d-flex flex-column gap-2" id="orderModalSeriesContainer">
+                                @php
+                                    $excludeOrderSeries = ['PO', 'PINV', 'DC', 'DDC', 'GRN', 'DGRN', 'SR', 'PRET', 'QUO', 'SO', 'SQ', 'INVSLE'];
+                                    $allOrderSeries = \App\Models\InvoiceSeries::whereNotIn('prefix', $excludeOrderSeries)->orderByRaw("CASE WHEN prefix = 'INV' THEN 0 ELSE 1 END, is_default DESC, id ASC")->get();
+                                    if ($allOrderSeries->isEmpty()) {
+                                        $allOrderSeries = collect([
+                                            (object)['prefix' => 'INV', 'next_number' => 1, 'is_default' => 1],
+                                            (object)['prefix' => 'TAX', 'next_number' => 1, 'is_default' => 0],
+                                            (object)['prefix' => 'CO', 'next_number' => 1, 'is_default' => 0],
+                                        ]);
+                                    }
+                                    $orderDefs = \App\Models\InvoiceSeries::standardDefinitions();
+                                @endphp
+                                @foreach($allOrderSeries as $sObj)
+                                    @php
+                                        $sp = $sObj->prefix;
+                                        $label = $orderDefs[$sp]['name'] ?? ($sp . ' Invoice');
+                                        $isFirst = $loop->first;
+                                    @endphp
+                                    <label class="border rounded-3 p-2 px-3 d-flex align-items-center justify-content-between cursor-pointer series-radio-card bg-white" style="cursor: pointer;">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <input type="radio" name="prefix" value="{{ $sp }}" class="form-check-input mt-0" {{ $isFirst ? 'checked' : '' }}>
+                                            <span class="badge bg-primary text-white font-monospace px-2 py-1">{{ $sp }}</span>
+                                            <span class="fw-bold small text-dark">{{ $label }}</span>
+                                        </div>
+                                        <span class="badge bg-light text-primary border font-monospace" id="nextNoBadge_{{ $sp }}">
+                                            {{ \App\Models\InvoiceSeries::generateNextNo($sp) }}
+                                        </span>
+                                    </label>
+                                @endforeach
                             </div>
                         </div>
 

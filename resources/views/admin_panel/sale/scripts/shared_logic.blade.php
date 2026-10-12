@@ -819,7 +819,7 @@
 
     function refreshPostedState() {
         const state = canPost();
-        $('#btnPosted, #btnHeaderPosted, #btnSaveAndComplete, #btnSaveAndComplete2').prop('disabled', !state);
+        $('#btnPosted, #btnHeaderPosted, #btnSaveAndComplete, #btnSaveAndComplete2, #btnSaveAndPrint2').prop('disabled', !state);
         $('#btnDraft, #btnHeaderDraftSale, #btnSaveDraft, #btnSaveDraft2').prop('disabled', !state);
     }
 
@@ -833,7 +833,7 @@
                 method = 'PUT';
             }
 
-            $('#btnSave, #btnQuotation, #btnHeaderPosted, #btnPosted, #btnDraft, #btnHeaderDraftSale, #btnSaveDraft, #btnSaveDraft2, #btnSaveAndComplete, #btnSaveAndComplete2').prop('disabled', true);
+            $('#btnSave, #btnQuotation, #btnHeaderPosted, #btnPosted, #btnDraft, #btnHeaderDraftSale, #btnSaveDraft, #btnSaveDraft2, #btnSaveAndComplete, #btnSaveAndComplete2, #btnSaveAndPrint2').prop('disabled', true);
 
             let formData = new FormData($('#saleForm')[0]);
             if (method === 'PUT') {
@@ -848,7 +848,7 @@
                 processData: false,
                 contentType: false,
                 success: function(res) {
-                    $('#btnSave, #btnQuotation, #btnHeaderPosted, #btnPosted, #btnDraft, #btnHeaderDraftSale, #btnSaveDraft, #btnSaveDraft2, #btnSaveAndComplete, #btnSaveAndComplete2').prop('disabled', false);
+                    $('#btnSave, #btnQuotation, #btnHeaderPosted, #btnPosted, #btnDraft, #btnHeaderDraftSale, #btnSaveDraft, #btnSaveDraft2, #btnSaveAndComplete, #btnSaveAndComplete2, #btnSaveAndPrint2').prop('disabled', false);
                     if (res?.ok) {
                         const bid = res.booking_id || existing;
                         $('#booking_id').val(bid);
@@ -1796,6 +1796,87 @@
                 confirmBtnText: '<i class="fas fa-file-invoice me-1"></i> Yes, Save Quotation'
             }, function() {
                 ensureSaved();
+            });
+        });
+
+                $('#btnSaveAndPrint2').off('click').on('click', function() {
+            if ($('#sale_type').val() === 'quotation') {
+                $('#action').val('quotation');
+            } else if ($('#sale_type').val() === 'sales_order') {
+                $('#action').val('sales_order');
+            } else {
+                $('#action').val('sale');
+            }
+            cleanupEmptyRows();
+            updateGrandTotals();
+            refreshPostedState();
+
+            const v = validateFormAll();
+            if (!v.ok) {
+                showAlert('warning', v.message);
+                if (v.el && v.el.length) {
+                    v.el.focus();
+                    if (v.el.hasClass('js-customer')) v.el.select2?.('open');
+                }
+                return;
+            }
+
+            const isWalkin = $('#is_walkin').val() === '1';
+            const invoiceNet = toNum($('#totalBalance').val());
+            const paidNow = toNum($('#receiptsTotal').text());
+            const isConvertToSale = $('input[name="convert_to_sale"]').val() === '1' || (new URLSearchParams(window.location.search).get('convert_to_sale') === '1');
+            const isConvertToSO = $('input[name="convert_to_so"]').val() === '1' || (new URLSearchParams(window.location.search).get('convert_to_so') === '1');
+            const currentSaleType = isConvertToSale ? 'direct_sale' : ($('#sale_type').val() || (new URLSearchParams(window.location.search).get('type')) || '');
+
+            if (isWalkin && currentSaleType !== 'quotation' && currentSaleType !== 'sales_order') {
+                if (paidNow < (invoiceNet - 0.05)) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: '100% Payment Required',
+                        text: 'Walk-in customers do not have a ledger. You must receive full payment to post this sale.',
+                        confirmButtonColor: '#d33'
+                    });
+                    return;
+                }
+            }
+
+            const rangeBal = toNum($('#rangeBalance').val());
+            if (rangeBal > 0) {
+                const prevBal = toNum($('#previousBalance').val());
+                const projectedBalance = prevBal + invoiceNet - paidNow;
+                if (projectedBalance > rangeBal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Credit Limit Exceeded',
+                        html: `Projected Balance exceeds Credit Limit`,
+                        confirmButtonColor: '#d33'
+                    });
+                    return;
+                }
+            }
+
+            if (!canPost()) {
+                showAlert('warning', 'No valid item lines to post.');
+                return;
+            }
+
+            window.showConfirmPopup({
+                title: 'Confirm & Print?',
+                text: 'Are you sure you want to save this sale and print directly?',
+                confirmBtnText: '<i class="fas fa-print me-1"></i> Yes, Save & Print'
+            }, function() {
+                ensureSaved().then(function(res) {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: 'Saved successfully, opening print...',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    const bid = res.booking_id || $('#booking_id').val();
+                    window.open('{{ url("sales") }}/' + bid + '/recepit', '_blank');
+                    setTimeout(() => window.location.href = (res && res.redirect_url) ? res.redirect_url : "{{ route('sale.index') }}", 1500);
+                });
             });
         });
 

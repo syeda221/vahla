@@ -223,14 +223,11 @@ class SaleController extends Controller
         }
 
         $type = request('type');
-        if ($type === 'quotation') {
-            $allowedPrefixes = ['QUO', 'INV', 'TAX', 'CO'];
-        } elseif ($type === 'sales_order') {
-            $allowedPrefixes = ['SO', 'INV', 'TAX', 'CO'];
-        } else {
-            $allowedPrefixes = ['INV', 'TAX', 'CO'];
-        }
-        $allSeries = \App\Models\InvoiceSeries::whereIn('prefix', $allowedPrefixes)->orderByRaw("FIELD(prefix, 'INV', 'TAX', 'CO', 'SO', 'QUO')")->get();
+        $exclude = ['PO', 'PINV', 'DC', 'DDC', 'DGRN', 'GRN', 'SR', 'PRET', 'SQ', 'INVSLE'];
+        if ($type !== 'quotation') $exclude[] = 'QUO';
+        if ($type !== 'sales_order' && $type !== 'quotation') $exclude[] = 'SO';
+        
+        $allSeries = \App\Models\InvoiceSeries::whereNotIn('prefix', $exclude)->orderByRaw("is_default DESC, id ASC")->get();
         
         if ($type === 'quotation') {
             $quoSeries = $allSeries->where('prefix', 'QUO')->first();
@@ -1163,7 +1160,11 @@ class SaleController extends Controller
         // 2. Data for Dropdowns (Same as addsale)
         $customer = Customer::all();
         $warehouse = Warehouse::all();
-        $allSeries = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
+        $exclude = ['PO', 'PINV', 'DC', 'DDC', 'DGRN', 'GRN', 'SR', 'PRET', 'SQ', 'INVSLE'];
+        if ($sale->sale_type !== 'quotation') $exclude[] = 'QUO';
+        if ($sale->sale_type !== 'sales_order' && $sale->sale_type !== 'quotation') $exclude[] = 'SO';
+        
+        $allSeries = \App\Models\InvoiceSeries::whereNotIn('prefix', $exclude)->orderByRaw("is_default DESC, id ASC")->get();
         $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
         $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
         $recentProducts = Product::latest()->take(12)->get();
@@ -2233,7 +2234,7 @@ class SaleController extends Controller
             }
 
             if ($request->ajax() || $request->wantsJson()) {
-                $receiptUrl = route('sales.receipt', $sale->id) . '?from=pos';
+                $receiptUrl = route('sales.invoice', $sale->id) . '?from=pos';
                 return response()->json([
                     'ok' => true,
                     'booking_id' => $sale->id,
@@ -2244,6 +2245,9 @@ class SaleController extends Controller
                 ]);
             }
 
+            if ($request->input('action') === 'save_and_print') {
+                return redirect()->route('sales.invoice', $sale->id)->with('success', 'Sale saved as '.$msgStatus);
+            }
             return redirect()->route($targetRoute, $targetParams)->with('success', 'Sale saved as '.$msgStatus);
         });
         } catch (\Exception $e) {
@@ -2775,8 +2779,9 @@ class SaleController extends Controller
      */
     public function fetchInvoiceSeries(Request $request)
     {
-        $seriesList = \App\Models\InvoiceSeries::whereIn('prefix', ['INV', 'TAX', 'CO'])->orderBy('id', 'asc')->get();
-        $activePrefix = $request->prefix ?: ($seriesList->where('is_default', 1)->first()->prefix ?? ($seriesList->first()->prefix ?? 'INV'));
+        $exclude = ['PO', 'PINV', 'DC', 'DDC', 'GRN', 'DGRN', 'SR', 'PRET', 'QUO', 'SO', 'SQ', 'INVSLE'];
+        $seriesList = \App\Models\InvoiceSeries::whereNotIn('prefix', $exclude)->orderByRaw("CASE WHEN prefix = 'INV' THEN 0 ELSE 1 END, is_default DESC, id ASC")->get();
+        $activePrefix = $request->prefix ?: ($seriesList->where('prefix', 'INV')->first()->prefix ?? ($seriesList->first()->prefix ?? 'INV'));
         $invoiceNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
 
         return response()->json([
@@ -2797,7 +2802,7 @@ class SaleController extends Controller
             'padding' => 'nullable|numeric|min:1|max:10',
         ]);
 
-        $prefix = strtoupper(trim($request->prefix));
+        $prefix = rtrim(strtoupper(trim($request->prefix)), '-');
         $padding = (int) ($request->padding ?: 4);
         $nextNum = (int) $request->next_number;
 
@@ -2818,6 +2823,39 @@ class SaleController extends Controller
             'series' => $series,
             'prefix' => $prefix,
             'invoice_no' => $generatedNo
+        ]);
+    }
+
+    /**
+     * Delete an invoice series prefix (if not system-protected and not having linked sales)
+     */
+    public function deleteInvoiceSeries(Request $request)
+    {
+        $prefix = strtoupper(trim($request->input('prefix')));
+        if (empty($prefix)) {
+            return response()->json(['success' => false, 'message' => 'Prefix is required.'], 422);
+        }
+
+        if (in_array($prefix, ['INV', 'TAX', 'CO'])) {
+            return response()->json([
+                'success' => false,
+                'message' => "Standard system series ({$prefix}) cannot be deleted."
+            ], 422);
+        }
+
+        $saleCount = \App\Models\Sale::where('invoice_no', 'LIKE', $prefix . '-%')->count();
+        if ($saleCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Series {$prefix} has {$saleCount} linked sales records and cannot be deleted."
+            ], 422);
+        }
+
+        \App\Models\InvoiceSeries::where('prefix', $prefix)->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Series {$prefix} deleted successfully!"
         ]);
     }
 
@@ -2902,11 +2940,16 @@ class SaleController extends Controller
             }
             $invoiceDate = $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d');
 
-            // Assign Invoice Number according to selected prefix (INV, TAX, CO)
+            // Assign Invoice Number according to selected prefix
             $chosenPrefix = $request->input('prefix');
-            $activePrefix = in_array(strtoupper($chosenPrefix), ['TAX', 'CO', 'INV']) ? strtoupper($chosenPrefix) : 'INV';
+            $activePrefix = !empty($chosenPrefix) ? strtoupper(trim($chosenPrefix)) : 'INV';
             
-            $generatedNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+            $customInvNo = $request->input('invoice_no') ?: $request->input('Invoice_no');
+            if ($customInvNo) {
+                $generatedNo = \App\Models\InvoiceSeries::normalizeNumber($customInvNo, $activePrefix);
+            } else {
+                $generatedNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+            }
             $sale->invoice_no = $generatedNo;
             \App\Models\InvoiceSeries::incrementCounterForInvoice($generatedNo);
             
@@ -3171,3 +3214,6 @@ class SaleController extends Controller
         }
     }
 }
+
+
+

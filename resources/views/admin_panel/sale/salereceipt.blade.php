@@ -331,8 +331,8 @@
             <thead>
                 <tr>
                     <th style="width: 6%;">S.</th>
-                    <th style="width: 53%;">Description</th>
-                    <th style="width: 10%;" class="text-center">Qty</th>
+                    <th style="width: 48%;">Description</th>
+                    <th style="width: 15%;" class="text-center">Qty</th>
                     <th style="width: 13%;" class="text-end">Rate</th>
                     <th style="width: 18%;" class="text-end">Total</th>
                 </tr>
@@ -341,41 +341,73 @@
                 @foreach ($saleItems as $item)
                     @php
                         $sizeMode = $item['size_mode'] ?? 'std';
-                        $totalPieces = (int) $item['total_pieces'];
-
+                        $totalPieces = (float)($item['total_pieces'] ?? 0);
                         $variantUnit = strtolower($item['variant_unit'] ?? (is_array($item['color'] ?? null) ? ($item['color']['unit'] ?? '') : ''));
-                        $weightGrams = (float)($item['weight_per_piece'] ?? (is_array($item['color'] ?? null) ? ($item['color']['weight_per_piece'] ?? 0) : 0));
 
-                        $qtyDisplay = $totalPieces . ' Pcs';
-                        if ($variantUnit === 'pcs' || $variantUnit === 'piece' || $variantUnit === 'pieces') {
-                            $qtyDisplay = $totalPieces . ' Pcs';
-                            if ($weightGrams > 0) {
-                                $qtyDisplay .= ' (' . ($weightGrams == (int)$weightGrams ? (int)$weightGrams : $weightGrams) . 'g)';
+                        $dispQty = $totalPieces;
+                        $dispUnit = 'Pcs';
+
+                        if ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
+                            $kgWt = (float)($item['qty_box'] ?? $item['qty'] ?? 0);
+                            $wtConv = (float)($item['pieces_per_box'] ?? 0);
+                            if ($wtConv <= 0) $wtConv = 1;
+
+                            if (in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
+                                if ($wtConv > 0 && $wtConv != 1) {
+                                    $dispQty = round($kgWt / $wtConv, 4);
+                                } elseif (!empty($item['price']) && $item['price'] > 0 && !empty($item['total']) && $item['total'] > 0) {
+                                    $dispQty = round($item['total'] / $item['price'], 4);
+                                } else {
+                                    $dispQty = $totalPieces;
+                                }
+                                $dispUnit = 'Pcs';
+                            } elseif (in_array($variantUnit, ['gm', 'g']) || $sizeMode === 'by_gm') {
+                                $dispQty = $kgWt * 1000;
+                                $dispUnit = 'Gm';
+                            } else {
+                                $dispQty = $kgWt;
+                                $dispUnit = 'Kg';
                             }
-                        } elseif (in_array($sizeMode, ['by_kg', 'by_gm', 'by_feet', 'by_meter'])) {
-                            $uomLabel = match($sizeMode) {
-                                'by_kg' => 'Kg',
-                                'by_gm' => 'Gm',
-                                'by_feet' => 'Ft',
-                                'by_meter' => 'Mtr',
-                                default => '',
-                            };
-                            $qtyVal = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
-                            $qtyDisplay = ($qtyVal == (int)$qtyVal ? (int)$qtyVal : number_format($qtyVal, 3)) . ' ' . $uomLabel;
+                        } elseif (in_array($sizeMode, ['by_feet', 'by_meter'])) {
+                            $dispQty = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
+                            $dispUnit = $sizeMode === 'by_feet' ? 'Ft' : 'Mtr';
                         } elseif ($sizeMode == 'by_cartons' || $sizeMode == 'by_size') {
                             $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
                             if ($piecesPerBox <= 0) $piecesPerBox = 1;
                             $boxes = floor($totalPieces / $piecesPerBox);
-                            $loose = $totalPieces % $piecesPerBox;
+                            $loose = fmod($totalPieces, $piecesPerBox);
 
-                            if ($boxes > 0 && $loose > 0) {
-                                $qtyDisplay = "$boxes.$loose";
+                            if (in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
+                                $dispQty = $totalPieces;
+                                $dispUnit = 'Pcs';
+                            } elseif ($boxes > 0 && $loose > 0) {
+                                $dispQty = "$boxes.$loose";
+                                $dispUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
                             } elseif ($boxes > 0) {
-                                $qtyDisplay = $boxes;
+                                $dispQty = $boxes;
+                                $dispUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
                             } else {
-                                $qtyDisplay = $loose;
+                                $dispQty = $loose;
+                                $dispUnit = 'Pcs';
+                            }
+                        } else {
+                            if ($sizeMode == 'by_pieces' || in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
+                                $dispQty = $totalPieces;
+                                $dispUnit = 'Pcs';
+                            } else {
+                                $rawQty = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
+                                $dispQty = $rawQty;
+                                $dispUnit = !empty($variantUnit) ? ucfirst($variantUnit) : 'Pcs';
                             }
                         }
+
+                        // Safety fallback: if dispQty is 0 but price and total exist
+                        if ((float)$dispQty <= 0 && (float)($item['price'] ?? 0) > 0 && (float)($item['total'] ?? 0) > 0) {
+                            $dispQty = round((float)$item['total'] / (float)$item['price'], 4);
+                        }
+
+                        $formattedQty = is_numeric($dispQty) ? ((float)$dispQty == (int)$dispQty ? (int)$dispQty : (float)$dispQty) : $dispQty;
+                        $qtyDisplay = $formattedQty . ' ' . $dispUnit;
 
                         $sizeStr = '';
                         if (!empty($item['size_val']) && $item['size_val'] !== '-') {
@@ -391,15 +423,15 @@
                     @endphp
                     <tr>
                         <td style="width: 6%;">{{ $loop->iteration }}</td>
-                        <td style="width: 53%;">
+                        <td style="width: 48%;">
                             <span class="item-name">{{ $item['item_name'] }}</span>
                             @if($variantStr && $variantStr !== '{' && trim($variantStr) !== '')
                                 <span class="item-variant">{{ $variantStr }}</span>
                             @endif
                         </td>
-                        <td style="width: 10%;" class="text-center">{{ $qtyDisplay }}</td>
-                        <td style="width: 13%;" class="text-end">{{ number_format($item['price'], 0) }}</td>
-                        <td style="width: 18%;" class="text-end">{{ number_format($item['total'], 0) }}</td>
+                        <td style="width: 15%;" class="text-center">{{ $qtyDisplay }}</td>
+                        <td style="width: 13%;" class="text-end">{{ (fmod($item['price'], 1) != 0) ? number_format($item['price'], 2) : number_format($item['price'], 0) }}</td>
+                        <td style="width: 18%;" class="text-end">{{ (fmod($item['total'], 1) != 0) ? number_format($item['total'], 2) : number_format($item['total'], 0) }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -421,7 +453,7 @@
                 @foreach ($exchangeReturn->items as $retItem)
                     <tr>
                         <td style="width: 6%;">{{ $loop->iteration }}</td>
-                        <td style="width: 53%;">
+                        <td style="width: 48%;">
                             @if($retItem->is_manual || empty($retItem->product_id))
                                 <span class="item-name">{{ $retItem->product_name }} (Manual)</span>
                                 @if(!empty($retItem->color) && $retItem->color !== '-' && $retItem->color !== '{')
@@ -453,9 +485,9 @@
                                 @endif
                             @endif
                         </td>
-                        <td style="width: 10%;" class="text-center">{{ (float)$retItem->qty }}</td>
-                        <td style="width: 13%;" class="text-end">{{ number_format($retItem->price, 0) }}</td>
-                        <td style="width: 18%;" class="text-end">-{{ number_format($retItem->line_total, 0) }}</td>
+                        <td style="width: 15%;" class="text-center">{{ (float)$retItem->qty }}</td>
+                        <td style="width: 13%;" class="text-end">{{ (fmod($retItem->price, 1) != 0) ? number_format($retItem->price, 2) : number_format($retItem->price, 0) }}</td>
+                        <td style="width: 18%;" class="text-end">-{{ (fmod($retItem->line_total, 1) != 0) ? number_format($retItem->line_total, 2) : number_format($retItem->line_total, 0) }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -466,20 +498,20 @@
         <div class="totals-section">
             <div class="tot-row">
                 <span>Sub Total:</span>
-                <span>{{ number_format($sale->total_bill_amount, 0) }}</span>
+                <span>{{ (fmod($sale->total_bill_amount, 1) != 0) ? number_format($sale->total_bill_amount, 2) : number_format($sale->total_bill_amount, 0) }}</span>
             </div>
 
             @if ($sale->total_extradiscount > 0)
                 <div class="tot-row">
                     <span>Discount:</span>
-                    <span>- {{ number_format($sale->total_extradiscount, 0) }}</span>
+                    <span>- {{ (fmod($sale->total_extradiscount, 1) != 0) ? number_format($sale->total_extradiscount, 2) : number_format($sale->total_extradiscount, 0) }}</span>
                 </div>
             @endif
 
             @if ($exchangeReturnedAmount > 0)
                 <div class="tot-row">
                     <span>Return Value:</span>
-                    <span>- {{ number_format($exchangeReturnedAmount, 0) }}</span>
+                    <span>- {{ (fmod($exchangeReturnedAmount, 1) != 0) ? number_format($exchangeReturnedAmount, 2) : number_format($exchangeReturnedAmount, 0) }}</span>
                 </div>
             @endif
 
@@ -489,10 +521,10 @@
             <div class="tot-row grand-total">
                 @if($finalPayable < 0)
                     <span>REFUND TO CUSTOMER:</span>
-                    <span>{{ number_format(abs($finalPayable), 0) }}</span>
+                    <span>{{ (fmod($finalPayable, 1) != 0) ? number_format(abs($finalPayable), 2) : number_format(abs($finalPayable), 0) }}</span>
                 @else
                     <span>TOTAL PAYABLE:</span>
-                    <span>{{ number_format($finalPayable, 0) }}</span>
+                    <span>{{ (fmod($finalPayable, 1) != 0) ? number_format($finalPayable, 2) : number_format($finalPayable, 0) }}</span>
                 @endif
             </div>
         </div>
@@ -502,17 +534,17 @@
             @if(!$isWalkin)
             <div class="tot-row">
                 <span>Prev Balance:</span>
-                <span>{{ number_format(abs($previousBalance), 0) }} {{ $previousBalance >= 0 ? 'Dr' : 'Cr' }}</span>
+                <span>{{ (fmod($previousBalance, 1) != 0) ? number_format(abs($previousBalance), 2) : number_format(abs($previousBalance), 0) }} {{ $previousBalance >= 0 ? 'Dr' : 'Cr' }}</span>
             </div>
             @endif
             <div class="tot-row">
                 <span>Paid Amount:</span>
-                <span>{{ number_format($sale->cash, 0) }}</span>
+                <span>{{ (fmod($sale->cash, 1) != 0) ? number_format($sale->cash, 2) : number_format($sale->cash, 0) }}</span>
             </div>
             @if($sale->change > 0)
             <div class="tot-row">
                 <span>Change{{ $sale->change_account ? ' ('.$sale->change_account->title.')' : '' }}:</span>
-                <span>{{ number_format($sale->change, 0) }}</span>
+                <span>{{ (fmod($sale->change, 1) != 0) ? number_format($sale->change, 2) : number_format($sale->change, 0) }}</span>
             </div>
             @endif
 

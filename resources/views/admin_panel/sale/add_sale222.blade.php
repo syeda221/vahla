@@ -723,19 +723,14 @@
                                         <li class="dropdown-header py-1 text-uppercase fw-bold text-muted small" style="font-size: 10px; letter-spacing: 0.5px;">Choose Series</li>
                                         @php
                                             $curPref = $activePrefix ?? 'INV';
-                                            $allowedSeries = [
-                                                'INV' => ['label' => 'Standard Invoice', 'padding' => 4],
-                                                'TAX' => ['label' => 'Tax Invoice', 'padding' => 3],
-                                                'CO'  => ['label' => 'Company Invoice', 'padding' => 3],
-                                            ];
-                                        @endphp
-                                        @foreach($allowedSeries as $p => $meta)
-                                            @php
-                                                $sObj = isset($allSeries) ? $allSeries->firstWhere('prefix', $p) : null;
-                                                $nextNo = $sObj ? $sObj->next_number : 1;
-                                                $pad = $sObj ? $sObj->padding : $meta['padding'];
-                                                $isActive = ($curPref == $p);
                                             @endphp
+                                          @foreach($allSeries as $sObj)
+                                              @php
+                                                  $p = $sObj->prefix;
+                                                  $nextNo = $sObj->next_number;
+                                                  $pad = $sObj->padding;
+                                                  $isActive = ($curPref == $p);
+                                              @endphp
                                             <li>
                                                 <a class="dropdown-item fw-bold py-2 px-3 d-flex align-items-center justify-content-between {{ $isActive ? 'text-primary active bg-light' : 'text-dark' }}" 
                                                    href="javascript:void(0)" 
@@ -750,15 +745,22 @@
                                                         @endif
                                                         <div>
                                                             <span class="badge bg-primary text-white font-monospace px-2 py-1 me-1">{{ $p }}</span>
-                                                            <span class="small fw-semibold">{{ $meta['label'] }}</span>
+                                                            <span class="small fw-semibold">{{ $p }} Series</span>
                                                         </div>
                                                     </div>
                                                     <span class="text-muted small font-monospace">({{ $pad }}d)</span>
                                                 </a>
                                             </li>
                                         @endforeach
-                                    </ul>
-                                @endif
+                                                                                
+                                                                                    <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item fw-bold py-2 px-3 text-success text-center" href="javascript:void(0)" id="btnOpenAddSeriesModal">
+                                                    <i class="fas fa-plus me-1"></i> Add
+                                                </a>
+                                            </li>
+                                  </ul>
+                                  @endif
 
                                 <input type="text" class="form-control text-center fw-bold" name="Invoice_no" id="inputInvoiceNo" value="{{ $nextInvoiceNumber }}" placeholder="e.g. SO-0001" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;" title="Aap custom document/invoice number bhi enter kar sakte hain">
 
@@ -1112,6 +1114,9 @@
                         @endif
                         <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
                             <i class="fas fa-check-circle"></i> {{ $btnText }}
+                        </button>
+                        <button type="button" class="btn btn-info d-flex align-items-center gap-2 text-white fw-bold px-3" id="btnSaveAndPrint2" style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); border: none;">
+                            <i class="fas fa-print"></i> Save & Print
                         </button>
                     </div>
                 </div>
@@ -1731,3 +1736,16 @@
         </div>
     </div>
 @endsection
+
+
+
+
+
+
+
+
+
+
+
+
+

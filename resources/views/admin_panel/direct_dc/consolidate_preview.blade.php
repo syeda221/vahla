@@ -189,11 +189,28 @@
     $netBalance = $prevBalance + $grandTotal;
     $netBalType = $netBalance >= 0 ? 'Dr' : 'Cr';
 
-    $sList = $seriesList ?? [
-        'INV' => ['label' => 'Standard Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('INV')],
-        'TAX' => ['label' => 'Tax Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('TAX')],
-        'CO'  => ['label' => 'Company Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('CO')],
-    ];
+    $sList = $seriesList ?? [];
+    if (empty($sList)) {
+        $exclude = ['PO', 'PINV', 'DC', 'DDC', 'GRN', 'DGRN', 'SR', 'PRET', 'QUO', 'SO', 'SQ', 'INVSLE'];
+        $dbSeries = \App\Models\InvoiceSeries::whereNotIn('prefix', $exclude)->orderByRaw("CASE WHEN prefix = 'INV' THEN 0 ELSE 1 END, is_default DESC, id ASC")->get();
+        $standardDefs = \App\Models\InvoiceSeries::standardDefinitions();
+        foreach ($dbSeries as $s) {
+            $label = $standardDefs[$s->prefix]['name'] ?? ($s->prefix . ' Invoice');
+            $sList[$s->prefix] = [
+                'label' => $label,
+                'next_no' => \App\Models\InvoiceSeries::generateNextNo($s->prefix)
+            ];
+        }
+        if (empty($sList)) {
+            $sList = [
+                'INV' => ['label' => 'Sale Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('INV')],
+                'TAX' => ['label' => 'Tax Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('TAX')],
+                'CO'  => ['label' => 'Company Invoice', 'next_no' => \App\Models\InvoiceSeries::generateNextNo('CO')],
+            ];
+        }
+    }
+    $initialPrefix = isset($sList['INV']) ? 'INV' : (array_key_first($sList) ?? 'INV');
+    $initialInvoiceNo = $sList[$initialPrefix]['next_no'] ?? \App\Models\InvoiceSeries::generateNextNo($initialPrefix);
 @endphp
 
 <div class="container-fluid py-2 px-2">
@@ -268,52 +285,43 @@
                                     data-toggle="dropdown"
                                     aria-haspopup="true"
                                     aria-expanded="false"
-                                    title="Click to choose series (INV, TAX, CO)">
-                                <span id="activeConsolidatePrefixLabel">INV</span>
+                                    title="Click to choose series">
+                                <span id="activeConsolidatePrefixLabel">{{ $initialPrefix }}</span>
                                 <i class="fas fa-caret-down" style="font-size: 0.72rem; opacity: 0.85;"></i>
                             </button>
-                            <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownConsolidateSeriesList" style="min-width: 220px; font-size: 0.82rem; z-index: 1050;">
+                            <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownConsolidateSeriesList" style="min-width: 230px; font-size: 0.82rem; z-index: 1050;">
                                 <li class="dropdown-header py-1 text-uppercase fw-bold text-muted small" style="font-size: 10px; letter-spacing: 0.5px;">Choose Invoice Series</li>
+                                @foreach($sList as $prefix => $sData)
                                 <li>
-                                    <a class="dropdown-item fw-bold py-2 px-3 d-flex align-items-center justify-content-between text-primary active bg-light" href="javascript:void(0)" data-prefix="INV" data-no="{{ $sList['INV']['next_no'] }}">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <i class="fas fa-check-circle text-primary"></i>
-                                            <div>
-                                                <span class="badge bg-primary text-white font-monospace px-2 py-1 me-1">INV</span>
-                                                <span class="small fw-semibold">Standard Invoice</span>
+                                    <div class="d-flex align-items-center justify-content-between px-1 {{ $prefix === $initialPrefix ? 'bg-light' : '' }}">
+                                        <a class="dropdown-item fw-bold py-2 px-2 d-flex align-items-center justify-content-between flex-grow-1 {{ $prefix === $initialPrefix ? 'text-primary active' : 'text-dark' }}" href="javascript:void(0)" data-prefix="{{ $prefix }}" data-no="{{ $sData['next_no'] }}" style="border-radius: 4px;">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="{{ $prefix === $initialPrefix ? 'fas fa-check-circle text-primary' : 'far fa-circle text-muted' }}" style="font-size: 11px;"></i>
+                                                <div>
+                                                    <span class="badge bg-primary text-white font-monospace px-2 py-1 me-1">{{ $prefix }}</span>
+                                                    <span class="small fw-semibold">{{ $sData['label'] }}</span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <span class="text-muted small font-monospace">({{ $sList['INV']['next_no'] }})</span>
-                                    </a>
+                                            <span class="text-muted small font-monospace">({{ $sData['next_no'] }})</span>
+                                        </a>
+                                        @if(!in_array($prefix, ['INV', 'TAX', 'CO']))
+                                            <button type="button" class="btn btn-sm btn-link text-danger p-1 ms-1 btn-delete-series border-0 text-decoration-none" data-prefix="{{ $prefix }}" title="Delete {{ $prefix }} series" style="opacity: 0.6; line-height: 1;">
+                                                <i class="fas fa-trash-alt" style="font-size: 0.72rem;"></i>
+                                            </button>
+                                        @endif
+                                    </div>
                                 </li>
+                                @endforeach
+                                <li><hr class="dropdown-divider my-1"></li>
                                 <li>
-                                    <a class="dropdown-item fw-bold py-2 px-3 d-flex align-items-center justify-content-between text-dark" href="javascript:void(0)" data-prefix="TAX" data-no="{{ $sList['TAX']['next_no'] }}">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <i class="far fa-circle text-muted" style="font-size: 11px;"></i>
-                                            <div>
-                                                <span class="badge bg-primary text-white font-monospace px-2 py-1 me-1">TAX</span>
-                                                <span class="small fw-semibold">Tax Invoice</span>
-                                            </div>
-                                        </div>
-                                        <span class="text-muted small font-monospace">({{ $sList['TAX']['next_no'] }})</span>
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item fw-bold py-2 px-3 d-flex align-items-center justify-content-between text-dark" href="javascript:void(0)" data-prefix="CO" data-no="{{ $sList['CO']['next_no'] }}">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <i class="far fa-circle text-muted" style="font-size: 11px;"></i>
-                                            <div>
-                                                <span class="badge bg-primary text-white font-monospace px-2 py-1 me-1">CO</span>
-                                                <span class="small fw-semibold">Company Invoice</span>
-                                            </div>
-                                        </div>
-                                        <span class="text-muted small font-monospace">({{ $sList['CO']['next_no'] }})</span>
+                                    <a class="dropdown-item fw-bold py-2 px-3 text-success text-center" href="javascript:void(0)" id="btnOpenAddSeriesModal">
+                                        <i class="fas fa-plus me-1"></i> Add Series
                                     </a>
                                 </li>
                             </ul>
 
-                            <input type="hidden" name="prefix" id="inputConsolidatePrefix" value="INV">
-                            <input type="text" class="form-control text-center fw-bold bg-white" name="invoice_no" id="displayConsolidateInvoiceNo" value="{{ $sList['INV']['next_no'] }}" placeholder="e.g. INV-0001" style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;" title="Aap custom invoice number bhi enter kar sakte hain">
+                            <input type="hidden" name="prefix" id="inputConsolidatePrefix" value="{{ $initialPrefix }}">
+                            <input type="text" class="form-control text-center fw-bold bg-white" name="invoice_no" id="displayConsolidateInvoiceNo" value="{{ $initialInvoiceNo }}" placeholder="e.g. INV-0001" style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;" title="Aap custom invoice number bhi enter kar sakte hain">
 
                             <button class="btn btn-refresh" 
                                     type="button" 
@@ -438,7 +446,7 @@
         const list = document.getElementById('dropdownConsolidateSeriesList');
         const refreshBtn = document.getElementById('btnRefreshConsolidateInvoiceNo');
         const refreshIcon = document.getElementById('iconRefreshConsolidateInvoice');
-        let currentPrefix = 'INV';
+        let currentPrefix = '{{ $initialPrefix }}';
 
         function fetchNextNo(prefix) {
             if (refreshIcon) refreshIcon.classList.add('fa-spin');
@@ -470,45 +478,48 @@
                 }
             });
 
-            const items = list.querySelectorAll('a[data-prefix]');
-            items.forEach(function(item) {
-                item.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const prefix = this.getAttribute('data-prefix');
-                    const nextNo = this.getAttribute('data-no');
-                    if (!prefix) return;
+            // Delegate click for series items
+            list.addEventListener('click', function(e) {
+                const item = e.target.closest('a[data-prefix]');
+                if (!item) return;
+                e.preventDefault();
+                const prefix = item.getAttribute('data-prefix');
+                const nextNo = item.getAttribute('data-no');
+                if (!prefix) return;
 
-                    currentPrefix = prefix;
-                    document.getElementById('inputConsolidatePrefix').value = prefix;
-                    document.getElementById('activeConsolidatePrefixLabel').textContent = prefix;
-                    
-                    if (nextNo) {
-                        document.getElementById('displayConsolidateInvoiceNo').value = nextNo;
+                currentPrefix = prefix;
+                document.getElementById('inputConsolidatePrefix').value = prefix;
+                document.getElementById('activeConsolidatePrefixLabel').textContent = prefix;
+                
+                if (nextNo) {
+                    document.getElementById('displayConsolidateInvoiceNo').value = nextNo;
+                }
+                fetchNextNo(prefix);
+
+                // Update active styles
+                list.querySelectorAll('a[data-prefix]').forEach(function(el) {
+                    el.classList.remove('text-primary', 'active');
+                    el.classList.add('text-dark');
+                    const parentDiv = el.closest('div');
+                    if (parentDiv) parentDiv.classList.remove('bg-light');
+                    const icon = el.querySelector('i');
+                    if (icon) {
+                        icon.className = 'far fa-circle text-muted';
+                        icon.style.fontSize = '11px';
                     }
-                    // Also trigger live fetch to verify
-                    fetchNextNo(prefix);
-
-                    // Update active styles
-                    items.forEach(function(el) {
-                        el.classList.remove('text-primary', 'active', 'bg-light');
-                        el.classList.add('text-dark');
-                        const icon = el.querySelector('i');
-                        if (icon) {
-                            icon.className = 'far fa-circle text-muted';
-                            icon.style.fontSize = '11px';
-                        }
-                    });
-
-                    this.classList.remove('text-dark');
-                    this.classList.add('text-primary', 'active', 'bg-light');
-                    const activeIcon = this.querySelector('i');
-                    if (activeIcon) {
-                        activeIcon.className = 'fas fa-check-circle text-primary';
-                        activeIcon.style.fontSize = '';
-                    }
-
-                    list.classList.remove('show');
                 });
+
+                item.classList.remove('text-dark');
+                item.classList.add('text-primary', 'active');
+                const activeParent = item.closest('div');
+                if (activeParent) activeParent.classList.add('bg-light');
+                const activeIcon = item.querySelector('i');
+                if (activeIcon) {
+                    activeIcon.className = 'fas fa-check-circle text-primary';
+                    activeIcon.style.fontSize = '';
+                }
+
+                list.classList.remove('show');
             });
         }
 
@@ -518,6 +529,150 @@
                 fetchNextNo(currentPrefix);
             });
         }
+
+        // Open Add Series Modal
+        $(document).on('click', '#btnOpenAddSeriesModal', function(e) {
+            e.preventDefault();
+            if (list) list.classList.remove('show');
+            $('#modalAddInvoiceSeries').modal('show');
+        });
+
+        // Submit Add Series Form via AJAX
+        $('#formAddInvoiceSeries').on('submit', function(e) {
+            e.preventDefault();
+            let formData = $(this).serialize();
+            let saveBtn = $('#btnSaveSeries');
+
+            saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+
+            $.ajax({
+                url: "{{ route('invoice_series.store') }}",
+                type: "POST",
+                data: formData,
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(res) {
+                    saveBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Save &amp; Select');
+                    
+                    if (res.success) {
+                        $('#modalAddInvoiceSeries').modal('hide');
+                        $('body').removeClass('modal-open');
+                        $('.modal-backdrop').remove();
+                        $('#formAddInvoiceSeries')[0].reset();
+
+                        currentPrefix = res.prefix;
+                        $('#activeConsolidatePrefixLabel').text(res.prefix);
+                        $('#inputConsolidatePrefix').val(res.prefix);
+                        $('#displayConsolidateInvoiceNo').val(res.invoice_no);
+
+                        // Update or insert item in dropdown list instantly
+                        let existingItem = $(`#dropdownConsolidateSeriesList a[data-prefix="${res.prefix}"]`);
+                        if (existingItem.length > 0) {
+                            existingItem.attr('data-no', res.invoice_no);
+                            existingItem.find('span.font-monospace:last').text(`(${res.invoice_no})`);
+                        } else {
+                            let newItemHtml = `<li>
+                                <div class="d-flex align-items-center justify-content-between px-1 bg-light">
+                                    <a class="dropdown-item fw-bold py-2 px-2 d-flex align-items-center justify-content-between flex-grow-1 text-primary active" 
+                                       href="javascript:void(0)" 
+                                       data-prefix="${res.prefix}" 
+                                       data-no="${res.invoice_no}"
+                                       style="border-radius: 4px;">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="fas fa-check-circle text-primary"></i>
+                                            <div>
+                                                <span class="badge bg-primary text-white font-monospace px-2 py-1 me-1">${res.prefix}</span>
+                                                <span class="small fw-semibold">${res.prefix} Series</span>
+                                            </div>
+                                        </div>
+                                        <span class="text-muted small font-monospace">(${res.invoice_no})</span>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-link text-danger p-1 ms-1 btn-delete-series border-0 text-decoration-none" data-prefix="${res.prefix}" title="Delete ${res.prefix} series" style="opacity: 0.6; line-height: 1;">
+                                        <i class="fas fa-trash-alt" style="font-size: 0.72rem;"></i>
+                                    </button>
+                                </div>
+                            </li>`;
+                            $('#dropdownConsolidateSeriesList li:has(hr)').before(newItemHtml);
+                        }
+
+                        // Update active state
+                        $('#dropdownConsolidateSeriesList a[data-prefix]').not(`[data-prefix="${res.prefix}"]`)
+                            .removeClass('text-primary active')
+                            .addClass('text-dark')
+                            .closest('div')
+                            .removeClass('bg-light')
+                            .find('i.fa-check-circle')
+                            .removeClass('fas fa-check-circle text-primary')
+                            .addClass('far fa-circle text-muted')
+                            .css('font-size', '11px');
+
+                        let activeItem = $(`#dropdownConsolidateSeriesList a[data-prefix="${res.prefix}"]`);
+                        activeItem.removeClass('text-dark').addClass('text-primary active');
+                        activeItem.closest('div').addClass('bg-light');
+                        activeItem.find('i').removeClass('far fa-circle text-muted').addClass('fas fa-check-circle text-primary').css('font-size', '');
+                    }
+                },
+                error: function(xhr) {
+                    saveBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Save &amp; Select');
+                    let msg = 'Failed to save series';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    alert(msg);
+                }
+            });
+        });
+
+        // Delete Series Handler
+        $(document).on('click', '.btn-delete-series', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            let prefixToDelete = $(this).data('prefix');
+            if (!prefixToDelete) return;
+
+            if (!confirm(`Are you sure you want to delete "${prefixToDelete}" series?`)) {
+                return;
+            }
+
+            let btn = $(this);
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin" style="font-size: 0.72rem;"></i>');
+
+            $.ajax({
+                url: "{{ route('invoice_series.delete') }}",
+                type: "POST",
+                data: { prefix: prefixToDelete },
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(res) {
+                    if (res.success) {
+                        btn.closest('li').remove();
+                        // If the currently selected prefix was the deleted one, switch to INV
+                        if (currentPrefix === prefixToDelete) {
+                            let fallbackItem = $('#dropdownConsolidateSeriesList a[data-prefix="INV"]');
+                            if (fallbackItem.length === 0) {
+                                fallbackItem = $('#dropdownConsolidateSeriesList a[data-prefix]').first();
+                            }
+                            if (fallbackItem.length > 0) {
+                                fallbackItem.trigger('click');
+                            }
+                        }
+                    } else {
+                        btn.prop('disabled', false).html('<i class="fas fa-trash-alt" style="font-size: 0.72rem;"></i>');
+                        alert(res.message || 'Could not delete series');
+                    }
+                },
+                error: function(xhr) {
+                    btn.prop('disabled', false).html('<i class="fas fa-trash-alt" style="font-size: 0.72rem;"></i>');
+                    let msg = 'Failed to delete series';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    alert(msg);
+                }
+            });
+        });
     });
 
     // Dynamic Calculation Logic
@@ -562,4 +717,46 @@
         });
     });
 </script>
+
+<!-- Modal: Add / Manage Invoice Series -->
+<div class="modal fade" id="modalAddInvoiceSeries" tabindex="-1" aria-labelledby="modalAddInvoiceSeriesLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header border-bottom bg-light px-3 py-2">
+                <h6 class="modal-title fw-bold text-dark mb-0" id="modalAddInvoiceSeriesLabel">
+                    <i class="fas fa-barcode text-success me-1"></i> Add Invoice Series
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formAddInvoiceSeries">
+                @csrf
+                <div class="modal-body p-3">
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-secondary mb-1">Prefix (e.g. SGST, POS, TAX, CO)</label>
+                        <input type="text" name="prefix" id="seriesPrefixInput" class="form-control form-control-sm text-uppercase fw-bold" placeholder="e.g. SGST" required style="letter-spacing: 1px;">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-secondary mb-1">Starting Number (Counter)</label>
+                        <input type="number" name="next_number" id="seriesNextNumInput" class="form-control form-control-sm fw-bold text-primary" placeholder="e.g. 1" min="1" value="1" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-secondary mb-1">Padding Length (Zero Digits)</label>
+                        <select name="padding" id="seriesPaddingSelect" class="form-select form-select-sm fw-bold">
+                            <option value="3">3 Digits (e.g., 001)</option>
+                            <option value="4" selected>4 Digits (e.g., 0001)</option>
+                            <option value="6">6 Digits (e.g., 000001)</option>
+                            <option value="8">8 Digits (e.g., 00000001)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top p-2 px-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success btn-sm fw-bold px-3" id="btnSaveSeries">
+                        <i class="fas fa-save me-1"></i> Save &amp; Select
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection

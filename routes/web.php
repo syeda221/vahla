@@ -383,6 +383,7 @@ Route::middleware('auth')->group(function () {
     Route::get('sale/create', [SaleController::class, 'addsale'])->middleware('permission:sales.create')->name('sale.add');
     Route::get('/invoice-series/fetch', [SaleController::class, 'fetchInvoiceSeries'])->name('invoice_series.fetch');
     Route::post('/invoice-series/store', [SaleController::class, 'storeInvoiceSeries'])->name('invoice_series.store');
+    Route::post('/invoice-series/delete', [SaleController::class, 'deleteInvoiceSeries'])->name('invoice_series.delete');
     Route::get('/invoice-series/generate-no', [SaleController::class, 'generateInvoiceNoAjax'])->name('invoice_series.generate_no');
     Route::get('pos', [App\Http\Controllers\POSController::class, 'index'])->middleware('permission:sales.create')->name('pos.index');
     Route::post('/pos/search-invoice', [App\Http\Controllers\POSController::class, 'searchInvoice'])->middleware('permission:sales.create')->name('pos.search_invoice');

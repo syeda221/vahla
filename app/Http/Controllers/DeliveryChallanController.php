@@ -303,7 +303,7 @@ class DeliveryChallanController extends Controller
             $invoiceDate = $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d');
 
             $chosenPrefix = request('prefix');
-            $activePrefix = in_array(strtoupper($chosenPrefix), ['TAX', 'CO', 'INV']) ? strtoupper($chosenPrefix) : 'INV';
+            $activePrefix = !empty($chosenPrefix) ? strtoupper(trim($chosenPrefix)) : 'INV';
             $invInput = request('invoice_no') ?: request('Invoice_no');
             
             if ($invInput) {

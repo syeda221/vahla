@@ -682,13 +682,19 @@
                                                         @endif
                                                         <div>
                                                             <span class="badge bg-primary text-white font-monospace px-2 py-1 me-1">{{ $p }}</span>
-                                                            <span class="small fw-semibold">{{ $meta['label'] }}</span>
+                                                            <span class="small fw-semibold">{{ $p }} Series</span>
                                                         </div>
                                                     </div>
                                                     <span class="text-muted small font-monospace">({{ $pad }}d)</span>
                                                 </a>
                                             </li>
                                         @endforeach
+                                        <li><hr class="dropdown-divider m-0"></li>
+                                        <li>
+                                            <a class="dropdown-item fw-bold py-2 text-center text-success bg-light" href="javascript:void(0)" id="btnOpenAddSeriesModal" style="border-bottom-left-radius: 4px; border-bottom-right-radius: 4px;">
+                                                <i class="fas fa-plus me-1"></i> Add
+                                            </a>
+                                        </li>
                                     </ul>
                                     <input type="text" class="form-control text-center fw-bold bg-white" name="Invoice_no" id="inputInvoiceNo" value="{{ \App\Models\InvoiceSeries::generateNextNo($activePrefix ?? 'INV') }}" placeholder="e.g. INV-0001" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;" title="Aap custom invoice number enter kar sakte hain">
                                     <button class="btn btn-refresh" 
@@ -1409,6 +1415,9 @@
                         <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
                             <i class="fas fa-check-circle"></i> {{ $btnText }}
                         </button>
+                        <button type="button" class="btn btn-info d-flex align-items-center gap-2 text-white fw-bold px-3" id="btnSaveAndPrint2" style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); border: none;">
+                            <i class="fas fa-print"></i> Save & Print
+                        </button>
                     </div>
                 </div>
 
@@ -1842,9 +1851,52 @@
                 fetchNextInvoiceNo(currentInvoicePrefix);
             });
 
+
             setTimeout(() => {
                 $('#pageLoader').addClass('d-none');
             }, 300);
         });
     </script>
+
+<div class="modal fade" id="modalAddInvoiceSeries" tabindex="-1" aria-labelledby="modalAddInvoiceSeriesLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom bg-light px-3 py-2">
+                    <h6 class="modal-title fw-bold text-dark mb-0" id="modalAddInvoiceSeriesLabel">
+                        <i class="fas fa-barcode text-success me-1"></i> Add Invoice Series
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="formAddInvoiceSeries">
+                    @csrf
+                    <div class="modal-body p-3">
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-secondary mb-1">Prefix (e.g., SQ, POS, TAX, CO)</label>
+                            <input type="text" name="prefix" id="seriesPrefixInput" class="form-control form-control-sm text-uppercase fw-bold" placeholder="e.g. SQ" required style="letter-spacing: 1px;">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-secondary mb-1">Starting Number (Counter)</label>
+                            <input type="number" name="next_number" id="seriesNextNumInput" class="form-control form-control-sm fw-bold text-primary" placeholder="e.g. 1" min="1" value="1" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-secondary mb-1">Padding Length (Zero Digits)</label>
+                            <select name="padding" id="seriesPaddingSelect" class="form-select form-select-sm fw-bold">
+                                <option value="3">3 Digits (e.g., 001)</option>
+                                <option value="4" selected>4 Digits (e.g., 0001)</option>
+                                <option value="6">6 Digits (e.g., 000001)</option>
+                                <option value="8">8 Digits (e.g., 00000001)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-top p-2 px-3">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success btn-sm fw-bold px-3" id="btnSaveSeries">
+                            <i class="fas fa-save me-1"></i> Save &amp; Select
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 @endsection
