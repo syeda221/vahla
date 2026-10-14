@@ -35,8 +35,8 @@ class ProductPricingController extends Controller
             $query->where(function ($q) use ($s) {
                 $q->where('item_name', 'like', "%{$s}%")
                   ->orWhere('item_code', 'like', "%{$s}%")
-                  ->orWhere('sku', 'like', "%{$s}%")
-                  ->orWhere('barcode', 'like', "%{$s}%");
+                  ->orWhere('barcode_path', 'like', "%{$s}%")
+                  ->orWhere('color', 'like', "%{$s}%");
             });
         }
 
@@ -135,7 +135,7 @@ class ProductPricingController extends Controller
                 'id'                   => $product->id,
                 'item_code'            => $product->item_code,
                 'item_name'            => $product->item_name,
-                'barcode'              => $product->barcode,
+                'barcode'              => $product->barcode_path,
                 'size_mode'            => $product->size_mode ?: 'std',
                 'unit_name'            => $unitName,
                 'pieces_per_box'       => $ppb,
