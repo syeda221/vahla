@@ -1688,7 +1688,24 @@ class SaleController extends Controller
 
             // Update Sale Totals
             $sale->total_bill_amount = $total_bill;
-            $sale->total_extradiscount = (float) ($request->total_extra_cost ?? $request->walkin_discount ?? $request->overall_discount ?? 0);
+
+            $overallType = $request->input('overall_discount_type') ?: 'pkr';
+            $overallVal = (float) ($request->input('overall_discount_value') ?? $request->input('walkin_discount') ?? $request->input('walkinDiscountRs') ?? 0);
+
+            if ($overallVal == 0 && $request->filled('total_extra_cost')) {
+                $overallVal = (float) $request->input('total_extra_cost');
+            }
+
+            if ($overallType === 'percent') {
+                $calculatedExtraDiscount = $total_bill > 0 ? round(($total_bill * $overallVal) / 100, 2) : 0;
+            } else {
+                $calculatedExtraDiscount = $overallVal;
+            }
+            $calculatedExtraDiscount = min($total_bill, max(0, $calculatedExtraDiscount));
+
+            $sale->overall_discount_type = $overallType;
+            $sale->overall_discount_value = $overallVal;
+            $sale->total_extradiscount = $calculatedExtraDiscount;
             $sale->total_net = max(0, round($total_bill - $sale->total_extradiscount, 2));
             $sale->total_items = $total_items;
 
@@ -3142,49 +3159,104 @@ class SaleController extends Controller
                 }
             }
 
-            // If it's a posted direct sale (not quotation or unposted SO), rollback stock
-            if ($sale->sale_type !== 'quotation' && $sale->sale_type !== 'sales_order' && $sale->sale_status === 'posted') {
-                $warehouseId = (int) ($sale->warehouse_id ?? 1);
-                $movs = [];
-                $now = now();
+            // If it's a posted direct sale / invoice, rollback stock & customer ledger / vouchers
+            if ($sale->sale_type !== 'quotation' && ($sale->sale_status === 'posted' || $sale->sale_type === 'direct_sale' || empty($sale->sale_type))) {
+                
+                // 1. Rollback stock if sale was posted
+                if ($sale->sale_status === 'posted') {
+                    $movs = [];
+                    $now = now();
 
-                foreach ($sale->items as $it) {
-                    $pid = (int) $it->product_id;
-                    $qtyPieces = (float) ($it->total_pieces > 0 ? $it->total_pieces : $it->qty);
+                    foreach ($sale->items as $it) {
+                        $pid = (int) $it->product_id;
+                        $itemWhId = (int) ($it->warehouse_id ?: ($sale->warehouse_id ?: 1));
+                        $qtyPieces = (float) ($it->total_pieces > 0 ? $it->total_pieces : $it->qty);
 
-                    if ($pid > 0 && $qtyPieces > 0) {
-                        $movs[] = [
-                            'product_id' => $pid,
-                            'type' => 'in',
-                            'qty' => $qtyPieces,
-                            'ref_type' => 'SALE_DELETE',
-                            'ref_id' => $sale->id,
-                            'note' => 'Delete sale invoice (reverse)',
-                            'created_at' => $now,
-                            'updated_at' => $now,
-                        ];
+                        if ($pid > 0 && $qtyPieces > 0) {
+                            $movs[] = [
+                                'product_id' => $pid,
+                                'type' => 'in',
+                                'qty' => $qtyPieces,
+                                'ref_type' => 'SALE_DELETE',
+                                'ref_id' => $sale->id,
+                                'note' => 'Reverted on Sale Invoice deletion #'.$sale->invoice_no,
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
 
-                        $product = $it->product;
-                        $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
-                        $stock = WarehouseStock::where('warehouse_id', $warehouseId)->where('product_id', $pid)->first();
-                        if ($stock) {
-                            $stock->total_pieces += $qtyPieces;
-                            $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
-                            $stock->save();
+                            $product = $it->product ?: Product::find($pid);
+                            $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+                            $stock = WarehouseStock::where('warehouse_id', $itemWhId)->where('product_id', $pid)->first();
+                            if ($stock) {
+                                $stock->total_pieces += $qtyPieces;
+                                $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
+                                $stock->save();
+                            }
                         }
                     }
+
+                    if (!empty($movs)) {
+                        DB::table('stock_movements')->insert($movs);
+                    }
+
+                    // Clean up original stock movements for this sale
+                    DB::table('stock_movements')->where('ref_id', $sale->id)->whereIn('ref_type', ['sale', 'direct_sale', 'sale_invoice'])->delete();
                 }
 
-                if (!empty($movs)) {
-                    DB::table('stock_movements')->insert($movs);
-                }
+                // 2. Reverse customer ledger / vouchers / journal entries
+                $invNo = $sale->invoice_no;
+                if (!empty($invNo)) {
+                    // (a) Delete linked VoucherMaster (Invoice Journal Voucher & Auto-Receipt Vouchers)
+                    $vouchers = \App\Models\VoucherMaster::where(function($q) use ($invNo) {
+                        $q->where('remarks', 'like', "%#{$invNo}%")
+                          ->orWhere('remarks', 'like', "%Invoice #{$invNo}%");
+                    })->get();
 
-                // Reverse customer ledger / voucher if applicable
-                $voucher = \App\Models\VoucherMaster::where('remarks', "Auto-Receipt for Sale Invoice #{$sale->invoice_no}")->first();
-                if ($voucher) {
-                    $voucher->journalEntries()->delete();
-                    $voucher->details()->delete();
-                    $voucher->delete();
+                    foreach ($vouchers as $v) {
+                        $v->journalEntries()->delete();
+                        $v->details()->delete();
+                        $v->delete();
+                    }
+
+                    // (b) Delete any direct JournalEntry referencing this Sale or Invoice #
+                    \App\Models\JournalEntry::where(function($q) use ($sale, $invNo) {
+                        $q->where(function($sq) use ($sale) {
+                            $sq->where('source_type', Sale::class)->where('source_id', $sale->id);
+                        })->orWhere('description', 'like', "%#{$invNo}%");
+                    })->delete();
+
+                    // (c) Delete from legacy customer_ledgers table
+                    if ($sale->customer_id) {
+                        \App\Models\CustomerLedger::where('customer_id', $sale->customer_id)
+                            ->where(function($q) use ($invNo) {
+                                $q->where('description', 'like', "%#{$invNo}%")
+                                  ->orWhere('description', 'like', "%Invoice #{$invNo}%");
+                            })->delete();
+                    }
+
+                    // (d) Delete from receipts_vouchers table if any
+                    \App\Models\ReceiptsVoucher::where('remarks', 'like', "%#{$invNo}%")->delete();
+
+                    // (e) Delete from customer_payments table if any
+                    \App\Models\CustomerPayment::where('note', 'like', "%#{$invNo}%")->delete();
+
+                    // (f) Re-calculate & sync Customer previous_balance in Customer master
+                    if ($sale->customer_id) {
+                        $customer = \App\Models\Customer::find($sale->customer_id);
+                        if ($customer) {
+                            $balanceService = app(\App\Services\BalanceService::class);
+                            $newBal = $balanceService->getCustomerBalance($customer);
+                            $customer->previous_balance = $newBal;
+                            $customer->save();
+
+                            // Also sync latest remaining CustomerLedger record closing_balance if exists
+                            $latestLedger = \App\Models\CustomerLedger::where('customer_id', $sale->customer_id)->orderBy('id', 'desc')->first();
+                            if ($latestLedger) {
+                                $latestLedger->closing_balance = $newBal;
+                                $latestLedger->save();
+                            }
+                        }
+                    }
                 }
             }
 
@@ -3193,8 +3265,8 @@ class SaleController extends Controller
 
             DB::commit();
 
-            $typeName = ($sale->sale_type === 'quotation') ? 'Quotation' : (($sale->sale_type === 'sales_order') ? 'Sales Order (and linked DCs/quotation)' : 'Sale');
-            $msg = "{$typeName} deleted successfully.";
+            $typeName = ($sale->sale_type === 'quotation') ? 'Quotation' : (($sale->sale_type === 'sales_order') ? 'Sales Order' : 'Sale Invoice');
+            $msg = "{$typeName} deleted successfully. Stock restored and customer ledger updated.";
 
             if (request()->ajax() || request()->wantsJson()) {
                 return response()->json(['success' => true, 'message' => $msg]);

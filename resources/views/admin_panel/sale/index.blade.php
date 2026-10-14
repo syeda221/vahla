@@ -547,20 +547,20 @@
                             <table id="sales-table" class="table table-hover align-middle datanew premium-table" style="width:100%">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th class="py-3 ps-3 rounded-start text-secondary fw-semibold text-uppercase small" style="width: 105px;">Invoice / Bill#</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small" style="width: 130px;">Customer</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small" style="width: 100px;" title="Reference / Order No">Ref No</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small" style="min-width: 160px;">Products</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-center" style="width: 55px;">Qty</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end" style="width: 90px;">Gross</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end" style="width: 95px;">Inline Disc</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end" style="width: 85px;">Add. Disc</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end" style="width: 95px;">Net Total</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end" style="width: 85px;">Paid</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end" style="width: 80px;">Due</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-center" style="width: 90px;">Date</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-center" style="width: 85px;">Status</th>
-                                        <th class="py-3 pe-3 rounded-end text-secondary fw-semibold text-uppercase small text-center" style="width: 95px;">Action</th>
+                                        <th class="py-3 ps-3 rounded-start text-secondary fw-semibold text-uppercase small text-nowrap">Invoice / Bill#</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Customer</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-nowrap" title="Reference / Order No">Ref No</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Products</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-center text-nowrap">Qty</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end text-nowrap">Gross</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end text-nowrap">Inline Disc</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end text-nowrap">Add. Disc</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end text-nowrap">Net Total</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end text-nowrap">Paid</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end text-nowrap">Due</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-center text-nowrap">Date</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-center text-nowrap">Status</th>
+                                        <th class="py-3 pe-3 rounded-end text-secondary fw-semibold text-uppercase small text-center" style="width: 1%; white-space: nowrap;">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="salesTableBody">
@@ -828,7 +828,7 @@
 
                 Swal.fire({
                     title: "Delete " + docType + "?",
-                    text: "Are you sure you want to delete this " + docType + " (" + docNo + ")? Any un-invoiced linked Delivery Challans / Quotations will also be removed and warehouse stock will be restored. This action cannot be undone.",
+                    text: "Are you sure you want to delete this " + docType + " (" + docNo + ")? Warehouse stock will be restored, customer ledger will be updated, and accounting vouchers will be reversed. This action cannot be undone.",
                     icon: "warning",
                     showCancelButton: true,
                     confirmButtonColor: "#dc3545",
@@ -839,7 +839,7 @@
                     if (result.isConfirmed) {
                         Swal.fire({
                             title: 'Processing...',
-                            text: 'Deleting record and updating stock...',
+                            text: 'Deleting record, restoring stock and updating ledger...',
                             allowOutsideClick: false,
                             didOpen: () => {
                                 Swal.showLoading();

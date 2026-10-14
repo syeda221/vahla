@@ -650,13 +650,23 @@ require __DIR__.'/auth.php';
 require __DIR__.'/hr.php';
 
 Route::post('/item-code-series', function(Illuminate\Http\Request $request) {
-    $prefix = $request->prefix;
+    $prefix = trim($request->prefix ?? '');
+    if (empty($prefix)) {
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => false, 'message' => 'Series prefix is required.'], 422);
+        }
+        return back()->withErrors(['prefix' => 'Series prefix is required.']);
+    }
+
     if (!str_ends_with($prefix, '-')) {
         $prefix .= '-';
     }
     
     // validate after modifying
     if(\App\Models\ItemCodeSeries::where('prefix', $prefix)->exists()) {
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => false, 'message' => 'This series already exists.'], 422);
+        }
         return back()->withErrors(['prefix' => 'This series already exists.']);
     }
     
@@ -670,6 +680,22 @@ Route::post('/item-code-series', function(Illuminate\Http\Request $request) {
                     
     $next_number = $existingMax ? $existingMax + 1 : 1;
     
-    \App\Models\ItemCodeSeries::create(['prefix' => $prefix, 'next_number' => $next_number]);
+    $series = \App\Models\ItemCodeSeries::create(['prefix' => $prefix, 'next_number' => $next_number]);
+
+    if ($request->wantsJson() || $request->ajax()) {
+        $formatted_next = $series->prefix . str_pad($series->next_number, 4, '0', STR_PAD_LEFT);
+        return response()->json([
+            'success' => true,
+            'message' => 'Series created successfully',
+            'series' => [
+                'id' => $series->id,
+                'prefix' => $series->prefix,
+                'label' => trim($series->prefix, '-'),
+                'next_number' => $series->next_number,
+                'formatted_next' => $formatted_next
+            ]
+        ]);
+    }
+
     return back()->with('success', 'Series created');
 })->name('item-code-series.store');

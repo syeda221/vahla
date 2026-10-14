@@ -170,7 +170,29 @@
             },
             minimumInputLength: 0,
             templateResult: formatProduct,
-            templateSelection: formatSelection
+            templateSelection: formatSelection,
+            escapeMarkup: function(m) { return m; },
+            language: {
+                noResults: function() {
+                    var term = '';
+                    var $openContainer = $('.select2-container--open');
+                    var $searchField = $openContainer.find('.select2-search__field');
+                    if ($searchField.length) {
+                        term = $searchField.val().trim();
+                    }
+                    var createUrl = "{{ route('store') }}?name=" + encodeURIComponent(term) + "&return_to=sale&return_url=" + encodeURIComponent(window.location.href);
+                    var safeTerm = term ? $('<div>').text(term).html() : '';
+
+                    return `
+                        <div class="py-2 px-1 text-center select2-create-option-wrapper">
+                            <div class="text-muted small mb-2"><i class="fas fa-search me-1"></i> No results found ${safeTerm ? 'for "<strong>' + safeTerm + '</strong>"' : ''}</div>
+                            <a href="${createUrl}" class="btn btn-sm btn-primary w-100 fw-bold d-inline-flex align-items-center justify-content-center gap-1 btn-create-product-from-search" style="font-size: 11px; padding: 6px 10px; background-color: #2563eb !important; border: none; border-radius: 6px; color: #ffffff !important; text-decoration: none; cursor: pointer;">
+                                <i class="fas fa-plus-circle"></i> Create "${safeTerm || 'New Product'}"
+                            </a>
+                        </div>
+                    `;
+                }
+            }
         });
     }
 
@@ -707,11 +729,11 @@
         $('#tQty').text(tQty.toFixed(0));
         $('#tGross').text(tGross.toFixed(2));
         $('#tLineDisc').text(tLineDisc.toFixed(2));
-        $('#tSub').text(tNet.toFixed(2));
         $('#tOrderDisc').text(orderDisc.toFixed(2));
+        $('#tSub').text(currentInvoiceTotal.toFixed(2));
         $('#tPrev').text(prev.toFixed(2));
         $('#tPayable').text(payable.toFixed(2));
-        $('#totalAmount').text(tNet.toFixed(2));
+        $('#totalAmount').text(currentInvoiceTotal.toFixed(2));
         $('#walkinNetTotal').text(currentInvoiceTotal.toFixed(2));
         $('#bottomPaymentsTotal').text(receipts.toFixed(2));
         $('#receiptsTotalBadge').text(receipts.toFixed(2));
@@ -2247,5 +2269,181 @@
 
         // Initialize Posted Button State
         refreshPostedState();
+
+        // ========================================================
+        // SALE DRAFT PRESERVATION & AUTO-ADD NEWLY CREATED PRODUCT
+        // ========================================================
+
+        // Save current sale draft state before navigating to Create Product page
+        window.saveCurrentSaleDraftState = function() {
+            let state = {
+                customer_id: $('#customerSelect').val(),
+                customer_text: $('#customerSelect option:selected').text(),
+                date: $('#saleDate').val(),
+                warehouse_id: $('#warehouseSelect').val(),
+                booking_id: $('#booking_id').val(),
+                sale_type: $('#sale_type').val(),
+                invoice_prefix: $('#activePrefixLabel').text(),
+                rows: []
+            };
+
+            $('#salesTableBody tr').each(function() {
+                let $row = $(this);
+                let pid = $row.find('.product-id-hidden').val();
+                let prodVal = $row.find('.product').val();
+                let prodText = $row.find('.product option:selected').text();
+                let selectData = $row.find('.product option:selected').data('data');
+
+                if (pid || (prodVal && prodVal !== '')) {
+                    state.rows.push({
+                        product_id: pid || prodVal,
+                        option_val: prodVal,
+                        display_text: prodText,
+                        select_data: selectData,
+                        item_code: $row.find('.item-code-display').val(),
+                        stock: $row.find('.stock').val(),
+                        carton_qty: $row.find('.carton-qty').val(),
+                        qty_unit_mode: $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'main',
+                        loose_qty: $row.find('.loose-pcs-input').val(),
+                        size_display: $row.find('.size-display').val(),
+                        color_display: $row.find('.color-display').val(),
+                        pack_qty: $row.find('.pack-qty').val(),
+                        total_pieces: $row.find('.total-pieces').val(),
+                        visible_price: $row.find('.visible-price').val(),
+                        price_mode: $row.find('.price-mode-row-toggle').attr('data-mode') || 'retail',
+                        disc_percent: $row.find('.discount-percent').val(),
+                        disc_amount: $row.find('.discount-amount').val(),
+                        variant_data: $row.find('.variant-data-hidden').val()
+                    });
+                }
+            });
+
+            try {
+                sessionStorage.setItem('sale_page_preserved_draft', JSON.stringify(state));
+            } catch(e) {
+                console.error('Could not save draft state', e);
+            }
+        };
+
+        // Click handler for Create Product button from Select2 search results
+        $(document).on('mousedown click', '.btn-create-product-from-search', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof window.saveCurrentSaleDraftState === 'function') {
+                window.saveCurrentSaleDraftState();
+            }
+            var targetUrl = $(this).attr('href');
+            if (targetUrl) {
+                window.location.href = targetUrl;
+            }
+        });
+
+        // Restore sale draft if returning from Create Product page
+        function restoreSaleDraftState() {
+            let savedDraft = sessionStorage.getItem('sale_page_preserved_draft');
+            if (!savedDraft) return;
+            sessionStorage.removeItem('sale_page_preserved_draft');
+
+            try {
+                let draft = JSON.parse(savedDraft);
+                if (draft.customer_id && $('#customerSelect').length) {
+                    let opt = new Option(draft.customer_text, draft.customer_id, true, true);
+                    $('#customerSelect').empty().append(opt).trigger('change');
+                }
+                if (draft.date && $('#saleDate').length) {
+                    $('#saleDate').val(draft.date);
+                }
+                if (draft.warehouse_id && $('#warehouseSelect').length) {
+                    $('#warehouseSelect').val(draft.warehouse_id).trigger('change');
+                }
+
+                if (draft.rows && draft.rows.length > 0) {
+                    // If the table currently only has 1 empty row, clear it
+                    let $firstRow = $('#salesTableBody tr:first');
+                    let firstPid = $firstRow.find('.product-id-hidden').val();
+                    let firstProd = $firstRow.find('.product').val();
+                    if ($('#salesTableBody tr').length === 1 && !firstPid && !firstProd) {
+                        $('#salesTableBody').empty();
+                    }
+
+                    draft.rows.forEach(function(rData) {
+                        if (typeof addNewRow === 'function') {
+                            addNewRow();
+                            let $newRow = $('#salesTableBody tr:last');
+                            let $select = $newRow.find('.product');
+                            let newOption = new Option(rData.display_text, rData.option_val, true, true);
+                            if (rData.select_data) {
+                                $(newOption).data('data', rData.select_data);
+                            }
+                            $select.empty().append(newOption);
+                            $newRow.find('.product-id-hidden').val(rData.product_id);
+                            $newRow.find('.variant-data-hidden').val(rData.variant_data || '');
+                            $newRow.find('.item-code-display').val(rData.item_code || '');
+                            $newRow.find('.stock').val(rData.stock || '');
+                            $newRow.find('.carton-qty').val(rData.carton_qty || '');
+                            $newRow.find('.loose-pcs-input').val(rData.loose_qty || '');
+                            $newRow.find('.size-display').val(rData.size_display || '');
+                            $newRow.find('.color-display').val(rData.color_display || '');
+                            $newRow.find('.pack-qty').val(rData.pack_qty || '1');
+                            $newRow.find('.visible-price').val(rData.visible_price || '0');
+                            $newRow.find('.discount-percent').val(rData.disc_percent || '0');
+                            $newRow.find('.discount-amount').val(rData.disc_amount || '0');
+
+                            if (typeof computeRow === 'function') {
+                                computeRow($newRow, false);
+                            }
+                        }
+                    });
+
+                    if (typeof updateGrandTotals === 'function') {
+                        updateGrandTotals();
+                    }
+                }
+            } catch(e) {
+                console.error('Failed to restore draft state', e);
+            }
+        }
+
+        restoreSaleDraftState();
+
+        // Auto-add product created from Create Product page (if Save & Continue was clicked)
+        let newProductToAutoAdd = sessionStorage.getItem('sale_auto_add_product');
+        if (newProductToAutoAdd) {
+            sessionStorage.removeItem('sale_auto_add_product');
+            try {
+                let prod = JSON.parse(newProductToAutoAdd);
+                if (prod && typeof window.addProductToSaleGrid === 'function') {
+                    setTimeout(function() {
+                        window.addProductToSaleGrid(prod);
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Product Added!',
+                                text: (prod.item_name || 'Product') + ' has been created and added to your sale invoice.',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        }
+                    }, 250);
+                }
+            } catch(e) {
+                console.error('Error auto-adding product to sale', e);
+            }
+        }
+
+        // Notice if user chose 'Save' only (without auto-add)
+        let saleNotice = sessionStorage.getItem('sale_product_created_notice');
+        if (saleNotice) {
+            sessionStorage.removeItem('sale_product_created_notice');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Product Created!',
+                    text: saleNotice,
+                    timer: 2500,
+                    showConfirmButton: false
+                });
+            }
+        }
     }); // Close $(document).ready
 </script>

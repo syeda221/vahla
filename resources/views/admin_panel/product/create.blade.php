@@ -527,7 +527,7 @@
         {{-- Page Title --}}
         <div class="d-flex align-items-center justify-content-between mb-3">
             <div class="d-flex align-items-center gap-3">
-                <a href="{{ route('product') }}" class="btn btn-white border shadow-sm rounded-circle p-0" style="width: 36px; height: 36px; display: grid; place-items: center;">
+                <a href="{{ request('return_url') ?: route('product') }}" class="btn btn-white border shadow-sm rounded-circle p-0" style="width: 36px; height: 36px; display: grid; place-items: center;" title="Back">
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <div>
@@ -535,7 +535,33 @@
                     <small class="text-muted" style="font-size:0.8rem;">Add carton or piece based items to inventory</small>
                 </div>
             </div>
+            @if(request('return_to') == 'sale' || request('from') == 'sale' || request('return_url'))
+                <div>
+                    <span class="badge bg-primary px-3 py-2 text-white fw-bold shadow-sm" style="font-size: 0.8rem; border-radius: 20px;">
+                        <i class="fas fa-shopping-cart me-1"></i> Sale Invoice Mode
+                    </span>
+                </div>
+            @endif
         </div>
+
+        @if(request('return_to') == 'sale' || request('from') == 'sale' || request('return_url'))
+            <div class="alert alert-primary d-flex align-items-center justify-content-between p-3 mb-3 rounded-3 shadow-sm border-0" style="background: #eff6ff; border-left: 4px solid #2563eb !important;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-primary text-white rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 38px; height: 38px;">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div>
+                        <h6 class="fw-bold text-primary mb-0">Creating Product for Sale Invoice</h6>
+                        <small class="text-muted">
+                            Click <strong>"Save & Continue"</strong> to add this product automatically to your sale items, or <strong>"Save"</strong> to return and search manually.
+                        </small>
+                    </div>
+                </div>
+                <a href="{{ request('return_url') ?: route('product') }}" class="btn btn-sm btn-outline-secondary px-3 py-1 fw-semibold">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Sale
+                </a>
+            </div>
+        @endif
 
         <form id="productForm" action="{{ route('store-product') }}" method="POST" enctype="multipart/form-data">
             @csrf
@@ -558,7 +584,7 @@
                                     <div class="row g-3">
                                         <div class="col-md-8">
                                             <label class="form-label-pro">Product Name <span class="text-danger">*</span></label>
-                                            <input type="text" class="form-control-pro fs-6 fw-bold" name="product_name" required placeholder="e.g. Ceramic Floor Tile 60x60">
+                                            <input type="text" class="form-control-pro fs-6 fw-bold" name="product_name" value="{{ request('name', '') }}" required placeholder="e.g. Ceramic Floor Tile 60x60">
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label-pro text-uppercase fw-bold text-muted" style="font-size:11px;">Item Code Series</label>
@@ -689,10 +715,19 @@
 
                     {{-- INLINE ACTIONS ROW (desktop only) --}}
                     <div class="d-flex justify-content-end align-items-center bg-white p-3 rounded shadow-sm border mb-4 gap-2 desktop-action-bar">
-                        <a href="{{ route('product') }}" class="btn btn-outline-secondary px-4 py-2" style="border-radius: var(--radius-md); font-size: 0.9rem;">Cancel</a>
-                        <button type="submit" id="desktopSubmitBtn" class="btn btn-primary px-5 py-2 fw-bold" style="background: var(--primary); border: none; border-radius: var(--radius-md); font-size: 0.9rem;">
-                            <i class="fas fa-check-circle me-1"></i> SAVE PRODUCT
-                        </button>
+                        <a href="{{ request('return_url') ?: route('product') }}" class="btn btn-outline-secondary px-4 py-2" style="border-radius: var(--radius-md); font-size: 0.9rem;">Cancel</a>
+                        @if(request('return_to') == 'sale' || request('from') == 'sale' || request('return_url'))
+                            <button type="button" class="btn btn-outline-primary px-4 py-2 fw-bold btn-product-submit" data-action="save" onclick="submitProductFormWithAction('save')" style="border-radius: var(--radius-md); font-size: 0.9rem;">
+                                <i class="fas fa-save me-1"></i> SAVE
+                            </button>
+                            <button type="button" class="btn btn-primary px-5 py-2 fw-bold btn-product-submit" data-action="save_and_continue" onclick="submitProductFormWithAction('save_and_continue')" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; border-radius: var(--radius-md); font-size: 0.9rem;">
+                                <i class="fas fa-arrow-right me-1"></i> SAVE & CONTINUE
+                            </button>
+                        @else
+                            <button type="submit" id="desktopSubmitBtn" class="btn btn-primary px-5 py-2 fw-bold btn-product-submit" data-action="default" style="background: var(--primary); border: none; border-radius: var(--radius-md); font-size: 0.9rem;">
+                                <i class="fas fa-check-circle me-1"></i> SAVE PRODUCT
+                            </button>
+                        @endif
                     </div>
 
 
@@ -797,18 +832,38 @@
 
     {{-- MOBILE STICKY ACTION BAR (shown only on mobile via CSS) --}}
     <div class="mobile-action-bar">
-        <a href="{{ route('product') }}" class="btn btn-outline-secondary fw-semibold" style="flex:1;border-radius:10px;height:46px;display:flex;align-items:center;justify-content:center;font-size:15px;">
+        <a href="{{ request('return_url') ?: route('product') }}" class="btn btn-outline-secondary fw-semibold" style="flex:1;border-radius:10px;height:46px;display:flex;align-items:center;justify-content:center;font-size:14px;">
             <i class="fas fa-times me-2"></i>Cancel
         </a>
-        <button type="button" id="mobileSubmitBtn" onclick="document.getElementById('productForm').requestSubmit()" style="flex:2;background:linear-gradient(135deg,#5B4CF7,#4338ca);border:none;border-radius:10px;height:46px;color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;">
-            <i class="fas fa-check-circle"></i> Save Product
-        </button>
+        @if(request('return_to') == 'sale' || request('from') == 'sale' || request('return_url'))
+            <button type="button" class="btn-product-submit" data-action="save" onclick="submitProductFormWithAction('save')" style="flex:1.3;background:#f8fafc;border:1.5px solid #2563eb;border-radius:10px;height:46px;color:#2563eb;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;">
+                <i class="fas fa-save"></i> Save
+            </button>
+            <button type="button" class="btn-product-submit" data-action="save_and_continue" onclick="submitProductFormWithAction('save_and_continue')" style="flex:2;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:10px;height:46px;color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;">
+                <i class="fas fa-arrow-right"></i> Save & Continue
+            </button>
+        @else
+            <button type="button" id="mobileSubmitBtn" onclick="document.getElementById('productForm').requestSubmit()" style="flex:2;background:linear-gradient(135deg,#5B4CF7,#4338ca);border:none;border-radius:10px;height:46px;color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;">
+                <i class="fas fa-check-circle"></i> Save Product
+            </button>
+        @endif
     </div>
 
 @endsection
 
 @section('js')
     <script>
+        let currentSubmitAction = 'default';
+        window.submitProductFormWithAction = function(action) {
+            currentSubmitAction = action;
+            const form = document.getElementById('productForm');
+            if (form) form.requestSubmit();
+        };
+
+        $(document).on('click', '.btn-product-submit', function() {
+            currentSubmitAction = $(this).data('action') || 'default';
+        });
+
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('productForm');
             const unitDropdown = document.getElementById('unit-dropdown');
@@ -882,10 +937,12 @@
                 document.getElementById('alert_carton_quantity').value = firstAlert;
                 // ------------------------------------------------------------------------
 
-                const btn = document.querySelector('button[type="submit"]');
-                const originalContent = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-                btn.disabled = true;
+                const allSubmitBtns = document.querySelectorAll('button[type="submit"], .btn-product-submit');
+                allSubmitBtns.forEach(b => b.disabled = true);
+
+                let activeBtn = document.querySelector(`.btn-product-submit[data-action="${currentSubmitAction}"]`) || document.querySelector('#desktopSubmitBtn') || document.querySelector('button[type="submit"]');
+                let originalContent = activeBtn ? activeBtn.innerHTML : '';
+                if (activeBtn) activeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
 
                 const formData = new FormData(form);
                 fetch(form.action, {
@@ -896,10 +953,42 @@
                 .then(r => r.json().then(data => ({status: r.status, body: data})))
                 .then(({status, body}) => {
                     if (status === 200 || body.status === 'success') {
-                         Swal.fire({
-                            icon: 'success', title: 'Saved!',
-                            text: 'Product created successfully', timer: 1500, showConfirmButton: false
-                         }).then(() => window.location.href = "{{ route('product') }}");
+                        let returnUrl = "{{ request('return_url') ?: (request('return_to') == 'sale' ? route('sale.create') : '') }}";
+                        let isFromSale = {{ (request('return_to') == 'sale' || request('from') == 'sale' || request('return_url')) ? 'true' : 'false' }};
+
+                        if (isFromSale && returnUrl) {
+                            if (currentSubmitAction === 'save_and_continue') {
+                                if (body.product) {
+                                    sessionStorage.setItem('sale_auto_add_product', JSON.stringify(body.product));
+                                }
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Product Created!',
+                                    text: 'Adding product to sale...',
+                                    timer: 1200,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    window.location.href = returnUrl;
+                                });
+                            } else {
+                                sessionStorage.removeItem('sale_auto_add_product');
+                                sessionStorage.setItem('sale_product_created_notice', 'Product created successfully! You can search for it now.');
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Product Created!',
+                                    text: 'Returning to sale...',
+                                    timer: 1200,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    window.location.href = returnUrl;
+                                });
+                            }
+                        } else {
+                            Swal.fire({
+                                icon: 'success', title: 'Saved!',
+                                text: 'Product created successfully', timer: 1500, showConfirmButton: false
+                            }).then(() => window.location.href = "{{ route('product') }}");
+                        }
                     } else {
                         const msg = body.errors ? Object.values(body.errors).flat().join('<br>') : (body.message || 'Error');
                         Swal.fire({icon: 'error', title: 'Error', html: msg});
@@ -907,8 +996,8 @@
                 })
                 .catch(err => Swal.fire({icon: 'error', title: 'Error', text: 'Server Error'}))
                 .finally(() => {
-                    btn.innerHTML = originalContent;
-                    btn.disabled = false;
+                    allSubmitBtns.forEach(b => b.disabled = false);
+                    if (activeBtn) activeBtn.innerHTML = originalContent;
                 });
             });
 

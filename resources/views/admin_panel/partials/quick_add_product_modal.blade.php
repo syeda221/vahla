@@ -1,4 +1,141 @@
 {{-- ===== QUICK ADD PRODUCT MODAL ===== --}}
+@php
+    $modalItemCodeSeries = $itemCodeSeries ?? \App\Models\ItemCodeSeries::all();
+    if ($modalItemCodeSeries->isEmpty()) {
+        $modalItemCodeSeries = collect([
+            (object)['id' => 1, 'prefix' => 'PRD-', 'next_number' => 1, 'is_default' => 1]
+        ]);
+    }
+@endphp
+
+<style>
+    /* Quick Add Product Modal Custom Styles */
+    #quickAddProductModal .modal-content {
+        border: none !important;
+        border-radius: 12px !important;
+        overflow: hidden;
+    }
+    #quickAddProductModal .form-control,
+    #quickAddProductModal .form-select {
+        height: 36px !important;
+        font-size: 0.85rem !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 6px !important;
+    }
+    #quickAddProductModal .form-control:focus,
+    #quickAddProductModal .form-select:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
+    }
+
+    /* Unified Item Code Series Wrapper */
+    #quickAddProductModal .qap-code-wrapper {
+        display: flex !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        height: 36px !important;
+        border-radius: 6px !important;
+        overflow: hidden !important;
+        border: 1px solid #0284c7 !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        background: #ffffff;
+    }
+    #quickAddProductModal .qap-code-wrapper.has-error {
+        border-color: #ef4444 !important;
+    }
+
+    /* Series Dropdown */
+    #quickAddProductModal .qap-series-select {
+        width: 85px !important;
+        min-width: 80px !important;
+        max-width: 95px !important;
+        height: 100% !important;
+        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        font-size: 0.82rem !important;
+        border: none !important;
+        border-radius: 0 !important;
+        padding: 0 22px 0 10px !important;
+        cursor: pointer !important;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+        background-position: right 7px center !important;
+        background-repeat: no-repeat !important;
+        background-size: 10px 10px !important;
+        outline: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+    }
+    #quickAddProductModal .qap-series-select option {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        font-weight: 600 !important;
+    }
+
+    /* Code Number Input */
+    #quickAddProductModal .qap-code-input {
+        flex: 1 1 auto !important;
+        height: 100% !important;
+        border: none !important;
+        border-radius: 0 !important;
+        border-left: 1px solid #bae6fd !important;
+        border-right: 1px solid #e2e8f0 !important;
+        background-color: #f8fafc !important;
+        color: #0f172a !important;
+        font-weight: 700 !important;
+        font-size: 0.86rem !important;
+        text-align: center !important;
+        padding: 0 8px !important;
+        outline: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+    }
+    #quickAddProductModal .qap-code-input:not([readonly]) {
+        background-color: #ffffff !important;
+    }
+    #quickAddProductModal .qap-code-input.is-invalid {
+        background-color: #fef2f2 !important;
+        color: #dc2626 !important;
+    }
+
+    /* Action Buttons (Edit & Add) */
+    #quickAddProductModal .qap-code-btn {
+        width: 36px !important;
+        min-width: 36px !important;
+        height: 100% !important;
+        background: #f8fafc !important;
+        color: #475569 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 0.82rem !important;
+        cursor: pointer !important;
+        transition: all 0.15s ease !important;
+        outline: none !important;
+        margin: 0 !important;
+    }
+    #quickAddProductModal .qap-code-btn:hover {
+        background: #e2e8f0 !important;
+        color: #0284c7 !important;
+    }
+    #quickAddProductModal .qap-code-btn-add {
+        border-left: 1px solid #e2e8f0 !important;
+        color: #0284c7 !important;
+        font-size: 1.15rem !important;
+        font-weight: 700 !important;
+    }
+    #quickAddProductModal .qap-code-btn-add:hover {
+        background: #0284c7 !important;
+        color: #ffffff !important;
+    }
+</style>
+
 <div class="modal fade" id="quickAddProductModal" tabindex="-1" aria-labelledby="quickAddProductModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-3 overflow-hidden">
@@ -16,15 +153,35 @@
             <form id="quickAddProductForm" autocomplete="off">
                 @csrf
                 <div class="modal-body p-4">
-                    {{-- Row 1: Product Name & Unit --}}
+                    {{-- Row 1: Product Name & Item Code Series --}}
                     <div class="row g-3 mb-3">
-                        <div class="col-md-8">
+                        <div class="col-md-7">
                             <label class="form-label fw-bold small text-muted mb-1">Product Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="product_name" id="qap_product_name" required placeholder="Enter product name" style="height: 38px;">
+                            <input type="text" class="form-control" name="product_name" id="qap_product_name" required placeholder="Enter product name" style="height: 36px;">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-5">
+                            <label class="form-label fw-bold small text-muted mb-1">Item Code Series</label>
+                            <div class="qap-code-wrapper">
+                                <select class="qap-series-select" name="item_code_prefix" id="qap_item_code_prefix" title="Choose series">
+                                    @foreach($modalItemCodeSeries as $series)
+                                        <option value="{{ $series->prefix }}" data-next="{{ $series->prefix }}{{ str_pad($series->next_number, 4, '0', STR_PAD_LEFT) }}" {{ $series->is_default ? 'selected' : '' }}>{{ trim($series->prefix, '-') }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="text" class="qap-code-input" id="qap_item_code_number" name="item_code_number" readonly placeholder="Auto">
+                                <button class="qap-code-btn" type="button" id="qap_btn_edit_code" title="Edit Number">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="qap-code-btn qap-code-btn-add" type="button" id="qap_btn_add_series" title="Add Series">+</button>
+                            </div>
+                            <div id="qap_code_feedback" class="text-danger small mt-1 fw-bold" style="display:none; font-size: 11px;"></div>
+                        </div>
+                    </div>
+
+                    {{-- Row 2: Unit, Category, Sub Category, Brand --}}
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3 col-6">
                             <label class="form-label fw-bold small text-muted mb-1">Unit <span class="text-danger">*</span></label>
-                            <select class="form-select fw-semibold" name="size_mode" id="qap_unit" required style="height: 38px;">
+                            <select class="form-select fw-semibold" name="size_mode" id="qap_unit" required style="height: 36px;">
                                 <option value="by_pieces" data-unit-name="Pcs" selected>Pcs</option>
                                 <option value="by_cartons" data-unit-name="Carton">Carton</option>
                                 <option value="by_meter" data-unit-name="Meter">Meter</option>
@@ -35,25 +192,21 @@
                             </select>
                             <input type="hidden" name="unit" id="qap_unit_text" value="Pcs">
                         </div>
-                    </div>
-
-                    {{-- Row 2: Category, Sub Category, Brand --}}
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
+                        <div class="col-md-3 col-6">
                             <label class="form-label fw-bold small text-muted mb-1">Category</label>
-                            <select class="form-select" name="category_id" id="qap_category" style="height: 38px;">
+                            <select class="form-select" name="category_id" id="qap_category" style="height: 36px;">
                                 <option value="">Select Category</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3 col-6">
                             <label class="form-label fw-bold small text-muted mb-1">Sub Category</label>
-                            <select class="form-select" name="sub_category_id" id="qap_subcategory" style="height: 38px;">
+                            <select class="form-select" name="sub_category_id" id="qap_subcategory" style="height: 36px;">
                                 <option value="">Select Sub Category</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3 col-6">
                             <label class="form-label fw-bold small text-muted mb-1">Brand</label>
-                            <select class="form-select" name="brand_id" id="qap_brand" style="height: 38px;">
+                            <select class="form-select" name="brand_id" id="qap_brand" style="height: 36px;">
                                 <option value="">Select Brand</option>
                             </select>
                         </div>
@@ -85,7 +238,7 @@
                                     {{-- Base Row (Default) --}}
                                     <tr class="qap-variant-row bg-white rounded border-bottom">
                                         <td class="py-1">
-                                            <input type="text" class="form-control form-control-sm fw-bold" name="variant_name[]" value="Base" required placeholder="Variant Name">
+                                            <input type="text" class="form-control form-control-sm fw-bold qap-base-variant-name" name="variant_name[]" value="" required placeholder="Variant Name">
                                         </td>
                                         <td class="py-1">
                                             <input type="text" class="form-control form-control-sm text-center" name="variant_size[]" placeholder="Size">
@@ -163,9 +316,181 @@ $(document).ready(function() {
         }
     }
 
+    // Auto-sync product name to base variant name
+    var isBaseVariantNameManuallyEdited = false;
+
+    $(document).on('input propertychange paste', '#qap_product_name', function() {
+        var val = $(this).val();
+        if (!isBaseVariantNameManuallyEdited) {
+            $('.qap-base-variant-name').val(val);
+        }
+    });
+
+    $(document).on('input propertychange paste', '.qap-base-variant-name', function() {
+        if ($(this).val().trim() === '') {
+            isBaseVariantNameManuallyEdited = false;
+            $(this).val($('#qap_product_name').val());
+        } else {
+            isBaseVariantNameManuallyEdited = true;
+        }
+    });
+
+    // Update Item Code Preview when Prefix changes or on modal open
+    function updateQapNextNumber() {
+        var s = document.getElementById('qap_item_code_prefix');
+        if (!s) return;
+        var opt = s.options[s.selectedIndex];
+        if (opt) {
+            var nextVal = opt.getAttribute('data-next') || '';
+            $('#qap_item_code_number').val(nextVal).attr('readonly', 'readonly');
+            $('#qap_item_code_number').removeClass('is-invalid');
+            $('.qap-code-wrapper').removeClass('has-error');
+            $('#qap_code_feedback').hide().empty();
+        }
+    }
+
+    $(document).on('change', '#qap_item_code_prefix', function() {
+        updateQapNextNumber();
+    });
+
+    $(document).on('click', '#qap_btn_edit_code', function() {
+        $('#qap_item_code_number').removeAttr('readonly').focus();
+    });
+
+    // Real-time duplicate check for Item Code (only when user actively modifies the code)
+    var qapCheckCodeTimer = null;
+    function checkQapItemCodeAvailability() {
+        clearTimeout(qapCheckCodeTimer);
+        qapCheckCodeTimer = setTimeout(function() {
+            var input = document.getElementById('qap_item_code_number');
+            var feedback = document.getElementById('qap_code_feedback');
+            var prefixSelect = document.getElementById('qap_item_code_prefix');
+            var wrapper = document.querySelector('.qap-code-wrapper');
+            if (!input || !feedback) return;
+            var code = input.value.trim();
+            var prefix = prefixSelect ? prefixSelect.value : '';
+
+            if (!code) {
+                feedback.innerHTML = '<i class="fas fa-exclamation-circle"></i> Item code cannot be empty';
+                $(feedback).show();
+                $(input).addClass('is-invalid');
+                if (wrapper) wrapper.classList.add('has-error');
+                return;
+            }
+
+            $.ajax({
+                url: "{{ route('products.check_item_code') }}",
+                type: "GET",
+                data: {
+                    code: code,
+                    prefix: prefix
+                },
+                success: function(res) {
+                    if (res.exists) {
+                        feedback.innerHTML = '<i class="fas fa-times-circle"></i> ' + res.message;
+                        $(feedback).show();
+                        $(input).addClass('is-invalid');
+                        if (wrapper) wrapper.classList.add('has-error');
+                    } else {
+                        $(feedback).hide().empty();
+                        $(input).removeClass('is-invalid');
+                        if (wrapper) wrapper.classList.remove('has-error');
+                    }
+                }
+            });
+        }, 250);
+    }
+
+    $(document).on('input propertychange paste change', '#qap_item_code_number', function() {
+        checkQapItemCodeAvailability();
+    });
+
+    // Add New Series Button Click
+    $(document).on('click', '#qap_btn_add_series', function() {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Add New Series',
+                input: 'text',
+                inputLabel: 'Prefix (e.g. PRD-)',
+                inputPlaceholder: 'e.g. PRD-',
+                showCancelButton: true,
+                confirmButtonText: 'Save Series',
+                confirmButtonColor: '#2563eb',
+                cancelButtonColor: '#64748b',
+                showLoaderOnConfirm: true,
+                preConfirm: (prefix) => {
+                    if (!prefix || !prefix.trim()) {
+                        Swal.showValidationMessage('Prefix is required');
+                        return false;
+                    }
+                    return $.ajax({
+                        url: "{{ route('item-code-series.store') }}",
+                        type: "POST",
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            prefix: prefix.trim()
+                        },
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                    }).then(response => {
+                        return response;
+                    }).catch(error => {
+                        var msg = (error.responseJSON && error.responseJSON.message) ? error.responseJSON.message : 'Error creating series';
+                        Swal.showValidationMessage(msg);
+                    });
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+            }).then((result) => {
+                if (result.isConfirmed && result.value && result.value.series) {
+                    var s = result.value.series;
+                    var opt = new Option(s.label, s.prefix, true, true);
+                    $(opt).attr('data-next', s.formatted_next);
+                    $('#qap_item_code_prefix').append(opt).val(s.prefix);
+                    updateQapNextNumber();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Series Added!',
+                        text: 'Series ' + s.prefix + ' created successfully.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                }
+            });
+        } else {
+            var prefix = prompt("Enter Prefix (e.g. PRD-):");
+            if (prefix && prefix.trim()) {
+                $.ajax({
+                    url: "{{ route('item-code-series.store') }}",
+                    type: "POST",
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        prefix: prefix.trim()
+                    },
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    success: function(res) {
+                        if (res.series) {
+                            var s = res.series;
+                            var opt = new Option(s.label, s.prefix, true, true);
+                            $(opt).attr('data-next', s.formatted_next);
+                            $('#qap_item_code_prefix').append(opt).val(s.prefix);
+                            updateQapNextNumber();
+                        }
+                    },
+                    error: function(err) {
+                        var msg = (err.responseJSON && err.responseJSON.message) ? err.responseJSON.message : 'Error creating series';
+                        alert(msg);
+                    }
+                });
+            }
+        }
+    });
+
     // Modal shown event
     $('#quickAddProductModal').on('show.bs.modal', function() {
         loadQapDropdowns();
+        updateQapNextNumber();
+        if ($('#qap_product_name').val()) {
+            $('.qap-base-variant-name').val($('#qap_product_name').val());
+        }
     });
 
     // Subcategory loading when category changes
@@ -237,12 +562,13 @@ $(document).ready(function() {
         $('#qap_unit').val('by_pieces');
         $('#qap_unit_text').val(defaultUnit);
         $('#qap_stock_unit_label').text(defaultUnit);
+        isBaseVariantNameManuallyEdited = false;
         
         // Reset rows to single Base row
         $('#qap_variant_rows').html(`
             <tr class="qap-variant-row bg-white rounded border-bottom">
                 <td class="py-1">
-                    <input type="text" class="form-control form-control-sm fw-bold" name="variant_name[]" value="Base" required placeholder="Variant Name">
+                    <input type="text" class="form-control form-control-sm fw-bold qap-base-variant-name" name="variant_name[]" value="" required placeholder="Variant Name">
                 </td>
                 <td class="py-1">
                     <input type="text" class="form-control form-control-sm text-center" name="variant_size[]" placeholder="Size">
@@ -265,11 +591,28 @@ $(document).ready(function() {
                 </td>
             </tr>
         `);
+
+        updateQapNextNumber();
     }
 
     // Submit Quick Add Product Form
     $('#quickAddProductForm').on('submit', function(e) {
         e.preventDefault();
+
+        // Check if item code is marked as duplicate/invalid
+        if ($('#qap_item_code_number').hasClass('is-invalid') || $('.qap-code-wrapper').hasClass('has-error')) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Duplicate Item Code',
+                    text: 'The selected item code already exists. Please choose a different number or series.'
+                });
+            } else {
+                alert('The selected item code already exists. Please choose a different number or series.');
+            }
+            return false;
+        }
+
         var $btn = $('#btnQuickSaveProduct');
         var originalHtml = $btn.html();
         $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Saving...');

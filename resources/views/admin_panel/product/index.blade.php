@@ -1323,15 +1323,17 @@ $(document).ready(function () {
         paging:     false,
         ordering:   true,
         info:       false,
-        order:      [[3, 'asc']],
+        order:      [],
         dom:        'rt',
         scrollX:    false,
-        columnDefs: [{ targets: [0, 8], orderable: false, searchable: false }]
+        columnDefs: [{ targets: [0, 1, 8], orderable: false, searchable: false }]
     });   // DataTable closes here
 
-    // ── Select All ──
-    $('#selectAll').click(function() {
-        $('.selectProduct').prop('checked', this.checked);
+    table.on('order.dt search.dt', function () {
+        let start = {{ $products->firstItem() ?? 1 }};
+        table.column(1, { search: 'applied', order: 'applied' }).nodes().each(function (cell, i) {
+            cell.innerHTML = start + i;
+        });
     });
 
     // ── View Product Modal ──

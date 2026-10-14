@@ -1314,6 +1314,10 @@
                                     <span class="fw-bold text-danger" id="tLineDisc">0.00</span>
                                 </div>
                                 <div class="summary-row">
+                                    <span class="text-muted">Overall Discount</span>
+                                    <span class="fw-bold text-danger" id="tOrderDisc">0.00</span>
+                                </div>
+                                <div class="summary-row">
                                     <span class="fw-bold text-dark">Net Total</span>
                                     <span class="summary-val-net" id="tSub">0.00</span>
                                 </div>
@@ -1399,12 +1403,16 @@
                         <span class="fs-5 fw-bolder text-primary" id="walkinNetTotal">0.00</span>
                     </div>
 
+                    @php
+                        $overallType = $sale->overall_discount_type ?: 'pkr';
+                        $overallVal = $sale->overall_discount_value !== null ? (float)$sale->overall_discount_value : (float)($sale->total_extradiscount ?? 0);
+                    @endphp
                     <div class="d-flex align-items-center gap-2">
-                        <span class="text-muted fw-bold" id="overallDiscountLabel" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Discount (Rs.)</span>
+                        <span class="text-muted fw-bold" id="overallDiscountLabel" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Discount ({{ $overallType === 'percent' ? '%' : 'Rs.' }})</span>
                         <div class="input-group input-group-sm" style="width: 130px;">
-                            <input type="number" step="any" class="form-control text-end fw-bold text-danger" id="walkinDiscountRs" value="{{ (float)($sale->total_extradiscount ?? 0) }}" placeholder="0">
-                            <button type="button" class="btn btn-outline-secondary fw-bold px-2" id="overallDiscountToggle" data-type="pkr" style="font-size:0.75rem;" tabindex="-1">PKR</button>
-                            <input type="hidden" id="overallDiscountType" name="overall_discount_type" value="pkr">
+                            <input type="number" step="any" class="form-control text-end fw-bold text-danger" id="walkinDiscountRs" name="overall_discount_value" value="{{ $overallVal > 0 ? $overallVal : '' }}" placeholder="0">
+                            <button type="button" class="btn btn-outline-secondary fw-bold px-2" id="overallDiscountToggle" data-type="{{ $overallType }}" style="font-size:0.75rem;" tabindex="-1">{{ $overallType === 'percent' ? '%' : 'PKR' }}</button>
+                            <input type="hidden" id="overallDiscountType" name="overall_discount_type" value="{{ $overallType }}">
                             <input type="hidden" id="hiddenTotalExtraCost" name="total_extra_cost" value="{{ (float)($sale->total_extradiscount ?? 0) }}">
                         </div>
                     </div>
