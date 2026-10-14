@@ -1202,16 +1202,20 @@
                                                     </td>
 
                                                     <!-- Discount -->
+                                                    @php
+                                                        $discType = $item->discount_type ?? (($item->discount_amount > 0 && ($item->discount_percent == 0 || round($item->discount_percent, 2) != $item->discount_percent)) ? "pkr" : "percent");
+                                                        $displayDiscVal = $discType === "pkr" ? (float)$item->discount_amount : (float)$item->discount_percent;
+                                                    @endphp
                                                     <td class="col-disc">
                                                         <div class="discount-wrapper">
-                                                            <input type="number" class="form-control discount-value text-end"
-                                                                name="item_disc[]" value="{{ $item->discount_percent }}" placeholder="0">
-                                                            <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="percent">
+                                                            <input type="number" step="any" class="form-control discount-value text-end"
+                                                                name="item_disc[]" value="{{ $displayDiscVal > 0 ? $displayDiscVal : "" }}" placeholder="0">
+                                                            <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="{{ $discType }}">
                                                             <button type="button"
                                                                 class="btn btn-outline-secondary discount-toggle"
-                                                                data-type="percent" tabindex="-1">%</button>
+                                                                data-type="{{ $discType }}" tabindex="-1">{{ $discType === "pkr" ? "PKR" : "%" }}</button>
                                                         </div>
-                                                        <input type="hidden" class="discount-amount" value="{{ $item->discount_amount ?? 0 }}">
+                                                        <input type="hidden" class="discount-amount" value="{{ (float)($item->discount_amount ?? 0) }}">
                                                     </td>
 
                                                     <!-- Net Amount -->
@@ -1322,11 +1326,29 @@
                                     <span class="fw-bold text-dark">Change</span>
                                     <span class="summary-val-change" id="walkinChange">-0.00</span>
                                 </div>
+                                @php
+                                    $defCashAcc = $accounts->first(function($a) {
+                                        $t = strtolower(trim($a->title));
+                                        return $t === 'cash' || $t === 'cash in hand' || $t === 'cash account';
+                                    }) ?? $accounts->first(function($a) {
+                                        $t = strtolower(trim($a->title));
+                                        return str_starts_with($t, 'cash') && !str_contains($t, 'jazz');
+                                    }) ?? $accounts->first(function($a) {
+                                        $t = strtolower(trim($a->title));
+                                        return str_contains($t, 'cash') && !str_contains($t, 'jazz') && !str_contains($t, 'easy');
+                                    }) ?? $accounts->first(function($a) {
+                                        return strtolower($a->head?->name ?? '') === 'cash';
+                                    }) ?? $accounts->first(function($a) {
+                                        return str_contains(strtolower($a->title), 'cash');
+                                    });
+                                    $defCashId = $defCashAcc ? $defCashAcc->id : null;
+                                    $selectedReceiptAccId = $savedReceiptAccountId ?? $defCashId;
+                                @endphp
                                 <div class="summary-row pt-2 align-items-center" id="changeAccountRow" style="display: none; border-top: 1px dashed #f1aeb5; background: #fff8f8; padding: 6px 8px; border-radius: 6px;">
                                     <span class="text-danger fw-bold d-flex align-items-center gap-1" style="font-size:0.76rem;"><i class="fas fa-hand-holding-usd"></i> Change A/C</span>
                                     <select class="form-select form-select-sm bg-white fw-bold text-danger border-danger" name="change_account_id" id="changeAccountId" style="width: 135px; font-size:0.75rem; height: 28px; padding: 2px 6px;">
                                         @foreach ($accounts as $acc)
-                                            <option value="{{ $acc->id }}" {{ ($sale->change_account_id == $acc->id || str_contains(strtolower($acc->title), 'cash')) ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                            <option value="{{ $acc->id }}" {{ (($sale->change_account_id && $acc->id == $sale->change_account_id) || (!$sale->change_account_id && $defCashId && $acc->id == $defCashId)) ? 'selected' : '' }}>{{ $acc->title }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -1354,7 +1376,7 @@
                                     <div class="d-flex gap-2 align-items-center mb-2 rv-row">
                                         <select class="form-select form-select-sm rv-account bg-light fw-bold" name="receipt_account_id[]" style="font-size:0.78rem;">
                                             @foreach ($accounts as $acc)
-                                                <option value="{{ $acc->id }}" {{ str_contains(strtolower($acc->title), 'cash') || str_contains(strtolower($acc->title), 'easypaisa') ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                                <option value="{{ $acc->id }}" {{ ($selectedReceiptAccId && $acc->id == $selectedReceiptAccId) ? 'selected' : '' }}>{{ $acc->title }}</option>
                                             @endforeach
                                         </select>
                                         <input type="number" step="0.01" class="form-control form-control-sm text-end rv-amount fw-bold" name="receipt_amount[]" value="{{ $sale->cash > 0 ? $sale->cash : '' }}" placeholder="0.00" style="width: 110px; font-size:0.8rem;">
@@ -1378,10 +1400,12 @@
                     </div>
 
                     <div class="d-flex align-items-center gap-2">
-                        <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Discount (Rs.)</span>
-                        <div class="input-group input-group-sm" style="width: 120px;">
-                            <input type="number" class="form-control text-end fw-bold text-danger" id="walkinDiscountRs" value="{{ $sale->total_extradiscount ?? 0 }}" placeholder="0">
-                            <span class="input-group-text bg-light text-muted fw-bold" style="font-size:0.75rem;">%</span>
+                        <span class="text-muted fw-bold" id="overallDiscountLabel" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Discount (Rs.)</span>
+                        <div class="input-group input-group-sm" style="width: 130px;">
+                            <input type="number" step="any" class="form-control text-end fw-bold text-danger" id="walkinDiscountRs" value="{{ (float)($sale->total_extradiscount ?? 0) }}" placeholder="0">
+                            <button type="button" class="btn btn-outline-secondary fw-bold px-2" id="overallDiscountToggle" data-type="pkr" style="font-size:0.75rem;" tabindex="-1">PKR</button>
+                            <input type="hidden" id="overallDiscountType" name="overall_discount_type" value="pkr">
+                            <input type="hidden" id="hiddenTotalExtraCost" name="total_extra_cost" value="{{ (float)($sale->total_extradiscount ?? 0) }}">
                         </div>
                     </div>
 
@@ -1400,18 +1424,13 @@
                         <span class="text-danger fw-bold" style="font-size:0.76rem;">Change A/C:</span>
                         <select class="form-select form-select-sm bg-light fw-bold text-danger border-danger" id="bottomChangeAccountId" style="width: 135px; font-size:0.75rem; height: 30px; padding: 2px 6px;">
                             @foreach ($accounts as $acc)
-                                <option value="{{ $acc->id }}" {{ ($sale->change_account_id == $acc->id || str_contains(strtolower($acc->title), 'cash')) ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                <option value="{{ $acc->id }}" {{ (($sale->change_account_id && $acc->id == $sale->change_account_id) || (!$sale->change_account_id && $defCashId && $acc->id == $defCashId)) ? 'selected' : '' }}>{{ $acc->title }}</option>
                             @endforeach
                         </select>
                     </div>
                     @endif
 
                     <div class="d-flex align-items-center gap-2">
-                        @if(!request()->has('convert_to_so') && !request()->has('convert_to_sale') && !in_array(($sale->sale_type ?? ''), ['quotation', 'sales_order']) && !in_array(request()->query('type'), ['quotation', 'sales_order']))
-                        <button type="button" class="btn btn-draft-complete d-flex align-items-center gap-2" id="btnSaveDraft2" title="Save as Draft">
-                            <i class="fas fa-file-alt"></i> Draft
-                        </button>
-                        @endif
                         <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
                             <i class="fas fa-check-circle"></i> {{ $btnText }}
                         </button>

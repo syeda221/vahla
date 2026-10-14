@@ -547,20 +547,20 @@
                             <table id="sales-table" class="table table-hover align-middle datanew premium-table" style="width:100%">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th class="py-3 ps-3 rounded-start text-secondary fw-semibold text-uppercase small">Invoice / Bill#</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Customer</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small" style="width: 130px; max-width: 150px;" title="Reference / Order No">Ref No</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Products</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-center">Qty</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Gross</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Inline Disc</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Add. Disc</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Net Total</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Paid</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Due</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Date</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Status</th>
-                                        <th class="py-3 pe-3 rounded-end text-secondary fw-semibold text-uppercase small text-center">Action</th>
+                                        <th class="py-3 ps-3 rounded-start text-secondary fw-semibold text-uppercase small" style="width: 105px;">Invoice / Bill#</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small" style="width: 130px;">Customer</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small" style="width: 100px;" title="Reference / Order No">Ref No</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small" style="min-width: 160px;">Products</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-center" style="width: 55px;">Qty</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end" style="width: 90px;">Gross</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end" style="width: 95px;">Inline Disc</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end" style="width: 85px;">Add. Disc</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end" style="width: 95px;">Net Total</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end" style="width: 85px;">Paid</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end" style="width: 80px;">Due</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-center" style="width: 90px;">Date</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-center" style="width: 85px;">Status</th>
+                                        <th class="py-3 pe-3 rounded-end text-secondary fw-semibold text-uppercase small text-center" style="width: 95px;">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="salesTableBody">
@@ -607,6 +607,10 @@
                         $('#sales-table').DataTable({
                             "pageLength": 10,
                             "order": [],
+                            "autoWidth": false,
+                            "columnDefs": [
+                                { "orderable": false, "targets": [13] }
+                            ],
                             "language": {
                                 "search": "",
                                 "searchPlaceholder": "Search sales..."

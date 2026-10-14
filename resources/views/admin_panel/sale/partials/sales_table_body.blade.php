@@ -282,11 +282,11 @@
             @endif
         </td>
 
-        <td class="text-nowrap small text-muted">
+        <td class="text-nowrap small text-muted text-center" style="white-space: nowrap;">
             {{ $sale->created_at->format('d/m/Y') }}
         </td>
-        <td>{!! $statusBadge !!}</td>
-        <td class="pe-3 text-center">
+        <td class="text-center" style="white-space: nowrap;">{!! $statusBadge !!}</td>
+        <td class="pe-3 text-center" style="white-space: nowrap; width: 95px;">
             <div class="dropdown">
                 <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" data-boundary="window" data-bs-boundary="window" aria-expanded="false">
                     <i class="fas fa-ellipsis-v small me-1"></i> Actions

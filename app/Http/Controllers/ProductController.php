@@ -1167,6 +1167,32 @@ class ProductController extends Controller
         ]);
     }
 
+    // ===== Check Item Code Availability =====
+    public function checkItemCode(Request $request)
+    {
+        $code = trim($request->input('code', ''));
+        $prefix = trim($request->input('prefix', ''));
+        $excludeId = $request->input('exclude_id');
+
+        if (empty($code)) {
+            return response()->json(['exists' => false, 'message' => 'Item code is required.']);
+        }
+
+        $fullCode = (!empty($prefix) && !str_starts_with($code, $prefix)) ? ($prefix . $code) : $code;
+
+        $query = Product::where('item_code', $fullCode);
+        if (!empty($excludeId)) {
+            $query->where('id', '!=', $excludeId);
+        }
+        $exists = $query->exists();
+
+        return response()->json([
+            'exists' => $exists,
+            'full_code' => $fullCode,
+            'message' => $exists ? 'Item code "' . $fullCode . '" already exists!' : 'Item code "' . $fullCode . '" is available.'
+        ]);
+    }
+
     // ===== Store product =====
     // ===== Store product =====
     public function store_product(Request $request)
@@ -1625,7 +1651,22 @@ class ProductController extends Controller
             $validated = $validation->validated();
         } else {
             $validation = $this->validateProductRequest($request);
-            $validation->validate();
+        }
+
+        // Validate Item Code Uniqueness upfront
+        if ($request->filled('item_code_number')) {
+            $num = trim($request->input('item_code_number', ''));
+            $pref = $request->input('item_code_prefix', '');
+            $targetCode = str_starts_with($num, $pref) ? $num : $pref . $num;
+            if (\App\Models\Product::where('item_code', $targetCode)->where('id', '!=', $id)->exists()) {
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'status' => 'error',
+                        'errors' => ['item_code_number' => ['Item code "' . $targetCode . '" already exists in this series. Please choose a different one.']]
+                    ], 422);
+                }
+                return redirect()->back()->withErrors(['item_code_number' => 'Item code "' . $targetCode . '" already exists in this series. Please choose a different one.'])->withInput();
+            }
         }
 
         $mode = $request->size_mode;
@@ -1892,13 +1933,19 @@ class ProductController extends Controller
                 $final_color = Product::where('id', $id)->value('color');
             }
 
-            if ($request->has('item_code_prefix') && $request->has('item_code_number')) {
-                $num = $request->item_code_number;
-                $pref = $request->item_code_prefix;
+            if ($request->filled('item_code_number')) {
+                $num = trim($request->item_code_number);
+                $pref = $request->input('item_code_prefix', '');
                 $item_code = str_starts_with($num, $pref) ? $num : $pref . $num;
                 
                 if (\App\Models\Product::where('item_code', $item_code)->where('id', '!=', $id)->exists()) {
-                    return redirect()->back()->withErrors(['item_code_number' => 'Item code ' . $item_code . ' already exists.'])->withInput();
+                    if ($request->wantsJson()) {
+                        return response()->json([
+                            'status' => 'error',
+                            'errors' => ['item_code_number' => ['Item code "' . $item_code . '" already exists in this series. Please choose a different one.']]
+                        ], 422);
+                    }
+                    return redirect()->back()->withErrors(['item_code_number' => 'Item code "' . $item_code . '" already exists in this series. Please choose a different one.'])->withInput();
                 }
                 
                 $series = \App\Models\ItemCodeSeries::where('prefix', $pref)->first();
@@ -2640,5 +2687,141 @@ class ProductController extends Controller
         }
 
         return $colorSizeMatch;
+    }
+
+    /**
+     * Delete a product if it has no associated invoices, delivery challans, quotations, or other transactions.
+     */
+    public function destroy(Request $request, $id)
+    {
+        $product = Product::find($id);
+
+        if (!$product) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found or already deleted.'
+            ], 404);
+        }
+
+        // 1. Check Sale Items (Sale Invoices, Quotations, Sales Orders)
+        $saleItem = \App\Models\SaleItem::where('product_id', $product->id)->with('sale')->first();
+        if ($saleItem) {
+            $sale = $saleItem->sale;
+            $type = 'Sale Invoice';
+            $docNo = '#' . $saleItem->sale_id;
+            if ($sale) {
+                $docNo = $sale->invoice_no ?: ('#' . $sale->id);
+                if ($sale->sale_type === 'quotation') {
+                    $type = 'Quotation';
+                } elseif ($sale->sale_type === 'sales_order') {
+                    $type = 'Sales Order';
+                }
+            }
+            return response()->json([
+                'success' => false,
+                'message' => "Product cannot be deleted because it is already used in {$type} ({$docNo})."
+            ], 422);
+        }
+
+        // 2. Check Delivery Challan (DC)
+        $dcItem = \App\Models\DeliveryChallanItem::where('product_id', $product->id)->with('deliveryChallan')->first();
+        if ($dcItem) {
+            $dcNo = ($dcItem->deliveryChallan && $dcItem->deliveryChallan->challan_no) 
+                ? $dcItem->deliveryChallan->challan_no 
+                : ('#' . $dcItem->delivery_challan_id);
+            return response()->json([
+                'success' => false,
+                'message' => "Product cannot be deleted because it is used in Delivery Challan ({$dcNo})."
+            ], 422);
+        }
+
+        // 3. Check Sale Returns
+        $returnItem = \App\Models\SaleReturnItem::where('product_id', $product->id)->with('saleReturn')->first();
+        if ($returnItem) {
+            $retNo = ($returnItem->saleReturn && $returnItem->saleReturn->invoice_no)
+                ? $returnItem->saleReturn->invoice_no
+                : ('#' . $returnItem->sale_return_id);
+            return response()->json([
+                'success' => false,
+                'message' => "Product cannot be deleted because it is used in Sale Return ({$retNo})."
+            ], 422);
+        }
+
+        // 4. Check Purchase Invoices
+        $purchItem = \App\Models\PurchaseItem::where('product_id', $product->id)->with('purchase')->first();
+        if ($purchItem) {
+            $pNo = ($purchItem->purchase && $purchItem->purchase->invoice_no)
+                ? $purchItem->purchase->invoice_no
+                : ('#' . $purchItem->purchase_id);
+            return response()->json([
+                'success' => false,
+                'message' => "Product cannot be deleted because it is used in Purchase Invoice ({$pNo})."
+            ], 422);
+        }
+
+        // 5. Check Purchase Returns
+        if (\App\Models\PurchaseReturnItem::where('product_id', $product->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => "Product cannot be deleted because it is linked to Purchase Return records."
+            ], 422);
+        }
+
+        // 6. Check Inward Gatepass
+        if (\App\Models\InwardGatepassItem::where('product_id', $product->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => "Product cannot be deleted because it is linked to Inward Gate Pass records."
+            ], 422);
+        }
+
+        // 7. Check Goods Receiving Notes (GRN)
+        if (\App\Models\GoodsReceivingNoteItem::where('product_id', $product->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => "Product cannot be deleted because it is linked to Goods Receiving Note (GRN) records."
+            ], 422);
+        }
+
+        // 8. Check Stock Transfers
+        if (\App\Models\StockTransfer::where('product_id', $product->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => "Product cannot be deleted because it is linked to Stock Transfer records."
+            ], 422);
+        }
+
+        // 9. Check Warehouse Stock
+        $totalStock = (float) \App\Models\WarehouseStock::where('product_id', $product->id)->sum('total_pieces');
+        if ($totalStock > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Product cannot be deleted because it still has available stock ({$totalStock} pcs) in warehouse."
+            ], 422);
+        }
+
+        // Delete product safely
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($product) {
+                \App\Models\WarehouseStock::where('product_id', $product->id)->delete();
+                \App\Models\ProductDiscount::where('product_id', $product->id)->delete();
+                \App\Models\ProductWebImage::where('product_id', $product->id)->delete();
+                $product->delete();
+            });
+
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Product '{$product->item_name}' was deleted successfully."
+                ]);
+            }
+
+            return redirect()->route('product')->with('success', "Product '{$product->item_name}' deleted successfully.");
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete product: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

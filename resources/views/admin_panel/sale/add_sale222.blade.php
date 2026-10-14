@@ -1030,11 +1030,17 @@
                                 @php
                                     $defCashAcc = $accounts->first(function($a) {
                                         $t = strtolower(trim($a->title));
-                                        return $t === 'cash' || $t === 'cash in hand';
+                                        return $t === 'cash' || $t === 'cash in hand' || $t === 'cash account';
                                     }) ?? $accounts->first(function($a) {
-                                        return str_contains(strtolower($a->title), 'cash');
+                                        $t = strtolower(trim($a->title));
+                                        return str_starts_with($t, 'cash') && !str_contains($t, 'jazz');
+                                    }) ?? $accounts->first(function($a) {
+                                        $t = strtolower(trim($a->title));
+                                        return str_contains($t, 'cash') && !str_contains($t, 'jazz') && !str_contains($t, 'easy');
                                     }) ?? $accounts->first(function($a) {
                                         return strtolower($a->head?->name ?? '') === 'cash';
+                                    }) ?? $accounts->first(function($a) {
+                                        return str_contains(strtolower($a->title), 'cash');
                                     });
                                     $defCashId = $defCashAcc ? $defCashAcc->id : null;
                                 @endphp
@@ -1042,7 +1048,7 @@
                                     <span class="text-danger fw-bold d-flex align-items-center gap-1" style="font-size:0.76rem;"><i class="fas fa-hand-holding-usd"></i> Change A/C</span>
                                     <select class="form-select form-select-sm bg-white fw-bold text-danger border-danger" name="change_account_id" id="changeAccountId" style="width: 135px; font-size:0.75rem; height: 28px; padding: 2px 6px;">
                                         @foreach ($accounts as $acc)
-                                            <option value="{{ $acc->id }}" {{ ($defCashId && $acc->id == $defCashId) || (!$defCashId && str_contains(strtolower($acc->title), 'cash')) ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                            <option value="{{ $acc->id }}" {{ ($defCashId && $acc->id == $defCashId) ? 'selected' : '' }}>{{ $acc->title }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -1065,7 +1071,7 @@
                                     <div class="d-flex gap-2 align-items-center mb-2 rv-row">
                                         <select class="form-select form-select-sm rv-account bg-light fw-bold" name="receipt_account_id[]" style="font-size:0.78rem;">
                                             @foreach ($accounts as $acc)
-                                                <option value="{{ $acc->id }}" {{ ($defCashId && $acc->id == $defCashId) || (!$defCashId && str_contains(strtolower($acc->title), 'cash')) ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                                <option value="{{ $acc->id }}" {{ ($defCashId && $acc->id == $defCashId) ? 'selected' : '' }}>{{ $acc->title }}</option>
                                             @endforeach
                                         </select>
                                         <input type="number" step="0.01" class="form-control form-control-sm text-end rv-amount fw-bold" name="receipt_amount[]" placeholder="0.00" style="width: 110px; font-size:0.8rem;">
@@ -1089,10 +1095,12 @@
                     </div>
 
                     <div class="d-flex align-items-center gap-2">
-                        <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Discount (Rs.)</span>
-                        <div class="input-group input-group-sm" style="width: 120px;">
-                            <input type="number" class="form-control text-end fw-bold text-danger" id="walkinDiscountRs" value="0" placeholder="0">
-                            <span class="input-group-text bg-light text-muted fw-bold" style="font-size:0.75rem;">%</span>
+                        <span class="text-muted fw-bold" id="overallDiscountLabel" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Discount (Rs.)</span>
+                        <div class="input-group input-group-sm" style="width: 130px;">
+                            <input type="number" step="any" class="form-control text-end fw-bold text-danger" id="walkinDiscountRs" value="0" placeholder="0">
+                            <button type="button" class="btn btn-outline-secondary fw-bold px-2" id="overallDiscountToggle" data-type="pkr" style="font-size:0.75rem;" tabindex="-1">PKR</button>
+                            <input type="hidden" id="overallDiscountType" name="overall_discount_type" value="pkr">
+                            <input type="hidden" id="hiddenTotalExtraCost" name="total_extra_cost" value="0">
                         </div>
                     </div>
 
@@ -1111,7 +1119,7 @@
                         <span class="text-danger fw-bold" style="font-size:0.76rem;">Change A/C:</span>
                         <select class="form-select form-select-sm bg-light fw-bold text-danger border-danger" id="bottomChangeAccountId" style="width: 135px; font-size:0.75rem; height: 30px; padding: 2px 6px;">
                             @foreach ($accounts as $acc)
-                                <option value="{{ $acc->id }}" {{ ($defCashId && $acc->id == $defCashId) || (!$defCashId && str_contains(strtolower($acc->title), 'cash')) ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                <option value="{{ $acc->id }}" {{ ($defCashId && $acc->id == $defCashId) ? 'selected' : '' }}>{{ $acc->title }}</option>
                             @endforeach
                         </select>
                     </div>

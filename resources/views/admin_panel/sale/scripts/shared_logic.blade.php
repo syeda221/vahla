@@ -641,8 +641,8 @@
         $row.find('.price-per-piece').val(unitPrice);
 
         const discValue = toNum($row.find('.discount-value').val());
-        const discType = $row.find('.discount-toggle').data('type');
-        let dam = toNum($row.find('.discount-amount').val());
+        const discType = $row.find('.discount-type-hidden').val() || $row.find('.discount-toggle').data('type') || $row.find('.discount-toggle').attr('data-type') || 'percent';
+        let dam = 0;
 
         // Discount Calculation
         if (discType === 'percent') {
@@ -650,6 +650,7 @@
         } else {
             dam = discValue > 0 ? discValue : 0;
         }
+        dam = Math.min(gross, dam);
         $row.find('.discount-amount').val(dam.toFixed(2));
 
         const netRow = Math.max(0, gross - dam);
@@ -684,16 +685,19 @@
             tNet += net;
         });
 
-        const isWalkin = $('#is_walkin').val() === '1';
-        
+        const overallDiscVal = toNum($('#walkinDiscountRs').val());
+        const overallDiscType = $('#overallDiscountType').val() || $('#overallDiscountToggle').data('type') || $('#overallDiscountToggle').attr('data-type') || 'pkr';
         let orderDisc = 0;
-        if (isWalkin) {
-            orderDisc = toNum($('#walkinDiscountRs').val());
-            $('#discountPercent').val(0); // clear percent
+
+        if (overallDiscType === 'percent') {
+            orderDisc = overallDiscVal > 0 ? (tNet * overallDiscVal) / 100 : 0;
         } else {
-            const orderPct = toNum($('#discountPercent').val());
-            orderDisc = (tNet * orderPct) / 100;
+            orderDisc = overallDiscVal > 0 ? overallDiscVal : 0;
         }
+        orderDisc = Math.min(tNet, orderDisc);
+
+        // Keep hidden input updated for form submission
+        $('#hiddenTotalExtraCost').val(orderDisc.toFixed(2));
 
         const prev = toNum($('#previousBalance').val());
         const receipts = toNum($('#receiptsTotal').text());
@@ -1709,12 +1713,22 @@
         // Discount Toggle: % <-> PKR
         $(document).on('click', '.discount-toggle', function() {
             const $btn = $(this);
-            const currentType = $btn.data('type');
+            const currentType = $btn.data('type') || $btn.attr('data-type') || $btn.closest('.discount-wrapper').find('.discount-type-hidden').val() || 'percent';
             const newType = currentType === 'percent' ? 'pkr' : 'percent';
-            $btn.data('type', newType).text(newType === 'percent' ? '%' : 'PKR');
+            $btn.data('type', newType).attr('data-type', newType).text(newType === 'percent' ? '%' : 'PKR');
             // Sync hidden input so form submission carries correct type
             $btn.closest('.discount-wrapper').find('.discount-type-hidden').val(newType);
             computeRow($btn.closest('tr'));
+            updateGrandTotals();
+        });
+
+        $(document).on('click', '#overallDiscountToggle', function() {
+            const $btn = $(this);
+            const currentType = $btn.data('type') || $btn.attr('data-type') || $('#overallDiscountType').val() || 'pkr';
+            const newType = currentType === 'pkr' ? 'percent' : 'pkr';
+            $btn.data('type', newType).attr('data-type', newType).text(newType === 'percent' ? '%' : 'PKR');
+            $('#overallDiscountType').val(newType);
+            $('#overallDiscountLabel').text(newType === 'percent' ? 'Discount (%)' : 'Discount (Rs.)');
             updateGrandTotals();
         });
 

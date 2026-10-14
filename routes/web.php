@@ -160,6 +160,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/product/validate-form', [ProductController::class, 'validateForm'])->name('product.validate');
     Route::get('/products/{id}/edit', [ProductController::class, 'edit'])->middleware('permission:products.edit')->name('products.edit');
     Route::get('/generate-barcode-image', [ProductController::class, 'generateBarcode'])->name('generate-barcode-image');
+    Route::get('/products/check-item-code', [ProductController::class, 'checkItemCode'])->name('products.check_item_code');
+    Route::delete('/products/{id}', [ProductController::class, 'destroy'])->middleware('permission:products.delete|products.edit')->name('products.destroy');
+    Route::delete('/product/delete/{id}', [ProductController::class, 'destroy'])->middleware('permission:products.delete|products.edit')->name('product.destroy');
 
     // ── Product Pricing & Valuation (Spreadsheet / Inline Edit) ──
     Route::get('/products/pricing-valuation', [App\Http\Controllers\ProductPricingController::class, 'index'])

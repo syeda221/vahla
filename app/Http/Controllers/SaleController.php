@@ -1172,8 +1172,10 @@ class SaleController extends Controller
         $recentProducts = Product::latest()->take(12)->get();
 
         // Filter accounts (Cash/Bank) for Receipt Voucher
-        $accounts = \App\Models\Account::whereHas('head', function($q) {
-            $q->whereIn('name', ['Cash', 'Bank']);
+        $accounts = \App\Models\Account::where(function($query) {
+            $query->whereHas('head', function($q) {
+                $q->whereIn('name', ['Cash', 'Bank', 'cash', 'bank']);
+            })->orWhere('title', 'like', '%cash%');
         })->where('status', 1)
             ->orderBy('title')
             ->get();
@@ -1181,8 +1183,32 @@ class SaleController extends Controller
         // 3. Reuse nextInvoiceNumber var for current invoice no (view expects this variable name)
         $nextInvoiceNumber = $sale->invoice_no;
 
+        // Try to find the existing payment account(s) used for this sale
+        $existingReceiptVoucher = \App\Models\VoucherMaster::where('voucher_type', \App\Models\VoucherMaster::TYPE_RECEIPT)
+            ->where('remarks', 'like', "%{$sale->invoice_no}%")
+            ->with(['details' => function($q) {
+                $q->where('debit', '>', 0);
+            }])
+            ->latest('id')
+            ->first();
+
+        $savedReceiptAccountId = null;
+        if ($existingReceiptVoucher && $existingReceiptVoucher->details->isNotEmpty()) {
+            $savedReceiptAccountId = $existingReceiptVoucher->details->first()->account_id;
+        }
+
+        if (!$savedReceiptAccountId) {
+            $legacyRV = \App\Models\ReceiptsVoucher::where('remarks', 'like', "%{$sale->invoice_no}%")->latest('id')->first();
+            if ($legacyRV && !empty($legacyRV->row_account_id)) {
+                $dec = json_decode($legacyRV->row_account_id, true);
+                if (is_array($dec) && !empty($dec)) {
+                    $savedReceiptAccountId = (int) reset($dec);
+                }
+            }
+        }
+
         // 4. Return the Edit Sale View
-        return view('admin_panel.sale.edit_sale', compact('warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allSeries', 'activePrefix'));
+        return view('admin_panel.sale.edit_sale', compact('warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allSeries', 'activePrefix', 'savedReceiptAccountId'));
     }
 
     public function updatesale(Request $request, $id)
@@ -1631,6 +1657,7 @@ class SaleController extends Controller
                 $saleItem->price = $dbPrice;
                 $saleItem->discount_percent = $calcDiscountPercent;
                 $saleItem->discount_amount = $calcDiscountAmount;
+                $saleItem->discount_type = $discType; // 'pkr' or 'percent'
                 $saleItem->total = $lineTotal;
 
                 // Meta
@@ -1661,12 +1688,19 @@ class SaleController extends Controller
 
             // Update Sale Totals
             $sale->total_bill_amount = $total_bill;
-            $sale->total_extradiscount = $request->total_extra_cost ?? 0;
-            $sale->total_net = $total_bill - $sale->total_extradiscount;
+            $sale->total_extradiscount = (float) ($request->total_extra_cost ?? $request->walkin_discount ?? $request->overall_discount ?? 0);
+            $sale->total_net = max(0, round($total_bill - $sale->total_extradiscount, 2));
             $sale->total_items = $total_items;
 
-            $sale->cash = $request->cash ?? 0;
-            $sale->change = ($sale->cash - $sale->total_net);
+            $receiptAmounts = $request->input('receipt_amount', []);
+            $totalCashPaid = 0;
+            if (is_array($receiptAmounts)) {
+                foreach ($receiptAmounts as $rAmt) {
+                    $totalCashPaid += (float) $rAmt;
+                }
+            }
+            $sale->cash = $totalCashPaid > 0 ? $totalCashPaid : (float)($request->cash ?? 0);
+            $sale->change = round($sale->cash - $sale->total_net, 2);
             $sale->change_account_id = $request->input('change_account_id') ?: null;
 
             $isConvertToSale = $request->has('convert_to_sale') && $request->convert_to_sale == '1';

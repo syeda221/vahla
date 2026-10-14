@@ -303,6 +303,8 @@
     .btn-act-quick:hover   { background: #f59e0b; color: #fff; border-color: #f59e0b; }
     .btn-act-act     { background: var(--erp-success-lt); color: var(--erp-success); border-color: #a7f3d0; }
     .btn-act-act:hover     { background: var(--erp-success); color: #fff; }
+    .btn-act-delete  { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+    .btn-act-delete:hover  { background: #dc2626; color: #fff; }
 
     /* ── Pagination ── */
     .erp-pagination { padding: 14px 20px; border-top: 1px solid var(--erp-border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
@@ -312,7 +314,7 @@
 
     /* ── Actions column – force min-width so buttons never wrap ── */
     #productTable th:last-child,
-    #productTable td:last-child { min-width: 240px; }
+    #productTable td:last-child { min-width: 275px; }
 
     /* ── Select checkbox ── */
     input[type="checkbox"].row-check { width: 16px; height: 16px; accent-color: var(--erp-primary); cursor: pointer; }
@@ -814,6 +816,16 @@
                                                 <i class="fas {{ $product->is_active ? 'fa-ban' : 'fa-check' }}"></i>
                                             </button>
                                         @endif
+                                        @if (auth()->user()->can('products.delete') || auth()->user()->can('products.edit') || auth()->user()->email === 'admin@admin.com')
+                                            <button type="button"
+                                                class="btn-act btn-act-delete deleteProductBtn"
+                                                data-id="{{ $product->id }}"
+                                                data-name="{{ $product->item_name }}"
+                                                data-code="{{ $product->item_code }}"
+                                                title="Delete Product">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -925,6 +937,16 @@
                                 data-active="{{ $product->is_active ? '1' : '0' }}"
                                 data-name="{{ $product->item_name }}">
                                 <i class="fas {{ $product->is_active ? 'fa-ban' : 'fa-check' }}"></i>
+                            </button>
+                        @endif
+                        @if (auth()->user()->can('products.delete') || auth()->user()->can('products.edit') || auth()->user()->email === 'admin@admin.com')
+                            <button type="button"
+                                class="btn-act btn-act-delete deleteProductBtn"
+                                data-id="{{ $product->id }}"
+                                data-name="{{ $product->item_name }}"
+                                data-code="{{ $product->item_code }}"
+                                title="Delete Product">
+                                <i class="fas fa-trash-alt"></i>
                             </button>
                         @endif
                     </div>
@@ -1476,6 +1498,65 @@ $(document).ready(function () {
                     Swal.fire({ toast:true, position:'top-end', icon:'success', title:res.message, showConfirmButton:false, timer:2500, timerProgressBar:true });
                 },
                 error: () => Swal.fire('Error', 'Could not update product status.', 'error')
+            });
+        });
+    });
+
+    // ── Delete Product ──
+    $(document).on('click', '.deleteProductBtn', function () {
+        const btn       = $(this);
+        const productId = btn.data('id');
+        const name      = btn.data('name');
+        const code      = btn.data('code') || '';
+
+        Swal.fire({
+            title: 'Delete Product?',
+            html:  `Are you sure you want to delete <b>${name}</b> ${code ? '(' + code + ')' : ''}?<br><small class="text-danger"><i class="fas fa-exclamation-triangle"></i> This action will remove the product if it has no transactions.</small>`,
+            icon:  'warning',
+            showCancelButton:   true,
+            confirmButtonText:  '<i class="fas fa-trash-alt me-1"></i> Yes, Delete',
+            confirmButtonColor: '#dc2626',
+            cancelButtonText:   'Cancel',
+        }).then(result => {
+            if (!result.isConfirmed) return;
+
+            btn.prop('disabled', true);
+            $.ajax({
+                url:  `/products/${productId}`,
+                type: 'DELETE',
+                data: { _token: '{{ csrf_token() }}' },
+                success: function (res) {
+                    btn.prop('disabled', false);
+                    if (res.success) {
+                        $(`#product-row-${productId}`).fadeOut(400, function() { $(this).remove(); });
+                        $(`#pmcard-${productId}`).fadeOut(400, function() { $(this).remove(); });
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted!',
+                            text: res.message,
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Cannot Delete Product',
+                            text: res.message || 'Product could not be deleted.'
+                        });
+                    }
+                },
+                error: function (xhr) {
+                    btn.prop('disabled', false);
+                    let msg = 'Could not delete product.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Cannot Delete Product',
+                        html: `<div class="text-danger text-start px-2"><i class="fas fa-shield-alt text-danger me-2"></i>${msg}</div>`
+                    });
+                }
             });
         });
     });

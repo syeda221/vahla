@@ -728,17 +728,23 @@
                                         @php
                                             $defCashAcc = $accounts->first(function($a) {
                                                 $t = strtolower(trim($a->title));
-                                                return $t === 'cash' || $t === 'cash in hand';
+                                                return $t === 'cash' || $t === 'cash in hand' || $t === 'cash account';
                                             }) ?? $accounts->first(function($a) {
-                                                return str_contains(strtolower($a->title), 'cash');
+                                                $t = strtolower(trim($a->title));
+                                                return str_starts_with($t, 'cash') && !str_contains($t, 'jazz');
+                                            }) ?? $accounts->first(function($a) {
+                                                $t = strtolower(trim($a->title));
+                                                return str_contains($t, 'cash') && !str_contains($t, 'jazz') && !str_contains($t, 'easy');
                                             }) ?? $accounts->first(function($a) {
                                                 return strtolower($a->head?->name ?? '') === 'cash';
+                                            }) ?? $accounts->first(function($a) {
+                                                return str_contains(strtolower($a->title), 'cash');
                                             });
                                             $defCashId = $defCashAcc ? $defCashAcc->id : null;
                                         @endphp
                                         <select class="form-select pos-input payment-account" name="receipt_account_id[]" required>
                                             @foreach ($accounts as $acc)
-                                                <option value="{{ $acc->id }}" {{ ($defCashId && $acc->id == $defCashId) || (!$defCashId && str_contains(strtolower($acc->title), 'cash')) ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                                <option value="{{ $acc->id }}" {{ ($defCashId && $acc->id == $defCashId) ? 'selected' : '' }}>{{ $acc->title }}</option>
                                             @endforeach
                                         </select>
                                     </div>

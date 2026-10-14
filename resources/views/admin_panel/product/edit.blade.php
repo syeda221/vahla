@@ -225,12 +225,36 @@
                                             <label class="form-label-pro">Product Name <span class="text-danger">*</span></label>
                                             <input type="text" class="form-control-pro fs-6 fw-bold" name="product_name" required value="{{ $product->item_name }}" placeholder="e.g. Ceramic Floor Tile 60x60">
                                         </div>
+                                        @php
+                                            $matchedSeriesPrefix = null;
+                                            if (!empty($product->item_code) && isset($itemCodeSeries)) {
+                                                foreach($itemCodeSeries as $series) {
+                                                    if (str_starts_with($product->item_code, $series->prefix) || str_starts_with($product->item_code, trim($series->prefix, '-'))) {
+                                                        $matchedSeriesPrefix = $series->prefix;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        @endphp
                                         <div class="col-md-4">
-                                            <label class="form-label-pro">Barcode Auto-Gen</label>
-                                            <div class="d-flex">
-                                                <input type="text" class="form-control-pro" id="barcodeInput" name="barcode_path" value="{{ $product->barcode_path }}" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
-                                                <button type="button" class="btn btn-light border" id="generateBarcodeBtn" style="border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; border-top-right-radius: var(--radius-md); border-bottom-right-radius: var(--radius-md);"><i class="las la-magic"></i></button>
+                                            <label class="form-label-pro text-uppercase fw-bold text-muted" style="font-size:11px;">Item Code Series</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select text-white fw-bold" name="item_code_prefix" style="max-width: 100px; background-color: #0ea5e9; border: 1px solid #0ea5e9; cursor: pointer; padding-left: 8px; padding-right: 24px;" id="itemCodePrefixDropdown" onchange="updateNextNumber()">
+                                                    @foreach($itemCodeSeries as $series)
+                                                        @php
+                                                            $isSel = $matchedSeriesPrefix ? ($series->prefix === $matchedSeriesPrefix) : $series->is_default;
+                                                        @endphp
+                                                        <option value="{{ $series->prefix }}" data-next="{{ $series->prefix }}{{ str_pad($series->next_number, 4, '0', STR_PAD_LEFT) }}" {{ $isSel ? 'selected' : '' }}>{{ trim($series->prefix, '-') }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <input type="text" class="form-control text-center fw-bold text-dark" id="itemCodePreview" name="item_code_number" value="{{ $product->item_code }}" readonly placeholder="Auto" style="border-color: #0ea5e9; border-left: none;">
+                                                <button class="btn btn-light" style="border: 1px solid #0ea5e9; border-left: none; color: #475569;" type="button" title="Edit Number" onclick="document.getElementById('itemCodePreview').removeAttribute('readonly'); document.getElementById('itemCodePreview').focus();">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-light" style="border: 1px solid #0ea5e9; border-left: none; color: #475569;" type="button" title="Add Series" onclick="showNewSeriesModal()">+</button>
                                             </div>
+                                            <div id="itemCodeFeedback" class="small mt-1" style="font-size: 11px;"></div>
+                                            <input type="hidden" id="barcodeInput" name="barcode_path" value="{{ $product->barcode_path }}">
                                         </div>
                                         
                                         <div class="col-md-3">
@@ -441,11 +465,20 @@
                     </div>
 
                     {{-- INLINE ACTIONS ROW --}}
-                    <div class="d-flex justify-content-end align-items-center bg-white p-3 rounded shadow-sm border mb-4 gap-2">
-                        <a href="{{ route('product') }}" class="btn btn-outline-secondary px-4 py-2" style="border-radius: var(--radius-md); font-size: 0.9rem;">Cancel</a>
-                        <button type="submit" class="btn btn-primary px-5 py-2 fw-bold" style="background: var(--primary); border: none; border-radius: var(--radius-md); font-size: 0.9rem;">
-                            <i class="las la-check-circle me-1"></i> UPDATE PRODUCT
-                        </button>
+                    <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded shadow-sm border mb-4 gap-2">
+                        @if (auth()->user()->can('products.delete') || auth()->user()->can('products.edit') || auth()->user()->email === 'admin@admin.com')
+                            <button type="button" class="btn btn-outline-danger px-3 py-2 fw-bold" id="btnDeleteProductEdit" style="border-radius: var(--radius-md); font-size: 0.9rem;">
+                                <i class="fas fa-trash-alt me-1"></i> Delete Product
+                            </button>
+                        @else
+                            <div></div>
+                        @endif
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="{{ route('product') }}" class="btn btn-outline-secondary px-4 py-2" style="border-radius: var(--radius-md); font-size: 0.9rem;">Cancel</a>
+                            <button type="submit" class="btn btn-primary px-5 py-2 fw-bold" style="background: var(--primary); border: none; border-radius: var(--radius-md); font-size: 0.9rem;">
+                                <i class="las la-check-circle me-1"></i> UPDATE PRODUCT
+                            </button>
+                        </div>
                     </div>
 
                 </div>
@@ -536,6 +569,28 @@
                             <button type="submit" class="btn btn-primary w-100 rounded-pill">Create Brand</button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- New Series Modal --}}
+        <div class="modal fade" id="newSeriesModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: var(--radius-md);">
+                    <div class="modal-header border-0 pb-0">
+                        <h6 class="modal-title fw-bold">Add Series</h6>
+                        <button type="button" class="btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="newSeriesForm" method="POST" action="{{ route('item-code-series.store') }}">
+                            @csrf
+                            <div class="mb-3">
+                                <label class="form-label-pro">Prefix (e.g. PRD-)</label>
+                                <input type="text" name="prefix" class="form-control-pro" required placeholder="e.g. PRD-">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 rounded-pill">Save Series</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1193,6 +1248,24 @@
                 form.addEventListener('submit', function(e) {
                     e.preventDefault();
 
+                    const codeInput = document.getElementById('itemCodePreview');
+                    if (codeInput && codeInput.classList.contains('is-invalid')) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Validation Error',
+                            text: 'The item code already exists or is invalid. Please choose a different one.'
+                        });
+                        return;
+                    }
+                    if (codeInput && !codeInput.value.trim()) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Validation Error',
+                            text: 'Item code cannot be empty.'
+                        });
+                        return;
+                    }
+
                     if (variantMode === 'weight' && variantsContainer && !variantsContainer.classList.contains('d-none')) {
                         const factors = Array.from(document.querySelectorAll('input[name="variant_conv_factor[]"]')).map(el => parseFloat(el.value));
                         const uniqueFactors = new Set(factors);
@@ -1619,7 +1692,134 @@
             if (isMobile()) rebuildMobileCards();
         });
 
+        function showNewSeriesModal() {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                new bootstrap.Modal(document.getElementById('newSeriesModal')).show();
+            } else {
+                $('#newSeriesModal').modal('show');
+            }
+        }
+
+        function updateNextNumber() {
+            var s = document.getElementById('itemCodePrefixDropdown');
+            if (!s) return;
+            var opt = s.options[s.selectedIndex];
+            if (opt) {
+                var preview = document.getElementById('itemCodePreview');
+                if (preview) {
+                    preview.value = opt.getAttribute('data-next') || '';
+                    checkItemCodeAvailability();
+                }
+            }
+        }
+
+        let checkCodeTimer = null;
+        function checkItemCodeAvailability() {
+            clearTimeout(checkCodeTimer);
+            checkCodeTimer = setTimeout(function() {
+                var input = document.getElementById('itemCodePreview');
+                var feedback = document.getElementById('itemCodeFeedback');
+                var prefixSelect = document.getElementById('itemCodePrefixDropdown');
+                if (!input || !feedback) return;
+                var code = input.value.trim();
+                var prefix = prefixSelect ? prefixSelect.value : '';
+
+                if (!code) {
+                    feedback.innerHTML = '<span class="text-danger fw-bold"><i class="fas fa-exclamation-circle"></i> Item code cannot be empty</span>';
+                    input.classList.add('is-invalid');
+                    input.classList.remove('is-valid');
+                    return;
+                }
+
+                $.ajax({
+                    url: "{{ route('products.check_item_code') }}",
+                    type: "GET",
+                    data: {
+                        code: code,
+                        prefix: prefix,
+                        exclude_id: "{{ $product->id }}"
+                    },
+                    success: function(res) {
+                        if (res.exists) {
+                            feedback.innerHTML = '<span class="text-danger fw-bold"><i class="fas fa-times-circle"></i> ' + res.message + '</span>';
+                            input.classList.add('is-invalid');
+                            input.classList.remove('is-valid');
+                        } else {
+                            if (code !== "{{ $product->item_code }}") {
+                                feedback.innerHTML = '<span class="text-success fw-bold"><i class="fas fa-check-circle"></i> ' + res.message + '</span>';
+                                input.classList.add('is-valid');
+                                input.classList.remove('is-invalid');
+                            } else {
+                                feedback.innerHTML = '<span class="text-muted"><i class="fas fa-check"></i> Current item code</span>';
+                                input.classList.remove('is-invalid', 'is-valid');
+                            }
+                        }
+                    }
+                });
+            }, 250);
+        }
+
+        $(document).on('input propertychange paste change', '#itemCodePreview', function() {
+            checkItemCodeAvailability();
+        });
+
+        $('#btnDeleteProductEdit').on('click', function() {
+            Swal.fire({
+                title: 'Delete Product?',
+                html: 'Are you sure you want to delete <b>{{ addslashes($product->item_name) }}</b>?<br><small class="text-danger"><i class="fas fa-exclamation-triangle"></i> This action will remove the product if it has no transactions.</small>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-trash-alt me-1"></i> Yes, Delete',
+                confirmButtonColor: '#dc2626',
+                cancelButtonText: 'Cancel'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                const btn = $(this);
+                btn.prop('disabled', true);
+                $.ajax({
+                    url: "{{ route('products.destroy', $product->id) }}",
+                    type: 'DELETE',
+                    data: { _token: '{{ csrf_token() }}' },
+                    success: function(res) {
+                        if (res.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Deleted!',
+                                text: res.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.href = "{{ route('product') }}";
+                            });
+                        } else {
+                            btn.prop('disabled', false);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Cannot Delete Product',
+                                text: res.message || 'Product could not be deleted.'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        btn.prop('disabled', false);
+                        let msg = 'Could not delete product.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Cannot Delete Product',
+                            html: `<div class="text-danger text-start px-2"><i class="fas fa-shield-alt text-danger me-2"></i>${msg}</div>`
+                        });
+                    }
+                });
+            });
+        });
+
         // Make functions global
+        window.showNewSeriesModal = showNewSeriesModal;
+        window.updateNextNumber = updateNextNumber;
+        window.checkItemCodeAvailability = checkItemCodeAvailability;
         window.mobileAddVariant = mobileAddVariant;
         window.mobToggleCard = mobToggleCard;
         window.mobDeleteCard = mobDeleteCard;
