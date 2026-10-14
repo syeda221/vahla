@@ -725,9 +725,20 @@
                                 <div class="row g-2 payment-row mb-2">
                                     <div class="col-7">
                                         <label class="small text-secondary mb-1">Payment Account</label>
+                                        @php
+                                            $defCashAcc = $accounts->first(function($a) {
+                                                $t = strtolower(trim($a->title));
+                                                return $t === 'cash' || $t === 'cash in hand';
+                                            }) ?? $accounts->first(function($a) {
+                                                return str_contains(strtolower($a->title), 'cash');
+                                            }) ?? $accounts->first(function($a) {
+                                                return strtolower($a->head?->name ?? '') === 'cash';
+                                            });
+                                            $defCashId = $defCashAcc ? $defCashAcc->id : null;
+                                        @endphp
                                         <select class="form-select pos-input payment-account" name="receipt_account_id[]" required>
                                             @foreach ($accounts as $acc)
-                                                <option value="{{ $acc->id }}" {{ str_contains(strtolower($acc->title), 'cash') ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                                <option value="{{ $acc->id }}" {{ ($defCashId && $acc->id == $defCashId) || (!$defCashId && str_contains(strtolower($acc->title), 'cash')) ? 'selected' : '' }}>{{ $acc->title }}</option>
                                             @endforeach
                                         </select>
                                     </div>

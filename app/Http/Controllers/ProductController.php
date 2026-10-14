@@ -2318,9 +2318,10 @@ class ProductController extends Controller
     {
         $rules = [
             'product_name' => 'required|string|max:255',
-            'category_id' => 'required',
+            'category_id' => 'nullable',
             'sub_category_id' => 'nullable',
-            'brand_id' => 'required',
+            'brand_id' => 'nullable',
+            'branch_id' => 'nullable',
             'unit' => 'nullable',
             'model' => 'nullable', // Made nullable
             'size_mode' => 'required|in:by_size,by_cartons,by_pieces,by_kg,by_meter,by_gm,by_feet,by_ton',

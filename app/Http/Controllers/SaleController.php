@@ -245,8 +245,10 @@ class SaleController extends Controller
         $recentProducts = Product::latest()->take(12)->get();
 
         // Filter accounts (Cash/Bank) for Payment Voucher
-        $accounts = \App\Models\Account::whereHas('head', function($q) {
-            $q->whereIn('name', ['Cash', 'Bank']);
+        $accounts = \App\Models\Account::where(function($query) {
+            $query->whereHas('head', function($q) {
+                $q->whereIn('name', ['Cash', 'Bank', 'cash', 'bank']);
+            })->orWhere('title', 'like', '%cash%');
         })->where('status', 1)
             ->orderBy('title')
             ->get();

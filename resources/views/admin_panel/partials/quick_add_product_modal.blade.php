@@ -40,8 +40,8 @@
                     {{-- Row 2: Category, Sub Category, Brand --}}
                     <div class="row g-3 mb-4">
                         <div class="col-md-4">
-                            <label class="form-label fw-bold small text-muted mb-1">Category <span class="text-danger">*</span></label>
-                            <select class="form-select" name="category_id" id="qap_category" required style="height: 38px;">
+                            <label class="form-label fw-bold small text-muted mb-1">Category</label>
+                            <select class="form-select" name="category_id" id="qap_category" style="height: 38px;">
                                 <option value="">Select Category</option>
                             </select>
                         </div>
@@ -52,8 +52,8 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-bold small text-muted mb-1">Brand <span class="text-danger">*</span></label>
-                            <select class="form-select" name="brand_id" id="qap_brand" required style="height: 38px;">
+                            <label class="form-label fw-bold small text-muted mb-1">Brand</label>
+                            <select class="form-select" name="brand_id" id="qap_brand" style="height: 38px;">
                                 <option value="">Select Brand</option>
                             </select>
                         </div>

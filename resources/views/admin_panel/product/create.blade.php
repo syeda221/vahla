@@ -577,9 +577,9 @@
                                         </div>
 
                                         <div class="col-md-3">
-                                            <label class="form-label-pro">Category <span class="text-danger">*</span></label>
+                                            <label class="form-label-pro">Category</label>
                                             <div class="d-flex gap-1">
-                                                <select class="form-select form-control-pro form-select-pro" id="category-dropdown" name="category_id" required>
+                                                <select class="form-select form-control-pro form-select-pro" id="category-dropdown" name="category_id">
                                                     <option value="">Select...</option>
                                                     @foreach ($categories as $cat)
                                                         <option value="{{ $cat->id }}">{{ $cat->name }}</option>
@@ -600,7 +600,7 @@
                                         <div class="col-md-3">
                                             <label class="form-label-pro">Brand</label>
                                             <div class="d-flex gap-1">
-                                                <select class="form-select form-control-pro form-select-pro" name="brand_id" required>
+                                                <select class="form-select form-control-pro form-select-pro" name="brand_id">
                                                     <option value="">Select...</option>
                                                     @foreach ($brands as $brand)
                                                         <option value="{{ $brand->id }}">{{ $brand->name }}</option>
