@@ -51,9 +51,11 @@
             </h3>
             <p class="text-muted mb-0" style="font-size: 0.9rem;">Manage and consolidate direct delivery challans</p>
         </div>
+        @can('direct_dc.create')
         <a href="{{ route('direct-dc.create') }}" class="btn btn-primary shadow-sm px-4 fw-bold rounded-2">
             <i class="fas fa-plus me-1"></i> Create Direct DC
         </a>
+        @endcan
     </div>
     <div class="row">
         <div class="col-12 grid-margin stretch-card">
@@ -80,7 +82,9 @@
                                 <input type="checkbox" id="selectAllBar" checked>
                                 <span id="selectionText"><strong>0 selected</strong> &mdash; customer: <span id="selectionCustomerName"></span></span>
                             </div>
+                            @canany(['direct_dc.consolidate', 'delivery_challans.generate_invoice'])
                             <button type="button" id="btnConsolidate" class="btn-consolidate">Consolidate into invoice</button>
+                            @endcanany
                         </div>
 
                         <div class="table-responsive">
@@ -141,16 +145,22 @@
                                         <td class="text-center">
                                             <div class="d-flex align-items-center justify-content-center gap-2">
                                                 @if(!$isInvoiced)
+                                                    @can('direct_dc.edit')
                                                     <a href="{{ route('direct-dc.edit', $dc->id) }}" class="btn btn-sm btn-outline-info rounded-pill px-3 shadow-sm"><i class="fas fa-edit"></i> Edit</a>
+                                                    @endcan
+                                                    @can('direct_dc.delete')
                                                     <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm btn-delete-dc" data-id="{{ $dc->id }}" data-no="{{ $dc->dc_number }}" data-url="{{ route('direct-dc.destroy', $dc->id) }}" title="Delete Delivery Challan">
                                                         <i class="fas fa-trash-alt"></i> Delete
                                                     </button>
+                                                    @endcan
                                                 @else
                                                     <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-sm btn-invoiced-alert" title="Already Invoiced">
                                                         <i class="fas fa-lock"></i> Invoiced
                                                     </button>
                                                 @endif
+                                                @canany(['direct_dc.view', 'delivery_challans.view'])
                                                 <a href="{{ route('sales.dc_print', $dc->id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" target="_blank"><i class="fas fa-print"></i> Print</a>
+                                                @endcanany
                                             </div>
                                         </td>
                                     </tr>

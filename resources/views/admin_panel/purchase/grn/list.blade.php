@@ -24,9 +24,11 @@
                     <i class="fas fa-arrow-left me-1"></i> Back to Orders
                 </a>
                 @if($purchase->receiving_status !== 'received')
+                    @can('grn.create')
                     <a href="{{ route('purchases.grn.create', $purchase->id) }}" class="btn btn-primary btn-sm fw-bold px-3">
                         <i class="fas fa-plus me-1"></i> New GRN (Receive Goods)
                     </a>
+                    @endcan
                 @endif
             </div>
         </div>
@@ -37,9 +39,11 @@
                     <i class="fas fa-box-open fa-3x mb-3 text-secondary opacity-50"></i>
                     <h6>No Goods Receiving Notes found for this Purchase Order.</h6>
                     <p class="small mb-3">When goods arrive from the vendor, record receiving by creating a GRN.</p>
+                    @can('grn.create')
                     <a href="{{ route('purchases.grn.create', $purchase->id) }}" class="btn btn-primary btn-sm fw-bold">
                         <i class="fas fa-truck-loading me-1"></i> Receive Goods Now
                     </a>
+                    @endcan
                 </div>
             @else
                 <div class="table-responsive">
@@ -107,21 +111,27 @@
                                     <td class="pe-3 text-end">
                                         <div class="d-flex justify-content-end gap-1">
                                             @if(!$grn->is_invoiced)
+                                                @can('grn.generate_invoice')
                                                 <a href="{{ route('direct-grn.index', ['highlight_grn' => $grn->id, 'purchase_id' => $purchase->id]) }}" 
                                                    class="btn btn-sm btn-success fw-bold px-2 py-1">
                                                     <i class="fas fa-file-invoice-dollar me-1"></i> Bill
                                                 </a>
+                                                @endcan
+                                                @can('grn.delete')
                                                 <button type="button" class="btn btn-sm btn-outline-danger fw-bold px-2 py-1 btn-delete-grn" data-id="{{ $grn->id }}" data-no="{{ $grn->grn_number }}" data-url="{{ route('purchases.grn.destroy', $grn->id) }}" title="Delete GRN">
                                                     <i class="fas fa-trash-alt"></i> Delete
                                                 </button>
+                                                @endcan
                                             @else
                                                 <button type="button" class="btn btn-sm btn-outline-secondary fw-bold px-2 py-1 btn-invoiced-grn-alert" title="Already Invoiced">
                                                     <i class="fas fa-lock"></i> Invoiced
                                                 </button>
                                             @endif
+                                            @canany(['grn.view', 'purchase_orders.view'])
                                             <a href="{{ route('purchases.grn.print', $grn->id) }}" target="_blank" class="btn btn-sm btn-outline-secondary px-2 py-1 fw-bold" title="Print GRN Slip">
                                                 <i class="fas fa-print"></i> Print
                                             </a>
+                                            @endcanany
                                         </div>
                                     </td>
                                 </tr>

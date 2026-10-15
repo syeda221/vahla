@@ -81,9 +81,11 @@
                 $uninvoicedDc = $sale->deliveryChallans->where('is_invoiced', 0)->first();
             @endphp
             @if($uninvoicedDc)
+                @can('delivery_challans.generate_invoice')
                 <a href="{{ route('direct-dc.index', ['highlight_dc' => $uninvoicedDc->id, 'sale_id' => $sale->id]) }}" class="btn btn-xs btn-outline-success py-0 px-2 rounded-pill fw-bold" style="font-size: 10px; height: 22px; line-height: 20px;">
                     <i class="fas fa-plus me-1"></i> Invoice Un-invoiced DC
                 </a>
+                @endcan
             @endif
         </div>
         <div class="p-0" style="min-height: 0 !important;">
@@ -136,9 +138,11 @@
                                         </span>
                                     </td>
                                     <td class="py-2 text-end pe-3">
+                                        @can('sales.view')
                                         <a href="{{ route('sales.invoice', $inv->id) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0 fw-semibold" style="font-size: 11px; height: 24px; line-height: 22px;" title="Print Invoice">
                                             <i class="fas fa-print me-1"></i> Print
                                         </a>
+                                        @endcan
                                     </td>
                                 </tr>
                             @endforeach

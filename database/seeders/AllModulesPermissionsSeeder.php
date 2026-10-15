@@ -38,7 +38,19 @@ class AllModulesPermissionsSeeder extends Seeder
             'vendor.bilties',
             'inward.gatepass',
             'sales',
+            'sales_orders',
+            'quotations',
+            'delivery_challans',
+            'direct_dc',
             'sales.returns',
+            'purchases',
+            'purchase_orders',
+            'grn',
+            'direct_grn',
+            'purchase.returns',
+            'vendors',
+            'vendor.bilties',
+            'inward.gatepass',
             'customers',
             'customer_types',
             'customer.ledger',
@@ -100,26 +112,44 @@ class AllModulesPermissionsSeeder extends Seeder
             foreach ($actions as $action) {
                 // Format: module.action (lowercase)
                 $permissionName = strtolower("{$module}.{$action}");
-                Permission::firstOrCreate(['name' => $permissionName]);
+                Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => 'web']);
             }
         }
 
-        // Register Website Settings specific permissions (with custom actions)
-        foreach ([
+        // Register special granular actions
+        $specialActions = [
+            'sales.print',
+            'sales_orders.generate_invoice',
+            'sales_orders.print',
+            'quotations.convert_to_so',
+            'quotations.convert_to_sale',
+            'quotations.print',
+            'delivery_challans.generate_invoice',
+            'delivery_challans.print',
+            'direct_dc.consolidate',
+            'direct_dc.print',
+            'purchases.print',
+            'purchase_orders.print',
+            'grn.generate_invoice',
+            'grn.print',
+            'direct_grn.consolidate',
+            'direct_grn.print',
             'website-settings.view',
             'website-settings.create',
             'website-settings.edit',
             'website-settings.delete',
             'website-settings.update',
             'website-settings.upload_manage'
-        ] as $permName) {
-            Permission::firstOrCreate(['name' => $permName]);
+        ];
+
+        foreach ($specialActions as $permName) {
+            Permission::firstOrCreate(['name' => $permName, 'guard_name' => 'web']);
         }
 
-        // Grant all new permissions to Super Admin just in case (though Gate::before handles it)
-        $superAdmin = Role::where('name', 'Super Admin')->first();
-        if ($superAdmin) {
-            $superAdmin->syncPermissions(Permission::all());
+        // Grant all permissions to Super Admin and Admin roles
+        $roles = Role::whereIn('name', ['Super Admin', 'superAdmin', 'admin'])->get();
+        foreach ($roles as $role) {
+            $role->syncPermissions(Permission::all());
         }
     }
 }

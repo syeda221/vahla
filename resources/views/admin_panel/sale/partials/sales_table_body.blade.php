@@ -292,28 +292,43 @@
                     <i class="fas fa-ellipsis-v small me-1"></i> Actions
                 </button>
                 <ul class="dropdown-menu dropdown-menu-right border-0 shadow-lg rounded-3">
-                    @can('sales.edit')
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.edit', $sale->id) }}">
-                                <i class="fas fa-edit text-primary fa-fw"></i> Edit (Simple)
-                            </a>
-                        </li>
-                        {{-- <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('pos.index') }}?edit_id={{ $sale->id }}">
-                                <i class="fas fa-cash-register text-success fa-fw"></i> Edit (POS Sale)
-                            </a>
-                        </li> --}}
-                    @endcan
+                    @if ($sale->sale_type === 'quotation')
+                        @can('quotations.edit')
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.edit', $sale->id) }}">
+                                    <i class="fas fa-edit text-primary fa-fw"></i> Edit Quotation
+                                </a>
+                            </li>
+                        @endcan
+                    @elseif ($sale->sale_type === 'sales_order')
+                        @can('sales_orders.edit')
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.edit', $sale->id) }}">
+                                    <i class="fas fa-edit text-primary fa-fw"></i> Edit Order
+                                </a>
+                            </li>
+                        @endcan
+                    @else
+                        @can('sales.edit')
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.edit', $sale->id) }}">
+                                    <i class="fas fa-edit text-primary fa-fw"></i> Edit (Simple)
+                                </a>
+                            </li>
+                        @endcan
+                    @endif
 
                     @if ($sale->sale_status === 'draft' || $sale->sale_status === 'booked')
-                        @can('sales.create')
-                            @if ($sale->sale_type === 'quotation')
+                        @if ($sale->sale_type === 'quotation')
+                            @canany(['quotations.convert_to_sale', 'sales.create'])
                                 <li>
                                     <a class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold" href="{{ route('sales.edit', $sale->id) }}?convert_to_sale=1">
                                         <i class="fas fa-check-circle fa-fw text-success"></i> Convert to Sale
                                     </a>
                                 </li>
-                            @else
+                            @endcanany
+                        @else
+                            @can('sales.create')
                                 <li>
                                     <form action="{{ route('sales.confirm', $sale->id) }}" method="POST" class="confirm-booking-form">
                                         @csrf
@@ -334,8 +349,8 @@
                                         </button>
                                     </form>
                                 </li>
-                            @endif
-                        @endcan
+                            @endcan
+                        @endif
                     @endif
 
                     @if ($saleDue > 0.001 && $sale->customer_id && ($sale->sale_type === 'direct_sale' || empty($sale->sale_type) || ($sale->sale_type === 'sales_order' && $sale->sale_status === 'posted')))
@@ -348,8 +363,8 @@
 
                     <li><hr class="dropdown-divider"></li>
 
-                    @can('sales.view')
-                        @if ($sale->sale_type === 'direct_sale' || empty($sale->sale_type) || ($sale->sale_type === 'sales_order' && $sale->sale_status === 'posted'))
+                    @if ($sale->sale_type === 'direct_sale' || empty($sale->sale_type) || ($sale->sale_type === 'sales_order' && $sale->sale_status === 'posted'))
+                        @canany(['sales.view', 'sales_orders.view', 'sales.print'])
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', $sale->id) }}" target="_blank">
                                     <i class="fas fa-file-invoice text-info fa-fw"></i> View Invoice
@@ -376,71 +391,72 @@
                                     </a>
                                 </li>
                             @endif
-                            {{-- Thermal DC Removed --}}
-                        @endif
+                        @endcanany
+                    @endif
 
-                        @if ($sale->sale_type === 'quotation')
+                    @if ($sale->sale_type === 'quotation')
+                        @canany(['quotations.view', 'quotations.print'])
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', ['id' => $sale->id, 'type' => 'estimate']) }}" target="_blank">
                                     <i class="fas fa-file-contract text-info fa-fw"></i> Print Quotation
                                 </a>
                             </li>
-                            @can('sales.create')
-                                @if (!isset($hasConverted) || !$hasConverted)
-                                    <li>
-                                        <a class="dropdown-item d-flex align-items-center gap-2 py-2 fw-bold text-primary" href="{{ route('sales.edit', $sale->id) }}?convert_to_so=1">
-                                            <i class="fas fa-random text-primary fa-fw"></i> Convert to Sales Order
-                                        </a>
-                                    </li>
-                                @endif
-                            @endcan
-                        @endif
-
-                        @php
-                            $uninvoicedDc = $sale->deliveryChallans ? $sale->deliveryChallans->where('is_invoiced', 0)->first() : null;
-                        @endphp
-
-                        @if ($sale->sale_type === 'sales_order' && $uninvoicedDc)
-                            @can('sales.create')
+                        @endcanany
+                        @canany(['quotations.convert_to_so', 'sales_orders.create'])
+                            @if (!isset($hasConverted) || !$hasConverted)
                                 <li>
-                                    <a class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold" href="{{ route('direct-dc.index', ['highlight_dc' => $uninvoicedDc->id, 'sale_id' => $sale->id]) }}">
-                                        <i class="fas fa-file-invoice-dollar fa-fw text-success"></i> Generate Partial Invoice
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2 fw-bold text-primary" href="{{ route('sales.edit', $sale->id) }}?convert_to_so=1">
+                                        <i class="fas fa-random text-primary fa-fw"></i> Convert to Sales Order
                                     </a>
                                 </li>
-                            @endcan
-                        @elseif ($sale->sale_type === 'sales_order' && $sale->delivery_status === 'delivered' && $sale->sale_status !== 'posted')
-                            @can('sales.create')
-                                <li>
-                                    <button type="button" 
-                                            class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold btn-open-invoice-series-modal" 
-                                            data-sale-id="{{ $sale->id }}" 
-                                            data-order-no="{{ $orderDocNo }}" 
-                                            data-customer="{{ optional($sale->customer_relation)->customer_name ?? ($sale->walkin_name ?? 'Walk-in') }}"
-                                            data-amount="{{ number_format($sale->total_net, 2) }}"
-                                            data-date="{{ date('Y-m-d') }}">
-                                        <i class="fas fa-file-invoice-dollar fa-fw text-success"></i> Generate Invoice
-                                    </button>
-                                </li>
-                            @endcan
-                        @endif
+                            @endif
+                        @endcanany
+                    @endif
 
-                        @if ($sale->sale_type === 'sales_order')
-                            @can('sales.create')
-                                <li>
-                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.create_dc', $sale->id) }}">
-                                        <i class="fas fa-truck-loading text-warning fa-fw"></i> Create Delivery Challan
-                                    </a>
-                                </li>
-                            @endcan
-                            @can('sales.view')
-                                <li>
-                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc_list', $sale->id) }}">
-                                        <i class="fas fa-list text-info fa-fw"></i> View Delivery Challans
-                                    </a>
-                                </li>
-                            @endcan
-                        @endif
-                    @endcan
+                    @php
+                        $uninvoicedDc = $sale->deliveryChallans ? $sale->deliveryChallans->where('is_invoiced', 0)->first() : null;
+                    @endphp
+
+                    @if ($sale->sale_type === 'sales_order' && $uninvoicedDc)
+                        @canany(['delivery_challans.generate_invoice', 'direct_dc.consolidate'])
+                            <li>
+                                <a class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold" href="{{ route('direct-dc.index', ['highlight_dc' => $uninvoicedDc->id, 'sale_id' => $sale->id]) }}">
+                                    <i class="fas fa-file-invoice-dollar fa-fw text-success"></i> Generate Partial Invoice
+                                </a>
+                            </li>
+                        @endcanany
+                    @elseif ($sale->sale_type === 'sales_order' && $sale->delivery_status === 'delivered' && $sale->sale_status !== 'posted')
+                        @can('sales_orders.generate_invoice')
+                            <li>
+                                <button type="button" 
+                                        class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold btn-open-invoice-series-modal" 
+                                        data-sale-id="{{ $sale->id }}" 
+                                        data-order-no="{{ $orderDocNo }}" 
+                                        data-customer="{{ optional($sale->customer_relation)->customer_name ?? ($sale->walkin_name ?? 'Walk-in') }}"
+                                        data-amount="{{ number_format($sale->total_net, 2) }}"
+                                        data-date="{{ date('Y-m-d') }}">
+                                    <i class="fas fa-file-invoice-dollar fa-fw text-success"></i> Generate Invoice
+                                </button>
+                            </li>
+                        @endcan
+                    @endif
+
+                    @if ($sale->sale_type === 'sales_order')
+                        @can('delivery_challans.create')
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.create_dc', $sale->id) }}">
+                                    <i class="fas fa-truck-loading text-warning fa-fw"></i> Create Delivery Challan
+                                </a>
+                            </li>
+                        @endcan
+                        @can('delivery_challans.view')
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc_list', $sale->id) }}">
+                                    <i class="fas fa-list text-info fa-fw"></i> View Delivery Challans
+                                </a>
+                            </li>
+                        @endcan
+                    @endif
 
                     @if ($sale->sale_status !== 'returned')
                         @can('sales.create')
@@ -456,34 +472,28 @@
                     @php
                         $docTypeLabel = $sale->sale_type === 'quotation' ? 'Quotation' : ($sale->sale_type === 'sales_order' ? 'Sales Order' : 'Sale Invoice');
                         $docNumberDisplay = $sale->invoice_no ?: ('#' . $sale->id);
+                        $canDeleteDoc = false;
+                        if ($sale->sale_type === 'quotation') {
+                            $canDeleteDoc = auth()->user()->can('quotations.delete');
+                        } elseif ($sale->sale_type === 'sales_order') {
+                            $canDeleteDoc = auth()->user()->can('sales_orders.delete');
+                        } else {
+                            $canDeleteDoc = auth()->user()->can('sales.delete');
+                        }
                     @endphp
-                    @can('sales.delete')
+                    @if ($canDeleteDoc)
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <button type="button" 
                                     class="dropdown-item d-flex align-items-center gap-2 py-2 text-danger btn-delete-sale" 
                                     data-id="{{ $sale->id }}" 
-                                    data-type="{{ $docTypeLabel }}"
-                                    data-no="{{ $docNumberDisplay }}"
+                                    data-type="{{ $docTypeLabel }}" 
+                                    data-no="{{ $docNumberDisplay }}" 
                                     data-url="{{ route('sales.destroy', $sale->id) }}">
                                 <i class="fas fa-trash-alt fa-fw text-danger"></i> Delete {{ $docTypeLabel }}
                             </button>
                         </li>
-                    @else
-                        @can('sales.create')
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <button type="button" 
-                                        class="dropdown-item d-flex align-items-center gap-2 py-2 text-danger btn-delete-sale" 
-                                        data-id="{{ $sale->id }}" 
-                                        data-type="{{ $docTypeLabel }}"
-                                        data-no="{{ $docNumberDisplay }}"
-                                        data-url="{{ route('sales.destroy', $sale->id) }}">
-                                    <i class="fas fa-trash-alt fa-fw text-danger"></i> Delete {{ $docTypeLabel }}
-                                </button>
-                            </li>
-                        @endcan
-                    @endcan
+                    @endif
                 </ul>
             </div>
         </td>

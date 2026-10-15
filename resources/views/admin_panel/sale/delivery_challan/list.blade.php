@@ -26,8 +26,10 @@
                     </div>
                     <div>
                         <a href="{{ route('sale.index') }}" class="btn btn-light border fw-bold btn-sm"><i class="fas fa-arrow-left me-1"></i> Back to Sales</a>
-                        @if($sale->delivery_status !== 'delivered' && auth()->user()->can('sales.create'))
+                        @if($sale->delivery_status !== 'delivered')
+                            @can('delivery_challans.create')
                             <a href="{{ route('sales.create_dc', $sale->id) }}" class="btn btn-primary fw-bold btn-sm ms-2"><i class="fas fa-plus me-1"></i> New DC</a>
+                            @endcan
                         @endif
                     </div>
                 </div>
@@ -129,16 +131,22 @@
                                         </td>
                                         <td class="text-end">
                                             <div class="d-inline-flex align-items-center gap-1">
+                                                @canany(['delivery_challans.view', 'sales.view'])
                                                 <a href="{{ route('sales.dc_print', $dc->id) }}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-sm">
                                                     <i class="fas fa-print me-1"></i> Print
                                                 </a>
-                                                @if($dc->is_invoiced == 0 && auth()->user()->can('sales.create'))
+                                                @endcanany
+                                                @if($dc->is_invoiced == 0)
+                                                    @can('delivery_challans.generate_invoice')
                                                     <a href="{{ route('direct-dc.index', ['highlight_dc' => $dc->id, 'sale_id' => $sale->id]) }}" class="btn btn-sm btn-success fw-bold shadow-sm">
                                                         <i class="fas fa-file-invoice-dollar me-1"></i> Invoice
                                                     </a>
+                                                    @endcan
+                                                    @can('delivery_challans.delete')
                                                     <button type="button" class="btn btn-sm btn-outline-danger fw-bold shadow-sm btn-delete-dc" data-id="{{ $dc->id }}" data-no="{{ $dc->dc_number }}" data-url="{{ route('sales.dc_destroy', $dc->id) }}" title="Delete Delivery Challan">
                                                         <i class="fas fa-trash-alt"></i> Delete
                                                     </button>
+                                                    @endcan
                                                 @else
                                                     <button type="button" class="btn btn-sm btn-outline-secondary fw-bold shadow-sm btn-invoiced-alert" title="Already Invoiced">
                                                         <i class="fas fa-lock"></i> Invoiced

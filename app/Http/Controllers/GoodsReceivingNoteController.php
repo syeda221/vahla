@@ -25,6 +25,10 @@ class GoodsReceivingNoteController extends Controller
 
     public function create($purchaseId)
     {
+        if (auth()->check() && !auth()->user()->can('grn.create')) {
+            abort(403, 'Unauthorized: You do not have permission to create Goods Receiving Notes.');
+        }
+
         $purchase = Purchase::with(['vendor', 'warehouse', 'items.product'])->findOrFail($purchaseId);
 
         if ($purchase->purchase_type !== 'purchase_order') {
@@ -40,6 +44,10 @@ class GoodsReceivingNoteController extends Controller
 
     public function store(Request $request, $purchaseId)
     {
+        if (auth()->check() && !auth()->user()->can('grn.create')) {
+            abort(403, 'Unauthorized: You do not have permission to create Goods Receiving Notes.');
+        }
+
         $purchase = Purchase::with(['items.product', 'vendor', 'warehouse'])->findOrFail($purchaseId);
 
         if ($purchase->purchase_type !== 'purchase_order') {
@@ -227,6 +235,10 @@ class GoodsReceivingNoteController extends Controller
 
     public function generateInvoiceForGrn(Request $request, $id)
     {
+        if (auth()->check() && !auth()->user()->can('grn.generate_invoice')) {
+            abort(403, 'Unauthorized: You do not have permission to generate bills for Goods Receiving Notes.');
+        }
+
         $grn = GoodsReceivingNote::with(['items.product', 'purchase.vendor', 'vendor', 'warehouse'])->findOrFail($id);
 
         if ($grn->is_invoiced) {
@@ -363,6 +375,13 @@ class GoodsReceivingNoteController extends Controller
 
     public function destroy($id)
     {
+        if (auth()->check() && !auth()->user()->can('grn.delete') && !auth()->user()->can('direct_grn.delete')) {
+            $msg = 'Unauthorized: You do not have permission to delete Goods Receiving Notes.';
+            return request()->ajax() || request()->wantsJson() 
+                ? response()->json(['success' => false, 'message' => $msg], 403)
+                : redirect()->back()->with('error', $msg);
+        }
+
         $grn = GoodsReceivingNote::with(['items.product', 'purchase.items'])->findOrFail($id);
 
         // 1. Invoiced Check

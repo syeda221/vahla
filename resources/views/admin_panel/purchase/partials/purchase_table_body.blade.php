@@ -118,8 +118,13 @@
                 <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" data-boundary="window" data-bs-boundary="window" aria-expanded="false">
                     <i class="fas fa-ellipsis-v small me-1"></i> Actions
                 </button>
+                @php
+                    $isPO = ($purchase->purchase_type === 'purchase_order');
+                    $canEditPurchase = $isPO ? auth()->user()->can('purchase_orders.edit') : auth()->user()->can('purchases.edit');
+                    $canDeletePurchase = $isPO ? auth()->user()->can('purchase_orders.delete') : auth()->user()->can('purchases.delete');
+                @endphp
                 <ul class="dropdown-menu dropdown-menu-right border-0 shadow-lg rounded-3">
-                    @can('purchases.edit')
+                    @if ($canEditPurchase)
                         <li>
                             <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.edit', $purchase->id) }}">
                                 <i class="fas fa-edit text-primary fa-fw"></i> Edit (Simple)
@@ -130,7 +135,7 @@
                                 <i class="fas fa-cash-register text-success fa-fw"></i> Edit (POS Purchase)
                             </a>
                         </li>
-                    @endcan
+                    @endif
 
                     @if ($purchase->status_purchase == 'draft')
                         @can('purchases.create')
@@ -139,11 +144,6 @@
                                     <i class="fas fa-check-circle fa-fw text-success"></i> Convert to Purchase
                                 </a>
                             </li>
-                            {{-- <li>
-                                <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-primary" href="{{ route('add_inwardgatepass') }}?purchase_id={{ $purchase->id }}">
-                                    <i class="fas fa-truck-loading fa-fw"></i> Receive Goods (GRN)
-                                </a>
-                            </li> --}}
                         @endcan
                     @endif
 
@@ -158,7 +158,7 @@
                     @endif
 
                     @if ($purchase->status_purchase != 'draft')
-                        @can('purchases.view')
+                        @canany(['purchases.view', 'purchase_orders.view', 'purchases.print'])
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.invoice', $purchase->id) }}">
                                     <i class="fas fa-file-invoice text-info fa-fw"></i> View Invoice
@@ -169,7 +169,7 @@
                                     <i class="fas fa-receipt text-secondary fa-fw"></i> View Receipt
                                 </a>
                             </li>
-                        @endcan
+                        @endcanany
                         @can('purchases.create')
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.return.show', $purchase->id) }}">
@@ -179,8 +179,8 @@
                         @endcan
                     @endif
 
-                    @if ($purchase->status_purchase == 'draft')
-                        @can('purchases.delete')
+                    @if ($purchase->status_purchase == 'draft' || $canDeletePurchase)
+                        @if ($canDeletePurchase)
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form action="{{ route('purchase.destroy', $purchase->id) }}" method="POST" class="d-inline delete-form">
@@ -191,7 +191,7 @@
                                     </button>
                                 </form>
                             </li>
-                        @endcan
+                        @endif
                     @endif
                 </ul>
             </div>

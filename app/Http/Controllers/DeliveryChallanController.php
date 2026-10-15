@@ -23,6 +23,10 @@ class DeliveryChallanController extends Controller
 
     public function create($saleId)
     {
+        if (auth()->check() && !auth()->user()->can('delivery_challans.create')) {
+            abort(403, 'Unauthorized: You do not have permission to create Delivery Challans.');
+        }
+
         $sale = Sale::with('items.product')->findOrFail($saleId);
 
         if ($sale->sale_type !== 'sales_order') {
@@ -38,6 +42,10 @@ class DeliveryChallanController extends Controller
 
     public function store(Request $request, $saleId)
     {
+        if (auth()->check() && !auth()->user()->can('delivery_challans.create')) {
+            abort(403, 'Unauthorized: You do not have permission to create Delivery Challans.');
+        }
+
         $sale = Sale::with('items.product')->findOrFail($saleId);
 
         if ($sale->sale_type !== 'sales_order') {
@@ -273,6 +281,10 @@ class DeliveryChallanController extends Controller
 
     public function generateInvoiceForDc($id)
     {
+        if (auth()->check() && !auth()->user()->can('delivery_challans.generate_invoice')) {
+            abort(403, 'Unauthorized: You do not have permission to generate invoices for Delivery Challans.');
+        }
+
         $dc = DeliveryChallan::with(['items.product', 'sale.customer_relation', 'customer'])->findOrFail($id);
 
         if ($dc->is_invoiced) {
@@ -414,6 +426,13 @@ class DeliveryChallanController extends Controller
 
     public function destroy($id)
     {
+        if (auth()->check() && !auth()->user()->can('delivery_challans.delete') && !auth()->user()->can('direct_dc.delete')) {
+            $msg = 'Unauthorized: You do not have permission to delete Delivery Challans.';
+            return request()->ajax() || request()->wantsJson() 
+                ? response()->json(['success' => false, 'message' => $msg], 403)
+                : redirect()->back()->with('error', $msg);
+        }
+
         $dc = DeliveryChallan::with(['items.product', 'sale.items'])->findOrFail($id);
 
         // 1. Invoiced Check

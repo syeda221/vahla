@@ -871,7 +871,7 @@
                                             </div>
                                         @endcanany
                                         <!-- Purchase & Inventory -->
-                                        @canany(['vendors.view', 'purchases.view', 'purchase_pos.create'])
+                                        @canany(['vendors.view', 'purchases.view', 'purchase_orders.view', 'grn.view', 'direct_grn.view', 'purchase_pos.create'])
                                             <div class="col-group col-md-3">
                                                 <p class="category-heading">Purchase & Inventory</p>
                                                 <ul class="submenu-item">
@@ -879,13 +879,17 @@
                                                         <li><a href="{{ url('vendor') }}"><i class="fas fa-truck"></i> Vendor</a>
                                                         </li>
                                                     @endcan
-                                                    @can('purchases.view')
+                                                    @can('purchase_orders.view')
                                                         <li><a href="{{ route('purchase_orders.index') }}"><i
                                                                     class="fas fa-file-contract"></i> Purchase Orders</a>
                                                         </li>
+                                                    @endcan
+                                                    @can('direct_grn.view')
                                                         <li><a href="{{ route('direct-grn.index') }}"><i
                                                                     class="fas fa-dolly-flatbed"></i> Goods Receiving (GRN)</a>
                                                         </li>
+                                                    @endcan
+                                                    @can('purchases.view')
                                                         <li><a href="{{ route('Purchase.home') }}"><i
                                                                     class="fas fa-shopping-cart"></i> Purchase Bills</a>
                                                         </li>
@@ -923,25 +927,32 @@
                                             </div>
                                         @endcanany
                                         <!-- Customers & Sales -->
-                                        @canany(['sales.view', 'sales.create', 'customers.view', 'sales.officers.view',
+                                        @canany(['sales.view', 'sales_orders.view', 'quotations.view', 'delivery_challans.view', 'direct_dc.view', 'pos.view', 'sales.create', 'customers.view', 'sales.officers.view',
                                             'receipts.voucher.view', 'zones.view'])
                                             <div class="col-group col-md-3">
                                                 <p class="category-heading">Sales & Customers</p>
                                                 <ul class="submenu-item">
-                                                    @can('sales.view')
-                                                        <li><a href="{{ url('sale') }}"><i class="fas fa-receipt"></i>
-                                                                Sales</a></li>
+                                                      @can('quotations.view')
                                                         <li><a href="{{ route('quotations.index') }}"><i class="fas fa-file-invoice"></i>
                                                                 Quotations</a></li>
-                                                        <li><a href="{{ route('direct-dc.index') }}"><i class="fas fa-truck"></i>
-                                                                Delivery</a></li>
+                                                    @endcan
+                                                     @can('sales_orders.view')
                                                         <li><a href="{{ route('sales_orders.index') }}"><i class="fas fa-file-signature"></i>
                                                                 Sales Orders</a></li>
                                                     @endcan
-                                                    @can('sales.create')
+                                                    @can('direct_dc.view')
+                                                        <li><a href="{{ route('direct-dc.index') }}"><i class="fas fa-truck"></i>
+                                                                Delivery</a></li>
+                                                    @endcan
+                                                    @can('sales.view')
+                                                        <li><a href="{{ url('sale') }}"><i class="fas fa-receipt"></i>
+                                                                Sales</a></li>
+                                                    @endcan
+                                                  
+                                                    @canany(['pos.view', 'sales.create'])
                                                         <li><a href="{{ route('pos.index') }}"><i class="fas fa-cash-register"></i>
                                                                 POS System</a></li>
-                                                    @endcan
+                                                    @endcanany
                                                     @can('customers.view')
                                                         <li><a href="{{ url('customers') }}"><i class="fas fa-user"></i>
                                                                 Customer</a></li>

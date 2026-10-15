@@ -1407,6 +1407,16 @@ class PurchaseController extends Controller
     {
         $purchase = Purchase::with('items.product')->findOrFail($id);
 
+        $currentUser = auth()->user();
+        if ($currentUser) {
+            $isPo = $purchase->purchase_type === 'purchase_order';
+            if ($isPo && !$currentUser->can('purchase_orders.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Purchase Orders.');
+            } elseif (!$isPo && !$currentUser->can('purchases.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Purchases.');
+            }
+        }
+
         $Vendor = Vendor::all();
         $Warehouse = Warehouse::all();
         // Filter accounts to only show Cash (1) and Bank (2) heads
@@ -1442,6 +1452,17 @@ class PurchaseController extends Controller
 
     public function update(Request $request, $id)
     {
+        $targetPurchase = Purchase::findOrFail($id);
+        $currentUser = auth()->user();
+        if ($currentUser) {
+            $isPo = $targetPurchase->purchase_type === 'purchase_order';
+            if ($isPo && !$currentUser->can('purchase_orders.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Purchase Orders.');
+            } elseif (!$isPo && !$currentUser->can('purchases.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Purchases.');
+            }
+        }
+
         $validated = $request->validate([
             'invoice_no' => 'nullable|string',
             'vendor_id' => 'nullable|exists:vendors,id',
@@ -1965,6 +1986,21 @@ class PurchaseController extends Controller
         $purchase = Purchase::with(['items', 'goodsReceivingNotes.items.product'])->findOrFail($id);
         $isPo = $purchase->purchase_type === 'purchase_order';
         $isDraft = $purchase->status_purchase === 'draft';
+
+        $currentUser = auth()->user();
+        if ($currentUser) {
+            if ($isPo && !$currentUser->can('purchase_orders.delete')) {
+                $msg = 'Unauthorized: You do not have permission to delete Purchase Orders.';
+                return request()->ajax() || request()->wantsJson() 
+                    ? response()->json(['success' => false, 'message' => $msg], 403)
+                    : redirect()->back()->with('error', $msg);
+            } elseif (!$isPo && !$currentUser->can('purchases.delete')) {
+                $msg = 'Unauthorized: You do not have permission to delete Purchases.';
+                return request()->ajax() || request()->wantsJson() 
+                    ? response()->json(['success' => false, 'message' => $msg], 403)
+                    : redirect()->back()->with('error', $msg);
+            }
+        }
 
         // 1. Purchase Order Checks: Block deletion ONLY if an invoice has actually been generated
         if ($isPo) {

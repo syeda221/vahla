@@ -25,6 +25,10 @@ class DirectDCController extends Controller
 
     public function create()
     {
+        if (auth()->check() && !auth()->user()->can('direct_dc.create')) {
+            abort(403, 'Unauthorized: You do not have permission to create Direct Delivery Challans.');
+        }
+
         $customers = Customer::orderBy('customer_name')->get();
         $warehouses = Warehouse::orderBy('warehouse_name')->get();
         $products = Product::orderBy('item_name')->get();
@@ -38,6 +42,10 @@ class DirectDCController extends Controller
 
     public function store(Request $request)
     {
+        if (auth()->check() && !auth()->user()->can('direct_dc.create')) {
+            abort(403, 'Unauthorized: You do not have permission to create Direct Delivery Challans.');
+        }
+
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'dc_date' => 'required|date',
@@ -179,6 +187,10 @@ class DirectDCController extends Controller
 
     public function edit($id)
     {
+        if (auth()->check() && !auth()->user()->can('direct_dc.edit')) {
+            abort(403, 'Unauthorized: You do not have permission to edit Direct Delivery Challans.');
+        }
+
         $dc = DeliveryChallan::with(['items.product', 'customer', 'sale.customer_relation'])->findOrFail($id);
         if ($dc->is_invoiced) {
             return redirect()->route('direct-dc.index')->with('error', 'Cannot edit an invoiced DC.');
@@ -193,6 +205,10 @@ class DirectDCController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (auth()->check() && !auth()->user()->can('direct_dc.edit')) {
+            abort(403, 'Unauthorized: You do not have permission to edit Direct Delivery Challans.');
+        }
+
         $dc = DeliveryChallan::with('items')->findOrFail($id);
         if ($dc->is_invoiced) {
             return redirect()->route('direct-dc.index')->with('error', 'Cannot edit an invoiced DC.');
@@ -451,6 +467,10 @@ class DirectDCController extends Controller
 
     public function consolidatePreview(Request $request)
     {
+        if (auth()->check() && !auth()->user()->can('direct_dc.consolidate')) {
+            abort(403, 'Unauthorized: You do not have permission to consolidate Delivery Challans.');
+        }
+
         $dcIds = $request->input('dc_ids');
         if (empty($dcIds) || !is_array($dcIds)) {
             if ($request->query('dc_ids')) {
@@ -586,6 +606,10 @@ class DirectDCController extends Controller
 
     public function consolidateStore(Request $request)
     {
+        if (auth()->check() && !auth()->user()->can('direct_dc.consolidate')) {
+            abort(403, 'Unauthorized: You do not have permission to consolidate Delivery Challans.');
+        }
+
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'dc_ids' => 'required|array',
@@ -861,6 +885,13 @@ class DirectDCController extends Controller
 
     public function destroy($id)
     {
+        if (auth()->check() && !auth()->user()->can('direct_dc.delete')) {
+            $msg = 'Unauthorized: You do not have permission to delete Direct Delivery Challans.';
+            return request()->ajax() || request()->wantsJson() 
+                ? response()->json(['success' => false, 'message' => $msg], 403)
+                : redirect()->back()->with('error', $msg);
+        }
+
         return app(\App\Http\Controllers\DeliveryChallanController::class)->destroy($id);
     }
 }

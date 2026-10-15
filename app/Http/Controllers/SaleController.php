@@ -1149,6 +1149,17 @@ class SaleController extends Controller
         // Eager load warehouseStocks to display stock in edit view
         $sale = Sale::with(['items.product.warehouseStocks', 'customer_relation'])->findOrFail($id);
 
+        $currentUser = auth()->user();
+        if ($currentUser) {
+            if ($sale->sale_type === 'quotation' && !$currentUser->can('quotations.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Quotations.');
+            } elseif ($sale->sale_type === 'sales_order' && !$currentUser->can('sales_orders.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Sales Orders.');
+            } elseif (($sale->sale_type === 'direct_sale' || empty($sale->sale_type)) && !$currentUser->can('sales.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Sales.');
+            }
+        }
+
         if (in_array($sale->sale_status, ['cancelled', 'returned'])) {
             $targetRoute = 'sale.index';
             if ($sale->sale_type === 'quotation') {
@@ -1214,6 +1225,18 @@ class SaleController extends Controller
     public function updatesale(Request $request, $id)
     {
         $sale = Sale::findOrFail($id);
+
+        $currentUser = auth()->user();
+        if ($currentUser) {
+            if ($sale->sale_type === 'quotation' && !$currentUser->can('quotations.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Quotations.');
+            } elseif ($sale->sale_type === 'sales_order' && !$currentUser->can('sales_orders.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Sales Orders.');
+            } elseif (($sale->sale_type === 'direct_sale' || empty($sale->sale_type)) && !$currentUser->can('sales.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Sales.');
+            }
+        }
+
         if (in_array($sale->sale_status, ['cancelled', 'returned'])) {
             return redirect()->back()->with('error', 'Cannot edit a '.$sale->sale_status.' sale.');
         }
@@ -2884,6 +2907,10 @@ class SaleController extends Controller
 
     public function convertToOrder(Request $request, $id)
     {
+        if (auth()->check() && !auth()->user()->can('quotations.convert_to_so') && !auth()->user()->can('sales_orders.create')) {
+            abort(403, 'Unauthorized action. You do not have permission to convert quotation to sales order.');
+        }
+
         $sale = Sale::with('items')->findOrFail($id);
 
         if ($sale->sale_type !== 'quotation') {
@@ -2928,6 +2955,10 @@ class SaleController extends Controller
 
     public function generateInvoice(Request $request, $id)
     {
+        if (auth()->check() && !auth()->user()->can('sales_orders.generate_invoice')) {
+            abort(403, 'Unauthorized action. You do not have permission to generate invoices for sales orders.');
+        }
+
         $sale = Sale::findOrFail($id);
 
         if ($sale->sale_type !== 'sales_order') {
@@ -3063,6 +3094,32 @@ class SaleController extends Controller
     public function destroy($id)
     {
         $sale = Sale::with(['items', 'deliveryChallans.items.product'])->findOrFail($id);
+
+        $currentUser = auth()->user();
+        if ($currentUser) {
+            if ($sale->sale_type === 'quotation') {
+                if (!$currentUser->can('quotations.delete')) {
+                    $msg = 'Unauthorized: You do not have permission to delete Quotations.';
+                    return request()->ajax() || request()->wantsJson() 
+                        ? response()->json(['success' => false, 'message' => $msg], 403)
+                        : redirect()->back()->with('error', $msg);
+                }
+            } elseif ($sale->sale_type === 'sales_order') {
+                if (!$currentUser->can('sales_orders.delete')) {
+                    $msg = 'Unauthorized: You do not have permission to delete Sales Orders.';
+                    return request()->ajax() || request()->wantsJson() 
+                        ? response()->json(['success' => false, 'message' => $msg], 403)
+                        : redirect()->back()->with('error', $msg);
+                }
+            } else {
+                if (!$currentUser->can('sales.delete')) {
+                    $msg = 'Unauthorized: You do not have permission to delete Sales Invoices.';
+                    return request()->ajax() || request()->wantsJson() 
+                        ? response()->json(['success' => false, 'message' => $msg], 403)
+                        : redirect()->back()->with('error', $msg);
+                }
+            }
+        }
 
         // 1. Quotation check
         if ($sale->sale_type === 'quotation') {

@@ -105,12 +105,16 @@
                 <p class="text-muted small mb-0">Track vendor orders, receive goods (GRN), and generate purchase bills</p>
             </div>
             <div class="d-flex gap-2">
+                @can('direct_grn.view')
                 <a href="{{ route('direct-grn.index') }}" class="btn btn-outline-secondary fw-bold rounded-2 px-3">
                     <i class="fas fa-boxes me-1"></i> View All GRNs
                 </a>
+                @endcan
+                @can('purchase_orders.create')
                 <a href="{{ route('add_purchase') }}?type=purchase_order" class="btn btn-premium-primary shadow-sm d-flex align-items-center gap-2 px-3">
                     <i class="fas fa-plus"></i> Create Purchase Order
                 </a>
+                @endcan
             </div>
         </div>
 
@@ -262,20 +266,24 @@
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end shadow">
                                             @if($po->receiving_status !== 'received')
+                                                @can('grn.create')
                                                 <li>
                                                     <a class="dropdown-item fw-bold text-primary py-2 d-flex align-items-center gap-2" href="{{ route('purchases.grn.create', $po->id) }}">
                                                         <i class="fas fa-truck-loading fa-fw text-primary"></i> Receive Goods (GRN)
                                                     </a>
                                                 </li>
+                                                @endcan
                                             @endif
 
                                             @if($uninvoicedGrn)
+                                                @can('grn.generate_invoice')
                                                 <li>
                                                     <a class="dropdown-item fw-bold text-success py-2 d-flex align-items-center gap-2" 
                                                        href="{{ route('direct-grn.index', ['highlight_grn' => $uninvoicedGrn->id, 'purchase_id' => $po->id]) }}">
                                                         <i class="fas fa-file-invoice-dollar fa-fw text-success"></i> Generate Purchase Bill
                                                     </a>
                                                 </li>
+                                                @endcan
                                             @endif
 
                                             {{-- <li>
@@ -284,18 +292,23 @@
                                                 </a>
                                             </li> --}}
 
+                                            @can('grn.view')
                                             <li>
                                                 <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="{{ route('purchases.grn.index', $po->id) }}">
                                                     <i class="fas fa-history fa-fw text-secondary"></i> View GRNs / Order Trail
                                                 </a>
                                             </li>
+                                            @endcan
 
+                                            @canany(['purchase_orders.view', 'purchase_orders.print'])
                                             <li>
                                                 <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="{{ route('purchase.invoice', $po->id) }}" target="_blank">
                                                     <i class="fas fa-print fa-fw text-info"></i> Print Purchase Order
                                                 </a>
                                             </li>
+                                            @endcanany
 
+                                            @can('purchase_orders.delete')
                                             <li><hr class="dropdown-divider my-1"></li>
                                             <li>
                                                 <button type="button" 
@@ -306,6 +319,7 @@
                                                     <i class="fas fa-trash-alt fa-fw text-danger"></i> Delete Purchase Order
                                                 </button>
                                             </li>
+                                            @endcan
                                         </ul>
                                     </div>
                                 </td>
@@ -316,9 +330,11 @@
                                     <i class="fas fa-clipboard-list fa-3x mb-3 text-secondary opacity-50"></i>
                                     <h5>No Purchase Orders Found</h5>
                                     <p class="small mb-3">Start by creating your first purchase order for your vendors.</p>
+                                    @can('purchase_orders.create')
                                     <a href="{{ route('add_purchase') }}?type=purchase_order" class="btn btn-premium-primary btn-sm">
                                         <i class="fas fa-plus me-1"></i> Create Purchase Order
                                     </a>
+                                    @endcan
                                 </td>
                             </tr>
                         @endforelse

@@ -28,6 +28,10 @@ class DirectGRNController extends Controller
 
     public function create()
     {
+        if (auth()->check() && !auth()->user()->can('direct_grn.create')) {
+            abort(403, 'Unauthorized: You do not have permission to create Direct Goods Receiving Notes.');
+        }
+
         $vendors = Vendor::orderBy('name')->get();
         $warehouses = Warehouse::orderBy('warehouse_name')->get();
         $products = Product::orderBy('item_name')->get();
@@ -39,6 +43,10 @@ class DirectGRNController extends Controller
 
     public function store(Request $request)
     {
+        if (auth()->check() && !auth()->user()->can('direct_grn.create')) {
+            abort(403, 'Unauthorized: You do not have permission to create Direct Goods Receiving Notes.');
+        }
+
         $validated = $request->validate([
             'vendor_id' => 'required|exists:vendors,id',
             'grn_date' => 'required|date',
@@ -193,6 +201,10 @@ class DirectGRNController extends Controller
 
     public function consolidatePreview(Request $request)
     {
+        if (auth()->check() && !auth()->user()->can('direct_grn.consolidate')) {
+            abort(403, 'Unauthorized: You do not have permission to consolidate Goods Receiving Notes.');
+        }
+
         $grnIds = $request->input('grn_ids', []);
         if (is_string($grnIds)) {
             $grnIds = explode(',', $grnIds);
@@ -290,6 +302,10 @@ class DirectGRNController extends Controller
 
     public function consolidateStore(Request $request)
     {
+        if (auth()->check() && !auth()->user()->can('direct_grn.consolidate')) {
+            abort(403, 'Unauthorized: You do not have permission to consolidate Goods Receiving Notes.');
+        }
+
         $grnIds = $request->input('grn_ids', []);
         if (empty($grnIds)) {
             return redirect()->route('direct-grn.index')->with('error', 'No GRNs selected.');
@@ -494,6 +510,13 @@ class DirectGRNController extends Controller
 
     public function destroy($id)
     {
+        if (auth()->check() && !auth()->user()->can('direct_grn.delete')) {
+            $msg = 'Unauthorized: You do not have permission to delete Direct Goods Receiving Notes.';
+            return request()->ajax() || request()->wantsJson() 
+                ? response()->json(['success' => false, 'message' => $msg], 403)
+                : redirect()->back()->with('error', $msg);
+        }
+
         return app(\App\Http\Controllers\GoodsReceivingNoteController::class)->destroy($id);
     }
 }

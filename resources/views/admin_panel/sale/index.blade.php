@@ -358,28 +358,34 @@
                             href="{{ url('bookings') }}" style="border-radius: 8px;">
                             <i class="fas fa-bookmark"></i> Bookings
                         </a>
-                        @can('sales.create')
-                            @if(isset($page_type) && $page_type === 'quotation')
+                        @if(isset($page_type) && $page_type === 'quotation')
+                            @can('quotations.create')
                                 <a class="btn btn-info px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1 text-white"
                                     href="{{ route('sale.add') }}?type=quotation" style="border-radius: 8px;">
                                     <i class="fas fa-file-contract"></i> Add Quotation
                                 </a>
-                            @elseif(isset($page_type) && $page_type === 'sales_order')
+                            @endcan
+                        @elseif(isset($page_type) && $page_type === 'sales_order')
+                            @can('quotations.view')
                                 <a class="btn btn-outline-info px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
                                     href="{{ route('quotations.index') }}" style="border-radius: 8px;" title="Convert an existing quotation into a sales order">
                                     <i class="fas fa-file-contract"></i> Convert from Quotation
                                 </a>
+                            @endcan
+                            @can('sales_orders.create')
                                 <a class="btn btn-primary px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1 text-white"
                                     href="{{ route('sale.add') }}?type=sales_order" style="border-radius: 8px;" title="Create a direct sales order">
                                     <i class="fas fa-plus"></i> Add Sales Order
                                 </a>
-                            @else
+                            @endcan
+                        @else
+                            @can('sales.create')
                                 <a class="btn btn-primary px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
                                     href="{{ route('sale.add') }}" style="border-radius: 8px;">
                                     <i class="fas fa-plus"></i> Add Sale
                                 </a>
-                            @endif
-                        @endcan
+                            @endcan
+                        @endif
                     </div>
                 </div>
 

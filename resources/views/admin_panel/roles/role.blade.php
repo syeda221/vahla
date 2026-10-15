@@ -717,6 +717,26 @@
             color: #4338ca;
         }
 
+        .perm-action-badge.generate_invoice {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .perm-action-badge.consolidate {
+            background: #e0e7ff;
+            color: #4338ca;
+        }
+
+        .perm-action-badge.convert_to_so {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .perm-action-badge.convert_to_sale {
+            background: #fae8ff;
+            color: #86198f;
+        }
+
         .perm-action-badge.other {
             background: #f1f5f9;
             color: #64748b;
@@ -1091,8 +1111,16 @@
                     'settings': 'fa-cog',
                     'reports': 'fa-chart-bar',
                     'inventory': 'fa-boxes',
-                    'sales': 'fa-shopping-cart',
-                    'purchase': 'fa-cart-plus',
+                    'sales': 'fa-receipt',
+                    'sales_orders': 'fa-file-signature',
+                    'quotations': 'fa-file-invoice',
+                    'delivery_challans': 'fa-truck',
+                    'direct_dc': 'fa-truck-loading',
+                    'purchases': 'fa-shopping-cart',
+                    'purchase_orders': 'fa-file-contract',
+                    'grn': 'fa-dolly-flatbed',
+                    'direct_grn': 'fa-boxes',
+                    'purchase_pos': 'fa-cash-register',
                     'accounts': 'fa-calculator'
                 };
 
@@ -1119,10 +1147,14 @@
                         'create': 2,
                         'edit': 3,
                         'delete': 4,
-                        'approve': 5,
-                        'mark': 6,
-                        'print': 7,
-                        'export': 8
+                        'generate_invoice': 5,
+                        'consolidate': 6,
+                        'convert_to_so': 7,
+                        'convert_to_sale': 8,
+                        'approve': 9,
+                        'mark': 10,
+                        'print': 11,
+                        'export': 12
                     };
                     perms.sort(function(a, b) {
                         var actionA = a.name.split('.').pop();
@@ -1134,13 +1166,16 @@
 
                     // Icon logic: check first part of module (e.g. 'hr' from 'hr.employees')
                     var mainCategory = module.split('.')[0];
-                    var icon = moduleIcons[mainCategory] || 'fa-folder-open';
-
-                    // Format Title: hr.employees -> HR Employees
-                    var title = module.replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                        .replace('Hr ', 'HR ');
-
                     var icon = moduleIcons[module] || moduleIcons[mainCategory] || 'fa-folder';
+
+                    // Format Title: hr.employees -> HR Employees, direct_dc -> Direct DC
+                    var title = module.replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                        .replace(/\bHr\b/g, 'HR')
+                        .replace(/\bDc\b/g, 'DC')
+                        .replace(/\bGrn\b/g, 'GRN')
+                        .replace(/\bSo\b/g, 'SO')
+                        .replace(/\bPos\b/g, 'POS');
+
                     var checkedCount = perms.filter(p => assignedPerms.includes(p.name)).length;
 
                     var html = `
@@ -1166,17 +1201,19 @@
                     perms.forEach(function(p) {
                         var checked = assignedPerms.includes(p.name);
                         var action = p.name.split('.').pop();
-                        var knownActions = ['view', 'create', 'edit', 'delete', 'approve', 'mark',
+                        var knownActions = ['view', 'create', 'edit', 'delete', 'generate_invoice',
+                            'consolidate', 'convert_to_so', 'convert_to_sale', 'approve', 'mark',
                             'print', 'export'
                         ];
                         var actionClass = knownActions.includes(action) ? action : 'other';
+                        var actionLabel = action.replace(/_/g, ' ');
 
                         html += `
                             <div class="col-12 col-md-6 col-lg-4 col-xl-3 perm-item-wrapper" data-name="${p.name.toLowerCase()}">
                                 <div class="perm-item ${checked ? 'checked' : ''}" onclick="togglePerm('${p.id}')">
                                     <input type="checkbox" name="permissions[]" value="${p.name}" id="perm-${p.id}" ${checked ? 'checked' : ''} onclick="event.stopPropagation()">
                                     <label for="perm-${p.id}" onclick="event.stopPropagation(); togglePerm('${p.id}')">${p.name}</label>
-                                    <span class="perm-action-badge ${actionClass}">${action}</span>
+                                    <span class="perm-action-badge ${actionClass}">${actionLabel}</span>
                                 </div>
                             </div>
                         `;

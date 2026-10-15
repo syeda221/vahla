@@ -322,18 +322,24 @@
                                                             class="menu_icon icon-calculator"></i><span>Pricing & Valuation</span></a>
                                                 </li>
                                             @endif
+                                            @can('purchase_orders.view')
                                             <li class="nav-item"><a class="nav-link"
                                                     href="{{ route('purchase_orders.index') }}"><i
                                                         class="menu_icon icon-notebook"></i><span>Purchase Orders</span></a>
                                             </li>
+                                            @endcan
+                                            @can('direct_grn.view')
                                             <li class="nav-item"><a class="nav-link"
                                                     href="{{ route('direct-grn.index') }}"><i
                                                         class="menu_icon icon-share"></i><span>Goods Receiving (GRN)</span></a>
                                             </li>
+                                            @endcan
+                                            @can('purchases.view')
                                             <li class="nav-item"><a class="nav-link"
                                                     href="{{ route('Purchase.home') }}"><i
                                                         class="menu_icon icon-basket"></i><span>Purchase Bills</span></a>
                                             </li>
+                                            @endcan
                                         </ul>
                                     </div>
                                 </div>

@@ -193,16 +193,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/get-brands', [ProductController::class, 'getBrandsJson'])->name('get-brands');
 
     // Direct Delivery Challans
-    Route::get('/direct-dc', [App\Http\Controllers\DirectDCController::class, 'index'])->name('direct-dc.index');
-    Route::get('/direct-dc/create', [App\Http\Controllers\DirectDCController::class, 'create'])->name('direct-dc.create');
-    Route::post('/direct-dc/store', [App\Http\Controllers\DirectDCController::class, 'store'])->name('direct-dc.store');
-    Route::get('/direct-dc/{id}/edit', [App\Http\Controllers\DirectDCController::class, 'edit'])->name('direct-dc.edit');
-    Route::post('/direct-dc/{id}/update', [App\Http\Controllers\DirectDCController::class, 'update'])->name('direct-dc.update');
-    Route::delete('/direct-dc/{id}', [App\Http\Controllers\DirectDCController::class, 'destroy'])->name('direct-dc.destroy');
-    Route::get('/direct-dc-consolidate', [App\Http\Controllers\DirectDCController::class, 'consolidateIndex'])->name('direct-dc.consolidate');
-    Route::get('/direct-dc/api/fetch-dcs/{customer_id}', [App\Http\Controllers\DirectDCController::class, 'fetchCustomerDCs']);
-    Route::match(['get', 'post'], '/direct-dc-consolidate/preview', [App\Http\Controllers\DirectDCController::class, 'consolidatePreview'])->name('direct-dc.consolidate.preview');
-    Route::post('/direct-dc-consolidate/store', [App\Http\Controllers\DirectDCController::class, 'consolidateStore'])->name('direct-dc.consolidate.store');
+    Route::get('/direct-dc', [App\Http\Controllers\DirectDCController::class, 'index'])->middleware('permission:direct_dc.view')->name('direct-dc.index');
+    Route::get('/direct-dc/create', [App\Http\Controllers\DirectDCController::class, 'create'])->middleware('permission:direct_dc.create')->name('direct-dc.create');
+    Route::post('/direct-dc/store', [App\Http\Controllers\DirectDCController::class, 'store'])->middleware('permission:direct_dc.create')->name('direct-dc.store');
+    Route::get('/direct-dc/{id}/edit', [App\Http\Controllers\DirectDCController::class, 'edit'])->middleware('permission:direct_dc.edit')->name('direct-dc.edit');
+    Route::post('/direct-dc/{id}/update', [App\Http\Controllers\DirectDCController::class, 'update'])->middleware('permission:direct_dc.edit')->name('direct-dc.update');
+    Route::delete('/direct-dc/{id}', [App\Http\Controllers\DirectDCController::class, 'destroy'])->middleware('permission:direct_dc.delete')->name('direct-dc.destroy');
+    Route::get('/direct-dc-consolidate', [App\Http\Controllers\DirectDCController::class, 'consolidateIndex'])->middleware('permission:direct_dc.consolidate')->name('direct-dc.consolidate');
+    Route::get('/direct-dc/api/fetch-dcs/{customer_id}', [App\Http\Controllers\DirectDCController::class, 'fetchCustomerDCs'])->middleware('permission:direct_dc.view');
+    Route::match(['get', 'post'], '/direct-dc-consolidate/preview', [App\Http\Controllers\DirectDCController::class, 'consolidatePreview'])->middleware('permission:direct_dc.consolidate')->name('direct-dc.consolidate.preview');
+    Route::post('/direct-dc-consolidate/store', [App\Http\Controllers\DirectDCController::class, 'consolidateStore'])->middleware('permission:direct_dc.consolidate')->name('direct-dc.consolidate.store');
 
     Route::prefix('discount')->group(function () {
         Route::get('/', [DiscountController::class, 'index'])->middleware('permission:discount.products.view')->name('discount.index');
@@ -309,25 +309,25 @@ Route::middleware('auth')->group(function () {
     // products
 
     route::get('/Purchase', [PurchaseController::class, 'index'])->middleware('permission:purchases.view')->name('Purchase.home');
-    Route::get('/purchase-orders', [PurchaseController::class, 'purchaseOrders'])->middleware('permission:purchases.view')->name('purchase_orders.index');
-    route::get('/add/Purchase', [PurchaseController::class, 'add_purchase'])->middleware('permission:purchases.create')->name('add_purchase');
+    Route::get('/purchase-orders', [PurchaseController::class, 'purchaseOrders'])->middleware('permission:purchase_orders.view')->name('purchase_orders.index');
+    route::get('/add/Purchase', [PurchaseController::class, 'add_purchase'])->middleware('permission:purchases.create|purchase_orders.create')->name('add_purchase');
     Route::get('/purchase/quick', [PurchaseController::class, 'quickCreate'])->middleware('permission:purchases.create')->name('purchase.quick_create');
     Route::post('/purchase/quick', [PurchaseController::class, 'quickStore'])->middleware('permission:purchases.create')->name('purchase.quick_store');
     
     // Purchase POS Routes
     Route::get('/purchase-pos', [App\Http\Controllers\PurchasePOSController::class, 'index'])->middleware('permission:purchase_pos.create')->name('purchase-pos.index');
     Route::post('/purchase-pos/store', [App\Http\Controllers\PurchasePOSController::class, 'store'])->middleware('permission:purchase_pos.create')->name('purchase-pos.store');
-    route::post('/Purchase/store', [PurchaseController::class, 'store'])->middleware('permission:purchases.create|purchases.edit')->name('store.Purchase');
-    Route::get('/purchase/{id}/edit', [PurchaseController::class, 'edit'])->middleware('permission:purchases.edit')->name('purchase.edit');
-    Route::put('/purchase/{id}', [PurchaseController::class, 'update'])->middleware('permission:purchases.edit')->name('purchase.update');
-    Route::post('/purchases/bulk-additional-discount', [PurchaseController::class, 'bulkAdditionalDiscount'])->middleware('permission:purchases.edit')->name('purchases.bulk-additional-discount');
-    Route::match(['get', 'post'], '/purchase/{id}/confirm', [PurchaseController::class, 'confirm'])->middleware('permission:purchases.create|purchases.edit')->name('purchase.confirm');
-    Route::delete('/purchase/{id}', [PurchaseController::class, 'destroy'])->middleware('permission:purchases.delete')->name('purchase.destroy');
+    route::post('/Purchase/store', [PurchaseController::class, 'store'])->middleware('permission:purchases.create|purchases.edit|purchase_orders.create|purchase_orders.edit')->name('store.Purchase');
+    Route::get('/purchase/{id}/edit', [PurchaseController::class, 'edit'])->middleware('permission:purchases.edit|purchase_orders.edit')->name('purchase.edit');
+    Route::put('/purchase/{id}', [PurchaseController::class, 'update'])->middleware('permission:purchases.edit|purchase_orders.edit')->name('purchase.update');
+    Route::post('/purchases/bulk-additional-discount', [PurchaseController::class, 'bulkAdditionalDiscount'])->middleware('permission:purchases.edit|purchase_orders.edit')->name('purchases.bulk-additional-discount');
+    Route::match(['get', 'post'], '/purchase/{id}/confirm', [PurchaseController::class, 'confirm'])->middleware('permission:purchases.create|purchases.edit|purchase_orders.create')->name('purchase.confirm');
+    Route::delete('/purchase/{id}', [PurchaseController::class, 'destroy'])->middleware('permission:purchases.delete|purchase_orders.delete')->name('purchase.destroy');
     Route::get('/search-products', [ProductController::class, 'searchProducts'])->name('search-products');
     Route::get('/products/ajax-search', [ProductController::class, 'ajaxSearch'])->name('products.ajax.search');
     Route::get('/get-price', [ProductController::class, 'getPrice'])->name('get-price');
-    Route::get('/purchase/{id}/invoice', [PurchaseController::class, 'Invoice'])->middleware('permission:purchases.view')->name('purchase.invoice');
-    Route::get('/purchase/{id}/receipt', [PurchaseController::class, 'receipt'])->middleware('permission:purchases.view')->name('purchase.receipt');
+    Route::get('/purchase/{id}/invoice', [PurchaseController::class, 'Invoice'])->middleware('permission:purchases.view|purchase_orders.view')->name('purchase.invoice');
+    Route::get('/purchase/{id}/receipt', [PurchaseController::class, 'receipt'])->middleware('permission:purchases.view|purchase_orders.view')->name('purchase.receipt');
 
     Route::get('purchase/return', [PurchaseController::class, 'purchaseReturnIndex'])->name('purchase.return.index');
     Route::get('purchase/return/{id}/view', [PurchaseController::class, 'viewReturn'])->name('purchase.return.view');
@@ -335,20 +335,20 @@ Route::middleware('auth')->group(function () {
     Route::post('purchase/return/store', [PurchaseController::class, 'storeReturn'])->name('purchase.return.store');
 
     // Goods Receiving Note (GRN / Purchase DC) Routes
-    Route::get('/purchases/{id}/grns', [GoodsReceivingNoteController::class, 'index'])->middleware('permission:purchases.view')->name('purchases.grn.index');
-    Route::get('/purchases/{id}/grn/create', [GoodsReceivingNoteController::class, 'create'])->middleware('permission:purchases.create')->name('purchases.grn.create');
-    Route::post('/purchases/{id}/grn', [GoodsReceivingNoteController::class, 'store'])->middleware('permission:purchases.create')->name('purchases.grn.store');
-    Route::get('/grn/{id}/print', [GoodsReceivingNoteController::class, 'print'])->middleware('permission:purchases.view')->name('purchases.grn.print');
-    Route::post('/grn/{id}/generate-invoice', [GoodsReceivingNoteController::class, 'generateInvoiceForGrn'])->middleware('permission:purchases.create')->name('purchases.grn.generate_invoice');
-    Route::delete('/grn/{id}', [GoodsReceivingNoteController::class, 'destroy'])->middleware('permission:purchases.delete|purchases.create')->name('purchases.grn.destroy');
+    Route::get('/purchases/{id}/grns', [GoodsReceivingNoteController::class, 'index'])->middleware('permission:grn.view')->name('purchases.grn.index');
+    Route::get('/purchases/{id}/grn/create', [GoodsReceivingNoteController::class, 'create'])->middleware('permission:grn.create')->name('purchases.grn.create');
+    Route::post('/purchases/{id}/grn', [GoodsReceivingNoteController::class, 'store'])->middleware('permission:grn.create')->name('purchases.grn.store');
+    Route::get('/grn/{id}/print', [GoodsReceivingNoteController::class, 'print'])->middleware('permission:grn.view|grn.print')->name('purchases.grn.print');
+    Route::post('/grn/{id}/generate-invoice', [GoodsReceivingNoteController::class, 'generateInvoiceForGrn'])->middleware('permission:grn.generate_invoice')->name('purchases.grn.generate_invoice');
+    Route::delete('/grn/{id}', [GoodsReceivingNoteController::class, 'destroy'])->middleware('permission:grn.delete')->name('purchases.grn.destroy');
 
     // Direct GRN & Consolidation Routes
-    Route::get('/direct-grn', [DirectGRNController::class, 'index'])->middleware('permission:purchases.view')->name('direct-grn.index');
-    Route::get('/direct-grn/create', [DirectGRNController::class, 'create'])->middleware('permission:purchases.create')->name('direct-grn.create');
-    Route::post('/direct-grn/store', [DirectGRNController::class, 'store'])->middleware('permission:purchases.create')->name('direct-grn.store');
-    Route::delete('/direct-grn/{id}', [DirectGRNController::class, 'destroy'])->middleware('permission:purchases.delete|purchases.create')->name('direct-grn.destroy');
-    Route::match(['get', 'post'], '/direct-grn/consolidate/preview', [DirectGRNController::class, 'consolidatePreview'])->middleware('permission:purchases.create')->name('direct-grn.consolidate.preview');
-    Route::post('/direct-grn/consolidate/store', [DirectGRNController::class, 'consolidateStore'])->middleware('permission:purchases.create')->name('direct-grn.consolidate.store');
+    Route::get('/direct-grn', [DirectGRNController::class, 'index'])->middleware('permission:direct_grn.view')->name('direct-grn.index');
+    Route::get('/direct-grn/create', [DirectGRNController::class, 'create'])->middleware('permission:direct_grn.create')->name('direct-grn.create');
+    Route::post('/direct-grn/store', [DirectGRNController::class, 'store'])->middleware('permission:direct_grn.create')->name('direct-grn.store');
+    Route::delete('/direct-grn/{id}', [DirectGRNController::class, 'destroy'])->middleware('permission:direct_grn.delete')->name('direct-grn.destroy');
+    Route::match(['get', 'post'], '/direct-grn/consolidate/preview', [DirectGRNController::class, 'consolidatePreview'])->middleware('permission:direct_grn.consolidate')->name('direct-grn.consolidate.preview');
+    Route::post('/direct-grn/consolidate/store', [DirectGRNController::class, 'consolidateStore'])->middleware('permission:direct_grn.consolidate')->name('direct-grn.consolidate.store');
 
     // Inward Gatepass Routes
     Route::get('/InwardGatepass', [InwardgatepassController::class, 'index'])->middleware('permission:inward.gatepass.view')->name('InwardGatepass.home');
@@ -381,9 +381,9 @@ Route::middleware('auth')->group(function () {
 
     // Route::get('booking/system', [SaleController::class,'booking-system'])->name('booking.index');
     Route::get('sale', [SaleController::class, 'index'])->middleware('permission:sales.view')->name('sale.index');
-    Route::get('quotations', [SaleController::class, 'quotations'])->middleware('permission:sales.view')->name('quotations.index');
-    Route::get('sales-orders', [SaleController::class, 'salesOrders'])->middleware('permission:sales.view')->name('sales_orders.index');
-    Route::get('sale/create', [SaleController::class, 'addsale'])->middleware('permission:sales.create')->name('sale.add');
+    Route::get('quotations', [SaleController::class, 'quotations'])->middleware('permission:quotations.view')->name('quotations.index');
+    Route::get('sales-orders', [SaleController::class, 'salesOrders'])->middleware('permission:sales_orders.view')->name('sales_orders.index');
+    Route::get('sale/create', [SaleController::class, 'addsale'])->middleware('permission:sales.create|sales_orders.create|quotations.create')->name('sale.add');
     Route::get('/invoice-series/fetch', [SaleController::class, 'fetchInvoiceSeries'])->name('invoice_series.fetch');
     Route::post('/invoice-series/store', [SaleController::class, 'storeInvoiceSeries'])->name('invoice_series.store');
     Route::post('/invoice-series/delete', [SaleController::class, 'deleteInvoiceSeries'])->name('invoice_series.delete');
@@ -392,7 +392,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/pos/search-invoice', [App\Http\Controllers\POSController::class, 'searchInvoice'])->middleware('permission:sales.create')->name('pos.search_invoice');
     Route::get('/products/search', [ProductController::class, 'searchProducts'])->name('products.search');
     Route::get('/search-product-name', [SaleController::class, 'searchpname'])->name('search-product-name');
-    Route::post('/sales/store', [SaleController::class, 'store'])->middleware('permission:sales.create')->name('sales.store');
+    Route::post('/sales/store', [SaleController::class, 'store'])->middleware('permission:sales.create|sales_orders.create|quotations.create')->name('sales.store');
     Route::post('/sales/post-final', [SaleController::class, 'postFinal'])->middleware('permission:sales.create')->name('sales.post_final');
 
     // Sale Return Routes - NEW SYSTEM
@@ -403,12 +403,12 @@ Route::middleware('auth')->group(function () {
     Route::get('sale/return/{id}', [App\Http\Controllers\SaleReturnController::class, 'showReturnForm'])->middleware('permission:sales.create')->name('sale.return.show');
     Route::post('sale/return/store', [App\Http\Controllers\SaleReturnController::class, 'processSaleReturn'])->middleware('permission:sales.create')->name('sale.return.store');
 
-    Route::get('/sales/{id}/invoice', [SaleController::class, 'saleinvoice'])->middleware('permission:sales.view')->name('sales.invoice');
-    Route::get('/sales/{id}/edit', [SaleController::class, 'saleedit'])->middleware('permission:sales.edit')->name('sales.edit');
-    Route::put('/sales/{id}', [SaleController::class, 'updatesale'])->middleware('permission:sales.edit')->name('sales.update');
-    Route::get('/sales/{id}/dc', [SaleController::class, 'saledc'])->middleware('permission:sales.view')->name('sales.dc');
-    Route::get('/sales/{id}/dc-thermal', [SaleController::class, 'saledcThermal'])->middleware('permission:sales.view')->name('sales.dc_thermal');
-    Route::get('/sales/{id}/recepit', [SaleController::class, 'salereceipt'])->middleware('permission:sales.view')->name('sales.receipt');
+    Route::get('/sales/{id}/invoice', [SaleController::class, 'saleinvoice'])->middleware('permission:sales.view|sales.print|sales_orders.view|quotations.view')->name('sales.invoice');
+    Route::get('/sales/{id}/edit', [SaleController::class, 'saleedit'])->middleware('permission:sales.edit|sales_orders.edit|quotations.edit')->name('sales.edit');
+    Route::put('/sales/{id}', [SaleController::class, 'updatesale'])->middleware('permission:sales.edit|sales_orders.edit|quotations.edit')->name('sales.update');
+    Route::get('/sales/{id}/dc', [SaleController::class, 'saledc'])->middleware('permission:delivery_challans.view|delivery_challans.print|sales.view')->name('sales.dc');
+    Route::get('/sales/{id}/dc-thermal', [SaleController::class, 'saledcThermal'])->middleware('permission:delivery_challans.view|delivery_challans.print|sales.view')->name('sales.dc_thermal');
+    Route::get('/sales/{id}/recepit', [SaleController::class, 'salereceipt'])->middleware('permission:sales.view|sales.print')->name('sales.receipt');
 
     // booking system
 
@@ -417,19 +417,19 @@ Route::middleware('auth')->group(function () {
     Route::post('bookings/store', [ProductBookingController::class, 'store'])->middleware('permission:bookings.create')->name('bookings.store');
     Route::get('booking/receipt/{id}', [ProductBookingController::class, 'receipt'])->middleware('permission:bookings.view')->name('booking.receipt');
     Route::get('/sales/from-booking/{id}', [SaleController::class, 'convertFromBooking'])->name('sales.from.booking');
-    Route::post('/sales/{id}/confirm', [SaleController::class, 'confirmBooking'])->middleware('permission:sales.create')->name('sales.confirm');
+    Route::post('/sales/{id}/confirm', [SaleController::class, 'confirmBooking'])->middleware('permission:sales.create|sales_orders.create')->name('sales.confirm');
 
     // Quotation to Sales Order
-    Route::post('/sales/{id}/convert-to-order', [SaleController::class, 'convertToOrder'])->middleware('permission:sales.create')->name('sales.convert_to_order');
-    Route::get('/sales/{id}/create-dc', [App\Http\Controllers\DeliveryChallanController::class, 'create'])->middleware('permission:sales.create')->name('sales.create_dc');
-    Route::post('/sales/{id}/store-dc', [App\Http\Controllers\DeliveryChallanController::class, 'store'])->middleware('permission:sales.create')->name('sales.store_dc');
-    Route::get('/sales/{id}/dc-list', [App\Http\Controllers\DeliveryChallanController::class, 'index'])->middleware('permission:sales.view')->name('sales.dc_list');
-    Route::get('/dc/{id}/print', [App\Http\Controllers\DeliveryChallanController::class, 'print'])->middleware('permission:sales.view')->name('sales.dc_print');
-    Route::post('/dc/{id}/generate-invoice', [App\Http\Controllers\DeliveryChallanController::class, 'generateInvoiceForDc'])->middleware('permission:sales.create')->name('sales.dc_generate_invoice');
-    Route::delete('/dc/{id}', [App\Http\Controllers\DeliveryChallanController::class, 'destroy'])->middleware('permission:sales.delete|sales.create')->name('sales.dc_destroy');
-    Route::post('/sales/{id}/generate-invoice', [SaleController::class, 'generateInvoice'])->middleware('permission:sales.create')->name('sales.generate_invoice');
-    Route::delete('/sales/{id}', [SaleController::class, 'destroy'])->middleware('permission:sales.delete|sales.create')->name('sales.destroy');
-    Route::get('/sales-order/{id}/trail', [SaleController::class, 'orderTrail'])->middleware('permission:sales.view')->name('sales_orders.trail');
+    Route::post('/sales/{id}/convert-to-order', [SaleController::class, 'convertToOrder'])->middleware('permission:quotations.convert_to_so|sales_orders.create')->name('sales.convert_to_order');
+    Route::get('/sales/{id}/create-dc', [App\Http\Controllers\DeliveryChallanController::class, 'create'])->middleware('permission:delivery_challans.create')->name('sales.create_dc');
+    Route::post('/sales/{id}/store-dc', [App\Http\Controllers\DeliveryChallanController::class, 'store'])->middleware('permission:delivery_challans.create')->name('sales.store_dc');
+    Route::get('/sales/{id}/dc-list', [App\Http\Controllers\DeliveryChallanController::class, 'index'])->middleware('permission:delivery_challans.view')->name('sales.dc_list');
+    Route::get('/dc/{id}/print', [App\Http\Controllers\DeliveryChallanController::class, 'print'])->middleware('permission:delivery_challans.view|delivery_challans.print|direct_dc.view')->name('sales.dc_print');
+    Route::post('/dc/{id}/generate-invoice', [App\Http\Controllers\DeliveryChallanController::class, 'generateInvoiceForDc'])->middleware('permission:delivery_challans.generate_invoice')->name('sales.dc_generate_invoice');
+    Route::delete('/dc/{id}', [App\Http\Controllers\DeliveryChallanController::class, 'destroy'])->middleware('permission:delivery_challans.delete')->name('sales.dc_destroy');
+    Route::post('/sales/{id}/generate-invoice', [SaleController::class, 'generateInvoice'])->middleware('permission:sales_orders.generate_invoice')->name('sales.generate_invoice');
+    Route::delete('/sales/{id}', [SaleController::class, 'destroy'])->middleware('permission:sales.delete|sales_orders.delete|quotations.delete')->name('sales.destroy');
+    Route::get('/sales-order/{id}/trail', [SaleController::class, 'orderTrail'])->middleware('permission:sales_orders.view|sales.view')->name('sales_orders.trail');
 
     // web.php
     Route::get('/warehouse-stock-quantity', [StockTransferController::class, 'getStockQuantity'])->middleware('permission:stock.transfer.view')->name('warehouse.stock.quantity');

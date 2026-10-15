@@ -50,12 +50,16 @@
             <p class="text-muted mb-0 small">Manage warehouse inward receiving slips and consolidate into purchase bills</p>
         </div>
         <div class="d-flex gap-2">
+            @can('purchase_orders.view')
             <a href="{{ route('purchase_orders.index') }}" class="btn btn-outline-secondary fw-bold px-3">
                 <i class="fas fa-file-invoice me-1"></i> Purchase Orders
             </a>
+            @endcan
+            @can('direct_grn.create')
             <a href="{{ route('direct-grn.create') }}" class="btn btn-primary shadow-sm px-4 fw-bold">
                 <i class="fas fa-plus me-1"></i> Create Direct GRN
             </a>
+            @endcan
         </div>
     </div>
 
@@ -89,9 +93,11 @@
                         <input type="checkbox" id="selectAllBar" checked>
                         <span id="selectionText"><strong>0 selected</strong> &mdash; Vendor: <span id="selectionVendorName" class="fw-bold text-info"></span></span>
                     </div>
+                    @canany(['direct_grn.consolidate', 'grn.generate_invoice'])
                     <button type="button" id="btnConsolidate" class="btn-consolidate">
                         <i class="fas fa-file-invoice-dollar me-1"></i> Consolidate into Purchase Bill
                     </button>
+                    @endcanany
                 </div>
 
                 <div class="table-responsive">
@@ -176,13 +182,17 @@
                                     </td>
                                     <td class="text-end pe-3">
                                         <div class="d-inline-flex align-items-center gap-1">
+                                            @canany(['direct_grn.view', 'grn.view'])
                                             <a href="{{ route('purchases.grn.print', $grn->id) }}" target="_blank" class="btn btn-sm btn-outline-secondary px-2 py-1 fw-bold" title="Print Slip">
                                                 <i class="fas fa-print"></i>
                                             </a>
+                                            @endcanany
                                             @if(!$isInvoiced)
+                                                @canany(['direct_grn.delete', 'grn.delete'])
                                                 <button type="button" class="btn btn-sm btn-outline-danger px-2 py-1 fw-bold btn-delete-grn" data-id="{{ $grn->id }}" data-no="{{ $grn->grn_number }}" data-url="{{ route('direct-grn.destroy', $grn->id) }}" title="Delete GRN">
                                                     <i class="fas fa-trash-alt"></i>
                                                 </button>
+                                                @endcanany
                                             @else
                                                 <button type="button" class="btn btn-sm btn-outline-secondary px-2 py-1 fw-bold btn-invoiced-grn-alert" title="Already Invoiced">
                                                     <i class="fas fa-lock"></i>
