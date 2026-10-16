@@ -127,7 +127,7 @@
                                                     <i class="fas fa-lock"></i> Invoiced
                                                 </button>
                                             @endif
-                                            @canany(['grn.view', 'purchase_orders.view'])
+                                            @canany(['grn.print', 'direct_grn.print'])
                                             <a href="{{ route('purchases.grn.print', $grn->id) }}" target="_blank" class="btn btn-sm btn-outline-secondary px-2 py-1 fw-bold" title="Print GRN Slip">
                                                 <i class="fas fa-print"></i> Print
                                             </a>

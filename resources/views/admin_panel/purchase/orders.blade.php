@@ -300,13 +300,13 @@
                                             </li>
                                             @endcan
 
-                                            @canany(['purchase_orders.view', 'purchase_orders.print'])
+                                            @can('purchase_orders.print')
                                             <li>
                                                 <a class="dropdown-item py-2 d-flex align-items-center gap-2" href="{{ route('purchase.invoice', $po->id) }}" target="_blank">
                                                     <i class="fas fa-print fa-fw text-info"></i> Print Purchase Order
                                                 </a>
                                             </li>
-                                            @endcanany
+                                            @endcan
 
                                             @can('purchase_orders.delete')
                                             <li><hr class="dropdown-divider my-1"></li>

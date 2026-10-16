@@ -320,13 +320,13 @@
 
                     @if ($sale->sale_status === 'draft' || $sale->sale_status === 'booked')
                         @if ($sale->sale_type === 'quotation')
-                            @canany(['quotations.convert_to_sale', 'sales.create'])
+                            @can('quotations.convert_to_sale')
                                 <li>
                                     <a class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold" href="{{ route('sales.edit', $sale->id) }}?convert_to_sale=1">
                                         <i class="fas fa-check-circle fa-fw text-success"></i> Convert to Sale
                                     </a>
                                 </li>
-                            @endcanany
+                            @endcan
                         @else
                             @can('sales.create')
                                 <li>
@@ -363,8 +363,16 @@
 
                     <li><hr class="dropdown-divider"></li>
 
-                    @if ($sale->sale_type === 'direct_sale' || empty($sale->sale_type) || ($sale->sale_type === 'sales_order' && $sale->sale_status === 'posted'))
-                        @canany(['sales.view', 'sales_orders.view', 'sales.print'])
+                    @if ($sale->sale_type === 'sales_order')
+                        @can('sales_orders.print')
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', $sale->id) }}" target="_blank">
+                                    <i class="fas fa-file-invoice text-info fa-fw"></i> View Order Slip
+                                </a>
+                            </li>
+                        @endcan
+                    @elseif ($sale->sale_type === 'direct_sale' || empty($sale->sale_type))
+                        @can('sales.print')
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', $sale->id) }}" target="_blank">
                                     <i class="fas fa-file-invoice text-info fa-fw"></i> View Invoice
@@ -375,6 +383,8 @@
                                     <i class="fas fa-receipt text-success fa-fw"></i> Receipt
                                 </a>
                             </li>
+                        @endcan
+                        @canany(['delivery_challans.print', 'direct_dc.print'])
                             @php
                                 $directDc = $sale->deliveryChallans ? $sale->deliveryChallans->first() : null;
                             @endphp
@@ -395,14 +405,14 @@
                     @endif
 
                     @if ($sale->sale_type === 'quotation')
-                        @canany(['quotations.view', 'quotations.print'])
+                        @can('quotations.print')
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', ['id' => $sale->id, 'type' => 'estimate']) }}" target="_blank">
                                     <i class="fas fa-file-contract text-info fa-fw"></i> Print Quotation
                                 </a>
                             </li>
-                        @endcanany
-                        @canany(['quotations.convert_to_so', 'sales_orders.create'])
+                        @endcan
+                        @can('quotations.convert_to_so')
                             @if (!isset($hasConverted) || !$hasConverted)
                                 <li>
                                     <a class="dropdown-item d-flex align-items-center gap-2 py-2 fw-bold text-primary" href="{{ route('sales.edit', $sale->id) }}?convert_to_so=1">
@@ -410,7 +420,7 @@
                                     </a>
                                 </li>
                             @endif
-                        @endcanany
+                        @endcan
                     @endif
 
                     @php

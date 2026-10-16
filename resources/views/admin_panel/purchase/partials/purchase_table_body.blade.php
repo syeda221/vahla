@@ -13,9 +13,15 @@
             @if($purchase->goodsReceivingNotes && $purchase->goodsReceivingNotes->count() > 0)
                 <div class="mt-1 d-flex flex-wrap gap-1">
                     @foreach($purchase->goodsReceivingNotes as $grn)
+                        @canany(['grn.print', 'direct_grn.print'])
                         <a href="{{ route('purchases.grn.print', $grn->id) }}" target="_blank" class="badge bg-light text-primary border border-primary text-decoration-none px-1 py-0" style="font-size: 10px;" title="View GRN">
                             <i class="fas fa-boxes"></i> {{ $grn->grn_number }}
                         </a>
+                        @else
+                        <span class="badge bg-light text-secondary border px-1 py-0" style="font-size: 10px;">
+                            <i class="fas fa-boxes"></i> {{ $grn->grn_number }}
+                        </span>
+                        @endcanany
                     @endforeach
                 </div>
             @endif
@@ -158,18 +164,28 @@
                     @endif
 
                     @if ($purchase->status_purchase != 'draft')
-                        @canany(['purchases.view', 'purchase_orders.view', 'purchases.print'])
-                            <li>
-                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.invoice', $purchase->id) }}">
-                                    <i class="fas fa-file-invoice text-info fa-fw"></i> View Invoice
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.receipt', $purchase->id) }}">
-                                    <i class="fas fa-receipt text-secondary fa-fw"></i> View Receipt
-                                </a>
-                            </li>
-                        @endcanany
+                        @if ($isPO)
+                            @can('purchase_orders.print')
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.invoice', $purchase->id) }}" target="_blank">
+                                        <i class="fas fa-file-invoice text-info fa-fw"></i> Print Purchase Order
+                                    </a>
+                                </li>
+                            @endcan
+                        @else
+                            @can('purchases.print')
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.invoice', $purchase->id) }}" target="_blank">
+                                        <i class="fas fa-file-invoice text-info fa-fw"></i> View Invoice
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.receipt', $purchase->id) }}" target="_blank">
+                                        <i class="fas fa-receipt text-secondary fa-fw"></i> View Receipt
+                                    </a>
+                                </li>
+                            @endcan
+                        @endif
                         @can('purchases.create')
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.return.show', $purchase->id) }}">

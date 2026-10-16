@@ -182,7 +182,7 @@
                                     </td>
                                     <td class="text-end pe-3">
                                         <div class="d-inline-flex align-items-center gap-1">
-                                            @canany(['direct_grn.view', 'grn.view'])
+                                            @canany(['direct_grn.print', 'grn.print'])
                                             <a href="{{ route('purchases.grn.print', $grn->id) }}" target="_blank" class="btn btn-sm btn-outline-secondary px-2 py-1 fw-bold" title="Print Slip">
                                                 <i class="fas fa-print"></i>
                                             </a>

@@ -158,9 +158,9 @@
                                                         <i class="fas fa-lock"></i> Invoiced
                                                     </button>
                                                 @endif
-                                                @canany(['direct_dc.view', 'delivery_challans.view'])
+                                                @can('direct_dc.print')
                                                 <a href="{{ route('sales.dc_print', $dc->id) }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" target="_blank"><i class="fas fa-print"></i> Print</a>
-                                                @endcanany
+                                                @endcan
                                             </div>
                                         </td>
                                     </tr>

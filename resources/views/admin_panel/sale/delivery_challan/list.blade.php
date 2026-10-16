@@ -131,11 +131,11 @@
                                         </td>
                                         <td class="text-end">
                                             <div class="d-inline-flex align-items-center gap-1">
-                                                @canany(['delivery_challans.view', 'sales.view'])
+                                                @can('delivery_challans.print')
                                                 <a href="{{ route('sales.dc_print', $dc->id) }}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-sm">
                                                     <i class="fas fa-print me-1"></i> Print
                                                 </a>
-                                                @endcanany
+                                                @endcan
                                                 @if($dc->is_invoiced == 0)
                                                     @can('delivery_challans.generate_invoice')
                                                     <a href="{{ route('direct-dc.index', ['highlight_dc' => $dc->id, 'sale_id' => $sale->id]) }}" class="btn btn-sm btn-success fw-bold shadow-sm">

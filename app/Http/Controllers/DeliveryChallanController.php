@@ -275,6 +275,10 @@ class DeliveryChallanController extends Controller
 
     public function print($id)
     {
+        if (auth()->check() && !auth()->user()->can('delivery_challans.print') && !auth()->user()->can('direct_dc.print')) {
+            abort(403, 'Unauthorized action. You do not have permission to print delivery challans.');
+        }
+
         $dc = DeliveryChallan::with(['sale.customer_relation', 'items.product'])->findOrFail($id);
         return view('admin_panel.sale.delivery_challan.print', compact('dc'));
     }

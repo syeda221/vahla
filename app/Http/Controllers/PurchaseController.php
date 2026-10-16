@@ -2101,6 +2101,19 @@ class PurchaseController extends Controller
     {
         $purchase = Purchase::with(['items.product', 'vendor', 'warehouse'])->findOrFail($id);
         
+        $user = auth()->user();
+        if ($user) {
+            if ($purchase->purchase_type === 'purchase_order') {
+                if (!$user->can('purchase_orders.print')) {
+                    abort(403, 'Unauthorized action. You do not have permission to print purchase orders.');
+                }
+            } else {
+                if (!$user->can('purchases.print')) {
+                    abort(403, 'Unauthorized action. You do not have permission to print purchase invoices.');
+                }
+            }
+        }
+
         $balanceService = app(\App\Services\BalanceService::class);
         $vendor_balance = $balanceService->getVendorBalance($purchase->vendor_id);
 
@@ -2134,6 +2147,10 @@ class PurchaseController extends Controller
 
     public function receipt($id)
     {
+        if (auth()->check() && !auth()->user()->can('purchases.print')) {
+            abort(403, 'Unauthorized action. You do not have permission to print purchase receipts.');
+        }
+
         $purchase = Purchase::with(['items.product', 'vendor'])->findOrFail($id);
 
         $balanceService = app(\App\Services\BalanceService::class);

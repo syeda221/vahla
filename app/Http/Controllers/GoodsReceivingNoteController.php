@@ -229,6 +229,10 @@ class GoodsReceivingNoteController extends Controller
 
     public function print($id)
     {
+        if (auth()->check() && !auth()->user()->can('grn.print') && !auth()->user()->can('direct_grn.print')) {
+            abort(403, 'Unauthorized action. You do not have permission to print goods receiving notes.');
+        }
+
         $grn = GoodsReceivingNote::with(['purchase.vendor', 'warehouse', 'items.product', 'creator'])->findOrFail($id);
         return view('admin_panel.purchase.grn.print', compact('grn'));
     }

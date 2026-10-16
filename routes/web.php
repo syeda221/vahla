@@ -326,8 +326,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/search-products', [ProductController::class, 'searchProducts'])->name('search-products');
     Route::get('/products/ajax-search', [ProductController::class, 'ajaxSearch'])->name('products.ajax.search');
     Route::get('/get-price', [ProductController::class, 'getPrice'])->name('get-price');
-    Route::get('/purchase/{id}/invoice', [PurchaseController::class, 'Invoice'])->middleware('permission:purchases.view|purchase_orders.view')->name('purchase.invoice');
-    Route::get('/purchase/{id}/receipt', [PurchaseController::class, 'receipt'])->middleware('permission:purchases.view|purchase_orders.view')->name('purchase.receipt');
+    Route::get('/purchase/{id}/invoice', [PurchaseController::class, 'Invoice'])->middleware('permission:purchases.print|purchase_orders.print')->name('purchase.invoice');
+    Route::get('/purchase/{id}/receipt', [PurchaseController::class, 'receipt'])->middleware('permission:purchases.print')->name('purchase.receipt');
 
     Route::get('purchase/return', [PurchaseController::class, 'purchaseReturnIndex'])->name('purchase.return.index');
     Route::get('purchase/return/{id}/view', [PurchaseController::class, 'viewReturn'])->name('purchase.return.view');
@@ -338,7 +338,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/purchases/{id}/grns', [GoodsReceivingNoteController::class, 'index'])->middleware('permission:grn.view')->name('purchases.grn.index');
     Route::get('/purchases/{id}/grn/create', [GoodsReceivingNoteController::class, 'create'])->middleware('permission:grn.create')->name('purchases.grn.create');
     Route::post('/purchases/{id}/grn', [GoodsReceivingNoteController::class, 'store'])->middleware('permission:grn.create')->name('purchases.grn.store');
-    Route::get('/grn/{id}/print', [GoodsReceivingNoteController::class, 'print'])->middleware('permission:grn.view|grn.print')->name('purchases.grn.print');
+    Route::get('/grn/{id}/print', [GoodsReceivingNoteController::class, 'print'])->middleware('permission:grn.print|direct_grn.print')->name('purchases.grn.print');
     Route::post('/grn/{id}/generate-invoice', [GoodsReceivingNoteController::class, 'generateInvoiceForGrn'])->middleware('permission:grn.generate_invoice')->name('purchases.grn.generate_invoice');
     Route::delete('/grn/{id}', [GoodsReceivingNoteController::class, 'destroy'])->middleware('permission:grn.delete')->name('purchases.grn.destroy');
 
@@ -403,12 +403,12 @@ Route::middleware('auth')->group(function () {
     Route::get('sale/return/{id}', [App\Http\Controllers\SaleReturnController::class, 'showReturnForm'])->middleware('permission:sales.create')->name('sale.return.show');
     Route::post('sale/return/store', [App\Http\Controllers\SaleReturnController::class, 'processSaleReturn'])->middleware('permission:sales.create')->name('sale.return.store');
 
-    Route::get('/sales/{id}/invoice', [SaleController::class, 'saleinvoice'])->middleware('permission:sales.view|sales.print|sales_orders.view|quotations.view')->name('sales.invoice');
+    Route::get('/sales/{id}/invoice', [SaleController::class, 'saleinvoice'])->middleware('permission:sales.print|sales_orders.print|quotations.print')->name('sales.invoice');
     Route::get('/sales/{id}/edit', [SaleController::class, 'saleedit'])->middleware('permission:sales.edit|sales_orders.edit|quotations.edit')->name('sales.edit');
     Route::put('/sales/{id}', [SaleController::class, 'updatesale'])->middleware('permission:sales.edit|sales_orders.edit|quotations.edit')->name('sales.update');
-    Route::get('/sales/{id}/dc', [SaleController::class, 'saledc'])->middleware('permission:delivery_challans.view|delivery_challans.print|sales.view')->name('sales.dc');
-    Route::get('/sales/{id}/dc-thermal', [SaleController::class, 'saledcThermal'])->middleware('permission:delivery_challans.view|delivery_challans.print|sales.view')->name('sales.dc_thermal');
-    Route::get('/sales/{id}/recepit', [SaleController::class, 'salereceipt'])->middleware('permission:sales.view|sales.print')->name('sales.receipt');
+    Route::get('/sales/{id}/dc', [SaleController::class, 'saledc'])->middleware('permission:delivery_challans.print|direct_dc.print')->name('sales.dc');
+    Route::get('/sales/{id}/dc-thermal', [SaleController::class, 'saledcThermal'])->middleware('permission:delivery_challans.print|direct_dc.print')->name('sales.dc_thermal');
+    Route::get('/sales/{id}/recepit', [SaleController::class, 'salereceipt'])->middleware('permission:sales.print')->name('sales.receipt');
 
     // booking system
 
@@ -424,7 +424,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/{id}/create-dc', [App\Http\Controllers\DeliveryChallanController::class, 'create'])->middleware('permission:delivery_challans.create')->name('sales.create_dc');
     Route::post('/sales/{id}/store-dc', [App\Http\Controllers\DeliveryChallanController::class, 'store'])->middleware('permission:delivery_challans.create')->name('sales.store_dc');
     Route::get('/sales/{id}/dc-list', [App\Http\Controllers\DeliveryChallanController::class, 'index'])->middleware('permission:delivery_challans.view')->name('sales.dc_list');
-    Route::get('/dc/{id}/print', [App\Http\Controllers\DeliveryChallanController::class, 'print'])->middleware('permission:delivery_challans.view|delivery_challans.print|direct_dc.view')->name('sales.dc_print');
+    Route::get('/dc/{id}/print', [App\Http\Controllers\DeliveryChallanController::class, 'print'])->middleware('permission:delivery_challans.print|direct_dc.print')->name('sales.dc_print');
     Route::post('/dc/{id}/generate-invoice', [App\Http\Controllers\DeliveryChallanController::class, 'generateInvoiceForDc'])->middleware('permission:delivery_challans.generate_invoice')->name('sales.dc_generate_invoice');
     Route::delete('/dc/{id}', [App\Http\Controllers\DeliveryChallanController::class, 'destroy'])->middleware('permission:delivery_challans.delete')->name('sales.dc_destroy');
     Route::post('/sales/{id}/generate-invoice', [SaleController::class, 'generateInvoice'])->middleware('permission:sales_orders.generate_invoice')->name('sales.generate_invoice');

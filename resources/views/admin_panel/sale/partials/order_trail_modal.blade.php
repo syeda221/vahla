@@ -138,7 +138,7 @@
                                         </span>
                                     </td>
                                     <td class="py-2 text-end pe-3">
-                                        @can('sales.view')
+                                        @can('sales.print')
                                         <a href="{{ route('sales.invoice', $inv->id) }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-0 fw-semibold" style="font-size: 11px; height: 24px; line-height: 22px;" title="Print Invoice">
                                             <i class="fas fa-print me-1"></i> Print
                                         </a>

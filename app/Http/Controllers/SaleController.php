@@ -1032,6 +1032,25 @@ class SaleController extends Controller
     public function saleinvoice($id)
     {
         $sale = Sale::with(['customer_relation.salesOfficer', 'returns.items'])->findOrFail($id);
+        $user = auth()->user();
+        $isEstimate = request()->query('type') === 'estimate' || $sale->sale_type === 'quotation';
+
+        if ($user) {
+            if ($isEstimate) {
+                if (!$user->can('quotations.print')) {
+                    abort(403, 'Unauthorized action. You do not have permission to print quotations.');
+                }
+            } elseif ($sale->sale_type === 'sales_order') {
+                if (!$user->can('sales_orders.print')) {
+                    abort(403, 'Unauthorized action. You do not have permission to print sales orders.');
+                }
+            } else {
+                if (!$user->can('sales.print')) {
+                    abort(403, 'Unauthorized action. You do not have permission to print sale invoices.');
+                }
+            }
+        }
+
         $items = $this->_getSaleItems($sale);
         $isEstimate = request()->query('type') === 'estimate';
 
@@ -1246,6 +1265,10 @@ class SaleController extends Controller
 
     public function saledc($id)
     {
+        if (auth()->check() && !auth()->user()->can('delivery_challans.print') && !auth()->user()->can('direct_dc.print')) {
+            abort(403, 'Unauthorized: You do not have permission to print delivery challans.');
+        }
+
         $sale = Sale::with('customer_relation')->findOrFail($id);
         $items = $this->_getSaleItems($sale);
 
@@ -1254,6 +1277,10 @@ class SaleController extends Controller
 
     public function saledcThermal($id)
     {
+        if (auth()->check() && !auth()->user()->can('delivery_challans.print') && !auth()->user()->can('direct_dc.print')) {
+            abort(403, 'Unauthorized: You do not have permission to print delivery challans.');
+        }
+
         $sale = Sale::with('customer_relation')->findOrFail($id);
         $items = $this->_getSaleItems($sale);
 
@@ -1262,6 +1289,10 @@ class SaleController extends Controller
 
     public function salereceipt($id)
     {
+        if (auth()->check() && !auth()->user()->can('sales.print')) {
+            abort(403, 'Unauthorized: You do not have permission to print sale receipts.');
+        }
+
         $sale = Sale::with('customer_relation')->findOrFail($id);
         $items = $this->_getSaleItems($sale);
 
