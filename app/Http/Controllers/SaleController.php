@@ -1703,6 +1703,7 @@ class SaleController extends Controller
                 $saleItem->color = $colorVal;
                 $saleItem->warehouse_id = !empty($warehouses[$index]) ? $warehouses[$index] : $defaultWhId;
                 $saleItem->product_name = $productName; // Store name snapshot
+                $saleItem->description = $request->description[$index] ?? null;
 
                 $saleItem->qty = $storedQtyBox; // Store as Box equivalent for consistency
                 $saleItem->total_pieces = $totalPieces;
@@ -2655,6 +2656,7 @@ class SaleController extends Controller
                 'discount_percent' => (float) $item->discount_percent,
                 'discount_amount' => (float) $item->discount_amount,
                 'total' => (float) $item->total,
+                'description' => $item->description ?? '',
                 'variant_name' => $variant['name'] ?? '',
                 'color_val' => $variant['color'] ?? '',
                 'size_val' => $variant['size'] ?? '',

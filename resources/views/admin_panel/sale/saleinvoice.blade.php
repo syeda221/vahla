@@ -474,6 +474,11 @@
                         <td style="text-align: center;">{{ $loop->iteration }}</td>
                         <td class="desc-col" style="font-weight: 500;">
                             {{ $productTitle }}
+                            @if(!empty($item['description']))
+                                <div style="font-size: 11px; color: #475569; font-weight: normal; margin-top: 2px;">
+                                    {{ $item['description'] }}
+                                </div>
+                            @endif
                             @if($retQty > 0)
                                 <div style="font-size: 11px; color: #dc2626; font-weight: 600; margin-top: 2px;">
                                     <i class="fa-solid fa-rotate-left"></i> Returned Qty: {{ ($retQty == (int)$retQty) ? (int)$retQty : number_format($retQty, 3) }} {{ $dispUnit }}

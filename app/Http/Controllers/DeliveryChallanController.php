@@ -238,6 +238,7 @@ class DeliveryChallanController extends Controller
                         'boxes' => $deliveryQtyInput,
                         'loose_pieces' => 0,
                         'price' => $item->price,
+                        'description' => $item->description ?? null,
                     ]);
 
                     // Update Sale Item
@@ -349,6 +350,7 @@ class DeliveryChallanController extends Controller
                     'product_id' => $dcItem->product_id,
                     'warehouse_id' => $dcItem->warehouse_id ?? 1,
                     'color' => $dcItem->color,
+                    'description' => $dcItem->description,
                     'product_name' => optional($dcItem->product)->item_name ?? 'Product #' . $dcItem->product_id,
                     'qty' => $qty,
                     'total_pieces' => $qty,

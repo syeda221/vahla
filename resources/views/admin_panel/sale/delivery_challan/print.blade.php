@@ -428,7 +428,17 @@
                             @endphp
                             <tr>
                                 <td style="text-align: center;">{{ $sNo }}</td>
-                                <td class="desc-col" style="font-weight: 500;">{{ $productTitle }}</td>
+                                <td class="desc-col" style="font-weight: 500;">
+                                    {{ $productTitle }}
+                                    @php
+                                        $itemDesc = $item->description ?? optional($saleItem)->description;
+                                    @endphp
+                                    @if(!empty($itemDesc))
+                                        <div style="font-size: 11px; color: #475569; font-weight: normal; margin-top: 2px;">
+                                            {{ $itemDesc }}
+                                        </div>
+                                    @endif
+                                </td>
                                 <td style="text-align: center; font-weight: bold;">{{ $dispQty }}</td>
                                 <td class="rate-col" style="text-align: right;">{{ number_format((float)$rate, 2) }}</td>
                                 <td style="text-align: center;">{{ $dispUnit }}</td>

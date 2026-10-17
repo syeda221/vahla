@@ -54,13 +54,14 @@
                         <table class="table table-bordered" id="itemsTable">
                             <thead>
                                 <tr>
-                                    <th style="width: 28%;">Product</th>
-                                    <th style="width: 12%;" class="text-center">Item Code</th>
-                                    <th style="width: 10%;">Stock</th>
-                                    <th style="width: 10%;">Qty</th>
-                                    <th style="width: 12%;">Price</th>
-                                    <th style="width: 10%;">Discount %</th>
-                                    <th style="width: 12%;">Amount</th>
+                                    <th style="width: 25%;">Product</th>
+                                    <th style="width: 10%;" class="text-center">Item Code</th>
+                                    <th style="width: 9%;">Stock</th>
+                                    <th style="width: 9%;">Qty</th>
+                                    <th style="width: 15%;">Description</th>
+                                    <th style="width: 11%;">Price</th>
+                                    <th style="width: 9%;">Discount %</th>
+                                    <th style="width: 11%;">Amount</th>
                                     <th style="width: 6%;"><i class="fas fa-trash"></i></th>
                                 </tr>
                             </thead>
@@ -140,6 +141,7 @@
                                          <input type="hidden" name="qty[]" class="real-qty-hidden" value="{{ $itemBoxes }}">
                                          <input type="hidden" name="loose_qty[]" class="real-loose-hidden" value="{{ $itemLoose }}">
                                      </td>
+                                     <td><input type="text" name="description[]" class="form-control" value="{{ $item->description ?? '' }}" placeholder="Description"></td>
                                      <td><input type="number" step="any" name="price[]" class="form-control price-input" required value="{{ $itemPrice }}"></td>
                                     <td><input type="number" step="any" class="form-control disc-input" value="0"></td>
                                     <td><input type="text" class="form-control amount-display text-end" readonly tabindex="-1"></td>
@@ -293,6 +295,7 @@ $(document).ready(function() {
             '<td><input type="text" class="form-control display-qty-input" required value="1">' +
             '<input type="hidden" name="qty[]" class="real-qty-hidden" value="1">' +
             '<input type="hidden" name="loose_qty[]" class="real-loose-hidden" value="0"></td>' +
+            '<td><input type="text" name="description[]" class="form-control" placeholder="Description"></td>' +
             '<td><input type="number" step="any" name="price[]" class="form-control price-input" required value="0"></td>' +
             '<td><input type="number" step="any" class="form-control disc-input" value="0"></td>' +
             '<td><input type="text" class="form-control amount-display text-end" readonly tabindex="-1"></td>' +

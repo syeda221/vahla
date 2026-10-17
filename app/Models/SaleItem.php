@@ -11,7 +11,7 @@ class SaleItem extends Model
         'brand_id', 'category_id', 'sub_category_id', 'unit_id',
         'qty', 'price', 'total',
         'discount_percent', 'discount_amount', 'discount_type',
-        'color', 'total_pieces', 'loose_pieces',
+        'color', 'description', 'total_pieces', 'loose_pieces',
         'price_per_piece', 'price_per_m2', 'delivered_qty'
     ];
 

@@ -12,6 +12,7 @@ class DeliveryChallanItem extends Model
         'delivery_challan_id',
         'sale_item_id',
         'product_id',
+        'description',
         'warehouse_id',
         'delivered_qty',
         'boxes',

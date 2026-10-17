@@ -855,6 +855,7 @@
                                             <th class="col-code" style="width: 110px; min-width: 105px;">CODE</th>
                                             <th class="col-stock" style="width: 80px; min-width: 75px;">STOCK</th>
                                             <th class="col-qty" style="width: 85px;">QTY</th>
+                                            <th class="col-description" style="width: 130px; min-width: 110px;">DESCRIPTION</th>
                                             <th class="col-size" style="width: 55px;">SIZE</th>
                                             <th class="col-color" style="width: 65px;">COLOR</th>
                                             <th class="col-pieces" style="width: 55px;">PCS</th>
@@ -1150,6 +1151,15 @@
                                                             name="loose_qty[]" value="0" placeholder="" min="0">
                                                     </td>
 
+                                                    <!-- Description -->
+                                                    <td class="col-description" style="width: 130px; min-width: 110px;">
+                                                        <input type="text"
+                                                            class="form-control item-description"
+                                                            name="description[]"
+                                                            value="{{ $item->description ?? '' }}"
+                                                            placeholder="Description" style="font-size: 0.78rem;">
+                                                    </td>
+
                                                     <!-- Size -->
                                                     <td class="col-size">
                                                         <input type="text"
@@ -1259,6 +1269,9 @@
                                                 </td>
                                                 <td style="width:70px;" class="d-none">
                                                     <input type="number" class="form-control loose-pcs-input text-end" name="loose_qty[]" placeholder="" min="0" value="">
+                                                </td>
+                                                <td class="col-description" style="width: 130px; min-width: 110px;">
+                                                    <input type="text" class="form-control item-description" name="description[]" placeholder="Description" style="font-size: 0.78rem;">
                                                 </td>
                                                 <td class="col-size"><input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-"><input type="hidden" class="pack-qty" name="pack_qty[]" value="1"></td>
                                                 <td class="col-color"><input type="text" class="form-control color-display text-center input-readonly" readonly tabindex="-1" placeholder="-"></td>

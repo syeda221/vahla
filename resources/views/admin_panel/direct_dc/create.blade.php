@@ -82,13 +82,14 @@
                             <table class="table table-hover table-bordered align-middle" id="itemsTable">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="width: 28%;" class="fw-bold text-dark">Product</th>
-                                        <th style="width: 12%;" class="fw-bold text-dark text-center">Item Code</th>
-                                        <th style="width: 10%;" class="fw-bold text-dark text-center">Stock</th>
-                                        <th style="width: 10%;" class="fw-bold text-dark text-center">Qty</th>
-                                        <th style="width: 12%;" class="fw-bold text-dark text-end">Price</th>
-                                        <th style="width: 10%;" class="fw-bold text-dark text-center">Disc %</th>
-                                        <th style="width: 12%;" class="fw-bold text-dark text-end">Amount</th>
+                                        <th style="width: 25%;" class="fw-bold text-dark">Product</th>
+                                        <th style="width: 10%;" class="fw-bold text-dark text-center">Item Code</th>
+                                        <th style="width: 9%;" class="fw-bold text-dark text-center">Stock</th>
+                                        <th style="width: 9%;" class="fw-bold text-dark text-center">Qty</th>
+                                        <th style="width: 15%;" class="fw-bold text-dark text-center">Description</th>
+                                        <th style="width: 11%;" class="fw-bold text-dark text-end">Price</th>
+                                        <th style="width: 9%;" class="fw-bold text-dark text-center">Disc %</th>
+                                        <th style="width: 11%;" class="fw-bold text-dark text-end">Amount</th>
                                         <th style="width: 6%;" class="text-center"><i class="fas fa-trash text-danger"></i></th>
                                     </tr>
                                 </thead>
@@ -110,6 +111,7 @@
                                             <input type="hidden" name="qty[]" class="real-qty-hidden" value="1">
                                             <input type="hidden" name="loose_qty[]" class="real-loose-hidden" value="0">
                                         </td>
+                                        <td><input type="text" name="description[]" class="form-control" placeholder="Description"></td>
                                         <td><input type="number" step="any" name="price[]" class="form-control price-input text-end fw-bold" required value="0"></td>
                                         <td><input type="number" step="any" class="form-control disc-input text-center" value="0"></td>
                                         <td><input type="text" class="form-control amount-display text-end bg-light fw-bold text-primary" readonly tabindex="-1"></td>
@@ -261,6 +263,7 @@ $(document).ready(function() {
             '<td><input type="text" class="form-control display-qty-input text-center fw-bold" required value="1">' +
             '<input type="hidden" name="qty[]" class="real-qty-hidden" value="1">' +
             '<input type="hidden" name="loose_qty[]" class="real-loose-hidden" value="0"></td>' +
+            '<td><input type="text" name="description[]" class="form-control" placeholder="Description"></td>' +
             '<td><input type="number" step="any" name="price[]" class="form-control price-input text-end fw-bold" required value="0"></td>' +
             '<td><input type="number" step="any" class="form-control disc-input text-center" value="0"></td>' +
             '<td><input type="text" class="form-control amount-display text-end bg-light fw-bold text-primary" readonly tabindex="-1"></td>' +

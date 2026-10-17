@@ -84,6 +84,15 @@
         font-size: 0.75rem !important;
         padding: 2px 4px !important;
     }
+    .sales-table thead th.col-description,
+    .sales-table tbody td.col-description {
+        width: 130px !important;
+        min-width: 110px !important;
+    }
+    .sales-table tbody td.col-description input.item-description {
+        font-size: 0.78rem !important;
+        padding: 2px 6px !important;
+    }
 </style>
 
 <script>
@@ -281,6 +290,11 @@
     <!-- Loose Pieces -->
     <td style="width:70px;min-width:70px;" class="d-none">
       <input type="number" class="form-control loose-pcs-input text-end" name="loose_qty[]" placeholder="" min="0" value="">
+    </td>
+
+    <!-- Description -->
+    <td class="col-description" style="width:130px; min-width:110px;">
+      <input type="text" class="form-control item-description" name="description[]" placeholder="Description" style="font-size:0.78rem;">
     </td>
 
     <!-- Size -->
@@ -1719,7 +1733,7 @@
         });
 
         // Enter on any editable input -> compute row, add new row & open product select
-        $('#salesTableBody').on('keydown', '.carton-qty, .loose-pcs-input, .discount-value, .discount-amount, .visible-price', function(e) {
+        $('#salesTableBody').on('keydown', '.carton-qty, .item-description, .loose-pcs-input, .discount-value, .discount-amount, .visible-price', function(e) {
             if (e.key === 'Enter' || e.keyCode === 13) {
                 e.preventDefault();
                 const $current = $(this).closest('tr');
@@ -2303,6 +2317,7 @@
                         item_code: $row.find('.item-code-display').val(),
                         stock: $row.find('.stock').val(),
                         carton_qty: $row.find('.carton-qty').val(),
+                        description: $row.find('.item-description').val(),
                         qty_unit_mode: $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'main',
                         loose_qty: $row.find('.loose-pcs-input').val(),
                         size_display: $row.find('.size-display').val(),
@@ -2381,6 +2396,7 @@
                             $newRow.find('.item-code-display').val(rData.item_code || '');
                             $newRow.find('.stock').val(rData.stock || '');
                             $newRow.find('.carton-qty').val(rData.carton_qty || '');
+                            $newRow.find('.item-description').val(rData.description || '');
                             $newRow.find('.loose-pcs-input').val(rData.loose_qty || '');
                             $newRow.find('.size-display').val(rData.size_display || '');
                             $newRow.find('.color-display').val(rData.color_display || '');

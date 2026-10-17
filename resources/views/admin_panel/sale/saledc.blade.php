@@ -435,7 +435,14 @@
 
                             <tr>
                                 <td style="text-align: center;">{{ $sNo }}</td>
-                                <td class="desc-col" style="font-weight: 500;">{{ $productTitle }}</td>
+                                <td class="desc-col" style="font-weight: 500;">
+                                    {{ $productTitle }}
+                                    @if(!empty($item['description']))
+                                        <div style="font-size: 11px; color: #475569; font-weight: normal; margin-top: 2px;">
+                                            {{ $item['description'] }}
+                                        </div>
+                                    @endif
+                                </td>
                                 <td style="text-align: center; font-weight: bold;">{{ ($dispQty == (int)$dispQty) ? (int)$dispQty : number_format($dispQty, 3) }}</td>
                                 <td class="rate-col" style="text-align: right;">{{ number_format((float)($item['price'] ?? 0), 2) }}</td>
                                 <td style="text-align: center;">{{ $dispUnit }}</td>

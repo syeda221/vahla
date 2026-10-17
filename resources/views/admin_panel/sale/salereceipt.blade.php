@@ -425,6 +425,9 @@
                         <td style="width: 6%;">{{ $loop->iteration }}</td>
                         <td style="width: 48%;">
                             <span class="item-name">{{ $item['item_name'] }}</span>
+                            @if(!empty($item['description']))
+                                <div style="font-size: 10px; color: #555;">{{ $item['description'] }}</div>
+                            @endif
                             @if($variantStr && $variantStr !== '{' && trim($variantStr) !== '')
                                 <span class="item-variant">{{ $variantStr }}</span>
                             @endif
