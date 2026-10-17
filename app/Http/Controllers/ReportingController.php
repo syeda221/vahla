@@ -1164,19 +1164,21 @@ class ReportingController extends Controller
 
     public function fetchProfitLoss(Request $request)
     {
-        $start = $request->start_date ?: now()->startOfDay()->toDateTimeString();
-        $end = $request->end_date ?: now()->endOfDay()->toDateTimeString();
+        $rawStart = $request->start_date ? str_replace('T', ' ', $request->start_date) : null;
+        $rawEnd   = $request->end_date ? str_replace('T', ' ', $request->end_date) : null;
 
-        if (strlen($start) === 10) {
-            $start .= ' 00:00:00';
-        } elseif (strlen($start) === 16) {
-            $start .= ':00';
-        }
-
-        if (strlen($end) === 10) {
-            $end .= ' 23:59:59';
-        } elseif (strlen($end) === 16) {
-            $end .= ':59';
+        $start = $rawStart ? \Carbon\Carbon::parse($rawStart)->format('Y-m-d H:i:s') : now()->startOfDay()->format('Y-m-d H:i:s');
+        if ($rawEnd) {
+            $parsedEnd = \Carbon\Carbon::parse($rawEnd);
+            if (strlen($request->end_date) === 10) {
+                $end = $parsedEnd->endOfDay()->format('Y-m-d H:i:s');
+            } elseif (strlen($request->end_date) === 16) {
+                $end = $parsedEnd->seconds(59)->format('Y-m-d H:i:s');
+            } else {
+                $end = $parsedEnd->format('Y-m-d H:i:s');
+            }
+        } else {
+            $end = now()->endOfDay()->format('Y-m-d H:i:s');
         }
 
         $productId = $request->product_id;
@@ -1186,8 +1188,7 @@ class ReportingController extends Controller
         $productsQuery = Product::query();
         if ($productId && $productId !== 'all') {
             $productsQuery->where('id', $productId);
-        }
-        if ($categoryId && $categoryId !== 'all') {
+        } elseif ($categoryId && $categoryId !== 'all') {
             $productsQuery->where('category_id', $categoryId);
         }
         
@@ -1316,6 +1317,7 @@ class ReportingController extends Controller
                     }
                 }
 
+                $matchedSaleIndices = [];
                 foreach ($parsedVariants as $v) {
                     $vName = $v['name'] ?? $product->item_name;
                     $vSize = $v['size'] ?? '-';
@@ -1354,8 +1356,9 @@ class ReportingController extends Controller
                     $soldQty = 0;
                     $soldQtyPieces = 0;
                     $soldAmount = 0;
-                    foreach ($salesList as $sItem) {
+                    foreach ($salesList as $sIdx => $sItem) {
                         if ($this->matchSaleItemToVariant($sItem, $v)) {
+                            $matchedSaleIndices[$sIdx] = true;
                             $soldQty += (float) $sItem->qty;
                             $soldQtyPieces += (float) $sItem->total_pieces;
                             
@@ -1465,6 +1468,45 @@ class ReportingController extends Controller
                             'profit' => $grossProfit
                         ];
                         $totalGrossProfit += $grossProfit;
+                    }
+                }
+
+                // Fallback for sales of this product that did not match any specific variant
+                $unmatchedSales = $salesList->filter(function($sItem, $sIdx) use ($matchedSaleIndices) {
+                    return !isset($matchedSaleIndices[$sIdx]);
+                });
+
+                if ($unmatchedSales->isNotEmpty()) {
+                    $uSoldQty = 0;
+                    $uSoldQtyPieces = 0;
+                    $uSoldAmount = 0;
+                    foreach ($unmatchedSales as $uItem) {
+                        $uSoldQty += (float) $uItem->qty;
+                        $uSoldQtyPieces += (float) $uItem->total_pieces;
+                        $itemNet = (float) $uItem->total;
+                        if ($uItem->total_bill_amount > 0 && $uItem->total_extradiscount > 0) {
+                            $proportion = $itemNet / (float) $uItem->total_bill_amount;
+                            $itemNet -= ($uItem->total_extradiscount * $proportion);
+                        }
+                        $uSoldAmount += $itemNet;
+                    }
+
+                    $uCogs = $uSoldQtyPieces * $averagePrice;
+                    $uProfit = $uSoldAmount - $uCogs;
+
+                    if ($uSoldQtyPieces > 0) {
+                        $productStats[] = [
+                            'item_code' => $product->item_code,
+                            'item_name' => $product->item_name . ' (Standard / General)',
+                            'unit_badge' => 'Pcs',
+                            'sold_qty' => ((int)$uSoldQtyPieces) . ' Pcs',
+                            'returned_qty' => '0',
+                            'revenue' => $uSoldAmount,
+                            'avg_cost' => $averagePrice,
+                            'cogs' => $uCogs,
+                            'profit' => $uProfit
+                        ];
+                        $totalGrossProfit += $uProfit;
                     }
                 }
             } else {
@@ -1698,8 +1740,10 @@ class ReportingController extends Controller
         $expenseQueryV2 = DB::table('voucher_masters')->where('voucher_type', 'expense');
 
         if ($start && $end) {
-            $expenseQueryV1->whereBetween('entry_date', [$start, $end]);
-            $expenseQueryV2->whereBetween('date', [$start, $end]);
+            $startDateOnly = substr($start, 0, 10);
+            $endDateOnly   = substr($end, 0, 10);
+            $expenseQueryV1->whereBetween('entry_date', [$startDateOnly, $endDateOnly]);
+            $expenseQueryV2->whereBetween('date', [$startDateOnly, $endDateOnly]);
         }
 
         $totalExpenses = $expenseQueryV1->sum('total_amount') + $expenseQueryV2->sum('total_amount');
