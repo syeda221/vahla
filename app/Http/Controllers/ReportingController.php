@@ -28,7 +28,7 @@ class ReportingController extends Controller
             ->orderBy('products.item_name')
             ->get();
 
-        return view('admin_panel.Reporting.onhand', compact('rows'));
+        return view('admin_panel.reporting.onhand', compact('rows'));
     }
 
     public function inventory_demand_report()
