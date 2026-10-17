@@ -36,23 +36,31 @@
         }
 
         .invoice-page {
+            width: 210mm;
             max-width: 210mm;
-            min-height: auto;
-            margin: 24px auto;
+            height: 148.5mm;
+            min-height: 148.5mm;
+            max-height: 148.5mm;
+            margin: 20px auto;
             background: #ffffff;
-            padding: 30px;
+            padding: 15px 25px 12px 25px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             position: relative;
             color: var(--pad-text);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
         }
 
         /* Header Layout */
         .pad-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             border-bottom: 2px solid var(--pad-border);
-            padding-bottom: 15px;
+            padding-bottom: 8px;
         }
 
         .logo-section {
@@ -82,14 +90,14 @@
         .company-details-section {
             width: 50%;
             font-size: 11px;
-            line-height: 1.5;
+            line-height: 1.4;
             color: var(--pad-text);
             text-align: right;
         }
 
         .deals-in {
             font-weight: bold;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             font-size: 11.5px;
         }
         
@@ -101,7 +109,7 @@
             display: flex;
             align-items: flex-start;
             justify-content: flex-end;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         .contact-line i {
@@ -117,7 +125,7 @@
         .meta-section {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
             font-weight: bold;
             font-size: 13px;
         }
@@ -127,7 +135,7 @@
         }
         
         .meta-row {
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             display: flex;
         }
         
@@ -150,7 +158,7 @@
         .pad-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             border: 1px solid var(--pad-border);
         }
 
@@ -158,7 +166,7 @@
             background-color: #374151;
             color: #ffffff;
             text-align: center;
-            padding: 8px;
+            padding: 6px 8px;
             font-size: 12px;
             border: 1px solid var(--pad-border);
             text-transform: uppercase;
@@ -166,8 +174,8 @@
 
         .pad-table tbody td {
             border: 1px solid var(--pad-border);
-            padding: 6px 8px;
-            height: 28px;
+            padding: 4px 8px;
+            height: 24px;
             color: #000;
             vertical-align: middle;
         }
@@ -181,7 +189,7 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
-            margin-top: 30px;
+            margin-top: 10px;
             font-size: 12px;
             font-weight: bold;
         }
@@ -195,19 +203,33 @@
         .footer-sign {
             width: 35%;
             text-align: right;
-            padding-top: 30px;
+            padding-top: 10px;
             border-top: 1px solid transparent;
             color: var(--pad-text);
         }
 
         @media print {
-            body { background: #fff; }
+            body { 
+                background: #fff; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+            }
             .action-bar { display: none !important; }
             .invoice-page { 
-                margin: 0; 
-                box-shadow: none; 
-                padding: 10mm;
-                max-width: 100%;
+                margin: 0 !important; 
+                box-shadow: none !important; 
+                padding: 5mm 10mm 4mm 10mm !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 148.5mm !important;
+                max-height: 148.5mm !important;
+                box-sizing: border-box !important;
+                page-break-after: always !important;
+                page-break-inside: avoid !important;
+                overflow: hidden !important;
+            }
+            .invoice-page:last-child {
+                page-break-after: auto !important;
             }
             .pad-table tbody tr:nth-child(even) {
                 background-color: rgba(224, 242, 254, 0.5) !important;
@@ -223,7 +245,7 @@
         }
 
         @page {
-            size: A4;
+            size: A4 portrait;
             margin: 0;
         }
 
@@ -257,103 +279,114 @@
         </div>
     </div>
 
-    <div class="invoice-page">
-        <!-- Header -->
-        <div class="pad-header">
-            <div class="logo-section">
-                @if(\App\Models\Setting::get('company_logo'))
-                    <img src="{{ asset(\App\Models\Setting::get('company_logo')) }}" alt="Company Logo" class="logo-img">
-                @else
-                    <h2 style="margin:0; font-weight:900; font-size:28px; color: #1e40af;">{{ \App\Models\Setting::get('company_name', 'VAHLA') }}</h2>
-                    <div style="font-size:12px; font-weight:bold; letter-spacing:1px; margin-bottom:8px; color: #1e40af;">INDUSTRIAL SOLUTIONS</div>
-                @endif
-                <div class="invoice-badge">DELIVERY CHALLAN</div>
-            </div>
-            
-            <div class="company-details-section">
-                <div class="deals-in">
-                    <span>DEALS IN:</span> {{ \App\Models\Setting::get('deals_in', 'Fasteners, Bearing, Lifting Equipments, V-belt, PPE\'s, Hand & Cutting Etc') }}
-                </div>
-                <div class="contact-line">
-                    <span dir="ltr">{{ \App\Models\Setting::get('company_address', 'Shop No. 91/1, Opp: Fg Girls High School, Saddar Bazar Hyderabad Sindh') }}</span>
-                    <i class="fa-solid fa-location-dot"></i>
-                </div>
-                <div class="contact-line">
-                    <span dir="ltr">{{ \App\Models\Setting::get('company_phone', '+92-022-2781224 - 2730663') }}</span>
-                    <i class="fa-solid fa-phone"></i>
-                </div>
-                @if(\App\Models\Setting::get('company_email'))
-                <div class="contact-line">
-                    <span dir="ltr">{{ \App\Models\Setting::get('company_email', 'vahlamillstore@hotmail.com') }}</span>
-                    <i class="fa-solid fa-envelope"></i>
-                </div>
-                @endif
-            </div>
-        </div>
+    @php
+        $totalItems = $dc->items->count();
+        // If 6 or fewer items, fit on 1 half-page; if more, 5 items per half-page
+        $chunkSize = $totalItems <= 6 ? 6 : 5;
+        $itemChunks = $dc->items->chunk($chunkSize);
+        $totalPages = $itemChunks->count();
 
-        <!-- Meta -->
-        <div class="meta-section">
-            <div class="meta-left">
-                @php
-                    $orderDocNo = '';
-                    if ($dc->sale) {
-                        $orderDocNo = $dc->sale->invoice_no ?: (($dc->sale->sale_type === 'sales_order' && $dc->sale->sale_status !== 'posted') 
-                            ? ('SO-' . str_pad($dc->sale->id, 4, '0', STR_PAD_LEFT)) 
-                            : ($dc->sale->sale_type === 'quotation' ? ('QUO-' . str_pad($dc->sale->id, 4, '0', STR_PAD_LEFT)) : ('#' . $dc->sale->id)));
-                    }
-                @endphp
-                <div class="meta-row">
-                    <div class="meta-label">No:</div>
-                    <div class="meta-value" style="color: #1e40af;">{{ $dc->dc_number }} {!! $dc->sale ? '(Order: ' . $orderDocNo . ')' : '' !!}</div>
-                </div>
-                <div class="meta-row mt-2">
-                    <div class="meta-label">M/s.</div>
-                    <div class="meta-value" style="color: #1e40af;">
-                        @if($dc->sale)
-                            {{ $dc->sale->walkin_name ?? ($dc->sale->customer_relation->customer_name ?? 'Walk-in Customer') }}
-                        @elseif($dc->customer_id)
-                            {{ $dc->customer->customer_name ?? 'Customer' }}
+        $orderDocNo = '';
+        if ($dc->sale) {
+            $orderDocNo = $dc->sale->invoice_no ?: (($dc->sale->sale_type === 'sales_order' && $dc->sale->sale_status !== 'posted') 
+                ? ('SO-' . str_pad($dc->sale->id, 4, '0', STR_PAD_LEFT)) 
+                : ($dc->sale->sale_type === 'quotation' ? ('QUO-' . str_pad($dc->sale->id, 4, '0', STR_PAD_LEFT)) : ('#' . $dc->sale->id)));
+        }
+
+        $customerName = 'Customer';
+        if ($dc->sale) {
+            $customerName = $dc->sale->walkin_name ?? ($dc->sale->customer_relation->customer_name ?? 'Walk-in Customer');
+        } elseif ($dc->customer_id) {
+            $customerName = $dc->customer->customer_name ?? 'Customer';
+        }
+    @endphp
+
+    @foreach ($itemChunks as $pageIndex => $chunk)
+        <div class="invoice-page">
+            <div class="invoice-content-top">
+                <!-- Header -->
+                <div class="pad-header">
+                    <div class="logo-section">
+                        @if(\App\Models\Setting::get('company_logo'))
+                            <img src="{{ asset(\App\Models\Setting::get('company_logo')) }}" alt="Company Logo" class="logo-img">
                         @else
-                            Customer
+                            <h2 style="margin:0; font-weight:900; font-size:24px; color: #1e40af;">{{ \App\Models\Setting::get('company_name', 'VAHLA') }}</h2>
+                            <div style="font-size:11px; font-weight:bold; letter-spacing:1px; margin-bottom:6px; color: #1e40af;">INDUSTRIAL SOLUTIONS</div>
+                        @endif
+                        <div class="invoice-badge">DELIVERY CHALLAN</div>
+                    </div>
+                    
+                    <div class="company-details-section">
+                        <div class="deals-in">
+                            <span>DEALS IN:</span> {{ \App\Models\Setting::get('deals_in', 'Fasteners, Bearing, Lifting Equipments, V-belt, PPE\'s, Hand & Cutting Etc') }}
+                        </div>
+                        <div class="contact-line">
+                            <span dir="ltr">{{ \App\Models\Setting::get('company_address', 'Shop No. 91/1, Opp: Fg Girls High School, Saddar Bazar Hyderabad Sindh') }}</span>
+                            <i class="fa-solid fa-location-dot"></i>
+                        </div>
+                        <div class="contact-line">
+                            <span dir="ltr">{{ \App\Models\Setting::get('company_phone', '+92-022-2781224 - 2730663') }}</span>
+                            <i class="fa-solid fa-phone"></i>
+                        </div>
+                        @if(\App\Models\Setting::get('company_email'))
+                        <div class="contact-line">
+                            <span dir="ltr">{{ \App\Models\Setting::get('company_email', 'vahlamillstore@hotmail.com') }}</span>
+                            <i class="fa-solid fa-envelope"></i>
+                        </div>
                         @endif
                     </div>
                 </div>
-                <div class="mt-3" style="font-size: 11px; color: #1e40af; font-weight: bold;">
-                    Please Receive the following goods, your order No. <span style="border-bottom: 1px solid var(--pad-border); display: inline-block; width: 150px; color: #000; font-weight: normal; text-align: center;">{{ $dc->reference_no ?? ($dc->sale?->reference ?? '') }}</span>
-                </div>
-            </div>
-            <div class="meta-right">
-                <div class="meta-row">
-                    <div class="meta-label" style="width:40px;">Date:</div>
-                    <div class="meta-value" style="color: #1e40af;">{{ \Carbon\Carbon::parse($dc->dc_date)->format('d-m-Y') }}</div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Table -->
-        <table class="pad-table">
-            <thead>
-                <tr>
-                    <th style="width: 5%;">S.NO</th>
-                    <th class="desc-col" style="width: 50%; text-align: left;">DESCRIPTION</th>
-                    <th style="width: 15%;">DELIVERED QTY</th>
-                    <th class="rate-col" style="width: 15%;">RATE</th>
-                    <th style="width: 15%;">UNIT</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($dc->items as $item)
-                    @php
-                        $productTitle = optional($item->product)->item_name ?? (optional($item->saleItem)->product_name ?? 'Unknown Item');
-                        $saleItem = $item->saleItem;
-                        $rate = $saleItem ? $saleItem->price : $item->price;
-                        $unit = optional(optional($item->product)->unit)->name ?? (optional(optional($item->saleItem)->unit)->name ?? 'Pcs');
-                    @endphp
+                <!-- Meta -->
+                <div class="meta-section">
+                    <div class="meta-left">
+                        <div class="meta-row">
+                            <div class="meta-label">No:</div>
+                            <div class="meta-value" style="color: #1e40af;">{{ $dc->dc_number }} {!! $dc->sale ? '(Order: ' . $orderDocNo . ')' : '' !!}</div>
+                        </div>
+                        <div class="meta-row mt-1">
+                            <div class="meta-label">M/s.</div>
+                            <div class="meta-value" style="color: #1e40af;">{{ $customerName }}</div>
+                        </div>
+                        <div class="mt-2" style="font-size: 11px; color: #1e40af; font-weight: bold;">
+                            Please Receive the following goods, your order No. <span style="border-bottom: 1px solid var(--pad-border); display: inline-block; width: 150px; color: #000; font-weight: normal; text-align: center;">{{ $dc->reference_no ?? ($dc->sale?->reference ?? '') }}</span>
+                        </div>
+                    </div>
+                    <div class="meta-right">
+                        <div class="meta-row">
+                            <div class="meta-label" style="width:40px;">Date:</div>
+                            <div class="meta-value" style="color: #1e40af;">{{ \Carbon\Carbon::parse($dc->dc_date)->format('d-m-Y') }}</div>
+                        </div>
+                        @if($totalPages > 1)
+                        <div class="meta-row mt-1">
+                            <div class="meta-label" style="width:40px;">Page:</div>
+                            <div class="meta-value" style="color: #1e40af;">{{ $pageIndex + 1 }} of {{ $totalPages }}</div>
+                        </div>
+                        @endif
+                    </div>
+                </div>
 
-                    <tr>
+                <!-- Table -->
+                <table class="pad-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">S.NO</th>
+                            <th class="desc-col" style="width: 50%; text-align: left;">DESCRIPTION</th>
+                            <th style="width: 15%;">DELIVERED QTY</th>
+                            <th class="rate-col" style="width: 15%;">RATE</th>
+                            <th style="width: 15%;">UNIT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($chunk as $item)
                             @php
-                                $variant = [];
+                                $sNo = ($pageIndex * $chunkSize) + $loop->iteration;
+                                $productTitle = optional($item->product)->item_name ?? (optional($item->saleItem)->product_name ?? 'Unknown Item');
                                 $saleItem = $item->saleItem;
+                                $rate = $saleItem ? $saleItem->price : $item->price;
+                                $unit = optional(optional($item->product)->unit)->name ?? (optional(optional($item->saleItem)->unit)->name ?? 'Pcs');
+
+                                $variant = [];
                                 $colorData = $saleItem ? $saleItem->color : $item->color;
                                 if (!empty($colorData)) {
                                     $b64 = base64_decode($colorData, true);
@@ -393,35 +426,40 @@
                                 }
                                 $dispQty = $rawQty == (int)$rawQty ? (int)$rawQty : number_format($rawQty, 3, '.', '');
                             @endphp
-                            <td style="text-align: center;">{{ $loop->iteration }}</td>
-                            <td class="desc-col" style="font-weight: 500;">{{ $productTitle }}</td>
-                            <td style="text-align: center; font-weight: bold;">{{ $dispQty }}</td>
-                            <td class="rate-col" style="text-align: right;">{{ number_format((float)$rate, 2) }}</td>
-                            <td style="text-align: center;">{{ $dispUnit }}</td>
-                        
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-
-        <!-- Remarks -->
-        @if(!empty($dc->remarks))
-            <div style="font-size: 12px; margin-bottom: 15px;">
-                <strong>Remarks:</strong> {{ $dc->remarks }}
+                            <tr>
+                                <td style="text-align: center;">{{ $sNo }}</td>
+                                <td class="desc-col" style="font-weight: 500;">{{ $productTitle }}</td>
+                                <td style="text-align: center; font-weight: bold;">{{ $dispQty }}</td>
+                                <td class="rate-col" style="text-align: right;">{{ number_format((float)$rate, 2) }}</td>
+                                <td style="text-align: center;">{{ $dispUnit }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-        @endif
 
-        <!-- Footer -->
-        <div class="pad-footer">
-            <div class="footer-note">
-                Received the above goods in good order & condition<br><br><br><br><i>Receiver's Signature</i>
-            </div>
-            <div class="footer-sign">
-                <img src="{{ asset('assets/images/stamp.png') }}" style="width: 160px; height: auto; margin-top: -60px; margin-bottom: 5px; margin-right: 10px; display: inline-block; opacity: 0.85; transform: rotate(-12deg); mix-blend-mode: multiply;" alt="Stamp"><br>
-                For {{ \App\Models\Setting::get('company_name', 'VAHLA MILL STORE') }}
+            <!-- Bottom Area -->
+            <div class="invoice-content-bottom">
+                @if ($loop->last && !empty($dc->remarks))
+                    <!-- Remarks -->
+                    <div style="font-size: 11px; margin-bottom: 4px;">
+                        <strong>Remarks:</strong> {{ $dc->remarks }}
+                    </div>
+                @endif
+
+                <!-- Footer -->
+                <div class="pad-footer">
+                    <div class="footer-note">
+                        Received the above goods in good order & condition<br><br><i>Receiver's Signature</i>
+                    </div>
+                    <div class="footer-sign">
+                        <img src="{{ asset('assets/images/stamp.png') }}" style="width: 135px; height: auto; margin-top: -45px; margin-bottom: 3px; margin-right: 10px; display: inline-block; opacity: 0.85; transform: rotate(-12deg); mix-blend-mode: multiply;" alt="Stamp"><br>
+                        For {{ \App\Models\Setting::get('company_name', 'VAHLA MILL STORE') }}
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+    @endforeach
     
     <script>
         function toggleRate() {

@@ -35,23 +35,31 @@
         }
 
         .invoice-page {
+            width: 210mm;
             max-width: 210mm;
-            min-height: auto;
-            margin: 24px auto;
+            height: 148.5mm;
+            min-height: 148.5mm;
+            max-height: 148.5mm;
+            margin: 20px auto;
             background: #ffffff;
-            padding: 30px;
+            padding: 15px 25px 12px 25px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             position: relative;
             color: var(--pad-text);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
         }
 
         /* Header Layout */
         .pad-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             border-bottom: 2px solid var(--pad-border);
-            padding-bottom: 15px;
+            padding-bottom: 8px;
         }
 
         .logo-section {
@@ -81,14 +89,14 @@
         .company-details-section {
             width: 50%;
             font-size: 11px;
-            line-height: 1.5;
+            line-height: 1.4;
             color: var(--pad-text);
             text-align: right;
         }
 
         .deals-in {
             font-weight: bold;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             font-size: 11.5px;
         }
         
@@ -100,7 +108,7 @@
             display: flex;
             align-items: flex-start;
             justify-content: flex-end;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         .contact-line i {
@@ -116,7 +124,7 @@
         .meta-section {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
             font-weight: bold;
             font-size: 13px;
         }
@@ -126,7 +134,7 @@
         }
         
         .meta-row {
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             display: flex;
         }
         
@@ -149,7 +157,7 @@
         .pad-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             border: 1px solid var(--pad-border);
         }
 
@@ -157,7 +165,7 @@
             background-color: #374151;
             color: #ffffff;
             text-align: center;
-            padding: 8px;
+            padding: 6px 8px;
             font-size: 12px;
             border: 1px solid var(--pad-border);
             text-transform: uppercase;
@@ -165,8 +173,8 @@
 
         .pad-table tbody td {
             border: 1px solid var(--pad-border);
-            padding: 6px 8px;
-            height: 28px;
+            padding: 4px 8px;
+            height: 24px;
             color: #000;
             vertical-align: middle;
         }
@@ -180,7 +188,7 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
-            margin-top: 30px;
+            margin-top: 10px;
             font-size: 12px;
             font-weight: bold;
         }
@@ -194,19 +202,33 @@
         .footer-sign {
             width: 35%;
             text-align: right;
-            padding-top: 30px;
+            padding-top: 10px;
             border-top: 1px solid transparent;
             color: var(--pad-text);
         }
 
         @media print {
-            body { background: #fff; }
+            body { 
+                background: #fff; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+            }
             .action-bar { display: none !important; }
             .invoice-page { 
-                margin: 0; 
-                box-shadow: none; 
-                padding: 10mm;
-                max-width: 100%;
+                margin: 0 !important; 
+                box-shadow: none !important; 
+                padding: 5mm 10mm 4mm 10mm !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 148.5mm !important;
+                max-height: 148.5mm !important;
+                box-sizing: border-box !important;
+                page-break-after: always !important;
+                page-break-inside: avoid !important;
+                overflow: hidden !important;
+            }
+            .invoice-page:last-child {
+                page-break-after: auto !important;
             }
             .pad-table tbody tr:nth-child(even) {
                 background-color: rgba(224, 242, 254, 0.5) !important;
@@ -222,7 +244,7 @@
         }
 
         @page {
-            size: A4;
+            size: A4 portrait;
             margin: 0;
         }
 
@@ -256,160 +278,188 @@
         </div>
     </div>
 
-    <div class="invoice-page">
-        <!-- Header -->
-        <div class="pad-header">
-            <div class="logo-section">
-                @if(\App\Models\Setting::get('company_logo'))
-                    <img src="{{ asset(\App\Models\Setting::get('company_logo')) }}" alt="Company Logo" class="logo-img">
-                @else
-                    <h2 style="margin:0; font-weight:900; font-size:28px; color: #1e40af;">{{ \App\Models\Setting::get('company_name', 'VAHLA') }}</h2>
-                    <div style="font-size:12px; font-weight:bold; letter-spacing:1px; margin-bottom:8px; color: #1e40af;">INDUSTRIAL SOLUTIONS</div>
-                @endif
-                <div class="invoice-badge">DELIVERY CHALLAN</div>
-            </div>
-            
-            <div class="company-details-section">
-                <div class="deals-in">
-                    <span>DEALS IN:</span> {{ \App\Models\Setting::get('deals_in', 'Fasteners, Bearing, Lifting Equipments, V-belt, PPE\'s, Hand & Cutting Etc') }}
-                </div>
-                <div class="contact-line">
-                    <span dir="ltr">{{ \App\Models\Setting::get('company_address', 'Shop No. 91/1, Opp: Fg Girls High School, Saddar Bazar Hyderabad Sindh') }}</span>
-                    <i class="fa-solid fa-location-dot"></i>
-                </div>
-                <div class="contact-line">
-                    <span dir="ltr">{{ \App\Models\Setting::get('company_phone', '+92-022-2781224 - 2730663') }}</span>
-                    <i class="fa-solid fa-phone"></i>
-                </div>
-                @if(\App\Models\Setting::get('company_email'))
-                <div class="contact-line">
-                    <span dir="ltr">{{ \App\Models\Setting::get('company_email', 'vahlamillstore@hotmail.com') }}</span>
-                    <i class="fa-solid fa-envelope"></i>
-                </div>
-                @endif
-            </div>
-        </div>
+    @php
+        $saleItemsColl = collect($saleItems);
+        $totalItems = $saleItemsColl->count();
+        // If 6 or fewer items, fit on 1 half-page; if more, 5 items per half-page
+        $chunkSize = $totalItems <= 6 ? 6 : 5;
+        $itemChunks = $saleItemsColl->chunk($chunkSize);
+        $totalPages = $itemChunks->count();
+        $customerName = $sale->walkin_name ?? ($sale->customer_relation->customer_name ?? 'Walk-in Customer');
+    @endphp
 
-        <!-- Meta -->
-        <div class="meta-section">
-            <div class="meta-left">
-                <div class="meta-row">
-                    <div class="meta-label">No:</div>
-                    <div class="meta-value" style="color: #1e40af;">{{ $sale->invoice_no }}</div>
+    @foreach ($itemChunks as $pageIndex => $chunk)
+        <div class="invoice-page">
+            <div class="invoice-content-top">
+                <!-- Header -->
+                <div class="pad-header">
+                    <div class="logo-section">
+                        @if(\App\Models\Setting::get('company_logo'))
+                            <img src="{{ asset(\App\Models\Setting::get('company_logo')) }}" alt="Company Logo" class="logo-img">
+                        @else
+                            <h2 style="margin:0; font-weight:900; font-size:24px; color: #1e40af;">{{ \App\Models\Setting::get('company_name', 'VAHLA') }}</h2>
+                            <div style="font-size:11px; font-weight:bold; letter-spacing:1px; margin-bottom:6px; color: #1e40af;">INDUSTRIAL SOLUTIONS</div>
+                        @endif
+                        <div class="invoice-badge">
+                            DELIVERY CHALLAN
+                            @if($totalPages > 1)
+                                <span style="font-size: 11px; font-weight: normal; letter-spacing: 0;">(Page {{ $pageIndex + 1 }}/{{ $totalPages }})</span>
+                            @endif
+                        </div>
+                    </div>
+                    
+                    <div class="company-details-section">
+                        <div class="deals-in">
+                            <span>DEALS IN:</span> {{ \App\Models\Setting::get('deals_in', 'Fasteners, Bearing, Lifting Equipments, V-belt, PPE\'s, Hand & Cutting Etc') }}
+                        </div>
+                        <div class="contact-line">
+                            <span dir="ltr">{{ \App\Models\Setting::get('company_address', 'Shop No. 91/1, Opp: Fg Girls High School, Saddar Bazar Hyderabad Sindh') }}</span>
+                            <i class="fa-solid fa-location-dot"></i>
+                        </div>
+                        <div class="contact-line">
+                            <span dir="ltr">{{ \App\Models\Setting::get('company_phone', '+92-022-2781224 - 2730663') }}</span>
+                            <i class="fa-solid fa-phone"></i>
+                        </div>
+                        @if(\App\Models\Setting::get('company_email'))
+                        <div class="contact-line">
+                            <span dir="ltr">{{ \App\Models\Setting::get('company_email', 'vahlamillstore@hotmail.com') }}</span>
+                            <i class="fa-solid fa-envelope"></i>
+                        </div>
+                        @endif
+                    </div>
                 </div>
-                <div class="meta-row mt-2">
-                    <div class="meta-label">M/s.</div>
-                    <div class="meta-value" style="color: #1e40af;">{{ $sale->walkin_name ?? ($sale->customer_relation->customer_name ?? 'Walk-in Customer') }}</div>
-                </div>
-                <div class="mt-3" style="font-size: 11px; color: #1e40af; font-weight: bold;">
-                    Please Receive the following goods, your order No. <span style="border-bottom: 1px solid var(--pad-border); display: inline-block; width: 150px; color: #000; font-weight: normal; text-align: center;">{{ $sale->reference ?? '' }}</span>
-                </div>
-            </div>
-            <div class="meta-right">
-                <div class="meta-row">
-                    <div class="meta-label" style="width:40px;">Date:</div>
-                    <div class="meta-value" style="color: #1e40af;">{{ $sale->created_at ? $sale->created_at->format('d-m-Y') : date('d-m-Y') }}</div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Table -->
-        <table class="pad-table">
-            <thead>
-                <tr>
-                    <th style="width: 5%;">S.NO</th>
-                    <th class="desc-col" style="width: 50%; text-align: left;">DESCRIPTION</th>
-                    <th style="width: 15%;">QTY</th>
-                    <th class="rate-col" style="width: 15%;">RATE</th>
-                    <th style="width: 15%;">UNIT</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($saleItems as $item)
-                    @php
-                        $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
-                        if ($piecesPerBox <= 0) $piecesPerBox = 1;
-                        
-                        $totalPieces = (int)($item['total_pieces'] ?? 0);
-                        $boxes = floor($totalPieces / $piecesPerBox);
-                        $loosePieces = $totalPieces % $piecesPerBox;
-                        $sizeMode = $item['size_mode'] ?? 'by_size';
-                        $variantUnit = strtolower($item['variant_unit'] ?? '');
-                        
-                        // Disp Qty
-                        $dispQty = $totalPieces;
-                        $dispUnit = 'Pcs';
-                        if ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
-                            $kgWt = (float)($item['qty_box'] ?? $item['qty'] ?? 0);
-                            $wtConv = (float)($item['pieces_per_box'] ?? 0);
-                            if ($wtConv <= 0) $wtConv = 1;
-                            if (in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
-                                $dispQty = $kgWt > 0 ? $kgWt / $wtConv : 0;
-                                $dispUnit = 'Pcs';
-                            } elseif (in_array($variantUnit, ['gm', 'g'])) {
-                                $dispQty = $kgWt * 1000;
-                                $dispUnit = 'Gm';
-                            } else {
-                                $dispQty = $kgWt;
-                                $dispUnit = 'Kg';
-                            }
-                        } else {
-                            if ($sizeMode == 'by_pieces') {
+                <!-- Meta -->
+                <div class="meta-section">
+                    <div class="meta-left">
+                        <div class="meta-row">
+                            <div class="meta-label">No:</div>
+                            <div class="meta-value" style="color: #1e40af;">{{ $sale->invoice_no }}</div>
+                        </div>
+                        <div class="meta-row mt-1">
+                            <div class="meta-label">M/s.</div>
+                            <div class="meta-value" style="color: #1e40af;">{{ $customerName }}</div>
+                        </div>
+                        <div class="mt-2" style="font-size: 11px; color: #1e40af; font-weight: bold;">
+                            Please Receive the following goods, your order No. <span style="border-bottom: 1px solid var(--pad-border); display: inline-block; width: 150px; color: #000; font-weight: normal; text-align: center;">{{ $sale->reference ?? '' }}</span>
+                        </div>
+                    </div>
+                    <div class="meta-right">
+                        <div class="meta-row">
+                            <div class="meta-label" style="width:40px;">Date:</div>
+                            <div class="meta-value" style="color: #1e40af;">{{ $sale->created_at ? $sale->created_at->format('d-m-Y') : date('d-m-Y') }}</div>
+                        </div>
+                        @if($totalPages > 1)
+                        <div class="text-end mt-2" style="font-size: 11px; color: #1e40af; font-weight: bold;">
+                            Page {{ $pageIndex + 1 }} of {{ $totalPages }}
+                        </div>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <table class="pad-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 5%;">S.NO</th>
+                            <th class="desc-col" style="width: 50%; text-align: left;">DESCRIPTION</th>
+                            <th style="width: 15%;">QTY</th>
+                            <th class="rate-col" style="width: 15%;">RATE</th>
+                            <th style="width: 15%;">UNIT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($chunk as $item)
+                            @php
+                                $sNo = ($pageIndex * $chunkSize) + $loop->iteration;
+                                $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
+                                if ($piecesPerBox <= 0) $piecesPerBox = 1;
+                                
+                                $totalPieces = (int)($item['total_pieces'] ?? 0);
+                                $boxes = floor($totalPieces / $piecesPerBox);
+                                $loosePieces = $totalPieces % $piecesPerBox;
+                                $sizeMode = $item['size_mode'] ?? 'by_size';
+                                $variantUnit = strtolower($item['variant_unit'] ?? '');
+                                
+                                // Disp Qty
                                 $dispQty = $totalPieces;
                                 $dispUnit = 'Pcs';
-                            } else {
-                                if ($boxes > 0 && $loosePieces == 0) {
-                                    $dispQty = $boxes;
-                                    $dispUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
-                                } elseif ($boxes == 0 && $loosePieces > 0) {
-                                    $dispQty = $loosePieces;
-                                    $dispUnit = 'Pcs';
+                                if ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
+                                    $kgWt = (float)($item['qty_box'] ?? $item['qty'] ?? 0);
+                                    $wtConv = (float)($item['pieces_per_box'] ?? 0);
+                                    if ($wtConv <= 0) $wtConv = 1;
+                                    if (in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
+                                        $dispQty = $kgWt > 0 ? $kgWt / $wtConv : 0;
+                                        $dispUnit = 'Pcs';
+                                    } elseif (in_array($variantUnit, ['gm', 'g'])) {
+                                        $dispQty = $kgWt * 1000;
+                                        $dispUnit = 'Gm';
+                                    } else {
+                                        $dispQty = $kgWt;
+                                        $dispUnit = 'Kg';
+                                    }
                                 } else {
-                                    $dispQty = $totalPieces;
-                                    $dispUnit = 'Pcs';
+                                    if ($sizeMode == 'by_pieces') {
+                                        $dispQty = $totalPieces;
+                                        $dispUnit = 'Pcs';
+                                    } else {
+                                        if ($boxes > 0 && $loosePieces == 0) {
+                                            $dispQty = $boxes;
+                                            $dispUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
+                                        } elseif ($boxes == 0 && $loosePieces > 0) {
+                                            $dispQty = $loosePieces;
+                                            $dispUnit = 'Pcs';
+                                        } else {
+                                            $dispQty = $totalPieces;
+                                            $dispUnit = 'Pcs';
+                                        }
+                                    }
                                 }
-                            }
-                        }
 
-                        // Format product title
-                        $vName = $item['variant_name'] ?? '';
-                        $vSize = (!empty($item['size_val']) && $item['size_val'] !== '-') ? $item['size_val'] : '';
-                        $vColor = (!empty($item['color_val']) && $item['color_val'] !== '-') ? $item['color_val'] : '';
-                        
-                        $vExtra = [];
-                        if ($vSize) $vExtra[] = $vSize;
-                        if ($vColor) $vExtra[] = $vColor;
-                        $vExtraStr = count($vExtra) > 0 ? ' (' . implode(', ', $vExtra) . ')' : '';
+                                // Format product title
+                                $vName = $item['variant_name'] ?? '';
+                                $vSize = (!empty($item['size_val']) && $item['size_val'] !== '-') ? $item['size_val'] : '';
+                                $vColor = (!empty($item['color_val']) && $item['color_val'] !== '-') ? $item['color_val'] : '';
+                                
+                                $vExtra = [];
+                                if ($vSize) $vExtra[] = $vSize;
+                                if ($vColor) $vExtra[] = $vColor;
+                                $vExtraStr = count($vExtra) > 0 ? ' (' . implode(', ', $vExtra) . ')' : '';
 
-                        $productTitle = $item['item_name'];
-                        if ($vName && strtolower(trim($vName)) !== strtolower(trim($productTitle))) {
-                            $productTitle .= ' - ' . $vName;
-                        }
-                        $productTitle .= $vExtraStr;
-                    @endphp
+                                $productTitle = $item['item_name'];
+                                if ($vName && strtolower(trim($vName)) !== strtolower(trim($productTitle))) {
+                                    $productTitle .= ' - ' . $vName;
+                                }
+                                $productTitle .= $vExtraStr;
+                            @endphp
 
-                    <tr>
-                        <td style="text-align: center;">{{ $loop->iteration }}</td>
-                        <td class="desc-col" style="font-weight: 500;">{{ $productTitle }}</td>
-                        <td style="text-align: center; font-weight: bold;">{{ ($dispQty == (int)$dispQty) ? (int)$dispQty : number_format($dispQty, 3) }}</td>
-                        <td class="rate-col" style="text-align: right;">{{ number_format((float)($item['price'] ?? 0), 2) }}</td>
-                        <td style="text-align: center;">{{ $dispUnit }}</td>
-                        
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-
-        <!-- Footer -->
-        <div class="pad-footer">
-            <div class="footer-note">
-                Received the above goods in good order & condition<br><br><br><br><i>Receiver's Signature</i>
+                            <tr>
+                                <td style="text-align: center;">{{ $sNo }}</td>
+                                <td class="desc-col" style="font-weight: 500;">{{ $productTitle }}</td>
+                                <td style="text-align: center; font-weight: bold;">{{ ($dispQty == (int)$dispQty) ? (int)$dispQty : number_format($dispQty, 3) }}</td>
+                                <td class="rate-col" style="text-align: right;">{{ number_format((float)($item['price'] ?? 0), 2) }}</td>
+                                <td style="text-align: center;">{{ $dispUnit }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-            <div class="footer-sign">
-                For {{ \App\Models\Setting::get('company_name', 'VAHLA MILL STORE') }}
+
+            <!-- Bottom Area -->
+            <div class="invoice-content-bottom">
+                <!-- Footer -->
+                <div class="pad-footer">
+                    <div class="footer-note">
+                        Received the above goods in good order & condition<br><br><i>Receiver's Signature</i>
+                    </div>
+                    <div class="footer-sign">
+                        <img src="{{ asset('assets/images/stamp.png') }}" style="width: 135px; height: auto; margin-top: -45px; margin-bottom: 3px; margin-right: 10px; display: inline-block; opacity: 0.85; transform: rotate(-12deg); mix-blend-mode: multiply;" alt="Stamp"><br>
+                        For {{ \App\Models\Setting::get('company_name', 'VAHLA MILL STORE') }}
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+    @endforeach
     
     <script>
         function toggleRate() {
