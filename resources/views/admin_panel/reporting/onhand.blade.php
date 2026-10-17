@@ -108,7 +108,8 @@
 <div class="sale-report-container">
 
     @php
-        $totalProducts = count($rows);
+        $totalItems = count($rows);
+        $totalProducts = $rows->pluck('product_id')->unique()->count();
         $totalOnhandQty = $rows->sum('onhand_qty');
         $inStockCount = $rows->where('onhand_qty', '>', 0)->count();
         $outOfStockCount = $rows->where('onhand_qty', '<=', 0)->count();
@@ -196,8 +197,13 @@
             <div class="summary-pill-bar">
                 
                 <div class="stat-pill" style="background: #f8fafc; border-color: #cbd5e1;">
-                    <div class="stat-label text-muted">Total Products</div>
-                    <div class="stat-val text-dark">{{ number_format($totalProducts) }}</div>
+                    <div class="stat-label text-muted">Total Products / Items</div>
+                    <div class="stat-val text-dark">
+                        {{ number_format($totalItems) }}
+                        @if($totalItems != $totalProducts)
+                            <small class="text-muted fw-normal" style="font-size: .65rem;">({{ $totalProducts }} Products)</small>
+                        @endif
+                    </div>
                 </div>
 
                 <div class="stat-pill" style="background: #f0f9ff; border-color: #bae6fd;">
@@ -223,8 +229,13 @@
     <div class="row g-2 mb-3 d-md-none no-print px-1">
         <div class="col-6 mb-1">
             <div class="mob-metric-card">
-                <span class="mob-metric-label"><i class="fas fa-boxes text-muted me-1"></i>Total Products</span>
-                <div class="mob-metric-val text-dark mt-1">{{ number_format($totalProducts) }}</div>
+                <span class="mob-metric-label"><i class="fas fa-boxes text-muted me-1"></i>Total Items</span>
+                <div class="mob-metric-val text-dark mt-1">
+                    {{ number_format($totalItems) }}
+                    @if($totalItems != $totalProducts)
+                        <small class="text-muted fw-normal" style="font-size: 10px;">({{ $totalProducts }} Prods)</small>
+                    @endif
+                </div>
             </div>
         </div>
         <div class="col-6 mb-1">
@@ -255,7 +266,7 @@
                     <thead>
                         <tr>
                             <th class="text-center" style="width: 40px;">#</th>
-                            <th style="width: 130px;">CODE</th>
+                            <th style="width: 140px;">CODE</th>
                             <th>ITEM NAME</th>
                             <th style="width: 150px;">BRAND</th>
                             <th style="width: 100px;">UOM</th>
@@ -269,20 +280,52 @@
                                 $qtyVal = rtrim(rtrim(number_format($r->onhand_qty, 3, '.', ''), '0'), '.');
                                 $qtyNum = (float)$r->onhand_qty;
                             @endphp
-                            <tr data-search="{{ strtolower($r->item_code . ' ' . $r->item_name . ' ' . $r->brand_name . ' ' . $r->unit_name) }}">
+                            <tr data-search="{{ strtolower($r->item_code . ' ' . $r->parent_code . ' ' . $r->item_name . ' ' . $r->parent_name . ' ' . $r->brand_name . ' ' . $r->unit_name . ' ' . ($r->barcode ?? '')) }}">
                                 <td class="text-center text-muted fw-bold">{{ $i + 1 }}</td>
-                                <td><span class="font-monospace text-primary fw-bold">{{ $r->item_code }}</span></td>
-                                <td class="fw-semibold text-dark">{{ $r->item_name }}</td>
-                                <td class="text-muted">{{ $r->brand_name ?? '-' }}</td>
-                                <td><span class="badge bg-light text-dark border">{{ $r->unit_name ?? '-' }}</span></td>
-                                <td class="text-end fw-bold {{ $qtyNum > 0 ? 'text-success' : 'text-danger' }}">
-                                    {{ $qtyVal }}
+                                <td>
+                                    <span class="font-monospace text-primary fw-bold">{{ $r->item_code }}</span>
+                                    @if($r->is_variant && $r->parent_code && $r->parent_code !== $r->item_code)
+                                        <div class="text-muted font-monospace" style="font-size: 10px;">{{ $r->parent_code }}</div>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center flex-wrap gap-1">
+                                        <span class="fw-semibold text-dark">{{ $r->item_name }}</span>
+                                        @if($r->is_variant)
+                                            <span class="badge bg-light text-primary border" style="font-size: 10px;"><i class="fas fa-code-branch me-1"></i>Variant</span>
+                                        @endif
+                                    </div>
+                                    @if($r->is_variant && $r->parent_name && $r->parent_name !== $r->item_name)
+                                        <div class="text-muted" style="font-size: 11px;"><i class="fas fa-box me-1"></i>{{ $r->parent_name }}</div>
+                                    @endif
+                                    @if($r->is_variant && (($r->variant_size && $r->variant_size !== '-') || ($r->variant_color && $r->variant_color !== '-')))
+                                        <div class="mt-0.5">
+                                            @if($r->variant_size && $r->variant_size !== '-')
+                                                <span class="badge bg-light text-secondary border me-1" style="font-size: 9.5px;">Size: {{ $r->variant_size }}</span>
+                                            @endif
+                                            @if($r->variant_color && $r->variant_color !== '-')
+                                                <span class="badge bg-light text-secondary border" style="font-size: 9.5px;">Color: {{ $r->variant_color }}</span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </td>
+                                <td class="text-muted">{{ $r->brand_name ?: '-' }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ $r->unit_name ?: '-' }}</span></td>
+                                <td class="text-end">
+                                    <span class="fw-bold {{ $qtyNum > 0 ? 'text-success' : 'text-danger' }}">
+                                        {{ $qtyVal }}
+                                    </span>
+                                    @if($r->formatted_qty && $r->total_pieces != $qtyVal)
+                                        <div class="text-muted" style="font-size: 10.5px;">({{ $r->total_pieces }} Pcs)</div>
+                                    @endif
                                 </td>
                                 <td class="text-center">
-                                    @if($r->is_part)
+                                    @if($r->is_variant)
+                                        <span class="badge bg-primary text-white">Variant</span>
+                                    @elseif($r->is_part)
                                         <span class="badge bg-info text-white">Part</span>
                                     @elseif($r->is_assembled)
-                                        <span class="badge bg-primary text-white">Assembled</span>
+                                        <span class="badge bg-success text-white">Assembled</span>
                                     @else
                                         <span class="badge bg-secondary text-white">Simple</span>
                                     @endif
@@ -304,17 +347,22 @@
                 $qtyVal = rtrim(rtrim(number_format($r->onhand_qty, 3, '.', ''), '0'), '.');
                 $qtyNum = (float)$r->onhand_qty;
             @endphp
-            <div class="mob-card p-2.5 p-2 mb-2 mob-onhand-card" data-search="{{ strtolower($r->item_code . ' ' . $r->item_name . ' ' . $r->brand_name . ' ' . $r->unit_name) }}">
+            <div class="mob-card p-2.5 p-2 mb-2 mob-onhand-card" data-search="{{ strtolower($r->item_code . ' ' . $r->parent_code . ' ' . $r->item_name . ' ' . $r->parent_name . ' ' . $r->brand_name . ' ' . $r->unit_name . ' ' . ($r->barcode ?? '')) }}">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <div class="d-flex align-items-center gap-1">
                         <span class="badge bg-light text-muted border" style="font-size: 10px;">#{{ $i + 1 }}</span>
                         <span class="badge bg-light text-primary border font-monospace fw-bold" style="font-size: 11px;">{{ $r->item_code }}</span>
+                        @if($r->is_variant && $r->parent_code && $r->parent_code !== $r->item_code)
+                            <span class="badge bg-light text-muted border font-monospace" style="font-size: 9px;">{{ $r->parent_code }}</span>
+                        @endif
                     </div>
                     <div>
-                        @if($r->is_part)
+                        @if($r->is_variant)
+                            <span class="badge bg-primary text-white" style="font-size: 10px;">Variant</span>
+                        @elseif($r->is_part)
                             <span class="badge bg-info text-white" style="font-size: 10px;">Part</span>
                         @elseif($r->is_assembled)
-                            <span class="badge bg-primary text-white" style="font-size: 10px;">Assembled</span>
+                            <span class="badge bg-success text-white" style="font-size: 10px;">Assembled</span>
                         @else
                             <span class="badge bg-secondary text-white" style="font-size: 10px;">Simple</span>
                         @endif
@@ -322,12 +370,30 @@
                 </div>
                 <div class="mb-1">
                     <strong class="text-dark d-block" style="font-size: 12.5px; line-height: 1.2;">{{ $r->item_name }}</strong>
-                    <small class="text-muted" style="font-size: 11px;">Brand: {{ $r->brand_name ?? '-' }} | UOM: {{ $r->unit_name ?? '-' }}</small>
+                    @if($r->is_variant && $r->parent_name && $r->parent_name !== $r->item_name)
+                        <small class="text-muted d-block" style="font-size: 10.5px;"><i class="fas fa-box me-1"></i>{{ $r->parent_name }}</small>
+                    @endif
+                    <small class="text-muted" style="font-size: 11px;">Brand: {{ $r->brand_name ?: '-' }} | UOM: {{ $r->unit_name ?: '-' }}</small>
+                    @if($r->is_variant && (($r->variant_size && $r->variant_size !== '-') || ($r->variant_color && $r->variant_color !== '-')))
+                        <div class="mt-1">
+                            @if($r->variant_size && $r->variant_size !== '-')
+                                <span class="badge bg-light text-secondary border me-1" style="font-size: 9px;">Size: {{ $r->variant_size }}</span>
+                            @endif
+                            @if($r->variant_color && $r->variant_color !== '-')
+                                <span class="badge bg-light text-secondary border" style="font-size: 9px;">Color: {{ $r->variant_color }}</span>
+                            @endif
+                        </div>
+                    @endif
                 </div>
                 <div class="border-top pt-2 mt-1">
                     <div class="d-flex justify-content-between align-items-center" style="font-size: 11px;">
                         <span class="text-muted fw-bold">On-Hand Quantity:</span>
-                        <strong class="fs-6 {{ $qtyNum > 0 ? 'text-success' : 'text-danger' }}">{{ $qtyVal }} {{ $r->unit_name }}</strong>
+                        <div class="text-end">
+                            <strong class="fs-6 {{ $qtyNum > 0 ? 'text-success' : 'text-danger' }}">{{ $qtyVal }} {{ $r->unit_name }}</strong>
+                            @if($r->formatted_qty && $r->total_pieces != $qtyVal)
+                                <div class="text-muted" style="font-size: 10px;">({{ $r->total_pieces }} Pcs)</div>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>

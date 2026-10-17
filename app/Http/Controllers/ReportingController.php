@@ -14,19 +14,100 @@ class ReportingController extends Controller
 {
     public function onhand()
     {
-        $rows = Product::leftJoin('v_stock_onhand as soh', 'soh.product_id', '=', 'products.id')
-            ->leftJoin('brands', 'brands.id', '=', 'products.brand_id')
-            ->leftJoin('units', 'units.id', '=', 'products.unit_id')
-            ->selectRaw('
-                products.id,
-                products.item_code,
-                products.item_name,
-                COALESCE(brands.name, "") as brand_name,
-                COALESCE(units.name, "") as unit_name,
-                COALESCE(soh.onhand_qty, 0) as onhand_qty
-            ')
+        $products = Product::with(['brand', 'unit', 'warehouseStocks'])
+            ->leftJoin('v_stock_onhand as soh', 'soh.product_id', '=', 'products.id')
+            ->select('products.*', DB::raw('COALESCE(soh.onhand_qty, 0) as soh_qty'))
             ->orderBy('products.item_name')
             ->get();
+
+        $rows = collect();
+
+        foreach ($products as $product) {
+            $parsedVariants = [];
+            if ($product->color) {
+                try {
+                    $decoded = is_string($product->color) ? json_decode($product->color, true) : $product->color;
+                    if (is_array($decoded) && count($decoded) > 0 && isset($decoded[0]['name'])) {
+                        $parsedVariants = $decoded;
+                    }
+                } catch (\Exception $e) {}
+            }
+
+            if (count($parsedVariants) > 0) {
+                $variantBalances = $this->getVariantStockBalances($product, 'all');
+                foreach ($variantBalances as $idx => $v) {
+                    $rawV = $parsedVariants[$idx] ?? [];
+                    $vBarcode = $rawV['barcode'] ?? ($v['barcode'] ?? null);
+                    $code = (!empty($vBarcode) && $vBarcode !== '-') ? $vBarcode : $product->item_code;
+                    
+                    $ppb = (float)($v['ppb'] ?? ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1));
+                    $isCartonMode = $v['is_carton_mode'] ?? false;
+                    $pieces = (float)($v['stock'] ?? 0);
+                    
+                    $qtyVal = $pieces;
+                    $formattedQty = null;
+                    if ($isCartonMode && $ppb > 1) {
+                        $boxes = floor($pieces / $ppb);
+                        $loose = (int)round($pieces - ($boxes * $ppb));
+                        $qtyVal = $loose > 0 ? (float)"{$boxes}.{$loose}" : (float)$boxes;
+                        $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
+                        $formattedQty = $loose > 0 ? "{$boxes} {$ctnLbl} + {$loose} Pcs" : "{$boxes} {$ctnLbl}";
+                    }
+
+                    $rows->push((object)[
+                        'product_id'    => $product->id,
+                        'item_code'     => $code,
+                        'parent_code'   => $product->item_code,
+                        'barcode'       => $vBarcode,
+                        'item_name'     => $v['name'],
+                        'parent_name'   => $product->item_name,
+                        'brand_name'    => $product->brand->name ?? '',
+                        'unit_name'     => $v['unit_name'] ?? ($product->unit->name ?? 'Pcs'),
+                        'onhand_qty'    => $qtyVal,
+                        'total_pieces'  => $pieces,
+                        'formatted_qty' => $formattedQty,
+                        'is_variant'    => true,
+                        'variant_size'  => $rawV['size'] ?? '-',
+                        'variant_color' => $rawV['color'] ?? '-',
+                        'is_part'       => (bool)($product->is_part ?? false),
+                        'is_assembled'  => (bool)($product->is_assembled ?? false),
+                    ]);
+                }
+            } else {
+                $ppb = $product->pieces_per_box > 0 ? (float)$product->pieces_per_box : 1;
+                $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($product->unit->name ?? '') === 'carton');
+                $pieces = (float)$product->soh_qty;
+                
+                $qtyVal = $pieces;
+                $formattedQty = null;
+                if ($isCartonMode && $ppb > 1) {
+                    $boxes = floor($pieces / $ppb);
+                    $loose = (int)round($pieces - ($boxes * $ppb));
+                    $qtyVal = $loose > 0 ? (float)"{$boxes}.{$loose}" : (float)$boxes;
+                    $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
+                    $formattedQty = $loose > 0 ? "{$boxes} {$ctnLbl} + {$loose} Pcs" : "{$boxes} {$ctnLbl}";
+                }
+
+                $rows->push((object)[
+                    'product_id'    => $product->id,
+                    'item_code'     => $product->item_code,
+                    'parent_code'   => $product->item_code,
+                    'barcode'       => $product->barcode_path ?? null,
+                    'item_name'     => $product->item_name,
+                    'parent_name'   => $product->item_name,
+                    'brand_name'    => $product->brand->name ?? '',
+                    'unit_name'     => ($product->size_mode === 'by_bandal') ? 'Bundal' : ($product->unit->name ?? 'Pcs'),
+                    'onhand_qty'    => $qtyVal,
+                    'total_pieces'  => $pieces,
+                    'formatted_qty' => $formattedQty,
+                    'is_variant'    => false,
+                    'variant_size'  => '-',
+                    'variant_color' => '-',
+                    'is_part'       => (bool)($product->is_part ?? false),
+                    'is_assembled'  => (bool)($product->is_assembled ?? false),
+                ]);
+            }
+        }
 
         return view('admin_panel.Reporting.onhand', compact('rows'));
     }
@@ -242,9 +323,21 @@ class ReportingController extends Controller
                 $balance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments);
             }
             
+            $variantSuffix = [];
+            if ($vSize !== '-' && trim($vSize) !== '') {
+                $variantSuffix[] = trim($vSize);
+            }
+            if ($vColor !== '-' && trim($vColor) !== '') {
+                $variantSuffix[] = trim($vColor);
+            }
+            $vDisplayName = count($variantSuffix) > 0 ? $vName . ' (' . implode(' | ', $variantSuffix) . ')' : $vName;
+
+            $vBarcode = (!empty($v['barcode']) && $v['barcode'] !== '-') ? $v['barcode'] : null;
+
             $results[] = [
-                'name' => $vName . ' (' . $vSize . ' | ' . $vColor . ')',
-                'code' => $product->item_code,
+                'name' => $vDisplayName,
+                'code' => $vBarcode ?: $product->item_code,
+                'barcode' => $vBarcode,
                 'stock' => $balance,
                 "alert" => isset($v["alert"]) ? (float)$v["alert"] : null,
                 "unit_name" => $vUnitName,
