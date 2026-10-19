@@ -1227,6 +1227,295 @@
             clearInvalid($(this));
         });
 
+        // ========================================================
+        // PRODUCT SETS / COMBO PAIRING LOGIC
+        // ========================================================
+        window.isPopulatingSet = false;
+
+        // Check if selected product belongs to any Product Set
+        window.checkProductSetAndPrompt = function($row, pid, productData) {
+            if (!pid || window.isPopulatingSet || window.isEditModeLoading) return;
+
+            const currentWarehouseId = $row.find('.warehouse').val() || $('#warehouseSelect').val() || 1;
+            const checkUrl = "{{ url('product-sets/check-product') }}/" + pid;
+
+            $.get(checkUrl, {
+                warehouse_id: currentWarehouseId,
+                _t: new Date().getTime()
+            }).done(function(setRes) {
+                if (setRes && setRes.has_set && setRes.sets && setRes.sets.length > 0) {
+                    promptUserForSet(setRes.sets, $row, productData);
+                }
+            }).fail(function(err) {
+                console.error('Error checking product set:', err);
+            });
+        };
+
+        // Prompt user: Sell Individually or Sell Complete Set
+        window.promptUserForSet = function(sets, $row, productData) {
+            if (!sets || sets.length === 0) return;
+
+            let selectedSet = sets[0];
+
+            function renderItemsHtml(set) {
+                let html = '';
+                set.items.forEach(function(item) {
+                    let stockBadge = (item.stock_pieces > 0)
+                        ? `<span class="badge bg-success text-white px-2 py-0" style="font-size:10px;">Stock: ${item.stock_pieces}</span>`
+                        : `<span class="badge bg-danger text-white px-2 py-0" style="font-size:10px;">Out of stock</span>`;
+
+                    let weightInfo = '';
+                    if (item.weight_per_piece && parseFloat(item.weight_per_piece) > 0) {
+                        weightInfo = `<span class="badge bg-info-subtle text-info border border-info-subtle px-1" style="font-size:10px;" title="Weight per piece"><i class="fas fa-weight-hanging me-1"></i>${parseFloat(item.weight_per_piece)}g / pc</span>`;
+                    }
+
+                    let unitLabel = item.variant_unit || item.unit_name || '';
+
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3 border-bottom">
+                            <div>
+                                <i class="fas fa-cube text-primary me-2"></i>
+                                <strong class="text-dark">${item.variant_name || item.item_name}</strong>
+                                ${item.item_code ? '<small class="text-muted ms-1 font-monospace">[' + item.item_code + ']</small>' : ''}
+                                ${weightInfo ? '<div class="mt-1">' + weightInfo + '</div>' : ''}
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary text-white font-monospace px-2 py-1" style="font-size:11px;">
+                                    Qty: ${item.set_qty} ${unitLabel}
+                                </span>
+                                ${stockBadge}
+                            </div>
+                        </li>
+                    `;
+                });
+                return html;
+            }
+
+            let setSelectHtml = '';
+            if (sets.length > 1) {
+                let options = '';
+                sets.forEach(function(s, idx) {
+                    options += `<option value="${idx}">${s.name} (${s.items_count} items)</option>`;
+                });
+                setSelectHtml = `
+                    <div class="mb-2 text-start">
+                        <label class="form-label small fw-bold text-muted mb-1">Select Set / Combo:</label>
+                        <select id="swalSetSelector" class="form-select form-select-sm fw-bold border-primary text-primary">
+                            ${options}
+                        </select>
+                    </div>
+                `;
+            }
+
+            const prodDisplayName = productData ? (productData.name || productData.text || 'This item') : 'This item';
+
+            Swal.fire({
+                title: '<div class="d-flex align-items-center justify-content-center gap-2 text-primary" style="font-size: 1.2rem;"><i class="fas fa-layer-group"></i> Product Combo / Set Found!</div>',
+                html: `
+                    <div style="text-align: left; font-size: 0.92rem; line-height: 1.5;">
+                        <p class="mb-2 text-dark">
+                            Product <strong class="text-primary">${prodDisplayName}</strong> is part of a paired Product Set.
+                        </p>
+
+                        ${setSelectHtml}
+
+                        <div class="p-2 mb-3 rounded-3 bg-light border border-primary-subtle shadow-sm">
+                            <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom">
+                                <span class="fw-bold text-primary" id="swalCurrentSetName"><i class="fas fa-box-open me-1"></i> ${selectedSet.name}</span>
+                                <span class="badge bg-info text-white" id="swalCurrentSetCount">${selectedSet.items_count} Products</span>
+                            </div>
+                            <div class="small fw-semibold text-secondary mb-1">Components included in 1 Set:</div>
+                            <ul class="list-group list-group-flush rounded bg-white border" id="swalSetItemsList" style="max-height: 180px; overflow-y: auto;">
+                                ${renderItemsHtml(selectedSet)}
+                            </ul>
+
+                            <div class="d-flex align-items-center justify-content-between mt-2 pt-2 border-top">
+                                <span class="fw-bold text-dark small"><i class="fas fa-calculator text-primary me-1"></i> How many sets to add?</span>
+                                <div class="input-group input-group-sm" style="width: 130px;">
+                                    <span class="input-group-text bg-white fw-bold">Qty</span>
+                                    <input type="number" id="swalSetQtyInput" class="form-control text-center fw-bold text-primary fs-6" value="1" min="1" step="1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info py-2 px-3 mb-0" style="font-size: 0.8rem;">
+                            <i class="fas fa-info-circle me-1"></i> <strong>Pura Set:</strong> Tamam items unki set quantity ke mutabiq alag alag rows mein invoice mein add hongay aur stock perfectly deduct hoga.
+                        </div>
+                    </div>
+                `,
+                didOpen: () => {
+                    if (sets.length > 1) {
+                        $('#swalSetSelector').on('change', function() {
+                            const idx = parseInt($(this).val()) || 0;
+                            selectedSet = sets[idx];
+                            $('#swalCurrentSetName').html('<i class="fas fa-box-open me-1"></i> ' + selectedSet.name);
+                            $('#swalCurrentSetCount').text(selectedSet.items_count + ' Products');
+                            $('#swalSetItemsList').html(renderItemsHtml(selectedSet));
+                        });
+                    }
+                },
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonColor: '#2563eb', // Primary
+                denyButtonColor: '#10b981',    // Emerald
+                cancelButtonColor: '#64748b',  // Gray
+                confirmButtonText: '<i class="fas fa-boxes me-1"></i> Sell Complete Set (پورا سیٹ)',
+                denyButtonText: '<i class="fas fa-cube me-1"></i> Sell Individually (صرف یہی آئٹم)',
+                cancelButtonText: 'Cancel',
+                reverseButtons: false,
+                focusConfirm: true,
+                width: '540px'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // User chose Complete Set
+                    const setsQty = Math.max(1, parseInt($('#swalSetQtyInput').val()) || 1);
+                    populateSetToGrid(selectedSet, setsQty, $row);
+                } else if (result.isDenied) {
+                    // User chose Individual
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'info',
+                            title: `Selling "${prodDisplayName}" individually`,
+                            showConfirmButton: false,
+                            timer: 1500
+                        });
+                    }
+                } else {
+                    // Cancelled: clear the row
+                    $row.find('.product').val(null).trigger('change');
+                    $row.find('.product-id-hidden').val('');
+                    $row.find('.item-code-display').val('');
+                    $row.find('.stock').val('');
+                    $row.find('.carton-qty').val('');
+                    $row.find('.total-pieces').val('');
+                    $row.find('.visible-price').val('');
+                    $row.find('.sales-amount').val('0');
+                    updateGrandTotals();
+                    refreshPostedState();
+                }
+            });
+        };
+
+        // Populate all components of a set into the sales invoice grid
+        window.populateSetToGrid = function(set, setsCount, $triggerRow) {
+            if (!set || !set.items || set.items.length === 0) return;
+
+            window.isPopulatingSet = true;
+
+            set.items.forEach(function(item, idx) {
+                let $targetRow = null;
+                if (idx === 0 && $triggerRow && $triggerRow.length) {
+                    $targetRow = $triggerRow;
+                } else {
+                    let $lastRow = $('#salesTableBody tr:last');
+                    let lastPid = $lastRow.find('.product-id-hidden').val() || $lastRow.find('.product').val();
+                    if (!lastPid && $lastRow.length && $lastRow[0] !== ($triggerRow ? $triggerRow[0] : null)) {
+                        $targetRow = $lastRow;
+                    } else {
+                        addNewRow();
+                        $targetRow = $('#salesTableBody tr:last');
+                    }
+                }
+
+                const calculatedQty = (parseFloat(item.set_qty) || 1) * setsCount;
+                const itemDisplayName = item.variant_name || item.item_name;
+                const displayText = itemDisplayName + (item.item_code ? ' [' + item.item_code + ']' : '');
+                
+                let optionVal = item.product_id;
+                if (item.variant_data) {
+                    optionVal = item.product_id + '|variant|' + item.variant_data;
+                }
+
+                const itemUnit = item.variant_unit || item.unit_name || 'Pcs';
+                const stockVal = (item.stock !== undefined && item.stock !== null) ? item.stock : (item.stock_pieces || 0);
+
+                const selectData = {
+                    id: optionVal,
+                    text: displayText,
+                    name: displayText,
+                    sku: item.item_code || '',
+                    stock: stockVal,
+                    stock_pieces: item.stock_pieces || 0,
+                    retail_price: item.retail_price || item.sale_price_per_piece || 0,
+                    trade_price: item.retail_price || item.sale_price_per_piece || 0,
+                    wholesale_price: item.wholesale_price || 0,
+                    size_mode: item.size_mode || 'by_pieces',
+                    pieces_per_box: item.pieces_per_box || 1,
+                    unit_name: itemUnit,
+                    variant_data: item.variant_data || '',
+                    weight_per_piece: item.weight_per_piece || 0
+                };
+
+                const $select = $targetRow.find('.product');
+                let newOption = new Option(displayText, optionVal, true, true);
+                $(newOption).data('data', selectData);
+                $select.empty().append(newOption).trigger('change');
+
+                $targetRow.find('.product-id-hidden').val(item.product_id);
+                $targetRow.find('.item-code-display').val(item.item_code || '');
+                $targetRow.find('.stock').val(stockVal);
+                $targetRow.find('.variant-stock-value').val(stockVal);
+                $targetRow.find('.carton-qty').val(calculatedQty);
+                $targetRow.find('.total-pieces').val(calculatedQty);
+                $targetRow.find('.sales-qty').val(calculatedQty);
+                $targetRow.find('.pack-qty').val(item.pieces_per_box || 1);
+                $targetRow.find('.retail-price').val(item.retail_price || item.sale_price_per_piece || 0);
+                $targetRow.find('.wholesale-price').val(item.wholesale_price || 0);
+
+                let rowMode = $targetRow.find('.price-mode-row-toggle').attr('data-mode') || 'retail';
+                let rate = (rowMode === 'wholesale' && item.wholesale_price > 0) ? item.wholesale_price : (item.retail_price || item.sale_price_per_piece || 0);
+                $targetRow.find('.visible-price').val(rate);
+                $targetRow.find('.price-per-piece').val(rate);
+
+                // Set variant attributes
+                $targetRow.find('.variant-data-hidden').val(item.variant_data || '');
+                $targetRow.find('.weight-per-piece').val(item.weight_per_piece || 0);
+                $targetRow.find('.size-mode-text').val(item.size_mode || 'by_pieces');
+
+                // Parse variant data for size/color display
+                let variantSize = '-';
+                let variantColor = '-';
+                if (item.variant_data) {
+                    try {
+                        let vd;
+                        try {
+                            vd = JSON.parse(atob(item.variant_data));
+                        } catch(e) {
+                            vd = JSON.parse(item.variant_data);
+                        }
+                        variantSize = (vd.size && vd.size !== '-') ? vd.size : '-';
+                        variantColor = (vd.color && vd.color !== '-') ? vd.color : '-';
+                    } catch(ex) {}
+                }
+                $targetRow.find('.size-display').val(variantSize !== '-' ? variantSize : '');
+                $targetRow.find('.color-display').val(variantColor);
+
+                $targetRow.data('size_mode', item.size_mode || 'by_pieces');
+                $targetRow.data('pieces_per_box', item.pieces_per_box || 1);
+
+                setupRowQtyToggle($targetRow, item.size_mode || 'by_pieces', itemUnit);
+                computeRow($targetRow);
+            });
+
+            updateGrandTotals();
+            refreshPostedState();
+
+            window.isPopulatingSet = false;
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: `Added ${setsCount} Set(s) of "${set.name}"!`,
+                    showConfirmButton: false,
+                    timer: 2200
+                });
+            }
+        };
+
         // Product change
         $('#salesTableBody').on('select2:select', '.product', function(e) {
             console.log("product change in shared logic");
@@ -1319,6 +1608,11 @@
             const currentSelectedCustId = $('#customerSelect').val();
             if (currentSelectedCustId && pid) {
                 checkCustomerLastPrice($row, pid, currentSelectedCustId, true);
+            }
+
+            // Check if product is part of a Product Set / Combo Bundle
+            if (!window.isPopulatingSet && !window.isEditModeLoading && pid) {
+                checkProductSetAndPrompt($row, pid, data);
             }
         });
 
@@ -2128,6 +2422,9 @@
             $targetRow.find('.product-id-hidden').val(prodId);
             loadWarehousesForProduct($targetRow, prodId);
             fetchProductPrice($targetRow, prodId);
+            if (!window.isPopulatingSet && !window.isEditModeLoading && prodId) {
+                checkProductSetAndPrompt($targetRow, prodId, { name: prodName, text: prodName });
+            }
         });
 
         // --- Sidebar Live Search ---

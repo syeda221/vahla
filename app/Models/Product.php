@@ -87,6 +87,13 @@ class Product extends Model
         return $this->hasMany(ProductWebImage::class)->orderBy('sort_order', 'asc');
     }
 
+    public function sets()
+    {
+        return $this->belongsToMany(ProductSet::class, 'product_set_items', 'product_id', 'product_set_id')
+            ->withPivot('id', 'quantity')
+            ->withTimestamps();
+    }
+
     protected static function booted()
     {
         static::saved(function ($product) {

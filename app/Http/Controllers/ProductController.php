@@ -129,23 +129,31 @@ class ProductController extends Controller
     // ===== High Performance Select2 Search (Ajax) =====
     public function ajaxSearch(Request $request)
     {
-        $term = $request->get('term') ?? $request->get('q') ?? '';
+        $term = trim($request->get('term') ?? $request->get('q') ?? '');
+        $words = array_filter(explode(' ', $term));
 
         $query = Product::query()
             ->select('id', 'item_name', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece')
             ->with(['unit'])
             ->withSum('warehouseStocks', 'total_pieces') /* Sum PIECES, not boxes */
-            ->where('is_active', true) /* Only active products */
-            ->where(function ($q) use ($term) {
-                $q->where('item_name', 'like', "%{$term}%")
-                    ->orWhere('item_code', 'like', "%{$term}%")
-                    ->orWhere('barcode_path', $term)
-                    ->orWhere('color', 'like', "%\"barcode\":\"{$term}\"%");
+            ->where('is_active', true); /* Only active products */
+
+        if (!empty($words)) {
+            $query->where(function ($q) use ($words) {
+                foreach ($words as $w) {
+                    $q->where(function ($subQ) use ($w) {
+                        $subQ->where('item_name', 'like', "%{$w}%")
+                            ->orWhere('item_code', 'like', "%{$w}%")
+                            ->orWhere('barcode_path', 'like', "%{$w}%")
+                            ->orWhere('color', 'like', "%{$w}%");
+                    });
+                }
             });
+        }
 
-        $products = $query->paginate(10); // Lazy loading (10 per request)
+        $products = $query->paginate(15); // Lazy loading (15 per request)
 
-        $results = $products->getCollection()->flatMap(function ($p) {
+        $results = $products->getCollection()->flatMap(function ($p) use ($words) {
             $stockPieces = (float) ($p->warehouse_stocks_sum_total_pieces ?? 0);
             $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
 
@@ -270,6 +278,21 @@ class ProductController extends Controller
                     $vName = ($v['name'] ?? $p->item_name) . $size . $color;
                     
                     $vUnitName = $v['unit'] ?? $unitName;
+
+                    if (!empty($words)) {
+                        $variantText = strtolower($vName . ' ' . $vUnitName . ' ' . ($v['barcode'] ?? '') . ' ' . $p->item_name . ' ' . ($p->item_code ?? ''));
+                        $allWordsMatch = true;
+                        foreach ($words as $w) {
+                            if (!str_contains($variantText, strtolower($w))) {
+                                $allWordsMatch = false;
+                                break;
+                            }
+                        }
+                        if (!$allWordsMatch) {
+                            continue;
+                        }
+                    }
+
                     $isCartonMode = ($p->size_mode === 'by_cartons' || strtolower($vUnitName) === 'carton');
                     $vPpb = (float) ($p->pieces_per_box ?? 1);
                     if ($isCartonMode) {
@@ -464,7 +487,7 @@ class ProductController extends Controller
                 $query->where('item_name', 'like', "%{$term}%")
                     ->orWhere('item_code', 'like', "%{$term}%")
                     ->orWhere('barcode_path', $term)
-                    ->orWhere('color', 'like', "%\"barcode\":\"{$term}\"%")
+                    ->orWhere('color', 'like', "%{$term}%")
                     ->orWhereHas('category_relation', fn ($q) => $q->where('name', 'like', "%{$term}%"))
                     ->orWhereHas('sub_category_relation', fn ($q) => $q->where('name', 'like', "%{$term}%"))
                     ->orWhereHas('brand', fn ($q) => $q->where('name', 'like', "%{$term}%"));

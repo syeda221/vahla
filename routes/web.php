@@ -17,6 +17,7 @@ use App\Http\Controllers\NarrationController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\ProductBookingController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductSetController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\GoodsReceivingNoteController;
@@ -163,6 +164,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/products/check-item-code', [ProductController::class, 'checkItemCode'])->name('products.check_item_code');
     Route::delete('/products/{id}', [ProductController::class, 'destroy'])->middleware('permission:products.delete|products.edit')->name('products.destroy');
     Route::delete('/product/delete/{id}', [ProductController::class, 'destroy'])->middleware('permission:products.delete|products.edit')->name('product.destroy');
+
+    // ── Product Sets / Bundles (Pairing) ──
+    Route::get('/product-sets', [ProductSetController::class, 'index'])->name('product-sets.index');
+    Route::post('/product-sets', [ProductSetController::class, 'store'])->name('product-sets.store');
+    Route::get('/product-sets/{id}', [ProductSetController::class, 'show'])->name('product-sets.show');
+    Route::delete('/product-sets/{id}', [ProductSetController::class, 'destroy'])->name('product-sets.destroy');
+    Route::get('/product-sets/check-product/{id}', [ProductSetController::class, 'checkProductSet'])->name('product-sets.check_product');
 
     // ── Product Pricing & Valuation (Spreadsheet / Inline Edit) ──
     Route::get('/products/pricing-valuation', [App\Http\Controllers\ProductPricingController::class, 'index'])
