@@ -2138,7 +2138,7 @@
                   // We want to remove:
                   //  - rows where qty <= 0 (user didn't enter qty) because they are meaningless,
                   //  - or rows that are fully empty.
-                  if ((qty <= 0) || ((!prod || prod === '') && (!wh || wh === ''))) {
+                  if (!prod || prod === '') {
                       // ensure we keep at least one row in UI
                       if ($('#salesTableBody tr').length > 1) {
                           $r.remove();

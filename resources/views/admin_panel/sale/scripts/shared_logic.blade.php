@@ -713,7 +713,7 @@
             if (gross <= 0 && net > 0) gross = net + dam;
 
             // Piece calc: use total-pieces field (already computed)
-            const pieces = parseInt($r.find('.total-pieces').val()) || 0;
+            const pieces = parseFloat($r.find('.total-pieces').val()) || 0;
 
             tQty += pieces;
             tGross += gross;
@@ -740,7 +740,7 @@
         const payable = Math.max(0, tNet - orderDisc + prev - receipts);
         const currentInvoiceTotal = Math.max(0, tNet - orderDisc);
 
-        $('#tQty').text(tQty.toFixed(0));
+        $('#tQty').text(tQty % 1 === 0 ? tQty.toFixed(0) : tQty.toFixed(3).replace(/\.?0+$/, ''));
         $('#tGross').text(tGross.toFixed(2));
         $('#tLineDisc').text(tLineDisc.toFixed(2));
         $('#tOrderDisc').text(orderDisc.toFixed(2));
@@ -1003,22 +1003,27 @@
     function cleanupEmptyRows() {
         $('#salesTableBody tr').each(function() {
             const $r = $(this);
-            const prod = $r.find('.product-id-hidden').val();
-            const wh = $r.find('.warehouse').val();
-            const cartons = parseInt($r.find('.carton-qty').val()) || 0;
-            const loose   = parseInt($r.find('.loose-pcs-input').val()) || 0;
-            const qty = cartons + loose;
-            if ((qty <= 0) || ((!prod || prod === '') && (!wh || wh === ''))) {
+            const prod = $r.find('.product-id-hidden').val() || $r.find('.product').val();
+
+            // A row is truly empty ONLY if NO product is selected
+            if (!prod || prod === '') {
                 if ($('#salesTableBody tr').length > 1) {
                     $r.remove();
                 } else {
-                    // clear last row if needed
-                    $r.find('select').val('');
-                    $r.find('input').val('');
-                    $r.find('.carton-qty').val(0);
-                    $r.find('.loose-pcs-input').val(0);
+                    // clear single remaining row
+                    $r.find('.product').val(null).trigger('change');
+                    $r.find('.product-id-hidden').val('');
+                    $r.find('.item-code-display').val('');
+                    $r.find('.carton-qty').val('');
+                    $r.find('.loose-pcs-input').val('');
                     $r.find('.stock').val('');
+                    $r.find('.variant-stock-value').val('');
+                    $r.find('.visible-price').val('');
+                    $r.find('.price-per-piece').val('');
                     $r.find('.sales-amount').val('0');
+                    $r.find('.gross-amount').val('0');
+                    $r.find('.total-pieces').val('');
+                    $r.find('.sales-qty').val('0');
                 }
             }
         });

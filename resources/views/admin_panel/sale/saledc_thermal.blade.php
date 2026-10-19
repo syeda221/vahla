@@ -255,13 +255,13 @@
                     @php
                         // Size mode logic for display
                         $sizeMode = $item['size_mode'] ?? 'std';
-                        $totalPieces = (int) $item['total_pieces'];
+                        $totalPieces = (float) $item['total_pieces'];
 
                         // Same layout logic from existing saledc formatting
                         $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
                         if ($piecesPerBox <= 0) $piecesPerBox = 1;
                         $boxes = floor($totalPieces / $piecesPerBox);
-                        $loosePieces = $totalPieces % $piecesPerBox;
+                        $loosePieces = fmod($totalPieces, $piecesPerBox);
 
                         $qtyStr = "";
                         if ($sizeMode == 'by_pieces') {
