@@ -386,7 +386,7 @@
                                                     Per M²
                                                 @elseif(($item['size_mode'] ?? '') == 'by_cartons')
                                                     Per Box
-                                                @elseif(in_array($item['size_mode'] ?? '', ['by_kg', 'by_gm', 'by_meter']))
+                                                @elseif(in_array($item['size_mode'] ?? '', ['by_kg', 'by_gm', 'by_meter', 'by_feet']))
                                                     Per {{ Str::title($item['unit'] ?? 'Pc') }}
                                                 @else
                                                     Per Pc
@@ -694,8 +694,8 @@
 
                     const sizeMode = $row.find('.size-mode').val();
                     const unit = $row.find('input[name="unit[]"]').val() || 'pc';
-                    const isWeightPieces = ['by_kg', 'by_gm', 'by_meter'].includes(sizeMode) && ['pcs', 'pc', 'piece', 'pieces'].includes(unit.toLowerCase());
-                    const isWeightGm = (['by_kg', 'by_gm'].includes(sizeMode) && unit.toLowerCase() === 'gm') || (sizeMode === 'by_meter' && ['mm', 'mtr', 'm', 'meter'].includes(unit.toLowerCase()));
+                    const isWeightPieces = ['by_kg', 'by_gm', 'by_meter', 'by_feet'].includes(sizeMode) && ['pcs', 'pc', 'piece', 'pieces'].includes(unit.toLowerCase());
+                    const isWeightGm = (['by_kg', 'by_gm'].includes(sizeMode) && unit.toLowerCase() === 'gm') || (sizeMode === 'by_meter' && ['mm', 'mtr', 'm', 'meter'].includes(unit.toLowerCase())) || (sizeMode === 'by_feet' && ['in', 'inch', 'inches', 'ft', 'feet'].includes(unit.toLowerCase()));
                     
                     let boxDisplay = '';
 
@@ -733,8 +733,8 @@
 
                     const sizeMode = $row.find('.size-mode').val();
                     const unit = $row.find('input[name="unit[]"]').val() || 'pc';
-                    const isWeightPieces = ['by_kg', 'by_gm', 'by_meter'].includes(sizeMode) && ['pcs', 'pc', 'piece', 'pieces'].includes(unit.toLowerCase());
-                    const isWeightGm = (['by_kg', 'by_gm'].includes(sizeMode) && unit.toLowerCase() === 'gm') || (sizeMode === 'by_meter' && ['mm', 'mtr', 'm', 'meter'].includes(unit.toLowerCase()));
+                    const isWeightPieces = ['by_kg', 'by_gm', 'by_meter', 'by_feet'].includes(sizeMode) && ['pcs', 'pc', 'piece', 'pieces'].includes(unit.toLowerCase());
+                    const isWeightGm = (['by_kg', 'by_gm'].includes(sizeMode) && unit.toLowerCase() === 'gm') || (sizeMode === 'by_meter' && ['mm', 'mtr', 'm', 'meter'].includes(unit.toLowerCase())) || (sizeMode === 'by_feet' && ['in', 'inch', 'inches', 'ft', 'feet'].includes(unit.toLowerCase()));
                     
                     let boxDisplay = '';
 
@@ -796,8 +796,8 @@
 
                 const sizeMode = $row.find('.size-mode').val();
                 const unit = $row.find('input[name="unit[]"]').val() || 'pc';
-                const isWeightPieces = ['by_kg', 'by_gm', 'by_meter'].includes(sizeMode) && ['pcs', 'pc', 'piece', 'pieces'].includes(unit.toLowerCase());
-                const isWeightGm = (['by_kg', 'by_gm'].includes(sizeMode) && unit.toLowerCase() === 'gm') || (sizeMode === 'by_meter' && ['mm', 'mtr', 'm', 'meter'].includes(unit.toLowerCase()));
+                const isWeightPieces = ['by_kg', 'by_gm', 'by_meter', 'by_feet'].includes(sizeMode) && ['pcs', 'pc', 'piece', 'pieces'].includes(unit.toLowerCase());
+                const isWeightGm = (['by_kg', 'by_gm'].includes(sizeMode) && unit.toLowerCase() === 'gm') || (sizeMode === 'by_meter' && ['mm', 'mtr', 'm', 'meter'].includes(unit.toLowerCase())) || (sizeMode === 'by_feet' && ['in', 'inch', 'inches', 'ft', 'feet'].includes(unit.toLowerCase()));
 
                 let totalPieces = 0;
                 

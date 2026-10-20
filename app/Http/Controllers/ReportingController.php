@@ -118,7 +118,7 @@ class ReportingController extends Controller
             }
 
             if (count($parsedVariants) > 0) {
-                if ($product->size_mode === 'by_kg' || $product->size_mode === 'by_meter') {
+                if ($product->size_mode === 'by_kg' || $product->size_mode === 'by_meter' || $product->size_mode === 'by_feet') {
                     // Fetch parent level weight stock and transactions
                     if ($warehouseId && $warehouseId !== 'all') {
                         $parentClosing = (float) $product->warehouseStocks->where('warehouse_id', $warehouseId)->sum('total_pieces');
@@ -338,7 +338,7 @@ class ReportingController extends Controller
                         if ($vConv > 0) $ppb = $vConv;
                     }
 
-                    if ($product->size_mode === 'by_kg' || $product->size_mode === 'by_meter') {
+                    if ($product->size_mode === 'by_kg' || $product->size_mode === 'by_meter' || $product->size_mode === 'by_feet') {
                         $factor = isset($v['conv_factor']) ? (float)$v['conv_factor'] : 1.0;
                         $factor = $factor > 0 ? $factor : 1.0;
 
@@ -1015,10 +1015,15 @@ class ReportingController extends Controller
                             $mm = (int) round($vConv * 1000);
                             $unitBadge = "Meter / Pcs ({$mm}mm)";
                         }
+                    } elseif ($product->size_mode === 'by_feet') {
+                        if ($isBase == 1 || $vConv == 1) {
+                            $unitBadge = "Feet (Base)";
+                        } else {
+                            $inVal = (int) round($vConv * 12);
+                            $unitBadge = "Feet / Pcs ({$inVal}in)";
+                        }
                     } elseif ($product->size_mode === 'by_gm') {
                         $unitBadge = "Gm";
-                    } elseif ($product->size_mode === 'by_feet') {
-                        $unitBadge = "Ft";
                     } elseif ($product->size_mode === 'by_size') {
                         $unitBadge = "M²";
                     } else {
@@ -1064,7 +1069,7 @@ class ReportingController extends Controller
                     $netSoldAmount = $soldAmount - $returnedAmount;
                     $netQtyPieces = $soldQtyPieces - $returnedQtyPieces;
                     $costQty = $netQtyPieces;
-                    if (in_array($product->size_mode, ['by_kg', 'by_meter']) && ! $isBase && $vConv > 0) {
+                    if (in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet']) && ! $isBase && $vConv > 0) {
                         $costQty = $netQtyPieces / $vConv;
                     }
                     $costOfGoodsSold = $costQty * $vAveragePrice;
@@ -1111,14 +1116,18 @@ class ReportingController extends Controller
                                 $soldQtyDisplay = number_format(($soldQtyPieces / $pcsFactor), 0) . " Pcs";
                                 $retQtyDisplay = ($returnedQtyPieces > 0) ? (number_format(($returnedQtyPieces / $pcsFactor), 0) . " Pcs") : "0";
                             }
-                        } elseif (in_array($product->size_mode, ['by_feet', 'by_gm'])) {
-                            $uom = match($product->size_mode) {
-                                'by_feet' => 'Ft',
-                                'by_gm' => 'Gm',
-                                default => 'Pcs'
-                            };
-                            $soldQtyDisplay = number_format($soldQty, 2) . " {$uom}";
-                            $retQtyDisplay = ($returnedQtyPieces > 0) ? (number_format($returnedQtyPieces, 2) . " {$uom}") : "0";
+                        } elseif ($product->size_mode === 'by_feet') {
+                            if ($isBase == 1 || $vConv == 1) {
+                                $soldQtyDisplay = number_format($soldQty, 2) . " Ft";
+                                $retQtyDisplay = ($returnedQtyPieces > 0) ? (number_format($returnedQtyPieces, 2) . " Ft") : "0";
+                            } else {
+                                $pcsFactor = ($vConv > 0) ? $vConv : 1;
+                                $soldQtyDisplay = number_format(($soldQtyPieces / $pcsFactor), 0) . " Pcs";
+                                $retQtyDisplay = ($returnedQtyPieces > 0) ? (number_format(($returnedQtyPieces / $pcsFactor), 0) . " Pcs") : "0";
+                            }
+                        } elseif ($product->size_mode === 'by_gm') {
+                            $soldQtyDisplay = number_format($soldQty, 2) . " Gm";
+                            $retQtyDisplay = ($returnedQtyPieces > 0) ? (number_format($returnedQtyPieces, 2) . " Gm") : "0";
                         } else {
                             $soldQtyDisplay = ((int)$soldQtyPieces) . " Pcs";
                             $retQtyDisplay = ($returnedQtyPieces > 0) ? (((int)$returnedQtyPieces) . " Pcs") : "0";
@@ -1135,6 +1144,9 @@ class ReportingController extends Controller
                         } elseif ($product->size_mode === 'by_meter' && $isBase != 1 && $vConv > 0 && $vConv != 1) {
                             $mm = (int) round($vConv * 1000);
                             $extras[] = "{$mm}mm";
+                        } elseif ($product->size_mode === 'by_feet' && $isBase != 1 && $vConv > 0 && $vConv != 1) {
+                            $inVal = (int) round($vConv * 12);
+                            $extras[] = "{$inVal}in";
                         }
                         if (!empty($extras)) {
                             $displayName .= ' (' . implode(' | ', $extras) . ')';

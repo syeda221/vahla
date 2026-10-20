@@ -609,7 +609,7 @@
             const variantsBody = document.getElementById('variantsBody');
             const productNameInput = document.querySelector('input[name="product_name"]');
 
-            const weightUnits = ['by_kg', 'by_gm', 'by_ton', 'by_meter'];
+            const weightUnits = ['by_kg', 'by_gm', 'by_ton', 'by_meter', 'by_feet'];
             let variantMode = 'standard';
             let manualPrices = {}; // Keep track of manually overridden prices
             let manualNames = {}; // Keep track of manually overridden names
@@ -700,7 +700,8 @@
                 const baseUnitName = unitDropdown && unitDropdown.selectedIndex >= 0 ? unitDropdown.options[unitDropdown.selectedIndex].text : 'Kg';
                 const isCartonMode = unitDropdown && unitDropdown.value === 'by_cartons';
                 const isMeterMode = unitDropdown && unitDropdown.value === 'by_meter';
-                const measureSymbol = isMeterMode ? 'mm' : 'g';
+                const isFeetMode = unitDropdown && unitDropdown.value === 'by_feet';
+                const measureSymbol = isMeterMode ? 'mm' : (isFeetMode ? 'in' : 'g');
                 const vid = 'base_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
                 
                 const nameVal = v ? (v.name !== undefined && v.name !== null && v.name !== '' ? v.name : productName) : productName;
@@ -709,7 +710,7 @@
                 const unitVal = v ? (v.unit || (isCartonMode ? 'Carton' : baseUnitName)) : (isCartonMode ? 'Carton' : baseUnitName);
                 const stockVal = (v && v.stock !== undefined && v.stock !== null && v.stock !== '') ? v.stock : '0';
                 const convVal = (v && v.conv_factor !== undefined && v.conv_factor !== null && v.conv_factor !== '' && v.conv_factor != 0) ? v.conv_factor : (isCartonMode ? '{{ $product->pieces_per_box > 0 ? $product->pieces_per_box : "" }}' : '1');
-                const weightVal = (v && v.weight_per_piece !== undefined && v.weight_per_piece !== null && v.weight_per_piece !== '') ? v.weight_per_piece : 1000;
+                const weightVal = (v && v.weight_per_piece !== undefined && v.weight_per_piece !== null && v.weight_per_piece !== '') ? v.weight_per_piece : (isFeetMode ? 12 : 1000);
                 const saleVal = (v && v.sale_price !== undefined && v.sale_price !== null) ? v.sale_price : '';
                 const wholesaleVal = (v && v.wholesale_price !== undefined && v.wholesale_price !== null) ? v.wholesale_price : '0';
                 const purchVal = (v && v.purch_price !== undefined && v.purch_price !== null) ? v.purch_price : '';
@@ -728,10 +729,10 @@
                     <td class="p-1">
                         <select class="form-select form-select-sm fw-bold text-primary px-1" name="variant_unit[]" style="font-size:11px;">
                             <option value="Carton" ${uNorm==='carton'||(isCartonMode && !v)?'selected':''}>Carton</option>
-                            <option value="Pcs" ${(!isCartonMode && !isMeterMode && (uNorm==='pcs'||uNorm==='piece'||uNorm==='pieces'||uNorm==='pc'))?'selected':''}>Pcs</option>
+                            <option value="Pcs" ${(!isCartonMode && !isMeterMode && !isFeetMode && (uNorm==='pcs'||uNorm==='piece'||uNorm==='pieces'||uNorm==='pc'))?'selected':''}>Pcs</option>
                             <option value="Kg" ${uNorm==='kg'?'selected':''}>Kg</option>
                             <option value="Gm" ${uNorm==='gm'||uNorm==='g'?'selected':''}>Gm</option>
-                            <option value="Ft" ${uNorm==='ft'||uNorm==='feet'?'selected':''}>Ft</option>
+                            <option value="Ft" ${(isFeetMode || uNorm==='ft'||uNorm==='feet')?'selected':''}>Ft</option>
                             <option value="Meter" ${(isMeterMode||uNorm==='meter'||uNorm==='mtr'||uNorm==='m')?'selected':''}>Mtr</option>
                             <option value="Box" ${uNorm==='box'?'selected':''}>Box</option>
                             <option value="Dozen" ${uNorm==='dozen'||uNorm==='dzn'?'selected':''}>Dzn</option>
@@ -840,7 +841,9 @@
                             wholesaleInp.value = (baseWholesale * factor).toFixed(2);
                         }
                         if (pieceWtInp) {
-                            pieceWtInp.value = parseFloat((factor * 1000).toFixed(4)).toString();
+                            const isFeetMode = unitDropdown && unitDropdown.value === 'by_feet';
+                            const mult = isFeetMode ? 12 : 1000;
+                            pieceWtInp.value = parseFloat((factor * mult).toFixed(4)).toString();
                         }
                     }
                 });
@@ -856,13 +859,19 @@
                 
                 const isCartonMode = unitDropdown && unitDropdown.value === 'by_cartons';
                 const isMeterMode = unitDropdown && unitDropdown.value === 'by_meter';
-                const measureSymbol = isMeterMode ? 'mm' : 'g';
+                const isFeetMode = unitDropdown && unitDropdown.value === 'by_feet';
+                const measureSymbol = isMeterMode ? 'mm' : (isFeetMode ? 'in' : 'g');
                 let factor = v ? parseFloat(v.conv_factor || (isCartonMode ? 1000 : 1)) : 1;
                 let suggestedName = v ? (v.name || '') : (productNameInput ? productNameInput.value || '' : '');
                 
                 if (weightGrams && !v) {
-                    factor = parseFloat(weightGrams) > 10 ? parseFloat((weightGrams / 1000).toFixed(6)) : parseFloat(weightGrams);
-                    suggestedName += isMeterMode ? ` - ${weightGrams}mm` : ` - ${weightGrams}g`;
+                    if (isFeetMode) {
+                        factor = parseFloat((weightGrams / 12).toFixed(6));
+                        suggestedName += ` - ${weightGrams}in`;
+                    } else {
+                        factor = parseFloat(weightGrams) > 10 ? parseFloat((weightGrams / 1000).toFixed(6)) : parseFloat(weightGrams);
+                        suggestedName += isMeterMode ? ` - ${weightGrams}mm` : ` - ${weightGrams}g`;
+                    }
                 }
                 
                 const baseRow = variantsBody.querySelector('tr');
@@ -893,7 +902,8 @@
                 const unitVal = v ? (v.unit || (isCartonMode ? 'Carton' : 'Pcs')) : (isCartonMode ? 'Carton' : 'Pcs');
                 const stockVal = (v && v.stock !== undefined && v.stock !== null && v.stock !== '') ? v.stock : '0';
                 const convVal = (v && v.conv_factor !== undefined && v.conv_factor !== null && v.conv_factor !== '') ? v.conv_factor : (isCartonMode ? '0' : '');
-                const weightVal = (v && v.weight_per_piece !== undefined && v.weight_per_piece !== null && v.weight_per_piece !== '') ? v.weight_per_piece : (weightGrams || (factor < 10 ? (factor * 1000).toFixed(1).replace(/\.0$/, '') : factor));
+                const multVal = isFeetMode ? 12 : 1000;
+                const weightVal = (v && v.weight_per_piece !== undefined && v.weight_per_piece !== null && v.weight_per_piece !== '') ? v.weight_per_piece : (weightGrams || (factor < 10 ? (factor * multVal).toFixed(1).replace(/\.0$/, '') : factor));
                 const alertVal = (v && v.alert !== undefined && v.alert !== null) ? v.alert : '0';
                 const barcodeVal = (v && v.barcode !== undefined && v.barcode !== null && v.barcode !== '') ? v.barcode : generateRandomBarcode();
                 
@@ -958,8 +968,10 @@
                         const self = this;
                         let fImmediate = parseFloat(self.value);
                         if (isNaN(fImmediate)) fImmediate = 0;
+                        const isFeet = unitDropdown && unitDropdown.value === 'by_feet';
+                        const mult = isFeet ? 12 : 1000;
                         if (pieceWtInput && fImmediate > 0 && variantMode === 'weight') {
-                            pieceWtInput.value = parseFloat((fImmediate * 1000).toFixed(4)).toString();
+                            pieceWtInput.value = parseFloat((fImmediate * mult).toFixed(4)).toString();
                         } else if (pieceWtInput && fImmediate === 0) {
                             pieceWtInput.value = '';
                         }
@@ -976,7 +988,9 @@
                         clearTimeout(wtTimer);
                         let wt = parseFloat(this.value);
                         if (!isNaN(wt) && wt > 0 && variantMode === 'weight') {
-                            if (convInput) convInput.value = parseFloat((wt / 1000).toFixed(4)).toString();
+                            const isFeet = unitDropdown && unitDropdown.value === 'by_feet';
+                            const divisor = isFeet ? 12 : 1000;
+                            if (convInput) convInput.value = parseFloat((wt / divisor).toFixed(4)).toString();
                             wtTimer = setTimeout(() => {
                                 updatePriceSuggestions();
                                 updateVariantStocksFromBase();
@@ -994,7 +1008,7 @@
             function toggleFactorColumns() {
                 if (!unitDropdown) return;
                 const mode = unitDropdown.value;
-                const isWeight = (mode === 'by_kg' || mode === 'by_gm' || mode === 'by_ton' || mode === 'by_meter');
+                const isWeight = (mode === 'by_kg' || mode === 'by_gm' || mode === 'by_ton' || mode === 'by_meter' || mode === 'by_feet');
                 const isCarton = (mode === 'by_cartons');
 
                 const headerEl = document.getElementById('convFactorHeader');
@@ -1003,6 +1017,8 @@
                         headerEl.textContent = 'Pcs / Carton';
                     } else if (mode === 'by_meter') {
                         headerEl.textContent = 'Conv Factor (m)';
+                    } else if (mode === 'by_feet') {
+                        headerEl.textContent = 'Conv Factor (ft)';
                     } else if (isWeight) {
                         headerEl.textContent = 'Conv Factor';
                     } else {
@@ -1012,12 +1028,12 @@
 
                 const pieceHeader = document.getElementById('pieceMeasureHeader');
                 if (pieceHeader) {
-                    pieceHeader.textContent = (mode === 'by_meter') ? 'Piece Length (mm)' : 'Piece Wt (g)';
+                    pieceHeader.textContent = (mode === 'by_meter') ? 'Piece Length (mm)' : (mode === 'by_feet' ? 'Piece Length (in)' : 'Piece Wt (g)');
                 }
 
                 const measureUnitSymbols = document.querySelectorAll('.measure-unit-symbol');
                 measureUnitSymbols.forEach(el => {
-                    el.textContent = (mode === 'by_meter') ? 'mm' : 'g';
+                    el.textContent = (mode === 'by_meter') ? 'mm' : (mode === 'by_feet' ? 'in' : 'g');
                 });
 
                 const convCols = document.querySelectorAll('.conv-col');
@@ -1331,13 +1347,15 @@
                         let factor = parseFloat(vConvFactors[index] ? vConvFactors[index].value : 1) || 1;
                         let u = vUnits[index] ? vUnits[index].value.toLowerCase() : '';
                         
-                        if (['by_kg', 'by_gm', 'by_ton', 'by_meter'].includes(mode)) {
+                        if (['by_kg', 'by_gm', 'by_ton', 'by_meter', 'by_feet'].includes(mode)) {
                             if (['pcs', 'pc'].includes(u) && factor > 0) {
                                 totalStock += (stock * factor);
                             } else if (['gm', 'g'].includes(u) && mode === 'by_kg') {
                                 totalStock += (stock / 1000.0);
                             } else if (['mm'].includes(u) && mode === 'by_meter') {
                                 totalStock += (stock / 1000.0);
+                            } else if (['in', 'inch', 'inches'].includes(u) && mode === 'by_feet') {
+                                totalStock += (stock / 12.0);
                             } else {
                                 totalStock += stock;
                             }
@@ -1534,10 +1552,10 @@
                             <input type="text" inputmode="decimal" class="mob-input conv-field mob-sync mob-conv-inp" data-field="variant_conv_factor[]" value="${escapeHtml(convVal)}" placeholder="0.000" autocomplete="off">
                         </div>
                         <div class="mob-field-group">
-                            <div class="mob-label" style="color:#059669;">${unitDropdown && unitDropdown.value === 'by_meter' ? '📏 Length (mm)' : '⚖ Piece Wt (g)'}</div>
+                            <div class="mob-label" style="color:#059669;">${unitDropdown && unitDropdown.value === 'by_meter' ? '📏 Length (mm)' : (unitDropdown && unitDropdown.value === 'by_feet' ? '📏 Length (in)' : '⚖ Piece Wt (g)')}</div>
                             <div class="mob-suffix-wrap">
                                 <input type="number" class="mob-input mob-sync mob-piecewt" data-field="variant_weight_per_piece[]" value="${escapeHtml(pieceWtVal)}" placeholder="—" style="background:#f0fdf4;color:#059669;font-weight:700;">
-                                <span class="mob-suffix">${unitDropdown && unitDropdown.value === 'by_meter' ? 'mm' : 'g'}</span>
+                                <span class="mob-suffix">${unitDropdown && unitDropdown.value === 'by_meter' ? 'mm' : (unitDropdown && unitDropdown.value === 'by_feet' ? 'in' : 'g')}</span>
                             </div>
                         </div>
                     </div>
@@ -1548,10 +1566,10 @@
                             <input type="text" class="mob-input" value="1" readonly style="background:#f8fafc;color:#94a3b8;">
                         </div>
                         <div class="mob-field-group">
-                            <div class="mob-label">${unitDropdown && unitDropdown.value === 'by_meter' ? 'Length (mm)' : 'Piece Wt (g)'}</div>
+                            <div class="mob-label">${unitDropdown && unitDropdown.value === 'by_meter' ? 'Length (mm)' : (unitDropdown && unitDropdown.value === 'by_feet' ? 'Length (in)' : 'Piece Wt (g)')}</div>
                             <div class="mob-suffix-wrap">
-                                <input type="number" class="mob-input" value="1000" readonly style="background:#f8fafc;color:#94a3b8;">
-                                <span class="mob-suffix">${unitDropdown && unitDropdown.value === 'by_meter' ? 'mm' : 'g'}</span>
+                                <input type="number" class="mob-input" value="${unitDropdown && unitDropdown.value === 'by_feet' ? '12' : '1000'}" readonly style="background:#f8fafc;color:#94a3b8;">
+                                <span class="mob-suffix">${unitDropdown && unitDropdown.value === 'by_meter' ? 'mm' : (unitDropdown && unitDropdown.value === 'by_feet' ? 'in' : 'g')}</span>
                             </div>
                         </div>
                     </div>

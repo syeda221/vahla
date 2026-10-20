@@ -726,7 +726,7 @@
                                                     $vSizeVal  = $v['size'] ?? $v['variant_size'] ?? '';
                                                     $vUnitVal  = $v['unit'] ?? $v['variant_unit'] ?? '';
                                                     $vWeight   = $v['weight_per_piece'] ?? '';
-                                                    $isBase    = !empty($v['is_base_variant']) || (in_array($product->size_mode, ['by_kg', 'by_meter']) && isset($v['conv_factor']) && (float)$v['conv_factor'] == 1);
+                                                    $isBase    = !empty($v['is_base_variant']) || (in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet']) && isset($v['conv_factor']) && (float)$v['conv_factor'] == 1);
 
                                                     if ($vColorVal !== '-' && $vColorVal !== '' && $vSizeVal !== '-' && $vSizeVal !== '') {
                                                         $vLbl = "{$vColorVal} / {$vSizeVal}";
@@ -734,11 +734,11 @@
                                                         $vLbl = $vColorVal;
                                                     } elseif ($vSizeVal !== '-' && $vSizeVal !== '') {
                                                         $vLbl = $vSizeVal;
-                                                    } elseif ($product->size_mode === 'by_kg') {
+                                                    } elseif ($product->size_mode === 'by_feet') {
                                                         if ($isBase) {
-                                                            $vLbl = 'Kg (Base)';
+                                                            $vLbl = 'Feet (Base)';
                                                         } elseif ($vWeight && (float)$vWeight > 0) {
-                                                            $vLbl = ((float)$vWeight >= 1000 ? ((float)$vWeight/1000) . 'kg' : (float)$vWeight . 'g') . ' Pcs';
+                                                            $vLbl = (float)$vWeight . 'in Pcs';
                                                         } elseif ($vUnitVal) {
                                                             $vLbl = $vUnitVal;
                                                         } else {
@@ -754,6 +754,16 @@
                                                         } else {
                                                             $vLbl = 'Piece';
                                                         }
+                                                    } elseif ($product->size_mode === 'by_kg') {
+                                                        if ($isBase) {
+                                                            $vLbl = 'Kg (Base)';
+                                                        } elseif ($vWeight && (float)$vWeight > 0) {
+                                                            $vLbl = ((float)$vWeight >= 1000 ? ((float)$vWeight/1000) . 'kg' : (float)$vWeight . 'g') . ' Pcs';
+                                                        } elseif ($vUnitVal) {
+                                                            $vLbl = $vUnitVal;
+                                                        } else {
+                                                            $vLbl = 'Piece';
+                                                        }
                                                     } elseif ($vUnitVal) {
                                                         $vLbl = $vUnitVal;
                                                     } elseif (!empty($v['name']) && $v['name'] !== $product->item_name) {
@@ -763,7 +773,7 @@
                                                     }
 
                                                     $vQ = (float)($v['stock'] ?? $v['variant_stock'] ?? 0);
-                                                    if (in_array($product->size_mode, ['by_kg', 'by_meter']) && isset($v['conv_factor']) && (float)$v['conv_factor'] > 0) {
+                                                    if (in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet']) && isset($v['conv_factor']) && (float)$v['conv_factor'] > 0) {
                                                         $cf = (float)$v['conv_factor'];
                                                         $vQ = $cf == 1 ? $stockPieces : (int)floor($stockPieces / $cf);
                                                     }
@@ -771,10 +781,12 @@
                                                     $colorStyle = $vQ > 0 ? '#059669' : '#dc2626';
 
                                                     $vUnitSuffix = '';
-                                                    if ($product->size_mode === 'by_kg') {
-                                                        $vUnitSuffix = $isBase ? ' Kg' : ' Pcs';
+                                                    if ($product->size_mode === 'by_feet') {
+                                                        $vUnitSuffix = $isBase ? ' Ft' : ' Pcs';
                                                     } elseif ($product->size_mode === 'by_meter') {
                                                         $vUnitSuffix = $isBase ? ' Mtr' : ' Pcs';
+                                                    } elseif ($product->size_mode === 'by_kg') {
+                                                        $vUnitSuffix = $isBase ? ' Kg' : ' Pcs';
                                                     } elseif (!empty($vUnitVal)) {
                                                         $vUnitSuffix = ' ' . $vUnitVal;
                                                     }
@@ -1426,7 +1438,7 @@ $(document).ready(function () {
                         let colorBadge = (vColorVal && vColorVal !== '-') ? `<span style="background:#e2e8f0;border-radius:4px;padding:2px 6px;font-size:.72rem;">${vColorVal}</span>` : '<span style="color:#94a3b8;">—</span>';
                         let alertQty  = (vAlert != null && vAlert != 0) ? vAlert : '-';
                         
-                        if (['by_kg', 'by_meter'].includes(product.size_mode) && v.conv_factor != 1 && !v.unit) vUnit = 'Pcs';
+                        if (['by_kg', 'by_meter', 'by_feet'].includes(product.size_mode) && v.conv_factor != 1 && !v.unit) vUnit = 'Pcs';
                         let vPriceLabel = product.size_mode === 'by_size' ? '/m²' : '/' + vUnit;
 
                         tbody.append(`<tr>
@@ -1629,7 +1641,7 @@ $(document).ready(function () {
         let totalCurrent = 0;
         let totalNew = 0;
 
-        if (sizeMode === 'by_kg' || sizeMode === 'by_meter') {
+        if (sizeMode === 'by_kg' || sizeMode === 'by_meter' || sizeMode === 'by_feet') {
             if (sourceInput) {
                 let changedRow = $(sourceInput).closest('.qe-var-row');
                 let isBase = changedRow.data('isbase') == 1;
@@ -1657,7 +1669,7 @@ $(document).ready(function () {
                 let row = $(this);
                 let currStock = parseFloat(row.data('curr')) || 0;
                 let isBase = row.data('isbase') == 1;
-                let defaultUnit = sizeMode === 'by_meter' ? (isBase ? 'Mtr' : 'Pcs') : (isBase ? 'Kg' : 'Pcs');
+                let defaultUnit = sizeMode === 'by_meter' ? (isBase ? 'Mtr' : 'Pcs') : (sizeMode === 'by_feet' ? (isBase ? 'Ft' : 'Pcs') : (isBase ? 'Kg' : 'Pcs'));
                 let vUnit = row.data('unit') || defaultUnit;
                 let newStockVal = row.find('.qe-var-stock-input').val();
                 let newStock = newStockVal === '' || isNaN(newStockVal) ? currStock : parseFloat(newStockVal);
@@ -1853,8 +1865,8 @@ $(document).ready(function () {
                         let vPurch = parseFloat(v.purch_price || 0);
                         let vAlert = v.alert !== undefined ? v.alert : '';
                         let conv   = parseFloat(v.conv_factor || 1);
-                        let isBase = v.is_base_variant == 1 || (['by_kg', 'by_meter'].includes(p.size_mode) && conv == 1);
-                        let vUnit  = v.unit || (p.size_mode === 'by_kg' ? (isBase ? 'Kg' : 'Pcs') : (p.size_mode === 'by_meter' ? (isBase ? 'Mtr' : 'Pcs') : qeProductUnit));
+                        let isBase = v.is_base_variant == 1 || (['by_kg', 'by_meter', 'by_feet'].includes(p.size_mode) && conv == 1);
+                        let vUnit  = v.unit || (p.size_mode === 'by_kg' ? (isBase ? 'Kg' : 'Pcs') : (p.size_mode === 'by_meter' ? (isBase ? 'Mtr' : 'Pcs') : (p.size_mode === 'by_feet' ? (isBase ? 'Ft' : 'Pcs') : qeProductUnit)));
 
                         let metaExtra = '';
                         if (p.size_mode === 'by_kg') {
@@ -1868,6 +1880,12 @@ $(document).ready(function () {
                                 metaExtra = `<span class="badge bg-primary-subtle text-primary border" style="font-size:.65rem;">Base (1 Meter)</span>`;
                             } else if (v.weight_per_piece) {
                                 metaExtra = `<span class="badge bg-light text-muted border" style="font-size:.65rem;">${v.weight_per_piece}mm / piece</span>`;
+                            }
+                        } else if (p.size_mode === 'by_feet') {
+                            if (isBase) {
+                                metaExtra = `<span class="badge bg-primary-subtle text-primary border" style="font-size:.65rem;">Base (1 Feet)</span>`;
+                            } else if (v.weight_per_piece) {
+                                metaExtra = `<span class="badge bg-light text-muted border" style="font-size:.65rem;">${v.weight_per_piece}in / piece</span>`;
                             }
                         } else if (vColor !== '-' || vSize !== '-') {
                             metaExtra = `<span class="badge bg-light text-muted border" style="font-size:.65rem;">${vColor} / ${vSize}</span>`;

@@ -82,11 +82,13 @@ class DeliveryChallanController extends Controller
                 $vUnit = strtolower($variant['unit'] ?? optional(optional($item->product)->unit)->name ?? '');
                 
                 $dispQtyFactor = 1;
-                if (in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter'])) {
+                if (in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter', 'by_feet'])) {
                     if (in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
                         $wtConv = (float)($variant['conv_factor'] ?? $item->pieces_per_box ?? 1);
                         if ($wtConv <= 0) $wtConv = 1;
                         $dispQtyFactor = 1 / $wtConv;
+                    } elseif (in_array($vUnit, ['in', 'inch', 'inches'])) {
+                        $dispQtyFactor = 12;
                     } elseif (in_array($vUnit, ['gm', 'g', 'mm'])) {
                         $dispQtyFactor = 1000;
                     }
@@ -136,7 +138,7 @@ class DeliveryChallanController extends Controller
                     $vUnit = strtolower($variant['unit'] ?? optional(optional($item->product)->unit)->name ?? '');
                     
                     // INFER UNIT FROM PRICE RATIO
-                    if (empty($variant['unit']) && !in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces']) && in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter'])) {
+                    if (empty($variant['unit']) && !in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces']) && in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter', 'by_feet'])) {
                         $grossTotal = (float)$item->total + (float)$item->discount_amount;
                         $basePricePerUnit = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
                         $storedPrice = (float) $item->price;
@@ -147,20 +149,24 @@ class DeliveryChallanController extends Controller
                             $ratio = round($storedPrice / $basePricePerUnit, 4);
                             if (abs($ratio - $wtConvForInference) < 0.001) {
                                 $vUnit = 'pcs';
+                            } elseif ($sizeMode === 'by_feet' && abs($ratio - (1 / 12)) < 0.001) {
+                                $vUnit = 'in';
                             } elseif (abs($ratio - 0.001) < 0.0001) {
                                 $vUnit = ($sizeMode === 'by_meter') ? 'mm' : 'gm';
                             } elseif (abs($ratio - 1) < 0.001) {
-                                $vUnit = ($sizeMode === 'by_meter') ? 'mtr' : 'kg';
+                                $vUnit = ($sizeMode === 'by_meter') ? 'mtr' : (($sizeMode === 'by_feet') ? 'ft' : 'kg');
                             }
                         }
                     }
 
                     $dispQtyFactor = 1;
-                    if (in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter'])) {
+                    if (in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter', 'by_feet'])) {
                         if (in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
                             $wtConv = (float)($variant['conv_factor'] ?? $item->pieces_per_box ?? 1);
                             if ($wtConv <= 0) $wtConv = 1;
                             $dispQtyFactor = 1 / $wtConv;
+                        } elseif (in_array($vUnit, ['in', 'inch', 'inches'])) {
+                            $dispQtyFactor = 12;
                         } elseif (in_array($vUnit, ['gm', 'g', 'mm'])) {
                             $dispQtyFactor = 1000;
                         }
@@ -450,8 +456,8 @@ class DeliveryChallanController extends Controller
                     $qty = (float) ($item->boxes ?? 0);
                     $loose = (float) ($item->loose_pieces ?? 0);
 
-                    if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter') {
-                        $totalPieces = $qty + ($loose / 1000);
+                    if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter' || $productMode === 'by_feet') {
+                        $totalPieces = ($productMode === 'by_feet') ? ($qty + ($loose / 12)) : ($qty + ($loose / 1000));
                         if ($item->color) {
                             try {
                                 $decoded = base64_decode($item->color, true);

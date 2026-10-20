@@ -87,6 +87,24 @@ class ProductImportExportController extends Controller
                 '1250', '1200', '875', '5', '876543210006', '0', '20',
             ]);
 
+            // Row 7: Feet Product – base variant (1 Ft unit)
+            fputcsv($handle, [
+                'ITEM-0004', 'Iron Pipe', 'Hardware', 'Pipes', 'General',
+                'by_feet', '1',
+                '0', '0', '1',
+                'Iron Pipe', '-', '-', 'Ft', '1', '12',
+                '600', '580', '450', '0', '876543210007', '1', '100',
+            ]);
+
+            // Row 8: Feet Product – child Pcs variant (6in piece = 0.5 Ft)
+            fputcsv($handle, [
+                'ITEM-0004', 'Iron Pipe', 'Hardware', 'Pipes', 'General',
+                'by_feet', '1',
+                '0', '0', '1',
+                'Iron Pipe 6in Piece', '-', '-', 'Pcs', '0.5', '6',
+                '300', '290', '225', '10', '876543210008', '0', '200',
+            ]);
+
             fclose($handle);
         };
 
@@ -145,7 +163,7 @@ class ProductImportExportController extends Controller
                     $ws = WarehouseStock::where('product_id', $p->id)->first();
                     $stockPieces = $ws ? $ws->total_pieces : 0;
                     
-                    $vUnit = $sizeMode === 'by_kg' ? 'Kg' : ($sizeMode === 'by_gm' ? 'Gm' : ($sizeMode === 'by_meter' ? 'Mtr' : 'Pcs'));
+                    $vUnit = $sizeMode === 'by_kg' ? 'Kg' : ($sizeMode === 'by_gm' ? 'Gm' : ($sizeMode === 'by_meter' ? 'Mtr' : ($sizeMode === 'by_feet' ? 'Ft' : 'Pcs')));
                     fputcsv($handle, [
                         $p->item_code,
                         $p->item_name,
@@ -163,7 +181,7 @@ class ProductImportExportController extends Controller
                         '-',            // Variant Color
                         $vUnit,         // Variant Unit
                         '1',            // Variant Conv Factor
-                        in_array($vUnit, ['Kg', 'Mtr']) ? '1000' : '0', // Variant Piece Wt (g) / Length (mm)
+                        in_array($vUnit, ['Kg', 'Mtr']) ? '1000' : ($vUnit === 'Ft' ? '12' : '0'), // Variant Piece Wt (g) / Length (mm/in)
                         round($p->sale_price_per_piece ?? 0, 2),
                         round($p->wholesale_price ?? 0, 2),
                         round($p->purchase_price_per_piece ?? 0, 2),
@@ -174,9 +192,9 @@ class ProductImportExportController extends Controller
                     ]);
                 } else {
                     foreach ($variants as $v) {
-                        $vUnit = $v['unit'] ?? ($sizeMode === 'by_kg' ? 'Kg' : ($sizeMode === 'by_gm' ? 'Gm' : ($sizeMode === 'by_meter' ? 'Mtr' : 'Pcs')));
+                        $vUnit = $v['unit'] ?? ($sizeMode === 'by_kg' ? 'Kg' : ($sizeMode === 'by_gm' ? 'Gm' : ($sizeMode === 'by_meter' ? 'Mtr' : ($sizeMode === 'by_feet' ? 'Ft' : 'Pcs'))));
                         $vFactor = isset($v['conv_factor']) ? $v['conv_factor'] : 1;
-                        $vWeight = isset($v['weight_per_piece']) ? $v['weight_per_piece'] : (($vFactor > 0 && $vFactor < 10) ? $vFactor * 1000 : 0);
+                        $vWeight = isset($v['weight_per_piece']) ? $v['weight_per_piece'] : (($sizeMode === 'by_feet') ? (($vFactor > 0 && $vFactor < 10) ? $vFactor * 12 : 0) : (($vFactor > 0 && $vFactor < 10) ? $vFactor * 1000 : 0));
                         $vIsBase = isset($v['is_base_variant']) ? (int)$v['is_base_variant'] : 0;
                         $vAlert  = $v['alert'] ?? 0;
 
@@ -391,8 +409,8 @@ class ProductImportExportController extends Controller
                 }
             }
 
-            $vUnit = $get($row, ['variant unit', 'variant_unit', 'unit'], ($productsByRef[$prodRef]['size_mode'] === 'by_kg' ? 'Kg' : ($productsByRef[$prodRef]['size_mode'] === 'by_meter' ? 'Mtr' : 'Pcs')));
-            $vPieceWt = (float) $get($row, ['variant piece wt (g)', 'variant piece weight (g)', 'variant_weight_per_piece', 'weight_per_piece', 'piece_weight', 'piece_length_mm', 'piece_length'], 0);
+            $vUnit = $get($row, ['variant unit', 'variant_unit', 'unit'], ($productsByRef[$prodRef]['size_mode'] === 'by_kg' ? 'Kg' : ($productsByRef[$prodRef]['size_mode'] === 'by_meter' ? 'Mtr' : ($productsByRef[$prodRef]['size_mode'] === 'by_feet' ? 'Ft' : 'Pcs'))));
+            $vPieceWt = (float) $get($row, ['variant piece wt (g)', 'variant piece weight (g)', 'variant_weight_per_piece', 'weight_per_piece', 'piece_weight', 'piece_length_mm', 'piece_length', 'piece_length_in', 'piece_length_inch'], 0);
             $rawConvFactor = $get($row, ['variant conv factor', 'variant_conv_factor', 'conv_factor', 'factor'], '');
             $vConvFactor = $rawConvFactor !== '' ? (float)$rawConvFactor : 0;
             $vIsBase = (int) $get($row, ['variant is base', 'variant_is_base', 'is_base'], 0);
@@ -400,11 +418,21 @@ class ProductImportExportController extends Controller
 
             $isWeightProduct = (isset($productsByRef[$prodRef]) && in_array($productsByRef[$prodRef]['size_mode'], ['by_kg', 'by_gm', 'by_ton']));
             $isMeterProduct  = (isset($productsByRef[$prodRef]) && $productsByRef[$prodRef]['size_mode'] === 'by_meter');
+            $isFeetProduct   = (isset($productsByRef[$prodRef]) && $productsByRef[$prodRef]['size_mode'] === 'by_feet');
 
-            // Auto-calculate conversion factor & piece weight/length (mm or g)
+            // Auto-calculate conversion factor & piece weight/length (mm, inches, or g)
             if ($vIsBase === 1) {
                 $vConvFactor = 1;
-                $vPieceWt = 1000.0;
+                $vPieceWt = $isFeetProduct ? 12.0 : 1000.0;
+            } elseif ($isFeetProduct) {
+                if ($vConvFactor > 0 && $vPieceWt <= 0) {
+                    $vPieceWt = (float) round($vConvFactor * 12.0, 4);
+                } elseif ($vPieceWt > 0 && ($rawConvFactor === '' || $vConvFactor <= 0 || $vConvFactor == 1)) {
+                    $vConvFactor = (float) round($vPieceWt / 12.0, 8);
+                } elseif ($vConvFactor <= 0) {
+                    $vConvFactor = 1;
+                    $vPieceWt = 12.0;
+                }
             } elseif ($isMeterProduct) {
                 if ($vConvFactor > 0 && $vPieceWt <= 0) {
                     $vPieceWt = (float) round($vConvFactor * 1000.0, 4);
@@ -735,7 +763,7 @@ class ProductImportExportController extends Controller
                             'name'             => $newV['name'],
                             'size'             => $newV['size'],
                             'color'            => $newV['color'],
-                            'unit'             => $newV['unit'] ?? ($pData['size_mode'] === 'by_kg' ? 'Kg' : ($pData['size_mode'] === 'by_meter' ? 'Mtr' : 'Pcs')),
+                            'unit'             => $newV['unit'] ?? ($pData['size_mode'] === 'by_kg' ? 'Kg' : ($pData['size_mode'] === 'by_meter' ? 'Mtr' : ($pData['size_mode'] === 'by_feet' ? 'Ft' : 'Pcs'))),
                             'conv_factor'      => (float)($newV['conv_factor'] ?? 1),
                             'weight_per_piece' => (float)($newV['weight_per_piece'] ?? 0),
                             'stock'            => $newV['stock'],
@@ -763,7 +791,7 @@ class ProductImportExportController extends Controller
                         $u = strtolower($v['unit'] ?? '');
                         $isBase = (int)($v['is_base_variant'] ?? 0);
                         
-                        if (in_array($pData['size_mode'], ['by_kg', 'by_gm', 'by_ton', 'by_meter'])) {
+                        if (in_array($pData['size_mode'], ['by_kg', 'by_gm', 'by_ton', 'by_meter', 'by_feet'])) {
                             if ($isBase === 1) {
                                 $stockTotal += $stk;
                             }
@@ -827,7 +855,7 @@ class ProductImportExportController extends Controller
                             'name'             => $newV['name'],
                             'size'             => $newV['size'],
                             'color'            => $newV['color'],
-                            'unit'             => $newV['unit'] ?? ($pData['size_mode'] === 'by_kg' ? 'Kg' : ($pData['size_mode'] === 'by_meter' ? 'Mtr' : 'Pcs')),
+                            'unit'             => $newV['unit'] ?? ($pData['size_mode'] === 'by_kg' ? 'Kg' : ($pData['size_mode'] === 'by_meter' ? 'Mtr' : ($pData['size_mode'] === 'by_feet' ? 'Ft' : 'Pcs'))),
                             'conv_factor'      => (float)($newV['conv_factor'] ?? 1),
                             'weight_per_piece' => (float)($newV['weight_per_piece'] ?? 0),
                             'stock'            => $newV['stock'],
@@ -848,7 +876,7 @@ class ProductImportExportController extends Controller
                         $u = strtolower($v['unit'] ?? '');
                         $isBase = (int)($v['is_base_variant'] ?? 0);
                         
-                        if (in_array($pData['size_mode'], ['by_kg', 'by_gm', 'by_ton', 'by_meter'])) {
+                        if (in_array($pData['size_mode'], ['by_kg', 'by_gm', 'by_ton', 'by_meter', 'by_feet'])) {
                             if ($isBase === 1) {
                                 $stockTotal += $stk;
                             }
@@ -1184,7 +1212,7 @@ class ProductImportExportController extends Controller
             'Category',
             'Sub Category',
             'Brand',
-            'Size Mode',            // by_pieces / by_kg / by_gm / by_cartons / by_size
+            'Size Mode',            // by_pieces / by_kg / by_gm / by_cartons / by_feet / by_meter / by_size
             'Pieces Per Box',
             'Sale Discount %',
             'Purchase Discount %',

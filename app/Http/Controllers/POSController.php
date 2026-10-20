@@ -91,7 +91,7 @@ class POSController extends Controller
                     ->get();
 
                 $variantItems = [];
-                $totalStockPieces = in_array($p->size_mode, ['by_kg', 'by_meter']) ? (float) ($p->warehouseStocks->sum('total_pieces') ?? 0) : 0;
+                $totalStockPieces = in_array($p->size_mode, ['by_kg', 'by_meter', 'by_feet']) ? (float) ($p->warehouseStocks->sum('total_pieces') ?? 0) : 0;
 
                 foreach ($variants as $v) {
                     $size = (isset($v['size']) && $v['size'] !== '-') ? " {$v['size']}" : '';
@@ -115,7 +115,9 @@ class POSController extends Controller
                                     [$b, $l] = \App\Http\Controllers\PurchaseController::parseCartonQty($pItem->qty);
                                     $pPieces = ($b * $itemPPB) + $l;
                                 }
-                            } elseif (in_array($pUnit, ['gm', 'g'])) {
+                            } elseif (in_array($pUnit, ['in', 'inch', 'inches'])) {
+                                $pPieces = ((float) $pItem->qty) / 12.0;
+                            } elseif (in_array($pUnit, ['gm', 'g', 'mm'])) {
                                 $pPieces = ((float) $pItem->qty) / 1000.0;
                             } else {
                                 $pPieces = (float) $pItem->qty;
@@ -159,16 +161,18 @@ class POSController extends Controller
                     }
 
                     $vWeightPerPiece = (float) ($v['weight_per_piece'] ?? 0);
-                    if (isset($v['conv_factor']) && in_array($p->size_mode, ['by_kg', 'by_meter'])) {
+                    if (isset($v['conv_factor']) && in_array($p->size_mode, ['by_kg', 'by_meter', 'by_feet'])) {
                         $factor = (float) $v['conv_factor'];
+                        $isFeet = $p->size_mode === 'by_feet';
+                        $mult = $isFeet ? 12.0 : 1000.0;
                         if ($factor <= 0 && $vWeightPerPiece > 0) {
-                            $factor = $vWeightPerPiece / 1000.0;
+                            $factor = $vWeightPerPiece / $mult;
                         }
                         $factor = $factor > 0 ? $factor : 1;
                         if ($vWeightPerPiece <= 0 && $factor > 0 && $factor != 1.0) {
-                            $vWeightPerPiece = $factor * 1000.0;
+                            $vWeightPerPiece = $factor * $mult;
                         } elseif ($vWeightPerPiece <= 0 && $factor == 1.0) {
-                            $vWeightPerPiece = 1000.0;
+                            $vWeightPerPiece = $mult;
                         }
                         if ($factor == 1) {
                             $vBalance = max(0, $totalStockPieces);
@@ -181,10 +185,19 @@ class POSController extends Controller
                     }
 
                     $vStockDisplay = $vBalance;
-                    if (isset($v['conv_factor']) && in_array($p->size_mode, ['by_kg', 'by_meter'])) {
+                    if (isset($v['conv_factor']) && in_array($p->size_mode, ['by_kg', 'by_meter', 'by_feet'])) {
                         $factor = (float) $v['conv_factor'];
                         if ($factor == 1) {
-                            if ($p->size_mode === 'by_meter') {
+                            if ($p->size_mode === 'by_feet') {
+                                if ($vBalance < 0.001) {
+                                    $vStockDisplay = "0 Ft (0 in)";
+                                } elseif ($vBalance < 1 && $vBalance > 0) {
+                                    $inVal = (int) round($vBalance * 12);
+                                    $vStockDisplay = "{$vBalance} Ft ({$inVal} in)";
+                                } else {
+                                    $vStockDisplay = "{$vBalance} Ft";
+                                }
+                            } elseif ($p->size_mode === 'by_meter') {
                                 if ($vBalance < 0.001) {
                                     $vStockDisplay = "0 Mtr (0 mm)";
                                 } elseif ($vBalance < 1 && $vBalance > 0) {

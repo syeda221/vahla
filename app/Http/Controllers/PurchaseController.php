@@ -89,7 +89,12 @@ class PurchaseController extends Controller
                 if (isset($json['conv_factor']) && (float) $json['conv_factor'] > 0) {
                     $convFactor = (float) $json['conv_factor'];
                 } elseif (isset($json['weight_per_piece']) && (float) $json['weight_per_piece'] > 0) {
-                    $convFactor = (float) $json['weight_per_piece'] / 1000.0;
+                    $u = strtolower(trim($json['unit'] ?? ''));
+                    if (in_array($u, ['in', 'inch', 'inches', 'ft', 'feet']) || ($json['size_mode'] ?? '') === 'by_feet') {
+                        $convFactor = (float) $json['weight_per_piece'] / 12.0;
+                    } else {
+                        $convFactor = (float) $json['weight_per_piece'] / 1000.0;
+                    }
                 }
                 if (isset($json['unit']) && $json['unit'] !== '' && $json['unit'] !== null) {
                     $unit = strtolower(trim($json['unit']));
@@ -481,7 +486,9 @@ class PurchaseController extends Controller
 
                 $pSizeMode = $item->size_mode ?? ($item->product->size_mode ?? '');
 
-                if ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams' || $unit === 'mm') {
+                if ($unit === 'in' || $unit === 'inch' || $unit === 'inches') {
+                    $baseQty = ((float) $item->qty) / 12.0;
+                } elseif ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams' || $unit === 'mm') {
                     $baseQty = ((float) $item->qty) / 1000.0;
                 } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box' || ($pSizeMode === 'by_cartons')) {
                     // Full carton / carton.loose purchased: convert cartons to pieces for warehouse_stocks and stock_movements
@@ -492,7 +499,7 @@ class PurchaseController extends Controller
                         [$boxes, $loose] = self::parseCartonQty($item->qty);
                     }
                     $baseQty = ($boxes * $ppb) + $loose;
-                } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm' || $pSizeMode === 'by_meter') {
+                } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm' || $pSizeMode === 'by_meter' || $pSizeMode === 'by_feet') {
                     if ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece' || ($convFactor > 0 && $convFactor != 1.0)) {
                         $baseQty = ((float) $item->qty) * $convFactor;
                     } else {
@@ -1514,9 +1521,11 @@ class PurchaseController extends Controller
                             [$boxes, $loose] = self::parseCartonQty($item->qty);
                         }
                         return ($boxes * $ppb) + $loose;
+                    } elseif (in_array($u, ['in', 'inch', 'inches'])) {
+                        return (float)$item->qty / 12.0;
                     } elseif (in_array($u, ['gm', 'g', 'gram', 'grams', 'mm'])) {
                         return (float)$item->qty / 1000.0;
-                    } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm' || $pSizeMode === 'by_meter') {
+                    } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm' || $pSizeMode === 'by_meter' || $pSizeMode === 'by_feet') {
                         if (in_array($u, ['pcs', 'pc', 'piece']) || ($convFactor > 0 && $convFactor != 1.0)) {
                             return ((float) $item->qty) * $convFactor;
                         }
@@ -1611,9 +1620,11 @@ class PurchaseController extends Controller
                 if ($isCarton) {
                     [$boxes, $loose] = self::parseCartonQty($rawQtyStr);
                     $baseQty = ($boxes * $curPPB) + $loose;
+                } elseif (in_array($u, ['in', 'inch', 'inches'])) {
+                    $baseQty = $qty / 12.0;
                 } elseif (in_array($u, ['gm', 'g', 'gram', 'grams', 'mm'])) {
                     $baseQty = $qty / 1000.0;
-                } elseif ($curSizeMode === 'by_kg' || $curSizeMode === 'by_gm' || $curSizeMode === 'by_meter') {
+                } elseif ($curSizeMode === 'by_kg' || $curSizeMode === 'by_gm' || $curSizeMode === 'by_meter' || $curSizeMode === 'by_feet') {
                     [$convFactor, $vUnit] = $this->variantConvUnit($colors[$i] ?? null);
                     if (in_array($u, ['pcs', 'pc', 'piece']) || ($convFactor > 0 && $convFactor != 1.0)) {
                         $baseQty = $qty * $convFactor;
@@ -2510,7 +2521,7 @@ class PurchaseController extends Controller
 
                 // Check for weight/meter product conversion factor
                 $stockQty = $qty;
-                if ($sizeMode === 'by_kg' || $sizeMode === 'by_gm' || $sizeMode === 'by_meter') {
+                if ($sizeMode === 'by_kg' || $sizeMode === 'by_gm' || $sizeMode === 'by_meter' || $sizeMode === 'by_feet') {
                     $colorField = $request->color[$index] ?? null;
                     if (!empty($colorField)) {
                         try {
@@ -2524,7 +2535,7 @@ class PurchaseController extends Controller
                                 if (isset($variantData['conv_factor']) && (float)$variantData['conv_factor'] > 0) {
                                     $factor = (float)$variantData['conv_factor'];
                                 } elseif (isset($variantData['weight_per_piece']) && (float)$variantData['weight_per_piece'] > 0) {
-                                    $factor = (float)$variantData['weight_per_piece'] / 1000.0;
+                                    $factor = ($sizeMode === 'by_feet') ? ((float)$variantData['weight_per_piece'] / 12.0) : ((float)$variantData['weight_per_piece'] / 1000.0);
                                 }
                                 if ($factor > 0) {
                                     $stockQty = $stockQty * $factor;

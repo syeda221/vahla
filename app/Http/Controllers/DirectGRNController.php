@@ -112,7 +112,7 @@ class DirectGRNController extends Controller
                         if (isset($json['conv_factor']) && (float)$json['conv_factor'] > 0) {
                             $convFactor = (float) $json['conv_factor'];
                         } elseif (isset($json['weight_per_piece']) && (float)$json['weight_per_piece'] > 0) {
-                            $convFactor = (float) $json['weight_per_piece'] / 1000.0;
+                            $convFactor = ($pSizeMode === 'by_feet') ? ((float) $json['weight_per_piece'] / 12.0) : ((float) $json['weight_per_piece'] / 1000.0);
                         }
                         if (isset($json['unit']) && $json['unit'] !== '') {
                             $unit = strtolower(trim($json['unit']));
@@ -120,11 +120,13 @@ class DirectGRNController extends Controller
                     }
                 }
 
-                if ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams' || $unit === 'mm' || $unit === 'millimeter' || $unit === 'millimeters') {
+                if ($unit === 'in' || $unit === 'inch' || $unit === 'inches') {
+                    $baseQty = $qty / 12.0;
+                } elseif ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams' || $unit === 'mm' || $unit === 'millimeter' || $unit === 'millimeters') {
                     $baseQty = $qty / 1000.0;
                 } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box' || ($pSizeMode === 'by_cartons')) {
                     $baseQty = $qty * $ppb;
-                } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm' || $pSizeMode === 'by_meter') {
+                } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm' || $pSizeMode === 'by_meter' || $pSizeMode === 'by_feet') {
                     if ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece' || ($convFactor > 0 && $convFactor != 1.0)) {
                         $baseQty = $qty * $convFactor;
                     } else {

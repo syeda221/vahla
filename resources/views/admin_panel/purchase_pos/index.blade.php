@@ -1694,6 +1694,8 @@
                         totalPieces = item.qty * (factor / 1000);
                     } else if (item.sizeMode === 'by_meter') {
                         totalPieces = item.qty * factor;
+                    } else if (item.sizeMode === 'by_feet') {
+                        totalPieces = item.qty * (factor / 12);
                     }
                 }
                 

@@ -114,8 +114,8 @@ class DirectDCController extends Controller
                 ]);
 
                 $productMode = $product->size_mode;
-                if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter') {
-                    $totalPieces = $qty + ($loose / 1000);
+                if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter' || $productMode === 'by_feet') {
+                    $totalPieces = ($productMode === 'by_feet') ? ($qty + ($loose / 12)) : ($qty + ($loose / 1000));
                     if ($colorVal) {
                         try {
                             $decoded = base64_decode($colorVal, true);
@@ -255,8 +255,8 @@ class DirectDCController extends Controller
                 $qty = (float) $item->boxes;
                 $loose = (float) $item->loose_pieces;
 
-                if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter') {
-                    $totalPieces = $qty + ($loose / 1000);
+                if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter' || $productMode === 'by_feet') {
+                    $totalPieces = ($productMode === 'by_feet') ? ($qty + ($loose / 12)) : ($qty + ($loose / 1000));
                     if ($item->color) {
                         try {
                             $decoded = base64_decode($item->color, true);
@@ -330,8 +330,8 @@ class DirectDCController extends Controller
                 ]);
 
                 $productMode = $product->size_mode;
-                if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter') {
-                    $totalPieces = $qty + ($loose / 1000);
+                if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter' || $productMode === 'by_feet') {
+                    $totalPieces = ($productMode === 'by_feet') ? ($qty + ($loose / 12)) : ($qty + ($loose / 1000));
                     if ($colorVal) {
                         try {
                             $decoded = base64_decode($colorVal, true);
@@ -426,12 +426,15 @@ class DirectDCController extends Controller
         $dispQtyFactor = 1;
         $unitName = 'Pcs';
 
-        if (in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter'])) {
+        if (in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter', 'by_feet'])) {
             if (in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
                 $unitName = 'Pcs';
                 $wtConv = (float)($variant['conv_factor'] ?? optional($product)->pieces_per_box ?? 1);
                 if ($wtConv <= 0) $wtConv = 1;
                 $dispQtyFactor = 1 / $wtConv;
+            } elseif (in_array($vUnit, ['in', 'inch', 'inches'])) {
+                $unitName = 'In';
+                $dispQtyFactor = 12;
             } elseif (in_array($vUnit, ['mm', 'millimeter', 'millimeters'])) {
                 $unitName = 'Mm';
                 $dispQtyFactor = 1000;
@@ -439,7 +442,7 @@ class DirectDCController extends Controller
                 $unitName = 'Gm';
                 $dispQtyFactor = 1000;
             } else {
-                $unitName = ($sizeMode === 'by_meter') ? 'Meter' : 'Kg';
+                $unitName = ($sizeMode === 'by_meter') ? 'Meter' : (($sizeMode === 'by_feet') ? 'Feet' : 'Kg');
                 $dispQtyFactor = 1;
             }
         } elseif ($sizeMode === 'by_cartons') {
@@ -718,8 +721,8 @@ class DirectDCController extends Controller
                     $dispFactor = (float)($mi['disp_factor'] ?? 1);
                     if ($dispFactor <= 0) $dispFactor = 1;
 
-                    // For by_kg / by_gm / by_meter, qty in sale_items is stored in base unit (Kg / Meter)
-                    if ($product && in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter'])) {
+                    // For by_kg / by_gm / by_meter / by_feet, qty in sale_items is stored in base unit (Kg / Meter / Feet)
+                    if ($product && in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter', 'by_feet'])) {
                         $storedQty = $displayQty / $dispFactor;
                     } else {
                         $storedQty = $displayQty;
@@ -773,7 +776,7 @@ class DirectDCController extends Controller
                     $sizeMode = $product ? $product->size_mode : $mi['size_mode'];
                     $dispFactor = $mi['disp_factor'] > 0 ? $mi['disp_factor'] : 1;
 
-                    if ($product && in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter'])) {
+                    if ($product && in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter', 'by_feet'])) {
                         $storedQty = $displayQty / $dispFactor;
                     } else {
                         $storedQty = $displayQty;

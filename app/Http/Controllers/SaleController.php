@@ -1892,7 +1892,7 @@ class SaleController extends Controller
                                         }
                                         if (is_array($variantData) && isset($variantData['conv_factor'])) {
                                             $origSizeMode = $origSaleItem->size_mode ?? '';
-                                            if (in_array($origSizeMode, ['by_kg', 'by_gm', 'by_meter'])) {
+                                            if (in_array($origSizeMode, ['by_kg', 'by_gm', 'by_meter', 'by_feet'])) {
                                                 $stockQty = $rQty;
                                             } else {
                                                 $factor = (float)$variantData['conv_factor'];
@@ -2447,8 +2447,8 @@ class SaleController extends Controller
             $productMode = $item->product->size_mode ?? '';
             $qtyPieces = (float)$item->total_pieces;
 
-            if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter') {
-                // total_pieces is always stored in master units (KG for weight, Meter for length)
+            if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter' || $productMode === 'by_feet') {
+                // total_pieces is always stored in master units (KG for weight, Meter for length, Feet for length)
                 // (kg/gm/pcs and m/mm/pcs sub-units all convert to master unit in the frontend). So deduct directly.
                 $qtyPieces = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
             }

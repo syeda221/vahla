@@ -1001,15 +1001,71 @@
                                                             $displayQty = $totalWt;
                                                         }
                                                     } elseif ($sizeMode === 'by_feet') {
-                                                        $unitMode = 'ft';
-                                                        $toggleText = 'Ft';
-                                                        $toggleBtnClass = 'btn-outline-primary';
-                                                        $displayQty = (float) ($item->total_pieces ?: $item->qty);
+                                                        $totalFt = (float) $item->total_pieces;
+                                                        $grossTotal = (float)$item->total + (float)$item->discount_amount;
+                                                        $basePricePerFt = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
+                                                        $storedPrice = (float) $item->price;
+
+                                                        $isFtPcs = false;
+                                                        $isFtIn = false;
+                                                        if ($storedPrice > 0 && $basePricePerFt > 0) {
+                                                            $ratio = round($storedPrice / $basePricePerFt, 4);
+                                                            if ($ppb > 0 && abs($ratio - $ppb) < 0.001) {
+                                                                $isFtPcs = true;
+                                                            } elseif (abs($ratio - (1 / 12)) < 0.001) {
+                                                                $isFtIn = true;
+                                                            }
+                                                        }
+
+                                                        if ($isFtPcs) {
+                                                            $unitMode = 'pcs';
+                                                            $toggleText = 'Pcs';
+                                                            $toggleBtnClass = 'btn-outline-info';
+                                                            $displayQty = $ppb > 0 ? ($totalFt / $ppb) : $totalFt;
+                                                        } elseif ($isFtIn) {
+                                                            $unitMode = 'in';
+                                                            $toggleText = 'In';
+                                                            $toggleBtnClass = 'btn-outline-warning';
+                                                            $displayQty = $totalFt * 12;
+                                                        } else {
+                                                            $unitMode = 'ft';
+                                                            $toggleText = 'Ft';
+                                                            $toggleBtnClass = 'btn-outline-primary';
+                                                            $displayQty = $totalFt;
+                                                        }
                                                     } elseif ($sizeMode === 'by_meter') {
-                                                        $unitMode = 'm';
-                                                        $toggleText = 'Mtr';
-                                                        $toggleBtnClass = 'btn-outline-primary';
-                                                        $displayQty = (float) ($item->total_pieces ?: $item->qty);
+                                                        $totalMeter = (float) $item->total_pieces;
+                                                        $grossTotal = (float)$item->total + (float)$item->discount_amount;
+                                                        $basePricePerMtr = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
+                                                        $storedPrice = (float) $item->price;
+
+                                                        $isMtrPcs = false;
+                                                        $isMtrMm = false;
+                                                        if ($storedPrice > 0 && $basePricePerMtr > 0) {
+                                                            $ratio = round($storedPrice / $basePricePerMtr, 4);
+                                                            if ($ppb > 0 && abs($ratio - $ppb) < 0.001) {
+                                                                $isMtrPcs = true;
+                                                            } elseif (abs($ratio - 0.001) < 0.0001) {
+                                                                $isMtrMm = true;
+                                                            }
+                                                        }
+
+                                                        if ($isMtrPcs) {
+                                                            $unitMode = 'pcs';
+                                                            $toggleText = 'Pcs';
+                                                            $toggleBtnClass = 'btn-outline-info';
+                                                            $displayQty = $ppb > 0 ? ($totalMeter / $ppb) : $totalMeter;
+                                                        } elseif ($isMtrMm) {
+                                                            $unitMode = 'mm';
+                                                            $toggleText = 'mm';
+                                                            $toggleBtnClass = 'btn-outline-info';
+                                                            $displayQty = $totalMeter * 1000;
+                                                        } else {
+                                                            $unitMode = 'm';
+                                                            $toggleText = 'Mtr';
+                                                            $toggleBtnClass = 'btn-outline-primary';
+                                                            $displayQty = $totalMeter;
+                                                        }
                                                     } else {
                                                         $displayQty = (float) ($item->total_pieces ?: $item->qty);
                                                     }

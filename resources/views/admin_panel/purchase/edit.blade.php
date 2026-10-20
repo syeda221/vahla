@@ -463,6 +463,7 @@
                                                 $isCtn = in_array($uVal, ['carton', 'ctn', 'box']) || ($sizeMode === 'by_cartons');
                                                 $isKg = in_array($uVal, ['kg', 'gm', 'g']);
                                                 $isMeter = in_array($uVal, ['meter', 'mtr', 'm', 'mm']) || ($sizeMode === 'by_meter');
+                                                $isFeet = in_array($uVal, ['ft', 'feet', 'in', 'inch', 'inches']) || ($sizeMode === 'by_feet');
 
                                                 $displayQty = (float) $item->qty;
                                                 if ($isCtn && ($item->loose_qty > 0 || $item->boxes_qty > 0)) {
@@ -575,7 +576,8 @@
                                                         $isCtn = in_array($uVal, ['carton', 'ctn', 'box']);
                                                         $isKg = in_array($uVal, ['kg', 'gm', 'g']);
                                                         $isMeter = in_array($uVal, ['meter', 'mtr', 'm', 'mm']) || ($sizeMode === 'by_meter');
-                                                        $btnClass = $isCtn ? 'btn-outline-success' : (($isKg || $isMeter) ? 'btn-outline-primary' : 'btn-outline-info');
+                                                        $isFeet = in_array($uVal, ['ft', 'feet', 'in', 'inch', 'inches']) || ($sizeMode === 'by_feet');
+                                                        $btnClass = $isCtn ? 'btn-outline-success' : (($isKg || $isMeter || $isFeet) ? 'btn-outline-primary' : 'btn-outline-info');
                                                     @endphp
                                                     <button type="button" class="btn btn-sm {{ $btnClass }} fw-bold unit-toggle-btn py-0 px-2" data-unit="{{ $unitName }}" title="Click to toggle unit (Carton ↔ Pcs / Kg ↔ Gm / Mtr ↔ mm ↔ Pcs)" style="font-size:0.75rem; min-width: 55px; cursor: pointer;">{{ $unitName }}</button>
                                                     <input type="hidden" name="unit[]" class="unit-input-val" value="{{ $unitName }}">
@@ -899,6 +901,49 @@
                     $row.find('.unit-input-val').val(currentUnit);
                     recalcRow($row);
                     recalcAll();
+                } else if (sizeMode === 'by_feet') {
+                    let convFactor = 0;
+                    const vdEncoded = $row.find('.hidden-variant-data').val();
+                    if (vdEncoded) {
+                        try {
+                            const vd = JSON.parse(atob(vdEncoded));
+                            if (vd.conv_factor && parseFloat(vd.conv_factor) > 0) {
+                                convFactor = parseFloat(vd.conv_factor);
+                            } else if (vd.weight_per_piece && parseFloat(vd.weight_per_piece) > 0) {
+                                convFactor = parseFloat(vd.weight_per_piece) / 12.0;
+                            }
+                        } catch(e) {}
+                    }
+                    if (currentUnit.toLowerCase() === 'ft' || currentUnit.toLowerCase() === 'feet') {
+                        currentUnit = 'In';
+                        $btn.text('In').removeClass('btn-outline-primary').addClass('btn-outline-info').attr('data-unit', 'In');
+                        if (curPrice > 0) {
+                            $priceInp.val((curPrice / 12).toFixed(4).replace(/\.?0+$/, ''));
+                        }
+                    } else if (currentUnit.toLowerCase() === 'in' || currentUnit.toLowerCase() === 'inch' || currentUnit.toLowerCase() === 'inches') {
+                        if (convFactor > 0 && convFactor !== 1.0) {
+                            currentUnit = 'Pcs';
+                            $btn.text('Pcs').removeClass('btn-outline-primary').addClass('btn-outline-info').attr('data-unit', 'Pcs');
+                            if (curPrice > 0) {
+                                $priceInp.val(((curPrice * 12) * convFactor).toFixed(2).replace(/\.?0+$/, ''));
+                            }
+                        } else {
+                            currentUnit = 'Ft';
+                            $btn.text('Ft').removeClass('btn-outline-info').addClass('btn-outline-primary').attr('data-unit', 'Ft');
+                            if (curPrice > 0) {
+                                $priceInp.val((curPrice * 12).toFixed(2).replace(/\.?0+$/, ''));
+                            }
+                        }
+                    } else {
+                        currentUnit = 'Ft';
+                        $btn.text('Ft').removeClass('btn-outline-info').addClass('btn-outline-primary').attr('data-unit', 'Ft');
+                        if (curPrice > 0 && convFactor > 0) {
+                            $priceInp.val((curPrice / convFactor).toFixed(2).replace(/\.?0+$/, ''));
+                        }
+                    }
+                    $row.find('.unit-input-val').val(currentUnit);
+                    recalcRow($row);
+                    recalcAll();
                 }
             });
 
@@ -1067,7 +1112,7 @@
                 } else {
                     gross = qty * price;
                     if (unitVal === 'pcs' || unitVal === 'pc' || unitVal === 'piece') {
-                        if (sizeMode === 'by_kg' || sizeMode === 'by_gm' || sizeMode === 'by_meter') {
+                        if (sizeMode === 'by_kg' || sizeMode === 'by_gm' || sizeMode === 'by_meter' || sizeMode === 'by_feet') {
                             $row.find('.hidden-boxes-qty').val(0);
                             $row.find('.hidden-loose-qty').val(qty);
                         } else {
@@ -1249,6 +1294,32 @@
                                 .attr('data-unit', 'Mtr')
                                 .text('Mtr');
                             $row.find('.unit-input-val').val('Mtr');
+                        }
+                    } else if (data.size_mode === 'by_feet') {
+                        if (vUnitNorm === 'pcs' || vUnitNorm === 'pc' || vUnitNorm === 'piece') {
+                            unitName = 'Pcs';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-primary btn-outline-success')
+                                .addClass('btn-outline-info')
+                                .attr('data-unit', 'Pcs')
+                                .text('Pcs');
+                            $row.find('.unit-input-val').val('Pcs');
+                        } else if (vUnitNorm === 'in' || vUnitNorm === 'inch' || vUnitNorm === 'inches') {
+                            unitName = 'In';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-primary btn-outline-success')
+                                .addClass('btn-outline-info')
+                                .attr('data-unit', 'In')
+                                .text('In');
+                            $row.find('.unit-input-val').val('In');
+                        } else {
+                            unitName = 'Ft';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-info btn-outline-success')
+                                .addClass('btn-outline-primary')
+                                .attr('data-unit', 'Ft')
+                                .text('Ft');
+                            $row.find('.unit-input-val').val('Ft');
                         }
                     } else {
                         unitName = vUnit || unitName || 'Pcs';

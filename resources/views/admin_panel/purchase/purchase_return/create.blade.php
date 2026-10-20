@@ -817,8 +817,8 @@
 
                 const sizeMode = $row.find('.size-mode').val();
                 const unit = $row.find('input[name="unit[]"]').val() || 'pc';
-                const isWeightPieces = ['by_kg', 'by_gm', 'by_meter'].includes(sizeMode) && ['pcs', 'pc', 'piece', 'pieces'].includes(unit.toLowerCase());
-                const isWeightGm = (['by_kg', 'by_gm'].includes(sizeMode) && unit.toLowerCase() === 'gm') || (sizeMode === 'by_meter' && ['mm', 'mtr', 'm', 'meter'].includes(unit.toLowerCase()));
+                const isWeightPieces = ['by_kg', 'by_gm', 'by_meter', 'by_feet'].includes(sizeMode) && ['pcs', 'pc', 'piece', 'pieces'].includes(unit.toLowerCase());
+                const isWeightGm = (['by_kg', 'by_gm'].includes(sizeMode) && unit.toLowerCase() === 'gm') || (sizeMode === 'by_meter' && ['mm', 'mtr', 'm', 'meter'].includes(unit.toLowerCase())) || (sizeMode === 'by_feet' && ['in', 'inch', 'inches', 'ft', 'feet'].includes(unit.toLowerCase()));
 
                 let totalPieces = 0;
                 if (isWeightPieces || isWeightGm) {
