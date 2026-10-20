@@ -139,11 +139,11 @@ class GoodsReceivingNoteController extends Controller
                             }
                         }
 
-                        if ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams') {
+                        if ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams' || $unit === 'mm' || $unit === 'millimeter' || $unit === 'millimeters') {
                             $baseQty = $receivedQty / 1000.0;
                         } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box' || ($pSizeMode === 'by_cartons')) {
                             $baseQty = $receivedQty * $ppb;
-                        } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm') {
+                        } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm' || $pSizeMode === 'by_meter') {
                             if ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece' || ($convFactor > 0 && $convFactor != 1.0)) {
                                 $baseQty = $receivedQty * $convFactor;
                             } else {
@@ -435,11 +435,11 @@ class GoodsReceivingNoteController extends Controller
                         }
                     }
 
-                    if ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams') {
+                    if ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams' || $unit === 'mm' || $unit === 'millimeter' || $unit === 'millimeters') {
                         $baseQty = $receivedQty / 1000.0;
                     } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box' || ($pSizeMode === 'by_cartons')) {
                         $baseQty = $receivedQty * $ppb;
-                    } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm') {
+                    } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm' || $pSizeMode === 'by_meter') {
                         if ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece' || ($convFactor > 0 && $convFactor != 1.0)) {
                             $baseQty = $receivedQty * $convFactor;
                         } else {

@@ -91,7 +91,7 @@ class POSController extends Controller
                     ->get();
 
                 $variantItems = [];
-                $totalStockPieces = ($p->size_mode === 'by_kg') ? (float) ($p->warehouseStocks->sum('total_pieces') ?? 0) : 0;
+                $totalStockPieces = in_array($p->size_mode, ['by_kg', 'by_meter']) ? (float) ($p->warehouseStocks->sum('total_pieces') ?? 0) : 0;
 
                 foreach ($variants as $v) {
                     $size = (isset($v['size']) && $v['size'] !== '-') ? " {$v['size']}" : '';
@@ -159,7 +159,7 @@ class POSController extends Controller
                     }
 
                     $vWeightPerPiece = (float) ($v['weight_per_piece'] ?? 0);
-                    if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
+                    if (isset($v['conv_factor']) && in_array($p->size_mode, ['by_kg', 'by_meter'])) {
                         $factor = (float) $v['conv_factor'];
                         if ($factor <= 0 && $vWeightPerPiece > 0) {
                             $factor = $vWeightPerPiece / 1000.0;
@@ -181,16 +181,27 @@ class POSController extends Controller
                     }
 
                     $vStockDisplay = $vBalance;
-                    if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
+                    if (isset($v['conv_factor']) && in_array($p->size_mode, ['by_kg', 'by_meter'])) {
                         $factor = (float) $v['conv_factor'];
                         if ($factor == 1) {
-                            if ($vBalance < 0.001) {
-                                $vStockDisplay = "0 Kg (0 Gm)";
-                            } elseif ($vBalance < 1 && $vBalance > 0) {
-                                $gmVal = (int) round($vBalance * 1000);
-                                $vStockDisplay = "{$vBalance} Kg ({$gmVal} Gm)";
+                            if ($p->size_mode === 'by_meter') {
+                                if ($vBalance < 0.001) {
+                                    $vStockDisplay = "0 Mtr (0 mm)";
+                                } elseif ($vBalance < 1 && $vBalance > 0) {
+                                    $mmVal = (int) round($vBalance * 1000);
+                                    $vStockDisplay = "{$vBalance} Mtr ({$mmVal} mm)";
+                                } else {
+                                    $vStockDisplay = "{$vBalance} Mtr";
+                                }
                             } else {
-                                $vStockDisplay = "{$vBalance} Kg";
+                                if ($vBalance < 0.001) {
+                                    $vStockDisplay = "0 Kg (0 Gm)";
+                                } elseif ($vBalance < 1 && $vBalance > 0) {
+                                    $gmVal = (int) round($vBalance * 1000);
+                                    $vStockDisplay = "{$vBalance} Kg ({$gmVal} Gm)";
+                                } else {
+                                    $vStockDisplay = "{$vBalance} Kg";
+                                }
                             }
                         } else {
                             $pcsCount = (int) floor($vBalance);

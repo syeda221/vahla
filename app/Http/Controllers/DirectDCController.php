@@ -114,7 +114,7 @@ class DirectDCController extends Controller
                 ]);
 
                 $productMode = $product->size_mode;
-                if ($productMode === 'by_kg' || $productMode === 'by_gm') {
+                if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter') {
                     $totalPieces = $qty + ($loose / 1000);
                     if ($colorVal) {
                         try {
@@ -255,7 +255,7 @@ class DirectDCController extends Controller
                 $qty = (float) $item->boxes;
                 $loose = (float) $item->loose_pieces;
 
-                if ($productMode === 'by_kg' || $productMode === 'by_gm') {
+                if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter') {
                     $totalPieces = $qty + ($loose / 1000);
                     if ($item->color) {
                         try {
@@ -330,7 +330,7 @@ class DirectDCController extends Controller
                 ]);
 
                 $productMode = $product->size_mode;
-                if ($productMode === 'by_kg' || $productMode === 'by_gm') {
+                if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter') {
                     $totalPieces = $qty + ($loose / 1000);
                     if ($colorVal) {
                         try {
@@ -426,17 +426,20 @@ class DirectDCController extends Controller
         $dispQtyFactor = 1;
         $unitName = 'Pcs';
 
-        if (in_array($sizeMode, ['by_kg', 'by_gm'])) {
+        if (in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter'])) {
             if (in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
                 $unitName = 'Pcs';
                 $wtConv = (float)($variant['conv_factor'] ?? optional($product)->pieces_per_box ?? 1);
                 if ($wtConv <= 0) $wtConv = 1;
                 $dispQtyFactor = 1 / $wtConv;
+            } elseif (in_array($vUnit, ['mm', 'millimeter', 'millimeters'])) {
+                $unitName = 'Mm';
+                $dispQtyFactor = 1000;
             } elseif (in_array($vUnit, ['gm', 'g'])) {
                 $unitName = 'Gm';
                 $dispQtyFactor = 1000;
             } else {
-                $unitName = 'Kg';
+                $unitName = ($sizeMode === 'by_meter') ? 'Meter' : 'Kg';
                 $dispQtyFactor = 1;
             }
         } elseif ($sizeMode === 'by_cartons') {
@@ -715,8 +718,8 @@ class DirectDCController extends Controller
                     $dispFactor = (float)($mi['disp_factor'] ?? 1);
                     if ($dispFactor <= 0) $dispFactor = 1;
 
-                    // For by_kg / by_gm, qty in sale_items is stored in base unit (Kg)
-                    if ($product && in_array($sizeMode, ['by_kg', 'by_gm'])) {
+                    // For by_kg / by_gm / by_meter, qty in sale_items is stored in base unit (Kg / Meter)
+                    if ($product && in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter'])) {
                         $storedQty = $displayQty / $dispFactor;
                     } else {
                         $storedQty = $displayQty;
@@ -770,7 +773,7 @@ class DirectDCController extends Controller
                     $sizeMode = $product ? $product->size_mode : $mi['size_mode'];
                     $dispFactor = $mi['disp_factor'] > 0 ? $mi['disp_factor'] : 1;
 
-                    if ($product && in_array($sizeMode, ['by_kg', 'by_gm'])) {
+                    if ($product && in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter'])) {
                         $storedQty = $displayQty / $dispFactor;
                     } else {
                         $storedQty = $displayQty;

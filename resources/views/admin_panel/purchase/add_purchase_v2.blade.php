@@ -1102,6 +1102,32 @@
                                 .text('Kg');
                             $row.find('.unit-input-val').val('Kg');
                         }
+                    } else if (data.size_mode === 'by_meter') {
+                        if (vUnitNorm === 'pcs' || vUnitNorm === 'pc' || vUnitNorm === 'piece') {
+                            unitName = 'Pcs';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-primary btn-outline-success')
+                                .addClass('btn-outline-info')
+                                .attr('data-unit', 'Pcs')
+                                .text('Pcs');
+                            $row.find('.unit-input-val').val('Pcs');
+                        } else if (vUnitNorm === 'mm') {
+                            unitName = 'mm';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-primary btn-outline-success')
+                                .addClass('btn-outline-info')
+                                .attr('data-unit', 'mm')
+                                .text('mm');
+                            $row.find('.unit-input-val').val('mm');
+                        } else {
+                            unitName = 'Mtr';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-info btn-outline-success')
+                                .addClass('btn-outline-primary')
+                                .attr('data-unit', 'Mtr')
+                                .text('Mtr');
+                            $row.find('.unit-input-val').val('Mtr');
+                        }
                     } else {
                         unitName = vUnit || unitName || 'Pcs';
                         $row.find('.unit-toggle-btn')
@@ -1264,6 +1290,49 @@
                     $row.find('.unit-input-val').val(currentUnit);
                     recalcRow($row);
                     recalcAll();
+                } else if (sizeMode === 'by_meter') {
+                    let convFactor = 0;
+                    const vdEncoded = $row.find('.hidden-variant-data').val();
+                    if (vdEncoded) {
+                        try {
+                            const vd = JSON.parse(atob(vdEncoded));
+                            if (vd.conv_factor && parseFloat(vd.conv_factor) > 0) {
+                                convFactor = parseFloat(vd.conv_factor);
+                            } else if (vd.weight_per_piece && parseFloat(vd.weight_per_piece) > 0) {
+                                convFactor = parseFloat(vd.weight_per_piece) / 1000.0;
+                            }
+                        } catch(e) {}
+                    }
+                    if (currentUnit.toLowerCase() === 'mtr' || currentUnit.toLowerCase() === 'm' || currentUnit.toLowerCase() === 'meter') {
+                        currentUnit = 'mm';
+                        $btn.text('mm').removeClass('btn-outline-primary').addClass('btn-outline-info').attr('data-unit', 'mm');
+                        if (curPrice > 0) {
+                            $priceInp.val((curPrice / 1000).toFixed(4).replace(/\.?0+$/, ''));
+                        }
+                    } else if (currentUnit.toLowerCase() === 'mm') {
+                        if (convFactor > 0 && convFactor !== 1.0) {
+                            currentUnit = 'Pcs';
+                            $btn.text('Pcs').removeClass('btn-outline-primary').addClass('btn-outline-info').attr('data-unit', 'Pcs');
+                            if (curPrice > 0) {
+                                $priceInp.val(((curPrice * 1000) * convFactor).toFixed(2).replace(/\.?0+$/, ''));
+                            }
+                        } else {
+                            currentUnit = 'Mtr';
+                            $btn.text('Mtr').removeClass('btn-outline-info').addClass('btn-outline-primary').attr('data-unit', 'Mtr');
+                            if (curPrice > 0) {
+                                $priceInp.val((curPrice * 1000).toFixed(2).replace(/\.?0+$/, ''));
+                            }
+                        }
+                    } else {
+                        currentUnit = 'Mtr';
+                        $btn.text('Mtr').removeClass('btn-outline-info').addClass('btn-outline-primary').attr('data-unit', 'Mtr');
+                        if (curPrice > 0 && convFactor > 0) {
+                            $priceInp.val((curPrice / convFactor).toFixed(2).replace(/\.?0+$/, ''));
+                        }
+                    }
+                    $row.find('.unit-input-val').val(currentUnit);
+                    recalcRow($row);
+                    recalcAll();
                 }
             });
 
@@ -1304,7 +1373,7 @@
                 } else {
                     gross = qty * price;
                     if (unitVal === 'pcs' || unitVal === 'pc' || unitVal === 'piece') {
-                        if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
+                        if (sizeMode === 'by_kg' || sizeMode === 'by_gm' || sizeMode === 'by_meter') {
                             $row.find('.hidden-boxes-qty').val(0);
                             $row.find('.hidden-loose-qty').val(qty);
                         } else {

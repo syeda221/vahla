@@ -82,12 +82,12 @@ class DeliveryChallanController extends Controller
                 $vUnit = strtolower($variant['unit'] ?? optional(optional($item->product)->unit)->name ?? '');
                 
                 $dispQtyFactor = 1;
-                if (in_array($sizeMode, ['by_kg', 'by_gm'])) {
+                if (in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter'])) {
                     if (in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
                         $wtConv = (float)($variant['conv_factor'] ?? $item->pieces_per_box ?? 1);
                         if ($wtConv <= 0) $wtConv = 1;
                         $dispQtyFactor = 1 / $wtConv;
-                    } elseif (in_array($vUnit, ['gm', 'g'])) {
+                    } elseif (in_array($vUnit, ['gm', 'g', 'mm'])) {
                         $dispQtyFactor = 1000;
                     }
                 }
@@ -136,52 +136,32 @@ class DeliveryChallanController extends Controller
                     $vUnit = strtolower($variant['unit'] ?? optional(optional($item->product)->unit)->name ?? '');
                     
                     // INFER UNIT FROM PRICE RATIO
-                    if (empty($variant['unit']) && !in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces']) && in_array($sizeMode, ['by_kg', 'by_gm'])) {
+                    if (empty($variant['unit']) && !in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces']) && in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter'])) {
                         $grossTotal = (float)$item->total + (float)$item->discount_amount;
-                        $basePricePerKg = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
+                        $basePricePerUnit = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
                         $storedPrice = (float) $item->price;
                         $wtConvForInference = (float)($variant['conv_factor'] ?? $item->pieces_per_box ?? 1);
                         if ($wtConvForInference <= 0) $wtConvForInference = 1;
                         
-                        if ($storedPrice > 0 && $basePricePerKg > 0) {
-                            $ratio = round($storedPrice / $basePricePerKg, 4);
+                        if ($storedPrice > 0 && $basePricePerUnit > 0) {
+                            $ratio = round($storedPrice / $basePricePerUnit, 4);
                             if (abs($ratio - $wtConvForInference) < 0.001) {
                                 $vUnit = 'pcs';
                             } elseif (abs($ratio - 0.001) < 0.0001) {
-                                $vUnit = 'gm';
+                                $vUnit = ($sizeMode === 'by_meter') ? 'mm' : 'gm';
                             } elseif (abs($ratio - 1) < 0.001) {
-                                $vUnit = 'kg';
-                            }
-                        }
-                    }
-
-                    // INFER UNIT FROM PRICE RATIO
-                    if (empty($variant['unit']) && !in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces']) && in_array($sizeMode, ['by_kg', 'by_gm'])) {
-                        $grossTotal = (float)$item->total + (float)$item->discount_amount;
-                        $basePricePerKg = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
-                        $storedPrice = (float) $item->price;
-                        $wtConvForInference = (float)($variant['conv_factor'] ?? $item->pieces_per_box ?? 1);
-                        if ($wtConvForInference <= 0) $wtConvForInference = 1;
-                        
-                        if ($storedPrice > 0 && $basePricePerKg > 0) {
-                            $ratio = round($storedPrice / $basePricePerKg, 4);
-                            if (abs($ratio - $wtConvForInference) < 0.001) {
-                                $vUnit = 'pcs';
-                            } elseif (abs($ratio - 0.001) < 0.0001) {
-                                $vUnit = 'gm';
-                            } elseif (abs($ratio - 1) < 0.001) {
-                                $vUnit = 'kg';
+                                $vUnit = ($sizeMode === 'by_meter') ? 'mtr' : 'kg';
                             }
                         }
                     }
 
                     $dispQtyFactor = 1;
-                    if (in_array($sizeMode, ['by_kg', 'by_gm'])) {
+                    if (in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter'])) {
                         if (in_array($vUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
                             $wtConv = (float)($variant['conv_factor'] ?? $item->pieces_per_box ?? 1);
                             if ($wtConv <= 0) $wtConv = 1;
                             $dispQtyFactor = 1 / $wtConv;
-                        } elseif (in_array($vUnit, ['gm', 'g'])) {
+                        } elseif (in_array($vUnit, ['gm', 'g', 'mm'])) {
                             $dispQtyFactor = 1000;
                         }
                     }
@@ -470,7 +450,7 @@ class DeliveryChallanController extends Controller
                     $qty = (float) ($item->boxes ?? 0);
                     $loose = (float) ($item->loose_pieces ?? 0);
 
-                    if ($productMode === 'by_kg' || $productMode === 'by_gm') {
+                    if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter') {
                         $totalPieces = $qty + ($loose / 1000);
                         if ($item->color) {
                             try {

@@ -303,8 +303,8 @@ class ProductController extends Controller
 
                     $vBalance = 0;
 
-                    if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
-                        // Weight Unit: Calculate integer pieces based on total Kg divided by conversion factor
+                    if (isset($v['conv_factor']) && ($p->size_mode === 'by_kg' || $p->size_mode === 'by_meter')) {
+                        // Weight/Meter Unit: Calculate integer pieces based on total Kg/Mtr divided by conversion factor
                         $factor = (float) $v['conv_factor'];
                         $factor = $factor > 0 ? $factor : 1;
                         if ($factor == 1) {
@@ -391,20 +391,31 @@ class ProductController extends Controller
 
                     $vStockDisplay = $vBalance;
 
-                    if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
+                    if (isset($v['conv_factor']) && ($p->size_mode === 'by_kg' || $p->size_mode === 'by_meter')) {
                         $factor = (float) $v['conv_factor'];
                         if ($factor != 1 && !isset($v['unit'])) {
                             $vUnitName = 'Pcs';
                         }
                         
                         if ($factor == 1) {
-                            if ($vBalance < 0.001) {
-                                $vStockDisplay = "0 {$vUnitName} (0 Gm)";
-                            } elseif ($vBalance < 1 && $vBalance > 0) {
-                                $gmVal = (int) round($vBalance * 1000);
-                                $vStockDisplay = "{$vBalance} {$vUnitName} ({$gmVal} Gm)";
+                            if ($p->size_mode === 'by_meter') {
+                                if ($vBalance < 0.001) {
+                                    $vStockDisplay = "0 {$vUnitName} (0 mm)";
+                                } elseif ($vBalance < 1 && $vBalance > 0) {
+                                    $mmVal = (int) round($vBalance * 1000);
+                                    $vStockDisplay = "{$vBalance} {$vUnitName} ({$mmVal} mm)";
+                                } else {
+                                    $vStockDisplay = "{$vBalance} {$vUnitName}";
+                                }
                             } else {
-                                $vStockDisplay = "{$vBalance} {$vUnitName}";
+                                if ($vBalance < 0.001) {
+                                    $vStockDisplay = "0 {$vUnitName} (0 Gm)";
+                                } elseif ($vBalance < 1 && $vBalance > 0) {
+                                    $gmVal = (int) round($vBalance * 1000);
+                                    $vStockDisplay = "{$vBalance} {$vUnitName} ({$gmVal} Gm)";
+                                } else {
+                                    $vStockDisplay = "{$vBalance} {$vUnitName}";
+                                }
                             }
                         } else {
                             $pcsCount = (int) floor($vBalance);
@@ -658,8 +669,8 @@ class ProductController extends Controller
                     $vAlert = (float)($v['alert'] ?? $v['variant_alert_qty'] ?? 0);
                     $convFactor = isset($v['conv_factor']) ? (float)$v['conv_factor'] : 1.0;
                     $vWeight = $v['weight_per_piece'] ?? '';
-                    $isBase = !empty($v['is_base_variant']) || ($product->size_mode === 'by_kg' && $convFactor == 1.0);
-                    $vUnit = $v['unit'] ?? ($product->size_mode === 'by_kg' ? ($isBase ? 'Kg' : 'Pcs') : $productUnitName);
+                    $isBase = !empty($v['is_base_variant']) || (in_array($product->size_mode, ['by_kg', 'by_meter']) && $convFactor == 1.0);
+                    $vUnit = $v['unit'] ?? ($product->size_mode === 'by_kg' ? ($isBase ? 'Kg' : 'Pcs') : ($product->size_mode === 'by_meter' ? ($isBase ? 'Meter' : 'Pcs') : $productUnitName));
 
                     $vCurrentStock = $variantLiveMap[$idx] ?? $vInitial;
 
@@ -670,6 +681,17 @@ class ProductController extends Controller
                         $vLabel = $vColor;
                     } elseif ($vSize !== '-' && $vSize !== '') {
                         $vLabel = $vSize;
+                    } elseif ($product->size_mode === 'by_meter') {
+                        if ($isBase) {
+                            $vLabel = 'Meter (Base)';
+                        } elseif ($convFactor > 0 && $convFactor != 1.0) {
+                            $mmVal = (int) round($convFactor * 1000);
+                            $vLabel = "{$mmVal}mm Pcs";
+                        } elseif ($vUnit) {
+                            $vLabel = $vUnit;
+                        } else {
+                            $vLabel = 'Piece';
+                        }
                     } elseif ($product->size_mode === 'by_kg') {
                         if ($isBase) {
                             $vLabel = 'Kg (Base)';
@@ -822,7 +844,7 @@ class ProductController extends Controller
                         $vItem['stock'] = $origStoredStock + $vDiff;
                         
                         $hasVariantStockInputs = true;
-                        if ($product->size_mode === 'by_kg') {
+                        if (in_array($product->size_mode, ['by_kg', 'by_meter'])) {
                             $cf = isset($vItem['conv_factor']) ? (float)$vItem['conv_factor'] : 1.0;
                             if ($cf == 1 || !empty($vItem['is_base_variant'])) {
                                 $variantStockDelta = $vDiff;
@@ -966,7 +988,7 @@ class ProductController extends Controller
                         $vSizeVal  = $vObj['size'] ?? $vObj['variant_size'] ?? '';
                         $vUnitVal  = $vObj['unit'] ?? $vObj['variant_unit'] ?? '';
                         $vWeight   = $vObj['weight_per_piece'] ?? '';
-                        $isBase    = !empty($vObj['is_base_variant']) || ($product->size_mode === 'by_kg' && isset($vObj['conv_factor']) && (float)$vObj['conv_factor'] == 1);
+                        $isBase    = !empty($vObj['is_base_variant']) || (in_array($product->size_mode, ['by_kg', 'by_meter']) && isset($vObj['conv_factor']) && (float)$vObj['conv_factor'] == 1);
 
                         if ($vColorVal !== '-' && $vColorVal !== '' && $vSizeVal !== '-' && $vSizeVal !== '') {
                             $vLbl = "{$vColorVal} / {$vSizeVal}";
@@ -984,6 +1006,16 @@ class ProductController extends Controller
                             } else {
                                 $vLbl = 'Piece';
                             }
+                        } elseif ($product->size_mode === 'by_meter') {
+                            if ($isBase) {
+                                $vLbl = 'Meter (Base)';
+                            } elseif ($vWeight && (float)$vWeight > 0) {
+                                $vLbl = ((float)$vWeight >= 1000 ? ((float)$vWeight/1000) . 'm' : (float)$vWeight . 'mm') . ' Pcs';
+                            } elseif ($vUnitVal) {
+                                $vLbl = $vUnitVal;
+                            } else {
+                                $vLbl = 'Piece';
+                            }
                         } elseif ($vUnitVal) {
                             $vLbl = $vUnitVal;
                         } elseif (!empty($vObj['name']) && $vObj['name'] !== $product->item_name) {
@@ -993,7 +1025,7 @@ class ProductController extends Controller
                         }
 
                         $vQ = (float)($vObj['stock'] ?? 0);
-                        if ($product->size_mode === 'by_kg' && isset($vObj['conv_factor']) && (float)$vObj['conv_factor'] > 0) {
+                        if (in_array($product->size_mode, ['by_kg', 'by_meter']) && isset($vObj['conv_factor']) && (float)$vObj['conv_factor'] > 0) {
                             $cf = (float)$vObj['conv_factor'];
                             $vQ = $cf == 1 ? $stockPieces : (int)floor($stockPieces / $cf);
                         }
@@ -1003,6 +1035,8 @@ class ProductController extends Controller
                         $vUnitSuffix = '';
                         if ($product->size_mode === 'by_kg') {
                             $vUnitSuffix = $isBase ? ' Kg' : ' Pcs';
+                        } elseif ($product->size_mode === 'by_meter') {
+                            $vUnitSuffix = $isBase ? ' Mtr' : ' Pcs';
                         } elseif (!empty($vUnitVal)) {
                             $vUnitSuffix = ' ' . $vUnitVal;
                         }
@@ -1115,8 +1149,8 @@ class ProductController extends Controller
                         if (empty($v['is_base_variant'])) {
                             $cf = (float)($v['conv_factor'] ?? 1);
                             if ($cf > 0) {
-                                // For weight/ton/gm, factor is weight per piece. So Pcs = Base Stock / factor
-                                if (in_array($product->size_mode, ['by_kg', 'by_gm', 'by_ton'])) {
+                                // For weight/ton/gm/meter, factor is weight/length per piece. So Pcs = Base Stock / factor
+                                if (in_array($product->size_mode, ['by_kg', 'by_gm', 'by_ton', 'by_meter'])) {
                                     $vStock = (float)($v['stock'] ?? 0);
                                     if ($vStock == 0 && $baseStock > 0) {
                                         $v['stock'] = round($baseStock / $cf);
@@ -1403,8 +1437,8 @@ class ProductController extends Controller
                 $is_bases = $request->variant_is_base;
                 $units = $request->variant_unit;
 
-                // Validate Conv Factors if Weight Unit is selected
-                if (in_array($mode, ['by_kg', 'by_gm', 'by_ton'])) {
+                // Validate Conv Factors if Weight or Length Unit is selected
+                if (in_array($mode, ['by_kg', 'by_gm', 'by_ton', 'by_meter'])) {
                     $factors = [];
                     $baseCount = 0;
                     for ($i = 0; $i < count($names); $i++) {
@@ -1431,7 +1465,7 @@ class ProductController extends Controller
                         }
                     }
                     if ($baseCount !== 1) {
-                        throw new \Exception("Exactly one Base Variant is required for weight units.");
+                        throw new \Exception("Exactly one Base Variant is required for weight/length units.");
                     }
                 }
 
@@ -1445,7 +1479,7 @@ class ProductController extends Controller
                         $isBase = (int)($is_bases[$i] ?? 0);
                         if ($vConvFactor <= 0) $vConvFactor = 1;
 
-                        if (in_array($mode, ['by_kg', 'by_gm', 'by_ton'])) {
+                        if (in_array($mode, ['by_kg', 'by_gm', 'by_ton', 'by_meter'])) {
                             if ($isBase === 1) {
                                 $variantStockSum += $vStock;
                             }
@@ -1838,8 +1872,8 @@ class ProductController extends Controller
                 $is_bases = $request->variant_is_base;
                 $units = $request->variant_unit;
 
-                // Validate Conv Factors if Weight Unit is selected
-                if (in_array($mode, ['by_kg', 'by_gm', 'by_ton'])) {
+                // Validate Conv Factors if Weight or Length Unit is selected
+                if (in_array($mode, ['by_kg', 'by_gm', 'by_ton', 'by_meter'])) {
                     $factors = [];
                     $baseCount = 0;
                     for ($i = 0; $i < count($names); $i++) {
@@ -1866,7 +1900,7 @@ class ProductController extends Controller
                         }
                     }
                     if ($baseCount !== 1) {
-                        throw new \Exception("Exactly one Base Variant is required for weight units.");
+                        throw new \Exception("Exactly one Base Variant is required for weight/length units.");
                     }
                 }
 
@@ -1880,7 +1914,7 @@ class ProductController extends Controller
                         $isBase = (int)($is_bases[$i] ?? 0);
                         if ($vConvFactor <= 0) $vConvFactor = 1;
 
-                        if (in_array($mode, ['by_kg', 'by_gm', 'by_ton'])) {
+                        if (in_array($mode, ['by_kg', 'by_gm', 'by_ton', 'by_meter'])) {
                             if ($isBase === 1) {
                                 $variantStockSum += $vStock;
                             }
@@ -2482,7 +2516,7 @@ class ProductController extends Controller
             return [];
         }
 
-        if ($product->size_mode === 'by_kg') {
+        if (in_array($product->size_mode, ['by_kg', 'by_meter'])) {
             $liveMap = [];
             foreach ($rawVariants as $idx => $v) {
                 $conv = isset($v['conv_factor']) ? (float)$v['conv_factor'] : 1.0;

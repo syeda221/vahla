@@ -163,19 +163,19 @@ class SaleReturnController extends Controller
             $item->pieces_per_m2 = $product->m2_of_box ?? 0;
             $item->unit = $item->unit ?? 'pc';
             
-            // Infer unit for weight-based products based on price ratios
-            if (in_array($item->size_mode, ['by_kg', 'by_gm'])) {
-                $basePricePerKg = ($item->total_pieces > 0) ? ($item->total / $item->total_pieces) : 0;
+            // Infer unit for weight-based and meter-based products based on price ratios
+            if (in_array($item->size_mode, ['by_kg', 'by_gm', 'by_meter'])) {
+                $basePricePerUnit = ($item->total_pieces > 0) ? ($item->total / $item->total_pieces) : 0;
                 $storedPrice = (float) $item->price;
 
-                if ($storedPrice > 0 && $basePricePerKg > 0) {
-                    $ratio = round($storedPrice / $basePricePerKg, 4);
+                if ($storedPrice > 0 && $basePricePerUnit > 0) {
+                    $ratio = round($storedPrice / $basePricePerUnit, 4);
                     if (abs($ratio - $ppb) < 0.001) {
                         $item->unit = 'pcs';
                     } elseif (abs($ratio - 0.001) < 0.0001) {
-                        $item->unit = 'gm';
+                        $item->unit = ($item->size_mode === 'by_meter') ? 'mm' : 'gm';
                     } elseif (abs($ratio - 1) < 0.001) {
-                        $item->unit = 'kg';
+                        $item->unit = ($item->size_mode === 'by_meter') ? 'mtr' : 'kg';
                     }
                 }
             }
@@ -186,8 +186,8 @@ class SaleReturnController extends Controller
             $item->returned_qty = $alreadyReturned;
             $item->max_returnable = max(0, $item->qty - $alreadyReturned);
 
-            // Convert to pieces or grams for display if sold in those units (for weight products)
-            if (in_array($item->size_mode, ['by_kg', 'by_gm'])) {
+            // Convert to pieces or grams/mm for display if sold in those units (for weight/meter products)
+            if (in_array($item->size_mode, ['by_kg', 'by_gm', 'by_meter'])) {
                 $saleUnit = strtolower($item->unit);
                 if (in_array($saleUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
                     if ($ppb > 0) {
@@ -196,7 +196,7 @@ class SaleReturnController extends Controller
                         $item->returned_qty = $item->returned_qty / $ppb;
                         $item->max_returnable = $item->max_returnable / $ppb;
                     }
-                } elseif ($saleUnit === 'gm') {
+                } elseif (in_array($saleUnit, ['gm', 'mm'])) {
                     $item->qty = $item->qty * 1000;
                     $item->original_qty = $item->original_qty * 1000;
                     $item->returned_qty = $item->returned_qty * 1000;
@@ -362,7 +362,7 @@ class SaleReturnController extends Controller
                 $variantUnit = strtolower($liveVariant['unit'] ?? $vData['unit'] ?? '');
                 $variantName = strtolower($liveVariant['name'] ?? $vData['name'] ?? '');
 
-                $isWeightMode = in_array($sizeMode, ['by_kg', 'by_gm']);
+                $isWeightMode = in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter']);
                 $isPcsUnit = in_array($saleUnit, ['pcs', 'pc', 'piece', 'pieces']) 
                     || in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])
                     || str_contains($variantName, '(pcs)');
@@ -377,16 +377,16 @@ class SaleReturnController extends Controller
                         $itemDisplayUnit = 'pcs';
                         $boxes = 0;
                         $loosePieces = 0;
-                    } elseif ($saleUnit === 'gm') {
+                    } elseif ($saleUnit === 'gm' || $saleUnit === 'mm') {
                         $stockQty = $inputQty / 1000;
                         $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
-                        $itemDisplayUnit = 'gm';
+                        $itemDisplayUnit = ($sizeMode === 'by_meter') ? 'mm' : 'gm';
                         $boxes = 0;
                         $loosePieces = 0;
                     } else {
                         $stockQty = $inputQty;
                         $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
-                        $itemDisplayUnit = 'kg';
+                        $itemDisplayUnit = ($sizeMode === 'by_meter') ? 'mtr' : 'kg';
                         $boxes = 0;
                         $loosePieces = 0;
                     }
@@ -750,7 +750,7 @@ class SaleReturnController extends Controller
                 $variantUnit = strtolower($liveVariant['unit'] ?? $vData['unit'] ?? '');
                 $variantName = strtolower($liveVariant['name'] ?? $vData['name'] ?? '');
 
-                $isWeightMode = in_array($sizeMode, ['by_kg', 'by_gm']);
+                $isWeightMode = in_array($sizeMode, ['by_kg', 'by_gm', 'by_meter']);
                 $isPcsUnit = in_array($saleUnit, ['pcs', 'pc', 'piece', 'pieces']) 
                     || in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])
                     || str_contains($variantName, '(pcs)');
@@ -760,22 +760,22 @@ class SaleReturnController extends Controller
 
                 if ($isWeightMode) {
                     if ($isPcsUnit) {
-                        // Returned in pieces for a weight product: stock in warehouse is in KG
+                        // Returned in pieces for a weight/meter product: stock in warehouse is in KG/Meters
                         $stockQty = $inputQty * $ppb;
                         $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
                         $itemDisplayUnit = 'pcs';
                         $boxes = 0;
                         $loosePieces = 0;
-                    } elseif ($saleUnit === 'gm') {
+                    } elseif ($saleUnit === 'gm' || $saleUnit === 'mm') {
                         $stockQty = $inputQty / 1000;
                         $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
-                        $itemDisplayUnit = 'gm';
+                        $itemDisplayUnit = ($sizeMode === 'by_meter') ? 'mm' : 'gm';
                         $boxes = 0;
                         $loosePieces = 0;
                     } else {
                         $stockQty = $inputQty;
                         $lineTotal = round(($inputQty * $price) - $itemDisc, 2);
-                        $itemDisplayUnit = 'kg';
+                        $itemDisplayUnit = ($sizeMode === 'by_meter') ? 'mtr' : 'kg';
                         $boxes = 0;
                         $loosePieces = 0;
                     }
