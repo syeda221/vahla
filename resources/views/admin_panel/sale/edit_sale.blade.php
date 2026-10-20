@@ -38,6 +38,11 @@
             --pos-input-h: 42px;
         }
 
+        html, body {
+            overflow-x: hidden !important;
+            max-width: 100vw !important;
+        }
+
         body {
             background-color: var(--pos-bg) !important;
             font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
@@ -48,6 +53,8 @@
         .sale-page {
             max-width: 1560px;
             margin: 0 auto;
+            overflow-x: hidden;
+            width: 100%;
         }
 
         /* ---------- CARDS ---------- */
@@ -882,57 +889,457 @@
             }
         }
 
-        /* Phones: drop non-essential columns (#, Stock, Pcs, Pcs/Ctn) instead of scrolling */
-        @media (max-width: 767.98px) {
-            .sales-table col:first-child,
-            .sales-table col.c-stock,
-            .sales-table col.c-pcs,
-            .sales-table col.c-pc {
-                width: 0 !important;
+        /* ==================== RESPONSIVE ITEMS CARD & TABLE UI ==================== */
+        @media (max-width: 991.98px) {
+            .pos-table-wrap {
+                overflow: visible !important;
+                border: none !important;
+                background: transparent !important;
             }
-            .sales-table col:last-child {
-                width: 10%;
+            .sales-table,
+            .sales-table tbody {
+                display: block !important;
+                width: 100% !important;
+                border: none !important;
             }
-            .sales-table thead th:first-child,
-            .sales-table thead th.c-stock-th,
-            .sales-table thead th.c-pcs-th,
-            .sales-table thead th.col-pcs-ctn-th,
-            .sales-table tbody td.row-index,
-            .sales-table tbody td.col-stock,
-            .sales-table tbody td.col-pieces,
-            .sales-table tbody td.col-pcs-ctn {
+            .sales-table thead,
+            .sales-table colgroup {
                 display: none !important;
             }
-            .sales-table thead th {
-                white-space: normal;
-                line-height: 1.2;
+
+            /* Each table row transforms into a clean modern ERP Item Card */
+            .sales-table tbody tr {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                grid-column-gap: 12px !important;
+                grid-row-gap: 10px !important;
+                background: #FFFFFF !important;
+                border: 1px solid #E2E8F0 !important;
+                border-radius: 14px !important;
+                padding: 14px !important;
+                margin-bottom: 14px !important;
+                box-shadow: 0 2px 10px rgba(10, 37, 64, 0.05) !important;
+                position: relative !important;
+                align-items: end !important;
+            }
+            .sales-table tbody tr:hover {
+                background: #FFFFFF !important;
+            }
+            .sales-table tbody td {
+                display: block !important;
+                padding: 0 !important;
+                border: none !important;
+                height: auto !important;
+                min-width: 0 !important;
+                width: auto !important;
+                background: transparent !important;
+            }
+
+            /* 1. Header: Row Index (Left) and Delete Action (Right) on Row 1 */
+            .sales-table tbody td.row-index-cell {
+                grid-row: 1 !important;
+                grid-column: 1 / 2 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                font-size: 14px !important;
+                font-weight: 800 !important;
+                color: #0A2540 !important;
+                height: 36px !important;
+            }
+            .sales-table tbody td.row-index-cell::before {
+                content: "ITEM #";
+                font-size: 11px;
+                font-weight: 800;
+                color: #2563EB;
+                background: #EFF6FF;
+                border: 1px solid #DBEAFE;
+                padding: 3px 8px;
+                border-radius: 6px;
+                margin-right: 6px;
+                letter-spacing: .5px;
+            }
+
+            .sales-table tbody td.col-action {
+                grid-row: 1 !important;
+                grid-column: 2 / 3 !important;
+                display: flex !important;
+                justify-content: flex-end !important;
+                align-items: center !important;
+                height: 36px !important;
+            }
+            .sales-table tbody td.col-action .del-row {
+                width: 36px !important;
+                height: 36px !important;
+                border-radius: 8px !important;
+                border: 1px solid #FEE2E2 !important;
+                background: #FEF2F2 !important;
+                color: #EF4444 !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                font-size: 14px !important;
+                cursor: pointer !important;
+                transition: all .15s ease !important;
+            }
+            .sales-table tbody td.col-action .del-row:hover {
+                background: #EF4444 !important;
+                color: #ffffff !important;
+                border-color: #EF4444 !important;
+            }
+
+            /* 2. Product Selector (Full Width on Row 2) */
+            .sales-table tbody td.col-product {
+                grid-row: 2 !important;
+                grid-column: 1 / -1 !important;
+                width: 100% !important;
+            }
+            .sales-table tbody td.col-product::before {
+                content: "PRODUCT";
+                display: block;
+                font-size: 11px;
+                font-weight: 700;
+                color: #64748B;
+                text-transform: uppercase;
+                letter-spacing: .5px;
+                margin-bottom: 5px;
+            }
+            .sales-table tbody td.col-product .select2-container {
+                width: 100% !important;
+            }
+            .sales-table tbody td.col-product .select2-selection--single {
+                height: 42px !important;
+                border: 1px solid #CBD5E1 !important;
+                border-radius: 8px !important;
+                background: #ffffff !important;
+            }
+            .sales-table tbody td.col-product .select2-selection__rendered {
+                line-height: 40px !important;
+                font-size: 13.5px !important;
+                font-weight: 600 !important;
+                padding-left: 12px !important;
+            }
+            .sales-table tbody td.col-product .select2-selection__arrow {
+                height: 40px !important;
+                right: 10px !important;
+            }
+
+            /* 3. Quantity (Left) & Stock (Right) on Row 3 */
+            .sales-table tbody td.col-qty-wrapper {
+                grid-row: 3 !important;
+                grid-column: 1 / 2 !important;
+            }
+            .sales-table tbody td.col-qty-wrapper::before {
+                content: "QUANTITY";
+                display: block;
+                font-size: 11px;
+                font-weight: 700;
+                color: #64748B;
+                text-transform: uppercase;
+                letter-spacing: .5px;
+                margin-bottom: 5px;
+            }
+            .sales-table tbody td.col-qty-wrapper .qty-cell-flex {
+                display: flex;
+                gap: 4px;
+                align-items: stretch;
+            }
+            .sales-table tbody td.col-qty-wrapper .carton-qty {
+                height: 40px !important;
+                font-size: 14px !important;
+                font-weight: 700 !important;
+                border: 1px solid #CBD5E1 !important;
+                border-radius: 8px !important;
+                text-align: center !important;
+            }
+            .sales-table tbody td.col-qty-wrapper .qty-unit-toggle {
+                height: 40px !important;
+                min-width: 44px !important;
+            }
+
+            .sales-table tbody td.col-stock {
+                grid-row: 3 !important;
+                grid-column: 2 / 3 !important;
+            }
+            .sales-table tbody td.col-stock::before {
+                content: "STOCK";
+                display: block;
+                font-size: 11px;
+                font-weight: 700;
+                color: #64748B;
+                text-transform: uppercase;
+                letter-spacing: .5px;
+                margin-bottom: 5px;
+                text-align: left;
+            }
+            .sales-table tbody td.col-stock .stock {
+                height: 40px !important;
+                background: #EFF6FF !important;
+                color: #2563EB !important;
+                border: 1px solid #BFDBFE !important;
+                border-radius: 8px !important;
+                font-size: 14px !important;
+                font-weight: 800 !important;
+                text-align: center !important;
+            }
+
+            /* 4. Size (Left) & Pcs / Ctn (Right) on Row 4 */
+            .sales-table tbody td.col-size {
+                grid-row: 4 !important;
+                grid-column: 1 / 2 !important;
+            }
+            .sales-table tbody td.col-size::before {
+                content: "SIZE";
+                display: block;
+                font-size: 11px;
+                font-weight: 700;
+                color: #64748B;
+                text-transform: uppercase;
+                letter-spacing: .5px;
+                margin-bottom: 5px;
+            }
+            .sales-table tbody td.col-size .size-display {
+                height: 40px !important;
+                border: 1px solid #CBD5E1 !important;
+                border-radius: 8px !important;
+                font-size: 13.5px !important;
+                font-weight: 600 !important;
+                text-align: center !important;
+            }
+
+            .sales-table tbody td.col-pcs-ctn {
+                grid-row: 4 !important;
+                grid-column: 2 / 3 !important;
+            }
+            .sales-table tbody td.col-pcs-ctn::before {
+                content: "PCS / CTN";
+                display: block;
+                font-size: 11px;
+                font-weight: 700;
+                color: #64748B;
+                text-transform: uppercase;
+                letter-spacing: .5px;
+                margin-bottom: 5px;
+                text-align: left;
+            }
+            .sales-table tbody td.col-pcs-ctn .pcs-per-ctn {
+                height: 40px !important;
+                border: 1px solid #CBD5E1 !important;
+                border-radius: 8px !important;
+                font-size: 13.5px !important;
+                font-weight: 600 !important;
+                text-align: center !important;
+            }
+
+            /* 5. Price (Left) & Discount (Right) on Row 5 */
+            .sales-table tbody td.col-price-p {
+                grid-row: 5 !important;
+                grid-column: 1 / 2 !important;
+            }
+            .sales-table tbody td.col-price-p::before {
+                content: "PRICE";
+                display: block;
+                font-size: 11px;
+                font-weight: 700;
+                color: #64748B;
+                text-transform: uppercase;
+                letter-spacing: .5px;
+                margin-bottom: 5px;
+            }
+            .sales-table tbody td.col-price-p .price-cell-group {
+                border: 1px solid #CBD5E1 !important;
+                border-radius: 8px !important;
+                height: 40px !important;
+                background: #ffffff !important;
+                display: flex !important;
+                align-items: stretch !important;
+                overflow: hidden !important;
+            }
+            .sales-table tbody td.col-price-p .price-mode-row-toggle {
+                height: 40px !important;
+                min-width: 34px !important;
+                background: #F8FAFC !important;
+                border: none !important;
+                border-right: 1px solid #E2E8F0 !important;
+                border-radius: 0 !important;
+                color: #64748B !important;
+                font-size: 12px !important;
+                font-weight: 700 !important;
+            }
+            .sales-table tbody td.col-price-p .visible-price {
+                height: 40px !important;
+                font-size: 14px !important;
+                font-weight: 700 !important;
+                border: none !important;
+                box-shadow: none !important;
+                text-align: right !important;
+                padding-right: 10px !important;
+            }
+
+            .sales-table tbody td.col-disc {
+                grid-row: 5 !important;
+                grid-column: 2 / 3 !important;
+            }
+            .sales-table tbody td.col-disc::before {
+                content: "DISCOUNT";
+                display: block;
+                font-size: 11px;
+                font-weight: 700;
+                color: #64748B;
+                text-transform: uppercase;
+                letter-spacing: .5px;
+                margin-bottom: 5px;
+            }
+            .sales-table tbody td.col-disc .discount-wrapper {
+                border: 1px solid #CBD5E1 !important;
+                border-radius: 8px !important;
+                height: 40px !important;
+                background: #ffffff !important;
+                display: flex !important;
+                align-items: stretch !important;
+                overflow: hidden !important;
+            }
+            .sales-table tbody td.col-disc .discount-toggle {
+                height: 40px !important;
+                min-width: 34px !important;
+                background: #F8FAFC !important;
+                border: none !important;
+                border-right: 1px solid #E2E8F0 !important;
+                border-radius: 0 !important;
+                color: #64748B !important;
+                font-size: 12px !important;
+                font-weight: 700 !important;
+            }
+            .sales-table tbody td.col-disc .discount-value {
+                height: 40px !important;
+                font-size: 14px !important;
+                font-weight: 700 !important;
+                border: none !important;
+                box-shadow: none !important;
+                text-align: right !important;
+                padding-right: 10px !important;
+            }
+
+            /* 6. Line Total / Amount (Full Width on Row 6) */
+            .sales-table tbody td.col-amount {
+                grid-row: 6 !important;
+                grid-column: 1 / -1 !important;
+                background: #F8FAFC !important;
+                border: 1px solid #E2E8F0 !important;
+                border-radius: 10px !important;
+                padding: 10px 14px !important;
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                margin-top: 4px !important;
+                white-space: nowrap !important;
+            }
+            .sales-table tbody td.col-amount::before {
+                content: "ITEM TOTAL:" !important;
+                font-size: 12px !important;
+                font-weight: 800 !important;
+                color: #0A2540 !important;
+                letter-spacing: .5px !important;
+                white-space: nowrap !important;
+                margin-bottom: 0 !important;
+            }
+            .sales-table tbody td.col-amount .sales-amount {
+                border: none !important;
+                background: transparent !important;
+                font-size: 17px !important;
+                font-weight: 800 !important;
+                color: #2563EB !important;
+                text-align: right !important;
+                width: auto !important;
+                height: auto !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                white-space: nowrap !important;
+            }
+
+            /* Hidden helper columns */
+            .sales-table tbody td.col-pieces,
+            .sales-table tbody td.loose-pcs-input,
+            .sales-table tbody td.d-none {
+                display: none !important;
+            }
+
+            /* 7. Footer Grid Total */
+            .sales-table tfoot {
+                display: block !important;
+                width: 100% !important;
+            }
+            .sales-table tfoot tr {
+                display: block !important;
+                width: 100% !important;
+            }
+            .sales-table tfoot td {
+                display: block !important;
+                width: 100% !important;
+                padding: 8px 0 0 0 !important;
+                border: none !important;
+            }
+            .sales-table tfoot td .grid-total-container {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                width: 100% !important;
+                background: #0A2540 !important;
+                border-radius: 10px !important;
+                padding: 12px 18px !important;
+                box-sizing: border-box !important;
+                box-shadow: 0 4px 12px rgba(10, 37, 64, 0.15) !important;
+            }
+            .grid-total-label-custom {
+                color: #94A3B8 !important;
+                font-size: 13px !important;
+                font-weight: 700 !important;
+                letter-spacing: .5px !important;
+            }
+            .grid-total-badge-custom {
+                background: transparent !important;
+                padding: 0 !important;
+                min-width: 0 !important;
+                font-size: 19px !important;
+                font-weight: 800 !important;
+                color: #FFFFFF !important;
+                box-shadow: none !important;
             }
         }
 
-        /* Grid total footer */
-        .sales-table tfoot td {
-            background: transparent !important;
-            border: none !important;
-            padding: 14px 0 2px 0 !important;
-        }
-        .grid-total-label-custom {
-            font-size: 13px;
-            font-weight: 800;
-            color: #0A2540;
-            letter-spacing: .5px;
-            text-transform: uppercase;
-        }
-        .grid-total-badge-custom {
-            background: #0A2540;
-            color: #FFFFFF;
-            font-size: 16px;
-            font-weight: 700;
-            padding: 9px 28px;
-            border-radius: 8px;
-            min-width: 145px;
-            text-align: center;
-            display: inline-block;
-            box-shadow: 0 2px 6px rgba(10, 37, 64, 0.15);
+        /* Desktop: Standard enterprise grid table */
+        @media (min-width: 992px) {
+            .pos-table-wrap {
+                overflow-x: auto;
+                border: 1px solid #E2E8F0;
+                border-radius: 10px;
+                background: #ffffff;
+            }
+            .sales-table tfoot td {
+                background: transparent !important;
+                border: none !important;
+                padding: 14px 0 2px 0 !important;
+            }
+            .grid-total-label-custom {
+                font-size: 13px;
+                font-weight: 800;
+                color: #0A2540;
+                letter-spacing: .5px;
+                text-transform: uppercase;
+            }
+            .grid-total-badge-custom {
+                background: #0A2540;
+                color: #FFFFFF;
+                font-size: 16px;
+                font-weight: 700;
+                padding: 9px 28px;
+                border-radius: 8px;
+                min-width: 145px;
+                text-align: center;
+                display: inline-block;
+                box-shadow: 0 2px 6px rgba(10, 37, 64, 0.15);
+            }
         }
 
         /* ---------- PAYMENT METHODS ---------- */
@@ -1229,7 +1636,24 @@
             margin-bottom: 18px;
         }
 
-        /* ---------- RESPONSIVE ---------- */
+        /* ---------- RESPONSIVE & MOBILE POLISH ---------- */
+        .cb-grid {
+            display: grid !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 8px !important;
+        }
+
+        .select2-container {
+            max-width: 100% !important;
+        }
+        .select2-dropdown {
+            max-width: 96vw !important;
+            border-radius: 8px !important;
+            border-color: var(--pos-blue) !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.12) !important;
+            z-index: 1055 !important;
+        }
+
         @media (max-width: 1199.98px) {
             .cust-bal-card {
                 height: auto;
@@ -1237,24 +1661,182 @@
                 max-height: none;
                 overflow: visible;
             }
+        }
+
+        @media (max-width: 991.98px) {
             .cb-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 6px !important;
+            }
+            .cb-cell {
+                min-width: 0;
+                overflow: hidden;
+            }
+            .cb-value {
+                font-size: 12.5px !important;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
         }
-        @media (max-width: 575.98px) {
+
+        @media (max-width: 767.98px) {
+            .container-fluid.sale-page {
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+                padding-top: 10px !important;
+                padding-bottom: 24px !important;
+            }
+            .sale-card {
+                padding: 14px 12px !important;
+                border-radius: 12px !important;
+            }
+            .cust-bal-card {
+                padding: 14px 12px !important;
+            }
+            .sale-header {
+                margin-bottom: 12px !important;
+                gap: 8px !important;
+            }
+            .sale-title-ic {
+                width: 38px !important;
+                height: 38px !important;
+                font-size: 17px !important;
+                border-radius: 10px !important;
+            }
+            .sale-title-main h5 {
+                font-size: 18px !important;
+            }
             .sale-subtitle {
-                display: none;
+                font-size: 11.5px !important;
             }
-            .bb-left {
-                gap: 12px;
-                font-size: 12.5px;
+
+            /* Sticky Bottom Bar on Mobile: Organized, finger-friendly, NO horizontal overflow */
+            .sale-bottom-bar {
+                position: sticky;
+                bottom: 0;
+                z-index: 1040;
+                padding: 10px 12px;
+                margin-top: 14px;
+                background: #ffffff;
+                border-top: 1px solid #E2E8F0;
+                border-radius: 14px 14px 0 0;
+                box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.12);
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
             }
-            .bb-actions .btn-outline-secondary,
-            .bb-actions .btn-outline-primary {
-                display: none;
+            .bb-pill-stats {
+                width: 100% !important;
+                display: flex !important;
+                justify-content: space-around !important;
+                padding: 7px 10px !important;
+                font-size: 12px !important;
+                border-radius: 8px !important;
+                box-sizing: border-box !important;
             }
-            .bb-actions .btn-primary {
-                width: 100%;
+            .bb-secondary {
+                width: 100% !important;
+                display: grid !important;
+                grid-template-columns: repeat(4, 1fr) !important;
+                gap: 4px !important;
+            }
+            .bb-secondary .btn {
+                width: 100% !important;
+                font-size: 11px !important;
+                font-weight: 600 !important;
+                padding: 7px 2px !important;
+                border-radius: 6px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 3px !important;
+                text-align: center !important;
+                white-space: nowrap !important;
+            }
+            .bb-actions {
+                width: 100% !important;
+                display: grid !important;
+                grid-template-columns: 1fr 1fr 1fr !important;
+                gap: 6px !important;
+            }
+            .bb-actions .btn-cancel-custom {
+                grid-column: 1 / 2 !important;
+                width: 100% !important;
+                justify-content: center !important;
+                padding: 9px 4px !important;
+                font-size: 12px !important;
+                font-weight: 600 !important;
+                text-align: center !important;
+                border-radius: 8px !important;
+            }
+            .bb-actions .btn-quotation-custom {
+                grid-column: 2 / 3 !important;
+                width: 100% !important;
+                justify-content: center !important;
+                padding: 9px 4px !important;
+                font-size: 12px !important;
+                font-weight: 600 !important;
+                text-align: center !important;
+                border-radius: 8px !important;
+            }
+            .bb-actions .btn-booking-custom {
+                grid-column: 3 / 4 !important;
+                width: 100% !important;
+                justify-content: center !important;
+                padding: 9px 4px !important;
+                font-size: 12px !important;
+                font-weight: 600 !important;
+                text-align: center !important;
+                border-radius: 8px !important;
+            }
+            .bb-actions .btn-save-print-custom {
+                grid-column: 1 / -1 !important;
+                width: 100% !important;
+                justify-content: center !important;
+                padding: 11px 14px !important;
+                font-size: 14px !important;
+                font-weight: 700 !important;
+                border-radius: 8px !important;
+                text-align: center !important;
+                margin-top: 2px !important;
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            .items-card-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 8px !important;
+            }
+            .items-card-header .items-card-actions {
+                width: 100% !important;
+                display: flex !important;
+                justify-content: flex-end !important;
+                gap: 6px !important;
+            }
+            .items-card-header .btn {
+                padding: 6px 10px !important;
+                font-size: 12px !important;
+            }
+            #quickProductsOffcanvas {
+                width: 100% !important;
+                max-width: 100vw !important;
+            }
+            .invoice-group .btn-prefix {
+                font-size: 11.5px !important;
+                padding: 0 6px !important;
+            }
+            .invoice-group #inputInvoiceNo {
+                font-size: 12.5px !important;
+                padding: 0 4px !important;
+            }
+            .seg-toggle .btn {
+                font-size: 11.5px !important;
+                padding: 0 6px !important;
+            }
+            .discount-input {
+                width: 120px !important;
             }
         }
     </style>
@@ -1297,7 +1879,7 @@
             {{-- ============================ SALE INFORMATION CARD ============================ --}}
             <div class="row g-3 mb-3">
                 <div class="col-xl-8">
-                    <div class="sale-card h-100 p-4" style="border: 1px solid #E2E8F0; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.03);">
+                    <div class="sale-card h-100 p-3 p-md-4" style="border: 1px solid #E2E8F0; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.03);">
                         <div class="row g-3">
                             {{-- Invoice No --}}
                             <div class="col-6 col-md-3">
@@ -1422,7 +2004,7 @@
 
                 {{-- Customer Balance Card (right) --}}
                 <div class="col-xl-4">
-                    <div class="cust-bal-card h-100" style="background: #FFFFFF; border: 1px solid #DBEAFE; border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.04); display: flex; flex-direction: column; justify-content: space-between;">
+                    <div class="cust-bal-card h-100 p-3 p-md-4" style="background: #FFFFFF; border: 1px solid #DBEAFE; border-radius: 14px; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.04); display: flex; flex-direction: column; justify-content: space-between;">
                         <div class="cb-head d-flex align-items-center justify-content-between mb-2">
                             <div class="d-flex align-items-center gap-2">
                                 <div style="width: 38px; height: 38px; border-radius: 10px; background: #2563EB; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);">
@@ -1451,7 +2033,7 @@
                             </div>
                         </div>
 
-                        <div class="cb-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                        <div class="cb-grid">
                             <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #F1F5F9; border-radius: 10px; padding: 10px 4px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
                                 <div class="cb-label" style="font-size: 9.5px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700; color: #64748B; margin-bottom: 3px;">Prev. Due</div>
                                 <div class="cb-value" style="font-size: 13px; font-weight: 800; color: #E11D48;">
@@ -1485,14 +2067,14 @@
             <input type="hidden" id="rangeBalance" value="0">
 
             {{-- ============================ ITEMS SECTION ============================ --}}
-            <div class="sale-card mb-3 p-4" style="border: 1px solid #E2E8F0; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.03);">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div class="sale-card mb-3 p-3 p-md-4 items-card-box" style="border: 1px solid #E2E8F0; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.03);">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 items-card-header">
                     <div class="d-flex align-items-center gap-2">
                         <i class="fas fa-cube text-primary" style="font-size: 22px;"></i>
                         <span style="font-size: 18px; font-weight: 800; color: #0A2540;">Items</span>
                         <span id="itemsRowCount" style="background: #EFF6FF; color: #2563EB; font-weight: 700; font-size: 13px; padding: 2px 10px; border-radius: 20px;">0</span>
                     </div>
-                    <div class="d-flex gap-2 flex-wrap">
+                    <div class="d-flex gap-2 flex-wrap items-card-actions">
                         <button type="button" class="btn px-3" id="btnNewProductHeader" style="background: #ffffff; border: 1px solid #BFDBFE; color: #2563EB; font-weight: 600; font-size: 13px; border-radius: 8px;">
                             <i class="fas fa-box-open me-1"></i> New Product
                         </button>
@@ -1628,7 +2210,7 @@
                         <tfoot>
                             <tr>
                                 <td colspan="11" class="border-0 pt-3 pb-0 px-0 bg-transparent text-end">
-                                    <div class="d-inline-flex align-items-center gap-3">
+                                    <div class="d-inline-flex align-items-center gap-3 grid-total-container">
                                         <span class="grid-total-label-custom">GRID TOTAL:</span>
                                         <div class="grid-total-badge-custom">
                                             Rs <span id="totalAmount">{{ number_format($sale->total_net ?? 0, 2) }}</span>
@@ -1645,7 +2227,7 @@
             <div class="row g-3 align-items-stretch">
                 {{-- LEFT: Payment Methods --}}
                 <div class="col-lg-6">
-                    <div class="sale-card h-100 p-4 d-flex flex-column">
+                    <div class="sale-card h-100 p-3 p-md-4 d-flex flex-column">
                         <div class="pay-head">
                             <span class="card-title">Payment Methods</span>
                             <button type="button" class="btn btn-sm btn-outline-primary px-3" id="btnAddRV">
@@ -1681,7 +2263,7 @@
 
                 {{-- RIGHT: Order Summary --}}
                 <div class="col-lg-6">
-                    <div class="sale-card h-100 p-4 d-flex flex-column">
+                    <div class="sale-card h-100 p-3 p-md-4 d-flex flex-column">
                         <div class="pay-head">
                             <span class="card-title">Order Summary</span>
                         </div>

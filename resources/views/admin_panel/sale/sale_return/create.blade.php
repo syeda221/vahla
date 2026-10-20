@@ -228,6 +228,358 @@
             color: #dee2e6;
             /* Very subtle lock icon */
         }
+
+        /* Page Overflow Protection */
+        html, body {
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+        .container-fluid {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        /* Modern Return Card Internal Components */
+        .spec-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 7px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+        }
+        .spec-card .spec-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .spec-card .spec-data {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e293b;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        .avail-card {
+            background: #f0f7ff;
+            border: 1.5px solid #bfdbfe;
+            border-radius: 10px;
+            padding: 9px 12px;
+        }
+        .avail-card .avail-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .avail-card .avail-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #1e40af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .avail-card .avail-badge {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-weight: 800;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        .avail-card .avail-sub {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .action-input-card {
+            background: #ffffff;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            height: 100%;
+        }
+        .action-input-card.highlight-input {
+            border-color: #3b82f6;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.1);
+        }
+        .action-input-card .action-label {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .action-input-card .action-box-input {
+            height: 40px !important;
+            border: 1.5px solid #3b82f6 !important;
+            border-radius: 8px !important;
+            background: #ffffff !important;
+            font-size: 16px !important;
+            font-weight: 800 !important;
+            color: #1d4ed8 !important;
+            text-align: center !important;
+        }
+        .action-input-card .action-pcs-input {
+            height: 40px !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            background: #f8fafc !important;
+            font-size: 16px !important;
+            font-weight: 800 !important;
+            color: #1e293b !important;
+            text-align: center !important;
+        }
+        .action-input-card .action-hint {
+            font-size: 10px;
+            color: #64748b;
+            text-align: center;
+        }
+
+        .refund-banner-card {
+            background: #ecfdf5;
+            border: 1.5px solid #6ee7b7;
+            border-radius: 10px;
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .refund-banner-card .refund-label {
+            font-size: 12px;
+            font-weight: 800;
+            color: #047857;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .refund-banner-card .refund-val-wrap {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+        .refund-banner-card .refund-currency {
+            font-size: 14px;
+            font-weight: 800;
+            color: #059669;
+            font-family: monospace;
+        }
+        .refund-banner-card .refund-input {
+            border: none !important;
+            background: transparent !important;
+            font-size: 18px !important;
+            font-weight: 800 !important;
+            color: #047857 !important;
+            font-family: monospace !important;
+            text-align: right !important;
+            width: 130px !important;
+            padding: 0 !important;
+        }
+
+        /* Mobile Responsive Enhancements (<= 991.98px) */
+        @media (max-width: 991.98px) {
+            .container-fluid {
+                padding-left: 10px !important;
+                padding-right: 10px !important;
+            }
+            .erp-card .card-body {
+                padding: 12px !important;
+            }
+
+            .erp-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 10px !important;
+                padding: 12px 14px !important;
+            }
+            .erp-header .header-actions {
+                width: 100% !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+            }
+
+            /* Table Container & Hide Table Header */
+            .erp-table-container {
+                border: none !important;
+                background: transparent !important;
+            }
+            .table-erp {
+                display: block !important;
+                width: 100% !important;
+                border: none !important;
+            }
+            .table-erp thead {
+                display: none !important;
+            }
+            .table-erp tbody {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 14px !important;
+                width: 100% !important;
+            }
+
+            /* Transform TR into Responsive Modern Card */
+            #returnItems tr {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                grid-template-areas:
+                    "product product"
+                    "code size"
+                    "ppb price"
+                    "purchased purchased"
+                    "returnbox totalpcs"
+                    "rowtotal rowtotal" !important;
+                align-items: stretch !important;
+                row-gap: 8px !important;
+                column-gap: 8px !important;
+                background: #ffffff !important;
+                border: 1px solid #e2e8f0 !important;
+                border-radius: 14px !important;
+                padding: 14px !important;
+                box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05) !important;
+                position: relative !important;
+            }
+            #returnItems tr:hover {
+                border-color: #cbd5e1 !important;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08) !important;
+            }
+            #returnItems tr td {
+                border: none !important;
+                padding: 0 !important;
+                background: transparent !important;
+                min-width: 0 !important;
+                width: auto !important;
+            }
+
+            /* Card Cells */
+            .col-item-product {
+                grid-area: product;
+                padding-right: 36px !important;
+            }
+            .col-item-action {
+                position: absolute !important;
+                top: 12px !important;
+                right: 12px !important;
+                text-align: right !important;
+            }
+            .col-item-code {
+                grid-area: code;
+            }
+            .col-item-size {
+                grid-area: size;
+            }
+            .col-item-ppb {
+                grid-area: ppb;
+            }
+            .col-item-price {
+                grid-area: price;
+            }
+            .col-item-purchased {
+                grid-area: purchased;
+            }
+            .col-item-returnbox {
+                grid-area: returnbox;
+            }
+            .col-item-totalpcs {
+                grid-area: totalpcs;
+            }
+            .col-item-rowtotal {
+                grid-area: rowtotal;
+            }
+        }
+
+        @media (min-width: 992px) {
+            .col-item-product {
+                padding-right: 0 !important;
+            }
+            .col-item-action {
+                position: static !important;
+                text-align: center !important;
+            }
+            .spec-card {
+                background: transparent !important;
+                border: none !important;
+                padding: 0 !important;
+                display: block !important;
+            }
+            .spec-card .spec-title {
+                display: none !important;
+            }
+            .spec-card .spec-data {
+                font-size: inherit !important;
+                font-weight: inherit !important;
+                font-family: inherit !important;
+                color: inherit !important;
+            }
+            .avail-card {
+                display: none !important;
+            }
+            .action-input-card {
+                background: transparent !important;
+                border: none !important;
+                padding: 0 !important;
+                display: block !important;
+                height: auto !important;
+                box-shadow: none !important;
+            }
+            .action-input-card .action-label, .action-input-card .action-hint {
+                display: none !important;
+            }
+            .action-input-card .action-box-input, .action-input-card .action-pcs-input {
+                height: auto !important;
+                font-size: inherit !important;
+                font-weight: inherit !important;
+                border: 1px solid transparent !important;
+                background: transparent !important;
+                color: inherit !important;
+                border-radius: 4px !important;
+            }
+            .action-input-card .action-box-input:focus, .action-input-card .action-box-input:hover {
+                border-color: var(--erp-border) !important;
+                background: white !important;
+            }
+            .refund-banner-card {
+                background: transparent !important;
+                border: none !important;
+                padding: 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-end !important;
+                gap: 4px !important;
+            }
+            .refund-banner-card .refund-label {
+                display: none !important;
+            }
+            .refund-banner-card .refund-val-wrap {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-end !important;
+                gap: 4px !important;
+                width: 100% !important;
+            }
+            .refund-banner-card .refund-currency {
+                display: inline !important;
+                font-size: 0.85rem !important;
+                color: #059669 !important;
+            }
+            .refund-banner-card .refund-input {
+                font-size: inherit !important;
+                font-weight: bold !important;
+                color: var(--erp-text) !important;
+                width: 100% !important;
+            }
+        }
     </style>
 
 
@@ -235,19 +587,19 @@
     <div class="container-fluid py-4">
         <div class="erp-card">
             <div class="erp-header">
-                <h5><i class="fas fa-undo-alt me-2"></i> Sale Return</h5>
-                <div class="d-flex align-items-center gap-3">
-                    <span class="badge bg-light text-dark border"><i class="fas fa-file-invoice me-1"></i> Original Invoice #
-                        {{ $sale->invoice_no }}</span>
-                    <a href="{{ route('sale.index') }}" class="btn btn-sm btn-outline-secondary">Back to List</a>
+                <h5 class="mb-0 fw-bold"><i class="fas fa-undo-alt me-2"></i> Sale Return</h5>
+                <div class="header-actions d-flex align-items-center gap-2 gap-md-3">
+                    <span class="badge bg-light text-dark border px-2 py-1"><i class="fas fa-file-invoice me-1 text-primary"></i> Invoice #{{ $sale->invoice_no }}</span>
+                    <a href="{{ route('sale.index') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i> Back to List
+                    </a>
                 </div>
             </div>
 
-            <div class="card-body p-4">
+            <div class="card-body p-3 p-md-4">
                 <form action="{{ route('sale.return.store') }}" method="POST">
                     @csrf
                     <input type="hidden" name="sale_id" value="{{ $sale->id }}">
-                    {{-- Assuming Single Branch/Warehouse for now or derived from Purchase --}}
                     <input type="hidden" name="warehouse_id" value="{{ $sale->warehouse_id ?? 1 }}">
 
                     <!-- Alert Section -->
@@ -264,52 +616,48 @@
                         </div>
                     @endif
 
-                    <!-- Top Section: customer & Reference -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label"><i class="fas fa-lock text-muted me-1"
-                                    style="font-size: 0.7rem;"></i>customer</label>
-                            {{-- Read-Only customer Name --}}
+                    <!-- Top Section: Customer & Reference -->
+                    <div class="row g-2 g-md-3 mb-3 mb-md-4">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label"><i class="fas fa-user text-muted me-1" style="font-size: 0.75rem;"></i>Customer</label>
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ optional($sale->customer)->name ?? 'Unknown customer' }}" readonly
-                                style="background-color: #e9ecef; border-color: #dee2e6;">
-                            {{-- Hidden ID for Form Submission --}}
+                                value="{{ optional($sale->customer)->name ?? (optional($sale->customer_relation)->customer_name ?? 'Walk-in Customer') }}" readonly
+                                style="background-color: #f8fafc; border-color: #cbd5e1; font-weight: 600;">
                             <input type="hidden" name="customer_id" value="{{ $sale->customer_id }}">
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label"><i class="fas fa-lock text-muted me-1"
-                                    style="font-size: 0.7rem;"></i>Reference / PO #</label>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label"><i class="fas fa-file-invoice text-muted me-1" style="font-size: 0.75rem;"></i>Reference / Inv #</label>
                             <input type="text" name="reference" class="form-control form-control-sm"
-                                value="{{ $sale->invoice_no ?? '' }}" readonly>
+                                value="{{ $sale->invoice_no ?? '' }}" readonly style="background-color: #f8fafc; border-color: #cbd5e1;">
                         </div>
-                        <div class="col-md-5 text-end align-self-end">
-                            <div class="p-2 bg-light rounded d-inline-block border">
-                                <small class="text-muted d-block text-start" style="font-size: 0.7rem;">ORIGINAL PURCHASE
-                                    DATE</small>
-                                <strong class="text-dark"><i class="far fa-calendar-alt me-1"></i>
+                        <div class="col-6 col-md-5 text-end align-self-end">
+                            <div class="p-2 bg-light rounded border w-100 text-start text-md-end">
+                                <small class="text-muted d-block" style="font-size: 0.68rem; font-weight: 600; text-transform: uppercase;">Original Sale Date</small>
+                                <strong class="text-dark" style="font-size: 0.85rem;"><i class="far fa-calendar-alt text-primary me-1"></i>
                                     {{ $sale->created_at->format('d/m/Y h:i A') }}</strong>
                             </div>
                         </div>
                     </div>
 
                     <!-- Return Info -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
+                    <div class="row g-2 g-md-3 mb-3 mb-md-4">
+                        <div class="col-12 col-md-4">
                             <label class="form-label">Return Date <span class="text-danger">*</span></label>
                             <input type="date" name="return_date" class="form-control" value="{{ date('Y-m-d') }}"
-                                required>
+                                required style="height: 42px;">
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-12 col-md-8">
                             <label class="form-label">Return Reason / Notes</label>
                             <input type="text" name="return_reason" class="form-control"
-                                placeholder="e.g., Damaged goods, Wrong item sent">
+                                placeholder="e.g., Damaged goods, Wrong item sent" style="height: 42px;">
                         </div>
                     </div>
 
-                    <!-- Items Table -->
-                    <div class="d-flex justify-content-end mb-2">
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnReturnAll">
-                            <i class="fas fa-check-double me-1"></i> Return All
+                    <!-- Items Table Header Bar -->
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0 fw-bold text-dark"><i class="fas fa-boxes text-primary me-1"></i> Items for Return</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" id="btnReturnAll">
+                            <i class="fas fa-check-double me-1"></i> Return All Items
                         </button>
                     </div>
                     <div class="table-responsive erp-table-container mb-4">
@@ -348,52 +696,70 @@
                                         <input type="hidden" name="pieces_per_m2[]" class="pieces-per-m2"
                                             value="{{ $item['pieces_per_m2'] ?? 0 }}">
 
-                                        <td>
-                                            <input type="text" class="form-control fw-bold"
-                                                value="{{ $item['item_name'] }}" readonly>
-                                            <small class="text-muted d-block ms-2"
-                                                style="font-size: 0.75rem;">{{ $item['brand'] ?? '' }}</small>
+                                        {{-- 1. Product Name & Brand --}}
+                                        <td class="col-item-product">
+                                            <div class="d-flex align-items-center">
+                                                <span class="d-lg-none badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill me-2 px-2 py-1" style="font-size: 11px; font-weight: 700;">#{{ $index + 1 }}</span>
+                                                <div class="overflow-hidden">
+                                                    <span class="fw-bold text-dark d-block text-truncate product-name-display" style="font-size: 0.95rem;">{{ $item['item_name'] }}</span>
+                                                    <input type="hidden" class="form-control fw-bold product-name-input" value="{{ $item['item_name'] }}" readonly>
+                                                    @if(!empty($item['brand']))
+                                                        <small class="text-muted d-block text-truncate" style="font-size: 0.75rem;"><i class="fas fa-tag me-1 text-secondary" style="font-size: 0.65rem;"></i>{{ $item['brand'] }}</small>
+                                                    @endif
+                                                </div>
+                                            </div>
                                         </td>
 
-                                        {{-- Size --}}
-                                        <td>
-                                            <input type="text" class="form-control text-center"
-                                                value="{{ $item['size_val'] ?? '-' }}" readonly>
+                                        {{-- 2. Size --}}
+                                        <td class="col-item-size">
+                                            <div class="spec-card">
+                                                <span class="spec-title">Size</span>
+                                                <span class="spec-data">{{ $item['size_val'] ?? '-' }}</span>
+                                            </div>
                                         </td>
 
-                                        {{-- Color --}}
-                                        {{-- <td>
-                                            <input type="text" class="form-control text-center"
-                                                value="{{ $item['color_val'] ?? '-' }}" readonly>
-                                        </td> --}}
-
-                                        <td><input type="text" class="form-control text-center"
-                                                value="{{ $item['item_code'] }}" readonly></td>
-
-                                        {{-- PC per box --}}
-                                        <td>
-                                            <input type="number" class="form-control text-center pieces-per-box"
-                                                value="{{ $item['pieces_per_box'] ?? 1 }}" readonly>
+                                        {{-- 3. Item Code --}}
+                                        <td class="col-item-code">
+                                            <div class="spec-card">
+                                                <span class="spec-title">Code</span>
+                                                <span class="spec-data">{{ $item['item_code'] ?: '-' }}</span>
+                                            </div>
                                         </td>
 
-
-                                        {{-- Purchased Price Per Pc --}}
-                                        <td><input type="number" name="price[]" step="0.01"
-                                                class="form-control text-end price" value="{{ (float) $item['price'] }}"
-                                                readonly>
-                                            <small class="text-muted d-block text-end" style="font-size: 0.65rem;">
-                                                @if (($item['size_mode'] ?? '') == 'by_size')
-                                                    Per M²
-                                                @elseif(($item['size_mode'] ?? '') == 'by_cartons')
-                                                    Per Box
-                                                @else
-                                                    Per Pc
-                                                @endif
-                                            </small>
+                                        {{-- 4. PC per box --}}
+                                        <td class="col-item-ppb">
+                                            <div class="spec-card">
+                                                <span class="spec-title">Pcs/Box</span>
+                                                <span class="spec-data d-lg-none">{{ $item['pieces_per_box'] ?? 1 }} pcs</span>
+                                                <input type="number" class="form-control text-center pieces-per-box spec-value d-none d-lg-block"
+                                                    value="{{ $item['pieces_per_box'] ?? 1 }}" readonly>
+                                            </div>
                                         </td>
 
-                                        {{-- Purchased Qty (Read Only) --}}
-                                        <td>
+                                        {{-- 5. Purchased Price --}}
+                                        <td class="col-item-price">
+                                            <div class="spec-card">
+                                                <span class="spec-title">Price</span>
+                                                <span class="spec-data d-lg-none">Rs. {{ number_format((float) $item['price'], 2) }}</span>
+                                                <div class="price-wrap text-end text-lg-end d-none d-lg-block">
+                                                    <input type="number" name="price[]" step="0.01"
+                                                        class="form-control text-end price spec-value p-0" value="{{ (float) $item['price'] }}"
+                                                        readonly>
+                                                    <small class="text-muted d-block text-end" style="font-size: 0.65rem;">
+                                                        @if (($item['size_mode'] ?? '') == 'by_size')
+                                                            Per M²
+                                                        @elseif(($item['size_mode'] ?? '') == 'by_cartons')
+                                                            Per Box
+                                                        @else
+                                                            Per Pc
+                                                        @endif
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        {{-- 6. Purchased Qty (Read Only) --}}
+                                        <td class="col-item-purchased">
                                             @php
                                                 $original = $item['original_qty'] ?? $item['qty'];
                                                 $returned = $item['returned_qty'] ?? 0;
@@ -405,46 +771,80 @@
                                                     $remBoxes = floor($netRemaining / $ppb);
                                                     $remPcs = $netRemaining % $ppb;
                                                     $remDisplay = $remBoxes . ($remPcs > 0 ? '.'.$remPcs : '');
+                                                    $availText = $remBoxes . ' Box' . ($remPcs > 0 ? ' + ' . $remPcs . ' pcs' : '') . ' (' . $netRemaining . ' pcs)';
                                                 } else {
                                                     $remDisplay = $netRemaining;
+                                                    $availText = $netRemaining . ' pcs';
                                                 }
                                             @endphp
-                                            <div class="text-center">
-                                                <span class="fw-bold text-dark fs-6">{{ $remDisplay }}</span>
-                                                <small class="text-muted d-block" style="font-size: 0.65rem;">Remaining Pieces: {{ $netRemaining }}</small>
-                                            </div>
-                                            @if ($returned > 0)
-                                                <div class="mt-1 pt-1 border-top" style="font-size: 0.65rem;">
-                                                    <span class="text-danger">Returned: {{ $returned }}</span>
-                                                    <span class="text-muted ms-1">/ {{ $original }}</span>
+                                            {{-- Mobile Availability Card --}}
+                                            <div class="avail-card d-lg-none">
+                                                <div class="avail-head">
+                                                    <span class="avail-label"><i class="fas fa-box-open me-1 text-primary"></i> Available To Return</span>
+                                                    <span class="avail-badge">{{ $availText }}</span>
                                                 </div>
-                                            @endif
+                                                <div class="avail-sub">
+                                                    <span><i class="fas fa-shopping-bag me-1 text-muted"></i> Sold: <strong>{{ $original }} pcs</strong></span>
+                                                    <span><i class="fas fa-history me-1 text-muted"></i> Returned: <strong>{{ $returned }} pcs</strong></span>
+                                                </div>
+                                            </div>
+
+                                            {{-- Desktop Availability Cell --}}
+                                            <div class="purchased-qty-wrap d-none d-lg-block">
+                                                <div class="text-center">
+                                                    <span class="fw-bold text-dark fs-6">{{ $remDisplay }}</span>
+                                                    <small class="text-muted d-block" style="font-size: 0.68rem;">Rem: {{ $netRemaining }} pcs</small>
+                                                </div>
+                                                @if ($returned > 0)
+                                                    <div class="mt-1 pt-1 border-top text-center" style="font-size: 0.65rem;">
+                                                        <span class="text-danger">Returned: {{ $returned }}</span>
+                                                        <span class="text-muted ms-1">/ {{ $original }}</span>
+                                                    </div>
+                                                @endif
+                                            </div>
                                         </td>
 
-
-                                        {{-- Return Qty (Box.Piece) --}}
-                                        <td>
-                                            <input type="text" name="qty_box[]"
-                                                class="form-control text-center quantity-box" value="0"
-                                                placeholder="0.0" {{ $netRemaining <= 0 ? 'readonly' : '' }}>
-                                            <small class="text-muted" style="font-size: 0.7rem;">Format: Box.Piece</small>
+                                        {{-- 7. Return Qty (Box.Piece) --}}
+                                        <td class="col-item-returnbox">
+                                            <div class="action-input-card highlight-input">
+                                                <span class="action-label text-primary d-lg-none"><i class="fas fa-edit me-1"></i> Return Qty</span>
+                                                <input type="text" name="qty_box[]"
+                                                    class="form-control text-center quantity-box action-box-input" value="0"
+                                                    placeholder="0.0" {{ $netRemaining <= 0 ? 'readonly' : '' }}>
+                                                <span class="action-hint d-lg-none">Box.Piece format</span>
+                                            </div>
                                         </td>
 
-                                        {{-- Total Return Pieces (Read Only, Calculated) --}}
-                                        <td>
-                                            <input type="number" name="qty[]"
-                                                class="form-control text-center fw-bold text-primary quantity"
-                                                value="0" readonly min="0" max="{{ $netRemaining }}"
-                                                data-max="{{ $netRemaining }}" data-original="{{ $original }}"
-                                                data-returned="{{ $returned }}">
+                                        {{-- 8. Total Return Pieces (Read Only, Calculated) --}}
+                                        <td class="col-item-totalpcs">
+                                            <div class="action-input-card">
+                                                <span class="action-label text-secondary d-lg-none"><i class="fas fa-calculator me-1"></i> Total Pieces</span>
+                                                <input type="number" name="qty[]"
+                                                    class="form-control text-center fw-bold text-primary quantity action-pcs-input"
+                                                    value="0" readonly min="0" max="{{ $netRemaining }}"
+                                                    data-max="{{ $netRemaining }}" data-original="{{ $original }}"
+                                                    data-returned="{{ $returned }}">
+                                                <span class="action-hint d-lg-none">Calculated Pieces</span>
+                                            </div>
                                         </td>
 
-                                        <td><input type="text" name="total[]"
-                                                class="form-control text-end fw-bold row-total" value="0.00" readonly>
+                                        {{-- 9. Total Amount --}}
+                                        <td class="col-item-rowtotal">
+                                            <div class="refund-banner-card">
+                                                <span class="refund-label"><i class="fas fa-undo me-1"></i> Refund Subtotal</span>
+                                                <div class="refund-val-wrap">
+                                                    <span class="refund-currency">Rs.</span>
+                                                    <input type="text" name="total[]"
+                                                        class="form-control text-end fw-bold row-total refund-input" value="0.00" readonly>
+                                                </div>
+                                            </div>
                                         </td>
-                                        <td class="text-center">
+
+                                        {{-- 10. Action Button --}}
+                                        <td class="col-item-action text-end text-lg-center">
                                             <button type="button"
                                                 class="btn btn-sm btn-outline-danger border-0 remove-row rounded-circle"
+                                                style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: #fef2f2; color: #ef4444;"
                                                 title="Remove Item"><i class="fas fa-times"></i></button>
                                         </td>
                                     </tr>
@@ -454,40 +854,40 @@
                     </div>
 
                     <!-- Footer Summary -->
-                    <div class="row mt-4">
-                        <div class="col-md-7">
-                            <div class="p-4 bg-light rounded border h-100">
-                                <label class="form-label text-muted small">AMOUNT IN WORDS</label>
+                    <div class="row g-3 mt-2">
+                        <div class="col-12 col-md-7 mb-2 mb-md-0">
+                            <div class="p-3 p-md-4 bg-light rounded-3 border h-100">
+                                <label class="form-label text-muted small fw-bold">AMOUNT IN WORDS</label>
                                 <input type="text" name="total_amount_Words"
-                                    class="form-control border-0 bg-transparent fw-bold text-primary fs-5 fst-italic"
+                                    class="form-control border-0 bg-transparent fw-bold text-primary fs-6 fst-italic p-0"
                                     id="amountInWords" readonly placeholder="...">
 
-                                <div class="mt-4 pt-4 border-top">
+                                <div class="mt-3 pt-3 border-top d-flex align-items-center justify-content-between">
                                     <div class="d-flex align-items-center gap-2">
-                                        <i class="fas fa-cubes text-muted"></i>
-                                        <span class="text-muted small">Total Pieces Returned:</span>
-                                        <strong id="totalPieces" class="text-dark fs-5">0</strong>
+                                        <i class="fas fa-cubes text-primary fs-5"></i>
+                                        <span class="text-muted small fw-semibold">Total Pieces Returned:</span>
                                     </div>
+                                    <strong id="totalPieces" class="text-dark fs-5 font-monospace">0</strong>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Partial Return Status Indicator -->
-                        <div class="col-md-12 mb-3">
-                            <div class="partial-return-indicator shadow-sm border-0 p-3 rounded"
-                                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <div class="col-12 mb-2">
+                            <div class="partial-return-indicator shadow-sm border-0 p-3 rounded-3"
+                                style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h6 class="mb-0 text-white">
+                                    <h6 class="mb-0 text-white fw-bold">
                                         <i class="fas fa-chart-pie me-2"></i>Return Status
                                     </h6>
                                     <span id="returnTypeBadge" class="badge bg-light text-dark">
                                         <i class="fas fa-spinner fa-spin me-1"></i>Calculating...
                                     </span>
                                 </div>
-                                <div class="progress" style="height: 25px; background: rgba(255,255,255,0.2);">
+                                <div class="progress" style="height: 25px; background: rgba(255,255,255,0.2); border-radius: 6px;">
                                     <div id="returnProgressBar"
                                         class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
-                                        style="width: 0%; background: #10ac84;" aria-valuenow="0" aria-valuemin="0"
+                                        style="width: 0%; background: #10ac84; border-radius: 6px;" aria-valuenow="0" aria-valuemin="0"
                                         aria-valuemax="100">
                                         <strong id="returnPercentage">0%</strong>
                                     </div>
@@ -498,46 +898,47 @@
                             </div>
                         </div>
 
-                        <div class="col-md-5">
-                            <div class="summary-card shadow-sm border-0">
-                                <h6 class="mb-3 text-uppercase fw-bold text-muted"
-                                    style="font-size: 0.8rem; letter-spacing: 1px;">Refund Summary</h6>
-                                <div class="summary-row">
+                        <div class="col-12 col-md-5">
+                            <div class="summary-card shadow-sm border rounded-3 p-3 p-md-4 bg-white">
+                                <h6 class="mb-3 text-uppercase fw-bold text-dark d-flex align-items-center gap-2"
+                                    style="font-size: 0.85rem; letter-spacing: 0.8px;">
+                                    <i class="fas fa-calculator text-primary"></i> Refund Summary
+                                </h6>
+                                <div class="summary-row d-flex justify-content-between align-items-center py-1">
                                     <span class="text-muted">Subtotal</span>
                                     <input type="text" name="total_subtotal" id="billAmount"
-                                        class="form-control form-control-sm w-50 text-end border-0 bg-transparent p-0"
+                                        class="form-control form-control-sm w-50 text-end border-0 bg-transparent p-0 font-monospace fw-bold text-dark"
                                         readonly value="0.00">
                                 </div>
-                                <div class="summary-row">
+                                <div class="summary-row d-flex justify-content-between align-items-center py-1">
                                     <span class="text-muted">Less: Item Discount</span>
                                     <input type="text" name="total_discount" id="itemDiscount"
-                                        class="form-control form-control-sm w-50 text-end border-0 bg-transparent p-0 text-danger"
+                                        class="form-control form-control-sm w-50 text-end border-0 bg-transparent p-0 text-danger font-monospace"
                                         readonly value="0.00">
                                 </div>
-                                <div class="summary-row align-items-center mt-2">
+                                <div class="summary-row d-flex justify-content-between align-items-center py-1">
                                     <span class="text-dark fw-medium">Less: Extra Deductions</span>
                                     <input type="number" name="extra_discount" id="extraDiscount"
-                                        class="form-control form-control-sm w-50 text-end bg-white"
+                                        class="form-control form-control-sm w-50 text-end bg-white border font-monospace"
                                         value="{{ (float) ($sale->total_extradiscount ?? 0) }}">
                                 </div>
-                                <hr class="my-3">
-                                <div class="summary-row total">
-                                    <span>NET REFUND AMOUNT</span>
+                                <hr class="my-2">
+                                <div class="summary-row total d-flex justify-content-between align-items-center pt-2">
+                                    <span class="fw-bold text-dark">NET REFUND AMOUNT</span>
                                     <input type="text" name="net_amount" id="netAmount"
-                                        class="form-control form-control-lg w-50 text-end border-0 bg-transparent p-0 fw-bold text-primary"
+                                        class="form-control form-control-lg w-50 text-end border-0 bg-transparent p-0 fw-bold text-success font-monospace"
                                         readonly value="0.00">
                                 </div>
 
                                 <!-- Payment Voucher Section -->
-                                <div class="mt-4 pt-4 border-top">
-                                    <h6 class="mb-3 text-uppercase fw-bold text-muted"
-                                        style="font-size: 0.8rem; letter-spacing: 1px;">
-                                        <i class="fas fa-money-bill-wave me-2"></i>Refund Received (Optional)
+                                <div class="mt-3 pt-3 border-top">
+                                    <h6 class="mb-2 text-uppercase fw-bold text-muted"
+                                        style="font-size: 0.78rem; letter-spacing: 0.8px;">
+                                        <i class="fas fa-money-bill-wave text-success me-1"></i> Refund Received (Optional)
                                     </h6>
 
-                                    <div class="alert alert-light border small text-muted">
-                                        <i class="fas fa-info-circle me-1"></i> If you received cash/bank refund, enter
-                                        details. Otherwise, amount will be credited to customer Ledger.
+                                    <div class="alert alert-light border small text-muted py-2 px-3 mb-2" style="font-size: 11px;">
+                                        <i class="fas fa-info-circle text-info me-1"></i> If you received cash/bank refund, enter details. Otherwise, amount will be credited to customer ledger.
                                     </div>
 
                                     <div class="payment-voucher-rows">
@@ -545,8 +946,8 @@
                                             <div class="row g-2">
                                                 <div class="col-7">
                                                     <select name="payment_account_id[]"
-                                                        class="form-select form-select-sm payment-account">
-                                                        <option value="">Select Account (Cash/Bank)</option>
+                                                        class="form-select form-select-sm payment-account" style="width: 100%;">
+                                                        <option value="">Select Account</option>
                                                         @foreach ($accounts as $acc)
                                                             <option value="{{ $acc->id }}">{{ $acc->title }}
                                                                 ({{ $acc->account_code }})
@@ -557,19 +958,17 @@
                                                 <div class="col-5">
                                                     <input type="number" name="payment_amount[]" step="0.01"
                                                         class="form-control form-control-sm text-end payment-amount"
-                                                        placeholder="Amount">
+                                                        placeholder="Rs. Amount">
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-
                                 <div class="mt-4 d-grid gap-2">
-                                    <button type="submit" class="btn btn-erp-primary btn-lg shadow-sm">
-                                        <i class="fas fa-check-circle me-2"></i> Process Sale Return
+                                    <button type="submit" class="btn btn-erp-primary btn-lg shadow-sm fw-bold d-flex align-items-center justify-content-center gap-2" style="height: 48px; border-radius: 10px; background: linear-gradient(135deg, #2563eb, #4f46e5);">
+                                        <i class="fas fa-check-circle"></i> Process Sale Return
                                     </button>
-
                                 </div>
                             </div>
                         </div>

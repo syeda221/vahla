@@ -71,75 +71,100 @@
 
     {{-- Table Row --}}
     <tr class="border-bottom-0">
-        <td class="ps-3 fw-bold font-monospace">
+        <td class="cell-invoice ps-3 fw-bold font-monospace">
             @if ($sale->invoice_no)
-                <span class="text-primary fw-bold">{{ $sale->invoice_no }}</span>
-                <small class="text-muted d-block" style="font-size: 11px;">#{{ $sale->id }}</small>
+                <span class="text-primary fw-bold" style="font-size: 14.5px;">{{ $sale->invoice_no }}</span>
+                <span class="badge bg-light text-muted border font-monospace ms-1" style="font-size: 10px; font-weight: 600;">#{{ $sale->id }}</span>
             @else
                 <span class="text-muted">#{{ $sale->id }}</span>
             @endif
         </td>
-        <td>
+        <td class="cell-customer">
             <div class="d-flex align-items-center">
-                <div class="avatar-circle bg-info-subtle text-info me-2 fw-bold d-flex align-items-center justify-content-center rounded-circle"
-                    style="width: 32px; height: 32px; font-size: 14px; background-color: #e0f2fe; color: #0369a1;">
+                <div class="avatar-circle bg-info-subtle text-info me-2 fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+                    style="width: 32px; height: 32px; font-size: 13px; background-color: #e0f2fe; color: #0369a1;">
                     {{ strtoupper(substr(optional($sale->customer_relation)->customer_name ?? 'C', 0, 1)) }}
                 </div>
-                <span class="fw-medium text-dark">{{ optional($sale->customer_relation)->customer_name ?? 'N/A' }}</span>
+                <div class="text-truncate">
+                    <span class="fw-semibold text-dark d-block text-truncate" style="font-size: 13px;">{{ optional($sale->customer_relation)->customer_name ?? 'Walk-in Customer' }}</span>
+                </div>
             </div>
         </td>
-        <td class="font-monospace text-dark">{{ $sale->reference ?? '-' }}</td>
-        <td title="{{ $pNames }}" class="text-muted small">
-            {{ \Illuminate\Support\Str::limit($pNames, 40) }}
+        <td class="cell-mbill font-monospace text-dark">
+            <span class="d-lg-none badge bg-light text-secondary border px-2 py-1" style="font-size: 10px; font-weight: 600;">
+                <span class="text-muted">M.Bill:</span> {{ $sale->reference ?? '-' }}
+            </span>
+            <span class="d-none d-lg-inline">{{ $sale->reference ?? '-' }}</span>
         </td>
-        <td class="text-center font-monospace">
-            {{ $sale->total_items > 0 ? $sale->total_items : $sale->qty }}
-        </td>
-        <td class="text-end fw-bold text-dark font-monospace">
-            Rs. {{ number_format($gross_subtotal, 2) }}
-        </td>
-        <td class="text-end text-dark font-monospace">
-            Rs. {{ number_format($inline_val, 2) }}
-            @if ($inline_val > 0)
-                <div class="text-muted small mt-1" style="font-size: 10px;">({{ number_format($inline_pct, 1) }}%)</div>
-            @endif
-        </td>
-        <td class="text-end text-dark font-monospace">
-            @if ($sale->total_extradiscount > 0)
-                @php
-                    $add_val = $sale->total_extradiscount;
-                    $add_pct = $bill_amount > 0 ? ($add_val / $bill_amount) * 100 : 0;
-                @endphp
-                <span class="badge rounded-pill border px-2 py-1" style="background-color: #fff8e1; color: #b78103; border-color: #ffe082 !important; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
-                    <i class="fas fa-tag" style="font-size: 10px;"></i> Rs. {{ number_format($add_val, 2) }}
+        <td class="cell-products text-muted small" title="{{ $pNames }}">
+            <div class="d-flex align-items-center">
+                <span class="d-lg-none badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill me-2 px-2 py-1 flex-shrink-0" style="font-size: 10px; font-weight: 700;">
+                    <i class="fas fa-box me-1"></i>Items
                 </span>
-                <div class="text-muted small mt-1" style="font-size: 10px;">({{ number_format($add_pct, 1) }}%)</div>
-            @else
-                <span class="text-muted">Rs. 0.00</span>
-            @endif
+                <span class="text-dark fw-medium text-truncate" style="font-size: 12px;">{{ \Illuminate\Support\Str::limit($pNames, 45) }}</span>
+            </div>
         </td>
-        <td class="text-end text-success fw-bold font-monospace">
-            @if (isset($isExchange) && $isExchange)
-                @if ($collected > 0)
-                    Rs. {{ number_format($collected, 2) }}
-                @elseif ($refunded > 0)
-                    <span class="text-danger">-Rs. {{ number_format($refunded, 2) }}</span>
-                @else
-                    Rs. 0.00
+        <td class="cell-qty text-center font-monospace">
+            <span class="d-lg-none text-muted fw-bold me-1" style="font-size: 11px; text-transform: uppercase;">Items / Qty:</span>
+            <span class="fw-bold text-dark">{{ $sale->total_items > 0 ? $sale->total_items : $sale->qty }}</span>
+        </td>
+        <td class="cell-gross text-end fw-bold text-dark font-monospace">
+            <div class="financial-chip chip-gross">
+                <span class="chip-label">Gross Total</span>
+                <span class="chip-value">Rs. {{ number_format($gross_subtotal, 2) }}</span>
+            </div>
+        </td>
+        <td class="cell-inlinedisc text-end text-dark font-monospace">
+            <div class="financial-chip chip-inline">
+                <span class="chip-label">Inline Disc</span>
+                <span class="chip-value">Rs. {{ number_format($inline_val, 2) }}</span>
+                @if ($inline_val > 0)
+                    <span class="chip-sub">({{ number_format($inline_pct, 1) }}%)</span>
                 @endif
-                <br><span class="badge badge-info text-white border border-info px-1 py-0 mt-1" style="font-size: 10px;"><i class="fas fa-exchange-alt me-1"></i>Exchange</span>
-            @else
-                Rs. {{ number_format($sale->total_net, 2) }}
-            @endif
+            </div>
         </td>
-        <td class="text-nowrap small text-muted">
-            {{ $sale->created_at->format('d/m/Y') }}
+        <td class="cell-extradisc text-end text-dark font-monospace">
+            <div class="financial-chip chip-extra">
+                <span class="chip-label">Add. Disc</span>
+                @if ($sale->total_extradiscount > 0)
+                    @php
+                        $add_val = $sale->total_extradiscount;
+                        $add_pct = $bill_amount > 0 ? ($add_val / $bill_amount) * 100 : 0;
+                    @endphp
+                    <span class="chip-value">Rs. {{ number_format($add_val, 2) }}</span>
+                    <span class="chip-sub">({{ number_format($add_pct, 1) }}%)</span>
+                @else
+                    <span class="chip-value">Rs. 0.00</span>
+                @endif
+            </div>
         </td>
-        <td>{!! $statusBadge !!}</td>
-        <td class="pe-3 text-center">
-            <div class="dropdown">
-                <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" data-display="static" aria-expanded="false">
-                    <i class="fas fa-ellipsis-v small me-1"></i> Actions
+        <td class="cell-nettotal text-end text-success fw-bold font-monospace">
+            <div class="financial-chip chip-net">
+                <span class="chip-label">Net Bill</span>
+                @if (isset($isExchange) && $isExchange)
+                    @if ($collected > 0)
+                        <span class="chip-value">Rs. {{ number_format($collected, 2) }}</span>
+                    @elseif ($refunded > 0)
+                        <span class="chip-value text-danger">-Rs. {{ number_format($refunded, 2) }}</span>
+                    @else
+                        <span class="chip-value">Rs. 0.00</span>
+                    @endif
+                    <span class="badge badge-info text-white border border-info px-1 py-0 mt-0.5" style="font-size: 9px;"><i class="fas fa-exchange-alt me-1"></i>Exchange</span>
+                @else
+                    <span class="chip-value">Rs. {{ number_format($sale->total_net, 2) }}</span>
+                @endif
+            </div>
+        </td>
+        <td class="cell-date text-nowrap small text-muted">
+            <span class="d-lg-none text-muted me-1"><i class="far fa-calendar-alt text-primary me-1"></i></span>
+            <span class="font-monospace fw-medium text-secondary">{{ $sale->created_at->format('d/m/Y') }}</span>
+        </td>
+        <td class="cell-status">{!! $statusBadge !!}</td>
+        <td class="cell-action pe-3 text-center">
+            <div class="dropdown w-100">
+                <button class="btn btn-premium-action dropdown-toggle w-100" type="button" data-toggle="dropdown" data-display="static" aria-expanded="false">
+                    <i class="fas fa-sliders-h me-1 text-primary"></i> <span>Actions</span> <i class="fas fa-chevron-down ms-1 text-muted" style="font-size: 9px;"></i>
+                </button>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-right border-0 shadow-lg rounded-3">
                     @can('sales.edit')

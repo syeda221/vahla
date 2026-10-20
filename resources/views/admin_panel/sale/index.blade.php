@@ -310,44 +310,390 @@
             color: #1e293b !important;
         }
 
-        /* Responsive Breakpoints (< 768px) */
-        @media (max-width: 768px) {
+        /* Page Overflow Protection */
+        html, body {
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+        .main-content, .main-content-inner, .container-fluid {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        /* Status Pills Swipe Container */
+        .sales-status-pills {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            padding-bottom: 4px;
+            gap: 8px;
+        }
+        .sales-status-pills::-webkit-scrollbar {
+            display: none;
+        }
+        .sales-status-pills .btn {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+
+        /* Responsive Breakpoints (Mobile & Tablet <= 991.98px) */
+        @media (max-width: 991.98px) {
+            .container-fluid {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+            }
+            .premium-card .card-body {
+                padding: 12px !important;
+            }
+
+            /* Header Actions */
             .sales-hdr-actions {
                 display: grid !important;
                 grid-template-columns: 1fr 1fr;
                 gap: 8px;
                 width: 100%;
+                margin-top: 6px;
             }
             .sales-hdr-actions .btn {
                 width: 100%;
                 justify-content: center;
-                height: 38px;
-                font-size: 0.8rem;
+                height: 40px !important;
+                font-size: 13px !important;
+                border-radius: 10px !important;
             }
-            .sales-status-pills {
-                display: flex !important;
-                gap: 6px;
-                overflow-x: auto;
-                padding-bottom: 6px;
-                -webkit-overflow-scrolling: touch;
+            .sales-hdr-actions .btn-primary {
+                grid-column: 1 / -1;
+                order: -1;
+                font-size: 14px !important;
+                height: 42px !important;
             }
-            .sales-status-pills .btn {
-                flex: 0 0 auto;
-                white-space: nowrap;
+
+            /* Stat Cards on Mobile */
+            .sale-stat-card {
+                padding: 12px 10px !important;
+                border-radius: 12px !important;
             }
-            /* DataTables Mobile Search Controls */
-            .dataTables_wrapper .dataTables_length,
+            .sale-stat-card .sale-stat-icon {
+                width: 38px !important;
+                height: 38px !important;
+                font-size: 16px !important;
+                border-radius: 10px !important;
+                margin-right: 8px !important;
+            }
+            .sale-stat-card .stat-label {
+                font-size: 10px !important;
+                line-height: 1.2 !important;
+            }
+            .sale-stat-card .stat-value {
+                font-size: 13px !important;
+                margin-top: 2px !important;
+            }
+            .sale-stat-card .position-absolute {
+                display: none !important;
+            }
+
+            /* Mobile Filter Panel */
+            .filter-panel {
+                padding: 14px !important;
+                border-radius: 12px !important;
+            }
+
+            /* DataTables Mobile Controls */
+            .dataTables_wrapper .dataTables_length {
+                display: none !important;
+            }
             .dataTables_wrapper .dataTables_filter {
                 float: none !important;
                 text-align: left !important;
-                margin-bottom: 10px;
+                width: 100% !important;
+                margin-bottom: 12px !important;
+            }
+            .dataTables_wrapper .dataTables_filter label {
+                width: 100% !important;
+                margin: 0 !important;
             }
             .dataTables_wrapper .dataTables_filter input {
                 width: 100% !important;
                 margin-left: 0 !important;
+                height: 40px !important;
+                border-radius: 10px !important;
+                border: 1px solid #cbd5e1 !important;
+                padding: 8px 12px !important;
+                font-size: 13px !important;
+                background-color: #ffffff !important;
+            }
+            .dataTables_wrapper .dataTables_info {
+                text-align: center !important;
+                font-size: 12px !important;
+                margin-bottom: 8px !important;
+            }
+            .dataTables_wrapper .dataTables_paginate {
+                text-align: center !important;
+                float: none !important;
+                display: flex !important;
+                justify-content: center !important;
+            }
+            .dataTables_wrapper .dataTables_paginate .pagination {
+                justify-content: center !important;
+                flex-wrap: wrap !important;
+                gap: 4px;
+            }
+
+            /* Transform Table to Sleek Mobile Cards */
+            .table-responsive {
+                overflow-x: visible !important;
+                min-height: auto !important;
+                padding-top: 0 !important;
+            }
+            #sales-table {
+                border: none !important;
+                display: block !important;
+                width: 100% !important;
+            }
+            #sales-table thead {
+                display: none !important;
+            }
+            #sales-table tbody {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 12px !important;
+                width: 100% !important;
+            }
+            #sales-table tbody tr {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                grid-template-areas:
+                    "invoice status"
+                    "customer mbill"
+                    "products products"
+                    "qty date"
+                    "gross inlinedisc"
+                    "extradisc nettotal"
+                    "action action" !important;
+                align-items: center !important;
+                row-gap: 8px !important;
+                column-gap: 8px !important;
+                background: #ffffff !important;
+                border: 1px solid #e2e8f0 !important;
+                border-radius: 16px !important;
+                padding: 14px !important;
+                box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04) !important;
+                position: relative !important;
+            }
+            #sales-table tbody tr:hover {
+                border-color: #cbd5e1 !important;
+                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07) !important;
+            }
+            #sales-table tbody td {
+                border: none !important;
+                padding: 0 !important;
+                background: transparent !important;
+            }
+
+            /* Grid Cells on Mobile */
+            .cell-invoice {
+                grid-area: invoice;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+            .cell-status {
+                grid-area: status;
+                text-align: right;
+                justify-self: end;
+            }
+            .cell-status .badge {
+                padding: 5px 10px !important;
+                font-size: 11px !important;
+                font-weight: 700 !important;
+                border-radius: 8px !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 4px !important;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+            }
+            .cell-customer {
+                grid-area: customer;
+                padding-top: 6px !important;
+                padding-bottom: 2px !important;
+                border-top: 1px dashed #f1f5f9 !important;
+            }
+            .cell-mbill {
+                grid-area: mbill;
+                text-align: right !important;
+                padding-top: 6px !important;
+                padding-bottom: 2px !important;
+                border-top: 1px dashed #f1f5f9 !important;
+                font-size: 12px !important;
+                color: #475569 !important;
+            }
+            .cell-products {
+                grid-area: products;
+                font-size: 12px !important;
+                color: #475569 !important;
+                line-height: 1.4 !important;
+                background: #f8fafc;
+                border: 1px solid #eef2f6;
+                padding: 8px 10px !important;
+                border-radius: 10px;
+                min-width: 0;
+                overflow: hidden;
+            }
+            .cell-qty {
+                grid-area: qty;
+                text-align: left !important;
+                font-size: 12px !important;
+                color: #334155 !important;
+                padding: 2px 0 !important;
+            }
+            .cell-date {
+                grid-area: date;
+                text-align: right !important;
+                font-size: 12px !important;
+                color: #64748b !important;
+                padding: 2px 0 !important;
+            }
+            .cell-gross {
+                grid-area: gross;
+            }
+            .cell-inlinedisc {
+                grid-area: inlinedisc;
+            }
+            .cell-extradisc {
+                grid-area: extradisc;
+            }
+            .cell-nettotal {
+                grid-area: nettotal;
+            }
+
+            /* Financial Chips */
+            .financial-chip {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                border-radius: 8px;
+                padding: 6px 10px;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            .financial-chip .chip-label {
+                font-size: 9px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.6px;
+                line-height: 1;
+                margin-bottom: 3px;
+            }
+            .financial-chip .chip-value {
+                font-size: 13px;
+                font-weight: 700;
+                font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+                line-height: 1.2;
+            }
+            .financial-chip .chip-sub {
+                font-size: 10px;
+                font-weight: 500;
+                margin-left: 2px;
+            }
+
+            .chip-gross {
+                background: #f8fafc !important;
+                border: 1px solid #e2e8f0 !important;
+            }
+            .chip-gross .chip-label {
+                color: #64748b !important;
+            }
+            .chip-gross .chip-value {
+                color: #1e293b !important;
+            }
+
+            .chip-inline {
+                background: #f8fafc !important;
+                border: 1px solid #e2e8f0 !important;
+            }
+            .chip-inline .chip-label {
+                color: #64748b !important;
+            }
+            .chip-inline .chip-value {
+                color: #334155 !important;
+            }
+
+            .chip-extra {
+                background: #fffbeb !important;
+                border: 1px solid #fde68a !important;
+            }
+            .chip-extra .chip-label {
+                color: #b45309 !important;
+            }
+            .chip-extra .chip-value {
+                color: #b45309 !important;
+            }
+
+            .chip-net {
+                background: #ecfdf5 !important;
+                border: 1.5px solid #6ee7b7 !important;
+                box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1) !important;
+            }
+            .chip-net .chip-label {
+                color: #047857 !important;
+                font-weight: 800 !important;
+            }
+            .chip-net .chip-value {
+                color: #065f46 !important;
+                font-size: 13.5px !important;
+                font-weight: 800 !important;
+            }
+
+            .cell-action {
+                grid-area: action;
+                border-top: 1px dashed #f1f5f9 !important;
+                padding-top: 8px !important;
+                margin-top: 2px !important;
+            }
+            .cell-action .dropdown {
+                width: 100%;
+            }
+            .cell-action .btn-premium-action {
+                width: 100% !important;
+                height: 38px !important;
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                gap: 6px !important;
+                font-size: 12px !important;
+                font-weight: 700 !important;
+                border-radius: 8px !important;
+                background-color: #f8fafc !important;
+                border: 1.5px solid #cbd5e1 !important;
+                color: #334155 !important;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .cell-action .btn-premium-action:hover {
+                background-color: #f1f5f9 !important;
+                border-color: #94a3b8 !important;
+                color: #0f172a !important;
             }
         }
-        @media (min-width: 769px) {
+        @media (min-width: 992px) {
+            .financial-chip {
+                display: block;
+                background: transparent !important;
+                border: none !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+            }
+            .financial-chip .chip-label {
+                display: none !important;
+            }
+            .financial-chip .chip-value {
+                font-size: 13px !important;
+                color: inherit !important;
+            }
             .sales-hdr-actions {
                 display: flex;
                 gap: 8px;
@@ -390,31 +736,31 @@
                 </div>
 
                 {{-- KPI Stat Cards --}}
-                <div class="row g-3 mb-4">
+                <div class="row g-2 g-md-3 mb-4">
                     <div class="col-6 col-md-3">
                         <div class="sale-stat-card position-relative d-flex align-items-center" style="border: 1px solid #bfdbfe !important; background: linear-gradient(145deg, #f4f8ff, #ffffff) !important;">
-                            <div class="sale-stat-icon me-3" style="background-color: #dbeafe; color: #2563eb; width: 48px; height: 48px; border-radius: 50%;">
-                                <i class="fas fa-file-invoice fs-4"></i>
+                            <div class="sale-stat-icon me-2 me-md-3" style="background-color: #dbeafe; color: #2563eb; border-radius: 50%;">
+                                <i class="fas fa-file-invoice"></i>
                             </div>
                             <div>
-                                <div class="text-muted small fw-bold text-uppercase" style="font-size: 11px; color: #1e3a8a !important;">Total Invoices</div>
-                                <h4 class="fw-bold text-dark mb-0 mt-1" id="statTotalCount">{{ number_format($stats['total_count'] ?? 0) }}</h4>
+                                <div class="stat-label text-muted small fw-bold text-uppercase" style="font-size: 11px; color: #1e3a8a !important;">Total Invoices</div>
+                                <h4 class="stat-value fw-bold text-dark mb-0 mt-1" id="statTotalCount">{{ number_format($stats['total_count'] ?? 0) }}</h4>
                             </div>
-                            <div class="position-absolute" style="right: 16px; top: 50%; transform: translateY(-50%);">
+                            <div class="position-absolute d-none d-md-block" style="right: 16px; top: 50%; transform: translateY(-50%);">
                                 <i class="fas fa-file-alt" style="font-size: 24px; color: #2563eb; opacity: 0.8;"></i>
                             </div>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="sale-stat-card position-relative d-flex align-items-center" style="border: 1px solid #bbf7d0 !important; background: linear-gradient(145deg, #f0fdf4, #ffffff) !important;">
-                            <div class="sale-stat-icon me-3" style="background-color: #dcfce7; color: #16a34a; width: 48px; height: 48px; border-radius: 50%;">
-                                <i class="fas fa-coins fs-4"></i>
+                            <div class="sale-stat-icon me-2 me-md-3" style="background-color: #dcfce7; color: #16a34a; border-radius: 50%;">
+                                <i class="fas fa-coins"></i>
                             </div>
                             <div>
-                                <div class="text-muted small fw-bold text-uppercase" style="font-size: 11px; color: #14532d !important;">Total Net Revenue</div>
-                                <h4 class="fw-bold text-success mb-0 mt-1" id="statTotalNet" style="color: #16a34a !important;">Rs. {{ number_format($stats['total_net'] ?? 0, 2) }}</h4>
+                                <div class="stat-label text-muted small fw-bold text-uppercase" style="font-size: 11px; color: #14532d !important;">Total Revenue</div>
+                                <h4 class="stat-value fw-bold text-success mb-0 mt-1" id="statTotalNet" style="color: #16a34a !important;">Rs. {{ number_format($stats['total_net'] ?? 0, 2) }}</h4>
                             </div>
-                            <div class="position-absolute text-end" style="right: 16px; top: 50%; transform: translateY(-50%);">
+                            <div class="position-absolute text-end d-none d-md-block" style="right: 16px; top: 50%; transform: translateY(-50%);">
                                 <i class="fas fa-arrow-trend-up text-success mb-1" style="font-size: 14px; color: #16a34a !important;"></i>
                                 <div class="text-muted" style="font-size: 11px; color: #14532d !important;">100%</div>
                             </div>
@@ -422,30 +768,30 @@
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="sale-stat-card position-relative d-flex align-items-center" style="border: 1px solid #fed7aa !important; background: linear-gradient(145deg, #fffbeb, #ffffff) !important;">
-                            <div class="sale-stat-icon me-3" style="background-color: #ffedd5; color: #ea580c; width: 48px; height: 48px; border-radius: 50%;">
-                                <i class="fas fa-tags fs-4"></i>
+                            <div class="sale-stat-icon me-2 me-md-3" style="background-color: #ffedd5; color: #ea580c; border-radius: 50%;">
+                                <i class="fas fa-tags"></i>
                             </div>
                             <div>
-                                <div class="text-muted small fw-bold text-uppercase" style="font-size: 11px; color: #7c2d12 !important;">Discounts Given</div>
-                                <h4 class="fw-bold text-warning mb-0 mt-1" id="statTotalDiscount" style="color: #ea580c !important;">Rs. {{ number_format($stats['total_discount'] ?? 0, 2) }}</h4>
+                                <div class="stat-label text-muted small fw-bold text-uppercase" style="font-size: 11px; color: #7c2d12 !important;">Discounts</div>
+                                <h4 class="stat-value fw-bold text-warning mb-0 mt-1" id="statTotalDiscount" style="color: #ea580c !important;">Rs. {{ number_format($stats['total_discount'] ?? 0, 2) }}</h4>
                             </div>
-                            <div class="position-absolute text-end" style="right: 16px; top: 50%; transform: translateY(-50%);">
+                            <div class="position-absolute text-end d-none d-md-block" style="right: 16px; top: 50%; transform: translateY(-50%);">
                                 <div class="text-muted" style="font-size: 11px; color: #7c2d12 !important;">0%</div>
                             </div>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="sale-stat-card position-relative d-flex align-items-center" style="border: 1px solid #e9d5ff !important; background: linear-gradient(145deg, #faf5ff, #ffffff) !important;">
-                            <div class="sale-stat-icon me-3" style="background-color: #f3e8ff; color: #7e22ce; width: 48px; height: 48px; border-radius: 50%;">
-                                <i class="fas fa-check-circle fs-4"></i>
+                            <div class="sale-stat-icon me-2 me-md-3" style="background-color: #f3e8ff; color: #7e22ce; border-radius: 50%;">
+                                <i class="fas fa-check-circle"></i>
                             </div>
                             <div>
-                                <div class="text-muted small fw-bold text-uppercase" style="font-size: 11px; color: #4c1d95 !important;">Posted / Booked</div>
-                                <h4 class="fw-bold mb-0 mt-1" id="statStatusCounts" style="color: #7e22ce !important;">
+                                <div class="stat-label text-muted small fw-bold text-uppercase" style="font-size: 11px; color: #4c1d95 !important;">Posted / Booked</div>
+                                <h4 class="stat-value fw-bold mb-0 mt-1" id="statStatusCounts" style="color: #7e22ce !important;">
                                     {{ $stats['posted_count'] ?? 0 }} <span class="fs-6 fw-normal text-muted">/ {{ $stats['booked_count'] ?? 0 }}</span>
                                 </h4>
                             </div>
-                            <div class="position-absolute text-end" style="right: 16px; top: 50%; transform: translateY(-50%); width: 40px;">
+                            <div class="position-absolute text-end d-none d-md-block" style="right: 16px; top: 50%; transform: translateY(-50%); width: 40px;">
                                 <div class="text-muted mb-1" style="font-size: 11px; text-align: right; color: #4c1d95 !important;">50%</div>
                                 <div class="progress" style="height: 4px; border-radius: 2px;">
                                     <div class="progress-bar bg-success" role="progressbar" style="width: 50%; background-color: #16a34a !important;" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
@@ -536,7 +882,7 @@
                                         <label class="form-label mb-1"><i class="fas fa-link text-muted me-1"></i> M.Bill / Ref</label>
                                         <input type="text" class="form-control" name="reference" id="filter_reference" placeholder="M.Bill...">
                                     </div>
-                                    <div class="col-6 col-md-3">
+                                    <div class="col-12 col-md-3">
                                         <label class="form-label mb-1"><i class="far fa-user text-muted me-1"></i> Customer</label>
                                         <select class="form-select select2-customer" name="customer_id" id="filter_customer_id" style="width: 100%;">
                                             <option value="">All Customers</option>
@@ -548,10 +894,10 @@
                                         </select>
                                     </div>
                                     <div class="col-12 d-flex justify-content-end gap-2 mt-2">
-                                        <button type="button" class="btn btn-premium-secondary px-3" id="btnReset">
+                                        <button type="button" class="btn btn-premium-secondary px-3 flex-fill flex-md-grow-0" id="btnReset">
                                             <i class="fas fa-undo me-1"></i>Reset
                                         </button>
-                                        <button type="button" class="btn btn-premium-primary px-4" id="btnSearch">
+                                        <button type="button" class="btn btn-premium-primary px-4 flex-fill flex-md-grow-0" id="btnSearch">
                                             <i class="fas fa-search me-1"></i>Search
                                         </button>
                                     </div>
