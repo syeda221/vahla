@@ -967,6 +967,8 @@
                                                         }
                                                     } elseif ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
                                                         $totalWt = (float) ($item->total_pieces ?: $item->qty);
+                                                        $rawStoredQty = (float) $item->qty;
+                                                        $vUnit = strtolower(trim($variantData['unit'] ?? ($liveVariant['unit'] ?? '')));
                                                         
                                                         // Infer unit based on price ratio to total
                                                         $grossTotal = (float)$item->total + (float)$item->discount_amount;
@@ -984,7 +986,19 @@
                                                             }
                                                         }
 
-                                                        if ($isWtPcs) {
+                                                        if (!empty($vUnit) && !in_array($vUnit, ['kg', 'standard', 'default', '-'])) {
+                                                            if ($vUnit === 'gm' || $vUnit === 'g') {
+                                                                $unitMode = 'gm';
+                                                                $toggleText = 'Gm';
+                                                                $toggleBtnClass = 'btn-outline-info';
+                                                                $displayQty = ($rawStoredQty > 0 && abs($rawStoredQty - $itemTotalPieces) > 0.0001) ? $rawStoredQty : $itemTotalPieces * 1000;
+                                                            } else {
+                                                                $unitMode = $vUnit;
+                                                                $toggleText = ucfirst($vUnit);
+                                                                $toggleBtnClass = 'btn-outline-info';
+                                                                $displayQty = ($rawStoredQty > 0 && abs($rawStoredQty - $itemTotalPieces) > 0.0001) ? $rawStoredQty : ($ppb > 0 ? round($itemTotalPieces / $ppb, 4) : $rawStoredQty);
+                                                            }
+                                                        } elseif ($isWtPcs) {
                                                             $unitMode = 'pcs';
                                                             $toggleText = 'Pcs';
                                                             $toggleBtnClass = 'btn-outline-info';
@@ -998,10 +1012,12 @@
                                                             $unitMode = 'kg';
                                                             $toggleText = 'Kg';
                                                             $toggleBtnClass = 'btn-outline-primary';
-                                                            $displayQty = $totalWt;
+                                                            $displayQty = ($rawStoredQty > 0 ? $rawStoredQty : $totalWt);
                                                         }
                                                     } elseif ($sizeMode === 'by_feet') {
                                                         $totalFt = (float) $item->total_pieces;
+                                                        $rawStoredQty = (float) $item->qty;
+                                                        $vUnit = strtolower(trim($variantData['unit'] ?? ($liveVariant['unit'] ?? '')));
                                                         $grossTotal = (float)$item->total + (float)$item->discount_amount;
                                                         $basePricePerFt = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
                                                         $storedPrice = (float) $item->price;
@@ -1017,7 +1033,19 @@
                                                             }
                                                         }
 
-                                                        if ($isFtPcs) {
+                                                        if (!empty($vUnit) && !in_array($vUnit, ['ft', 'feet', 'standard', 'default', '-'])) {
+                                                            if (in_array($vUnit, ['in', 'inch', 'inches'])) {
+                                                                $unitMode = 'in';
+                                                                $toggleText = 'In';
+                                                                $toggleBtnClass = 'btn-outline-warning';
+                                                                $displayQty = ($rawStoredQty > 0 && abs($rawStoredQty - $itemTotalPieces) > 0.0001) ? $rawStoredQty : $itemTotalPieces * 12;
+                                                            } else {
+                                                                $unitMode = $vUnit;
+                                                                $toggleText = ucfirst($vUnit);
+                                                                $toggleBtnClass = 'btn-outline-info';
+                                                                $displayQty = ($rawStoredQty > 0 && abs($rawStoredQty - $itemTotalPieces) > 0.0001) ? $rawStoredQty : ($ppb > 0 ? round($itemTotalPieces / $ppb, 4) : $rawStoredQty);
+                                                            }
+                                                        } elseif ($isFtPcs) {
                                                             $unitMode = 'pcs';
                                                             $toggleText = 'Pcs';
                                                             $toggleBtnClass = 'btn-outline-info';
@@ -1031,10 +1059,12 @@
                                                             $unitMode = 'ft';
                                                             $toggleText = 'Ft';
                                                             $toggleBtnClass = 'btn-outline-primary';
-                                                            $displayQty = $totalFt;
+                                                            $displayQty = ($rawStoredQty > 0 ? $rawStoredQty : $totalFt);
                                                         }
                                                     } elseif ($sizeMode === 'by_meter') {
                                                         $totalMeter = (float) $item->total_pieces;
+                                                        $rawStoredQty = (float) $item->qty;
+                                                        $vUnit = strtolower(trim($variantData['unit'] ?? ($liveVariant['unit'] ?? '')));
                                                         $grossTotal = (float)$item->total + (float)$item->discount_amount;
                                                         $basePricePerMtr = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
                                                         $storedPrice = (float) $item->price;
@@ -1050,7 +1080,19 @@
                                                             }
                                                         }
 
-                                                        if ($isMtrPcs) {
+                                                        if (!empty($vUnit) && !in_array($vUnit, ['m', 'meter', 'mtr', 'standard', 'default', '-'])) {
+                                                            if ($vUnit === 'mm') {
+                                                                $unitMode = 'mm';
+                                                                $toggleText = 'mm';
+                                                                $toggleBtnClass = 'btn-outline-info';
+                                                                $displayQty = ($rawStoredQty > 0 && abs($rawStoredQty - $itemTotalPieces) > 0.0001) ? $rawStoredQty : $itemTotalPieces * 1000;
+                                                            } else {
+                                                                $unitMode = $vUnit;
+                                                                $toggleText = ucfirst($vUnit);
+                                                                $toggleBtnClass = 'btn-outline-info';
+                                                                $displayQty = ($rawStoredQty > 0 && abs($rawStoredQty - $itemTotalPieces) > 0.0001) ? $rawStoredQty : ($ppb > 0 ? round($itemTotalPieces / $ppb, 4) : $rawStoredQty);
+                                                            }
+                                                        } elseif ($isMtrPcs) {
                                                             $unitMode = 'pcs';
                                                             $toggleText = 'Pcs';
                                                             $toggleBtnClass = 'btn-outline-info';
@@ -1064,7 +1106,7 @@
                                                             $unitMode = 'm';
                                                             $toggleText = 'Mtr';
                                                             $toggleBtnClass = 'btn-outline-primary';
-                                                            $displayQty = $totalMeter;
+                                                            $displayQty = ($rawStoredQty > 0 ? $rawStoredQty : $totalMeter);
                                                         }
                                                     } else {
                                                         $displayQty = (float) ($item->total_pieces ?: $item->qty);

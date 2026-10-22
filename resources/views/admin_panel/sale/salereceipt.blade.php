@@ -342,45 +342,51 @@
                     @php
                         $sizeMode = $item['size_mode'] ?? 'std';
                         $totalPieces = (float)($item['total_pieces'] ?? 0);
-                        $variantUnit = strtolower($item['variant_unit'] ?? (is_array($item['color'] ?? null) ? ($item['color']['unit'] ?? '') : ''));
+                        $variantUnit = trim($item['variant_unit'] ?? (is_array($item['color'] ?? null) ? ($item['color']['unit'] ?? '') : ''));
+                        $vUnitLower = strtolower($variantUnit);
+                        $rawSoldQty = (float)($item['qty_box'] ?? 0);
+                        $totalPieces = (float)($item['total_pieces'] ?? 0);
+                        $convFactor = (float)($item['pieces_per_box'] ?? 1);
+                        if ($convFactor <= 0) $convFactor = 1;
 
                         $dispQty = $totalPieces;
                         $dispUnit = 'Pcs';
 
-                        if ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
-                            $kgWt = (float)($item['qty_box'] ?? $item['qty'] ?? 0);
-                            $wtConv = (float)($item['pieces_per_box'] ?? 0);
-                            if ($wtConv <= 0) $wtConv = 1;
-
-                            if (in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
-                                if ($wtConv > 0 && $wtConv != 1) {
-                                    $dispQty = round($kgWt / $wtConv, 4);
-                                } elseif (!empty($item['price']) && $item['price'] > 0 && !empty($item['total']) && $item['total'] > 0) {
-                                    $dispQty = round($item['total'] / $item['price'], 4);
-                                } else {
-                                    $dispQty = $totalPieces;
-                                }
-                                $dispUnit = 'Pcs';
-                            } elseif (in_array($variantUnit, ['gm', 'g']) || $sizeMode === 'by_gm') {
+                        if (!empty($variantUnit) && !in_array($vUnitLower, ['standard', 'default', '-'])) {
+                            // Variant has its own specified unit (e.g. Ft, Mtr, Kg, Gm, Pcs, Box, Roll, etc.)
+                            if ($rawSoldQty > 0) {
+                                $dispQty = $rawSoldQty;
+                            } elseif ($convFactor > 0 && abs($convFactor - 1.0) > 0.00001) {
+                                $dispQty = round($totalPieces / $convFactor, 4);
+                            } else {
+                                $dispQty = $totalPieces;
+                            }
+                            $dispUnit = ucfirst($variantUnit);
+                        } elseif ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
+                            $kgWt = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                            if ($vUnitLower === 'gm' || $vUnitLower === 'g' || $sizeMode === 'by_gm') {
                                 $dispQty = $kgWt * 1000;
                                 $dispUnit = 'Gm';
                             } else {
                                 $dispQty = $kgWt;
                                 $dispUnit = 'Kg';
                             }
-                        } elseif (in_array($sizeMode, ['by_feet', 'by_meter'])) {
-                            $dispQty = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
-                            $dispUnit = $sizeMode === 'by_feet' ? 'Ft' : 'Mtr';
-                        } elseif ($sizeMode == 'by_cartons' || $sizeMode == 'by_size') {
-                            $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
+                        } elseif ($sizeMode === 'by_meter') {
+                            $dispQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                            $dispUnit = 'Mtr';
+                        } elseif ($sizeMode === 'by_feet') {
+                            $dispQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                            $dispUnit = 'Ft';
+                        } elseif ($sizeMode === 'by_pieces') {
+                            $dispQty = $totalPieces;
+                            $dispUnit = 'Pcs';
+                        } elseif ($sizeMode === 'by_cartons' || $sizeMode === 'by_size') {
+                            $piecesPerBox = (int)$convFactor;
                             if ($piecesPerBox <= 0) $piecesPerBox = 1;
                             $boxes = floor($totalPieces / $piecesPerBox);
                             $loose = fmod($totalPieces, $piecesPerBox);
 
-                            if (in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
-                                $dispQty = $totalPieces;
-                                $dispUnit = 'Pcs';
-                            } elseif ($boxes > 0 && $loose > 0) {
+                            if ($boxes > 0 && $loose > 0) {
                                 $dispQty = "$boxes.$loose";
                                 $dispUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
                             } elseif ($boxes > 0) {
@@ -391,14 +397,8 @@
                                 $dispUnit = 'Pcs';
                             }
                         } else {
-                            if ($sizeMode == 'by_pieces' || in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
-                                $dispQty = $totalPieces;
-                                $dispUnit = 'Pcs';
-                            } else {
-                                $rawQty = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
-                                $dispQty = $rawQty;
-                                $dispUnit = !empty($variantUnit) ? ucfirst($variantUnit) : 'Pcs';
-                            }
+                            $dispQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                            $dispUnit = !empty($variantUnit) ? ucfirst($variantUnit) : 'Pcs';
                         }
 
                         // Safety fallback: if dispQty is 0 but price and total exist

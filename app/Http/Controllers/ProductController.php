@@ -301,16 +301,14 @@ class ProductController extends Controller
                     }
                     if ($vPpb <= 0) $vPpb = 1;
 
-                    $vBalance = 0;
-
                     if (isset($v['conv_factor']) && ($p->size_mode === 'by_kg' || $p->size_mode === 'by_meter' || $p->size_mode === 'by_feet')) {
-                        // Weight/Meter/Feet Unit: Calculate integer pieces based on total Kg/Mtr/Ft divided by conversion factor
+                        // Weight/Meter/Feet Unit: Calculate variant units based on total master units divided by conversion factor
                         $factor = (float) $v['conv_factor'];
                         $factor = $factor > 0 ? $factor : 1;
                         if ($factor == 1) {
                             $vBalance = max(0, $stockPieces);
                         } else {
-                            $vBalance = (int) floor(round(max(0, $stockPieces) / $factor, 4));
+                            $vBalance = round(max(0, $stockPieces) / $factor, 4);
                         }
                     } else {
                         // Initial Stock in Pieces
@@ -393,9 +391,7 @@ class ProductController extends Controller
 
                     if (isset($v['conv_factor']) && ($p->size_mode === 'by_kg' || $p->size_mode === 'by_meter' || $p->size_mode === 'by_feet')) {
                         $factor = (float) $v['conv_factor'];
-                        if ($factor != 1 && !isset($v['unit'])) {
-                            $vUnitName = 'Pcs';
-                        }
+                        $vUnitName = !empty($v['unit']) ? $v['unit'] : ($factor != 1 ? 'Pcs' : $vUnitName);
                         
                         if ($factor == 1) {
                             if ($p->size_mode === 'by_meter') {
@@ -427,8 +423,9 @@ class ProductController extends Controller
                                 }
                             }
                         } else {
-                            $pcsCount = (int) floor($vBalance);
-                            $vStockDisplay = "{$pcsCount}";
+                            $cleanStock = round($vBalance, 4);
+                            $cleanStr = ($cleanStock == (int)$cleanStock) ? (string)((int)$cleanStock) : rtrim(rtrim(number_format($cleanStock, 2, '.', ''), '0'), '.');
+                            $vStockDisplay = "{$cleanStr} {$vUnitName}";
                         }
                     } elseif (($p->size_mode === 'by_cartons' || $p->size_mode === 'by_size') && $vPpb > 1) {
                         $vBoxes = (int) floor($vBalance / $vPpb);
@@ -1057,21 +1054,12 @@ class ProductController extends Controller
                         $vQ = (float)($vObj['stock'] ?? 0);
                         if (in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet']) && isset($vObj['conv_factor']) && (float)$vObj['conv_factor'] > 0) {
                             $cf = (float)$vObj['conv_factor'];
-                            $vQ = $cf == 1 ? $stockPieces : (int)floor($stockPieces / $cf);
+                            $vQ = $cf == 1 ? $stockPieces : round($stockPieces / $cf, 4);
                         }
                         $vQDisplay = (float)$vQ == (int)$vQ ? (int)$vQ : rtrim(rtrim(number_format($vQ, 2), '0'), '.');
                         $colorStyle = $vQ > 0 ? '#059669' : '#dc2626';
 
-                        $vUnitSuffix = '';
-                        if ($product->size_mode === 'by_feet') {
-                            $vUnitSuffix = $isBase ? ' Ft' : ' Pcs';
-                        } elseif ($product->size_mode === 'by_meter') {
-                            $vUnitSuffix = $isBase ? ' Mtr' : ' Pcs';
-                        } elseif ($product->size_mode === 'by_kg') {
-                            $vUnitSuffix = $isBase ? ' Kg' : ' Pcs';
-                        } elseif (!empty($vUnitVal)) {
-                            $vUnitSuffix = ' ' . $vUnitVal;
-                        }
+                        $vUnitSuffix = !empty($vUnitVal) ? (' ' . $vUnitVal) : ($isBase ? (' ' . $productUnitName) : ' Pcs');
 
                         $variantsPreviewHtml .= "<span style=\"background:#f1f5f9; border:1px solid #e2e8f0; border-radius:4px; padding:2px 6px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:3px;\"><span style=\"color:#475569;\">{$vLbl}:</span> <strong style=\"color:{$colorStyle};\">{$vQDisplay}{$vUnitSuffix}</strong></span> ";
                     }
@@ -1384,8 +1372,8 @@ class ProductController extends Controller
             $purchasePricePerPiece = $piecesPerBox > 1 ? ($inputPurchCtn / $piecesPerBox) : $inputPurchCtn;
 
         } else {
-            // Treat by_pieces, by_kg, by_meter, by_gm as piece-based mode
-            $pieceQuantity = (int) $request->piece_quantity;
+            // Treat by_pieces, by_kg, by_meter, by_feet, by_gm as piece-based mode
+            $pieceQuantity = (float) $request->piece_quantity;
             $piecesPerBox = 1;
             $boxesQuantity = $pieceQuantity;
             $totalStockQty = $pieceQuantity;
@@ -1857,7 +1845,7 @@ class ProductController extends Controller
 
         } else {
             // Treat by_pieces, by_kg, by_meter, by_gm, by_feet, by_ton as piece-based mode
-            $pieceQuantity = (int) $request->piece_quantity;
+            $pieceQuantity = (float) $request->piece_quantity;
             $piecesPerBox = 1;
 
             // Pricing
@@ -2556,7 +2544,7 @@ class ProductController extends Controller
                 if ($isBase || $conv <= 0) {
                     $liveMap[$idx] = max(0, $stockPieces);
                 } else {
-                    $liveMap[$idx] = (int) floor(round(max(0, $stockPieces) / $conv, 4));
+                    $liveMap[$idx] = round(max(0, $stockPieces) / $conv, 4);
                 }
             }
             return $liveMap;

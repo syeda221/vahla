@@ -1214,8 +1214,8 @@
                     let pieceWt = parseFloat(pieceWtInp?.value || 0);
 
                     if (baseStock > 0 && factor > 0 && stockInp) {
-                        const calcPcs = Math.round(baseStock / factor);
-                        stockInp.value = calcPcs;
+                        const calcVal = baseStock / factor;
+                        stockInp.value = (calcVal % 1 === 0) ? calcVal : parseFloat(calcVal.toFixed(3));
                     }
                 });
             }

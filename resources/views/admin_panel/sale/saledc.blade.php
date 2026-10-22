@@ -381,39 +381,67 @@
                                 $sizeMode = $item['size_mode'] ?? 'by_size';
                                 $variantUnit = strtolower($item['variant_unit'] ?? '');
                                 
-                                // Disp Qty
+                                // Disp Qty & Unit
+                                $rawSoldQty = (float)($item['qty_box'] ?? 0);
+                                $totalPieces = (float)($item['total_pieces'] ?? 0);
+                                $convFactor = (float)($item['pieces_per_box'] ?? 1);
+                                if ($convFactor <= 0) $convFactor = 1;
+                                $vUnitRaw = trim($item['variant_unit'] ?? '');
+                                $vUnitLower = strtolower($vUnitRaw);
+
                                 $dispQty = $totalPieces;
                                 $dispUnit = 'Pcs';
-                                if ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
-                                    $kgWt = (float)($item['qty_box'] ?? $item['qty'] ?? 0);
-                                    $wtConv = (float)($item['pieces_per_box'] ?? 0);
-                                    if ($wtConv <= 0) $wtConv = 1;
-                                    if (in_array($variantUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
-                                        $dispQty = $kgWt > 0 ? $kgWt / $wtConv : 0;
-                                        $dispUnit = 'Pcs';
-                                    } elseif (in_array($variantUnit, ['gm', 'g'])) {
+
+                                if (!empty($vUnitRaw) && !in_array($vUnitLower, ['standard', 'default', '-'])) {
+                                    // Variant has its own specified unit (e.g. Ft, Mtr, Kg, Gm, Pcs, Box, Roll, etc.)
+                                    if ($rawSoldQty > 0) {
+                                        $dispQty = $rawSoldQty;
+                                    } elseif ($convFactor > 0 && abs($convFactor - 1.0) > 0.00001) {
+                                        $dispQty = round($totalPieces / $convFactor, 4);
+                                    } else {
+                                        $dispQty = $totalPieces;
+                                    }
+                                    $dispUnit = ucfirst($vUnitRaw);
+                                } elseif ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
+                                    $kgWt = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                                    if ($vUnitLower === 'gm' || $vUnitLower === 'g' || $sizeMode === 'by_gm') {
                                         $dispQty = $kgWt * 1000;
                                         $dispUnit = 'Gm';
                                     } else {
                                         $dispQty = $kgWt;
                                         $dispUnit = 'Kg';
                                     }
-                                } else {
-                                    if ($sizeMode == 'by_pieces') {
+                                } elseif ($sizeMode === 'by_meter') {
+                                    $dispQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                                    $dispUnit = 'Mtr';
+                                } elseif ($sizeMode === 'by_feet') {
+                                    $dispQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                                    $dispUnit = 'Ft';
+                                } elseif ($sizeMode === 'by_pieces') {
+                                    $dispQty = $totalPieces;
+                                    $dispUnit = 'Pcs';
+                                } elseif ($sizeMode === 'by_cartons' || $sizeMode === 'by_size') {
+                                    $piecesPerBox = (int)$convFactor;
+                                    if ($piecesPerBox <= 0) $piecesPerBox = 1;
+                                    $boxes = floor($totalPieces / $piecesPerBox);
+                                    $loosePieces = fmod($totalPieces, $piecesPerBox);
+
+                                    if ($boxes > 0 && $loosePieces == 0) {
+                                        $dispQty = $boxes;
+                                        $dispUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
+                                    } elseif ($boxes == 0 && $loosePieces > 0) {
+                                        $dispQty = $loosePieces;
+                                        $dispUnit = 'Pcs';
+                                    } elseif ($boxes > 0 && $loosePieces > 0) {
+                                        $dispQty = "{$boxes}.{$loosePieces}";
+                                        $dispUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
+                                    } else {
                                         $dispQty = $totalPieces;
                                         $dispUnit = 'Pcs';
-                                    } else {
-                                        if ($boxes > 0 && $loosePieces == 0) {
-                                            $dispQty = $boxes;
-                                            $dispUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
-                                        } elseif ($boxes == 0 && $loosePieces > 0) {
-                                            $dispQty = $loosePieces;
-                                            $dispUnit = 'Pcs';
-                                        } else {
-                                            $dispQty = $totalPieces;
-                                            $dispUnit = 'Pcs';
-                                        }
                                     }
+                                } else {
+                                    $dispQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                                    $dispUnit = !empty($vUnitRaw) ? ucfirst($vUnitRaw) : 'Pcs';
                                 }
 
                                 // Format product title
@@ -437,6 +465,19 @@
                                 <td style="text-align: center;">{{ $sNo }}</td>
                                 <td class="desc-col" style="font-weight: 500;">
                                     {{ $productTitle }}
+                                    @if($sizeMode === 'by_kg' && !in_array(strtolower($dispUnit), ['kg', 'gm', 'g']) && $totalPieces > 0)
+                                        <div style="font-size: 11px; color: #64748b; font-weight: normal; margin-top: 1px;">
+                                            (Weight: {{ ($totalPieces == (int)$totalPieces) ? (int)$totalPieces : number_format($totalPieces, 2) }} Kg)
+                                        </div>
+                                    @elseif($sizeMode === 'by_meter' && !in_array(strtolower($dispUnit), ['m', 'mtr', 'meter', 'mm']) && $totalPieces > 0)
+                                        <div style="font-size: 11px; color: #64748b; font-weight: normal; margin-top: 1px;">
+                                            (Length: {{ ($totalPieces == (int)$totalPieces) ? (int)$totalPieces : number_format($totalPieces, 2) }} Mtr)
+                                        </div>
+                                    @elseif($sizeMode === 'by_feet' && !in_array(strtolower($dispUnit), ['ft', 'feet', 'in', 'inch', 'inches']) && $totalPieces > 0)
+                                        <div style="font-size: 11px; color: #64748b; font-weight: normal; margin-top: 1px;">
+                                            (Length: {{ ($totalPieces == (int)$totalPieces) ? (int)$totalPieces : number_format($totalPieces, 2) }} Ft)
+                                        </div>
+                                    @endif
                                     @if(!empty($item['description']))
                                         <div style="font-size: 11px; color: #475569; font-weight: normal; margin-top: 2px;">
                                             {{ $item['description'] }}

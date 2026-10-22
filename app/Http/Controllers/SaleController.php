@@ -1622,13 +1622,16 @@ class SaleController extends Controller
                         }
                     }
 
-                    // Calculate boxes for storage (reverse calculation)
-                    // For weight/measure modes (kg/gm/feet/meter), qty equals total_pieces (quantity in that unit).
-                    // Only carton/size modes treat qty as a BOX count divided by pieces-per-box.
+                    // Calculate boxes / sold qty for storage
+                    // For cartons/size modes, qty is a box count (totalPieces / ppb).
+                    // For measurement/unit modes (kg/meter/feet/pieces), qty stores the exact sold quantity
+                    // in that variant's unit (e.g. 1.5 Mtr, 20 Ft, 50 Pcs), while total_pieces holds
+                    // converted base units for warehouse stock deduction.
                     if (in_array($product->size_mode, ['by_cartons', 'by_size'])) {
                         $storedQtyBox = $ppb > 0 ? ($totalPieces / $ppb) : $totalPieces;
                     } else {
-                        $storedQtyBox = $totalPieces;
+                        $rawSold = (float) ($quantities[$index] ?? 0);
+                        $storedQtyBox = $rawSold > 0 ? $rawSold : $totalPieces;
                     }
                     
                     $productName = $product->item_name;
@@ -1663,7 +1666,7 @@ class SaleController extends Controller
                             $lineGross = $storedQtyBox * $dbPrice;
                         }
                     } else {
-                        $lineGross = $totalPieces * $dbPrice;
+                        $lineGross = $storedQtyBox * $dbPrice;
                     }
                 }
 

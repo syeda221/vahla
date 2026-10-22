@@ -74,7 +74,7 @@ class ReportingController extends Controller
             if ($unitType === 'weight_kg') {
                 $productsQuery->whereIn('size_mode', ['by_kg', 'by_gm', 'by_ton']);
             } elseif ($unitType === 'area_m2') {
-                $productsQuery->whereIn('size_mode', ['by_size', 'by_m2']);
+                $productsQuery->whereIn('size_mode', ['by_size', 'by_m2', 'by_meter', 'by_feet']);
             } elseif ($unitType === 'cartons_pcs') {
                 $productsQuery->whereIn('size_mode', ['by_cartons', 'by_pieces', 'std']);
             }
@@ -344,7 +344,7 @@ class ReportingController extends Controller
 
                         $isBase = !empty($v['is_base_variant']) || $factor == 1.0;
 
-                        $initial        = $isBase ? $parentOpening : (int) floor(round($parentOpening / $factor, 4));
+                        $initial        = $isBase ? $parentOpening : round($parentOpening / $factor, 4);
                         $purchased      = $parentPurchased / $factor;
                         $purchaseAmount = $parentPurchaseAmount;
                         $sold           = $parentSold / $factor;
@@ -352,7 +352,7 @@ class ReportingController extends Controller
                         $returnedQty    = $parentReturnedQty / $factor;
                         $pReturned      = $parentPReturned / $factor;
                         $adjustments    = $parentAdjustments / $factor;
-                        $balance        = $isBase ? $parentClosing : (int) floor(round($parentClosing / $factor, 4));
+                        $balance        = $isBase ? $parentClosing : round($parentClosing / $factor, 4);
                     } else {
                         // Initial Stock in Pieces
                         $vRawStock = (string) ($v['stock'] ?? '0');
@@ -489,7 +489,7 @@ class ReportingController extends Controller
                     } else {
                         $cartons = '-';
                         $loose   = $balance;
-                        $decimals = in_array($product->size_mode, ['by_kg','by_gm','by_ton','by_meter','by_feet']) ? 2 : (($balance == (int)$balance) ? 0 : 3);
+                        $decimals = ($balance == (int)$balance) ? 0 : (in_array($product->size_mode, ['by_kg','by_gm','by_ton','by_meter','by_feet']) ? 2 : 3);
                         $formattedNum = ($decimals > 0) ? rtrim(rtrim(number_format($balance, $decimals, '.', ''), '0'), '.') : number_format($balance, 0, '.', '');
                         $formattedStock = "{$formattedNum} {$vUnitName}";
                         $cartonDisplay = '—';

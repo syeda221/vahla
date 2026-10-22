@@ -775,20 +775,20 @@
                                                     $vQ = (float)($v['stock'] ?? $v['variant_stock'] ?? 0);
                                                     if (in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet']) && isset($v['conv_factor']) && (float)$v['conv_factor'] > 0) {
                                                         $cf = (float)$v['conv_factor'];
-                                                        $vQ = $cf == 1 ? $stockPieces : (int)floor($stockPieces / $cf);
+                                                        $vQ = $cf == 1 ? $stockPieces : round($stockPieces / $cf, 4);
                                                     }
                                                     $vQDisplay = (float)$vQ == (int)$vQ ? (int)$vQ : rtrim(rtrim(number_format($vQ, 2), '0'), '.');
                                                     $colorStyle = $vQ > 0 ? '#059669' : '#dc2626';
 
                                                     $vUnitSuffix = '';
-                                                    if ($product->size_mode === 'by_feet') {
+                                                    if (!empty($vUnitVal)) {
+                                                        $vUnitSuffix = ' ' . $vUnitVal;
+                                                    } elseif ($product->size_mode === 'by_feet') {
                                                         $vUnitSuffix = $isBase ? ' Ft' : ' Pcs';
                                                     } elseif ($product->size_mode === 'by_meter') {
                                                         $vUnitSuffix = $isBase ? ' Mtr' : ' Pcs';
                                                     } elseif ($product->size_mode === 'by_kg') {
                                                         $vUnitSuffix = $isBase ? ' Kg' : ' Pcs';
-                                                    } elseif (!empty($vUnitVal)) {
-                                                        $vUnitSuffix = ' ' . $vUnitVal;
                                                     }
                                                 @endphp
                                                 <span style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:4px; padding:2px 6px; font-weight:600; white-space:nowrap; display:inline-flex; align-items:center; gap:3px;">
@@ -1659,7 +1659,7 @@ $(document).ready(function () {
                         if (rowIsBase) {
                             input.val(baseMaster);
                         } else {
-                            input.val(rowConv > 0 ? Math.floor(baseMaster / rowConv) : 0);
+                            input.val(rowConv > 0 ? (Math.round((baseMaster / rowConv) * 10000) / 10000) : 0);
                         }
                     }
                 });

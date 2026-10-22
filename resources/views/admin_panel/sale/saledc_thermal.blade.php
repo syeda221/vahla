@@ -256,17 +256,49 @@
                         // Size mode logic for display
                         $sizeMode = $item['size_mode'] ?? 'std';
                         $totalPieces = (float) $item['total_pieces'];
-
-                        // Same layout logic from existing saledc formatting
-                        $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
-                        if ($piecesPerBox <= 0) $piecesPerBox = 1;
-                        $boxes = floor($totalPieces / $piecesPerBox);
-                        $loosePieces = fmod($totalPieces, $piecesPerBox);
+                        $rawSoldQty = (float)($item['qty_box'] ?? 0);
+                        $convFactor = (float)($item['pieces_per_box'] ?? 1);
+                        if ($convFactor <= 0) $convFactor = 1;
+                        $variantUnit = trim($item['variant_unit'] ?? (is_array($item['color'] ?? null) ? ($item['color']['unit'] ?? '') : ''));
+                        $vUnitLower = strtolower($variantUnit);
 
                         $qtyStr = "";
-                        if ($sizeMode == 'by_pieces') {
-                            $qtyStr = "{$totalPieces} Pcs";
-                        } else {
+                        $dispQty = $totalPieces;
+                        $dispUnit = 'Pcs';
+
+                        if (!empty($variantUnit) && !in_array($vUnitLower, ['standard', 'default', '-'])) {
+                            if ($rawSoldQty > 0) {
+                                $dispQty = $rawSoldQty;
+                            } elseif ($convFactor > 0 && abs($convFactor - 1.0) > 0.00001) {
+                                $dispQty = round($totalPieces / $convFactor, 4);
+                            } else {
+                                $dispQty = $totalPieces;
+                            }
+                            $dispUnit = ucfirst($variantUnit);
+                        } elseif ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
+                            $kgWt = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                            if ($vUnitLower === 'gm' || $vUnitLower === 'g' || $sizeMode === 'by_gm') {
+                                $dispQty = $kgWt * 1000;
+                                $dispUnit = 'Gm';
+                            } else {
+                                $dispQty = $kgWt;
+                                $dispUnit = 'Kg';
+                            }
+                        } elseif ($sizeMode === 'by_meter') {
+                            $dispQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                            $dispUnit = 'Mtr';
+                        } elseif ($sizeMode === 'by_feet') {
+                            $dispQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                            $dispUnit = 'Ft';
+                        } elseif ($sizeMode === 'by_pieces') {
+                            $dispQty = $totalPieces;
+                            $dispUnit = 'Pcs';
+                        } elseif ($sizeMode === 'by_cartons' || $sizeMode === 'by_size') {
+                            $piecesPerBox = (int)$convFactor;
+                            if ($piecesPerBox <= 0) $piecesPerBox = 1;
+                            $boxes = floor($totalPieces / $piecesPerBox);
+                            $loosePieces = fmod($totalPieces, $piecesPerBox);
+
                             if ($boxes > 0 && $loosePieces > 0) {
                                 $cStr = $sizeMode == 'by_cartons' ? 'Crtn' : 'Box';
                                 $qtyStr = "{$boxes} {$cStr} + {$loosePieces} Pc";
@@ -276,6 +308,14 @@
                             } else {
                                 $qtyStr = "{$loosePieces} Pcs";
                             }
+                        } else {
+                            $dispQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                            $dispUnit = !empty($variantUnit) ? ucfirst($variantUnit) : 'Pcs';
+                        }
+
+                        if (empty($qtyStr)) {
+                            $formattedQty = ($dispQty == (int)$dispQty) ? (int)$dispQty : number_format($dispQty, 3);
+                            $qtyStr = "{$formattedQty} {$dispUnit}";
                         }
 
                         $sizeStr = '';
