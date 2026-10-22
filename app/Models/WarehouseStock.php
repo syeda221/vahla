@@ -13,7 +13,6 @@ class WarehouseStock extends Model
         'warehouse_id',
         'product_id',
         'quantity',
-        'boxes_quantity',
         'total_pieces',
         'remarks',
     ];

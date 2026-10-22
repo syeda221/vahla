@@ -23,6 +23,8 @@ class SaleReturnController extends Controller
         $accounts = Account::whereHas('head', function($q) {
             $q->whereIn('name', ['Cash', 'Bank']);
         })->where('status', 1)->orderBy('title')->get();
+        $warehouses = Warehouse::orderBy('warehouse_name')->get();
+        $defaultWarehouseId = $sale->items->first()?->warehouse_id ?? $sale->warehouse_id ?? 1;
         
         // Calculate already returned quantities
         $pastReturns = SaleReturn::where('sale_id', $id)
@@ -154,7 +156,7 @@ class SaleReturnController extends Controller
             $item->discount = $item->discount_amount ?? $item->discount ?? $item->per_discount ?? 0;
         });
         
-        return view('admin_panel.sale.sale_return.create', compact('sale', 'accounts', 'returnedQtyMap'));
+        return view('admin_panel.sale.sale_return.create', compact('sale', 'accounts', 'returnedQtyMap', 'warehouses', 'defaultWarehouseId'));
     }
 
     /**
@@ -165,7 +167,7 @@ class SaleReturnController extends Controller
         $validated = $request->validate([
             'sale_id' => 'nullable|exists:sales,id',
             'customer_id' => 'nullable',
-            'warehouse_id' => 'required|exists:warehouses,id',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
             'return_date' => 'required|date',
             'product_id' => 'required|array',
             'product_id.*' => 'required|exists:products,id',
@@ -223,18 +225,22 @@ class SaleReturnController extends Controller
                 throw new \Exception("Please enter a return quantity for at least one item.");
             }
 
+            $sale = !empty($validated['sale_id']) ? Sale::with('items')->find($validated['sale_id']) : null;
+            $returnWarehouseId = !empty($validated['warehouse_id']) 
+                ? (int)$validated['warehouse_id'] 
+                : (int)($sale?->items?->first()?->warehouse_id ?? 1);
+
             // Create Sale Return Header
             $return = SaleReturn::create([
                 'sale_id' => $validated['sale_id'] ?? null,
                 'return_invoice' => $nextInvoice,
                 'customer_id' => $customerId,
-                'warehouse_id' => $validated['warehouse_id'],
+                'warehouse_id' => $returnWarehouseId,
                 'return_date' => $validated['return_date'],
                 'remarks' => $validated['return_reason'] ?? null,
                 'status' => 'posted',
             ]);
 
-            $sale = $validated['sale_id'] ? Sale::find($validated['sale_id']) : null;
             $now = Carbon::now();
             $movements = [];
             $subtotal = 0;
@@ -324,7 +330,7 @@ class SaleReturnController extends Controller
                     'sale_return_id' => $return->id,
                     'product_id' => $productId,
                     'color' => $request->color[$idx] ?? null,
-                    'warehouse_id' => $validated['warehouse_id'],
+                    'warehouse_id' => $returnWarehouseId,
                     'qty' => $qty,
                     'boxes' => $boxes + ($loosePieces / $ppb), // Decimal boxes
                     'loose_pieces' => $loosePieces,
@@ -352,7 +358,7 @@ class SaleReturnController extends Controller
                 }
 
                 // Update Stock (INCREMENT - goods coming back)
-                $stock = WarehouseStock::where('warehouse_id', $validated['warehouse_id'])
+                $stock = WarehouseStock::where('warehouse_id', $returnWarehouseId)
                     ->where('product_id', $productId)
                     ->lockForUpdate()
                     ->first();
@@ -371,7 +377,7 @@ class SaleReturnController extends Controller
                 } else {
                     // Create new stock entry
                     WarehouseStock::create([
-                        'warehouse_id' => $validated['warehouse_id'],
+                        'warehouse_id' => $returnWarehouseId,
                         'product_id' => $productId,
                         'total_pieces' => $stockQty,
                         'quantity' => $stockQty / $ppb,

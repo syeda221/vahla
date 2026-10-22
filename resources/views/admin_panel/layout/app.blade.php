@@ -946,6 +946,10 @@
                                                         <li><a href="{{ url('warehouse_stocks') }}"><i class="fas fa-boxes"></i>
                                                                 Warehouse Stock</a></li>
                                                     @endcan
+                                                    @canany(['warehouse.stock.view', 'warehouse.stock.create', 'warehouse.view', 'stock.adjust.view', 'stock.adjust.create'])
+                                                        <li><a href="{{ route('opening_stock.index') }}"><i class="fas fa-box-open"></i>
+                                                                Opening Stock</a></li>
+                                                    @endcanany
                                                     @can('stock.transfer.view')
                                                         <li><a href="{{ url('stock_transfers') }}"><i
                                                                     class="fas fa-exchange-alt"></i> Stock Transfer</a></li>

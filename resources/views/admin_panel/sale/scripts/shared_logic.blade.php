@@ -68,7 +68,8 @@
                 data: function(params) {
                     return {
                         term: params.term,
-                        page: params.page || 1
+                        page: params.page || 1,
+                        warehouse_id: $('#warehouseSelect').val() || $el.closest('tr').find('.warehouse').val() || ''
                     };
                 },
                 processResults: function(data, params) {
@@ -149,7 +150,7 @@
     <!-- STOCK -->
     <td class="col-stock text-center">
       <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1" value="0">
-      <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ auth()->user()->warehouse_id ?? 1 }}">
+      <input type="hidden" class="warehouse" name="warehouse_id[]" value="${$('#warehouseSelect').val() || '{{ auth()->user()->warehouse_id ?? 1 }}'}">
       <input type="hidden" class="variant-stock-value">
     </td>
 
@@ -287,23 +288,27 @@
 
     function loadWarehousesForProduct($row, productId, preSelectId = null) {
         var $whInput = $row.find('.warehouse');
-        if (!$whInput.val()) {
-            $whInput.val("{{ auth()->user()->warehouse_id ?? 1 }}");
-        }
+        var targetWhId = preSelectId || $('#warehouseSelect').val() || $whInput.val() || "{{ auth()->user()->warehouse_id ?? 1 }}";
+        $whInput.val(targetWhId);
 
-        const variantStockVal = $row.find('.variant-stock-value').val();
-        if (variantStockVal !== '' && variantStockVal !== undefined) {
-            $row.find('.stock').val(variantStockVal);
-            return;
+        var variantData = $row.find('.variant-data-hidden').val();
+        var variantName = '';
+        if (variantData) {
+            try {
+                var parsed = JSON.parse(atob(variantData));
+                variantName = parsed.name || '';
+            } catch(e) {}
         }
 
         $.get('{{ route('warehouses.get') }}', {
-                product_id: productId
+                product_id: productId,
+                variant_name: variantName,
+                warehouse_id: targetWhId
             })
             .done(function(warehouses) {
-                var targetWhId = preSelectId || $whInput.val() || "{{ auth()->user()->warehouse_id ?? 1 }}";
+                var curWhId = $('#warehouseSelect').val() || $whInput.val() || targetWhId;
                 var validWarehouses = Array.isArray(warehouses) ? warehouses : [];
-                var matched = validWarehouses.find(function(w) { return w.warehouse_id == targetWhId; });
+                var matched = validWarehouses.find(function(w) { return w.warehouse_id == curWhId; });
                 if (!matched && validWarehouses.length > 0) {
                     matched = validWarehouses[0];
                 }
@@ -315,7 +320,7 @@
 
                     if ((['by_cartons', 'by_bandal'].includes(matched.size_mode) || matched.size_mode === 'by_size') && ppb > 1) {
                         const boxes = Math.floor(matched.boxes || 0);
-                        const loose = matched.stock % ppb;
+                        const loose = Math.round(matched.stock % ppb);
                         disp = loose > 0 ? `${boxes}.${loose}` : boxes;
                     } else if (matched.size_mode === 'by_kg') {
                         const s = parseFloat(matched.stock) || 0;
@@ -328,9 +333,7 @@
                     } else {
                         disp = matched.stock;
                     }
-                    if (!$row.find('.stock').val()) {
-                        $row.find('.stock').val(disp);
-                    }
+                    $row.find('.stock').val(disp);
                 }
             })
             .fail(function(xhr) {
@@ -1000,15 +1003,18 @@
             $row.find('.size-display').val(variantSize !== '-' ? variantSize : '');
             $row.find('.color-display').val(variantColor);
             
-            // Store variant stock for later use (after warehouse loads)
+            // Store variant stock
             if (variantStock !== null) {
                 $row.find('.variant-stock-value').val(variantStock);
                 $row.find('.stock').val(variantStock);
             } else {
                 $row.find('.variant-stock-value').val('');
+                $row.find('.stock').val(data.stock !== undefined ? data.stock : 0);
             }
             
-            loadWarehousesForProduct($row, pid);
+            var currentWh = $('#warehouseSelect').val() || "{{ auth()->user()->warehouse_id ?? 1 }}";
+            $row.find('.warehouse').val(currentWh);
+            loadWarehousesForProduct($row, pid, currentWh);
             
             // Set properties directly
             $row.find('.item-code-display').val(data.sku || '');
@@ -1642,11 +1648,24 @@
             $select.trigger('change');
         });
 
+        // --- Warehouse Change: Update all rows & stock ---
+        $(document).on('change', '#warehouseSelect', function() {
+            var newWhId = $(this).val();
+            $('#salesTableBody tr').each(function() {
+                var $row = $(this);
+                $row.find('.warehouse').val(newWhId);
+                var pid = $row.find('.product-id-hidden').val();
+                if (pid) {
+                    loadWarehousesForProduct($row, pid, newWhId);
+                }
+            });
+        });
+
         // --- Sidebar Live Search ---
         $('#sidebarProductSearch').on('input', function() {
             const q = $(this).val().trim();
             if (q.length < 1) return;
-            $.get('{{ route('search-product-name') }}', { q: q }).done(function(res) {
+            $.get('{{ route('search-product-name') }}', { q: q, warehouse_id: $('#warehouseSelect').val() || '' }).done(function(res) {
                 let html = '';
                 if (res && res.length > 0) {
                     res.forEach(p => {

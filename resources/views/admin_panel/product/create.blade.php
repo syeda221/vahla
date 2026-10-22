@@ -640,7 +640,6 @@
                                                         <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Size</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Color</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Unit</th>
-                                                        <th class="text-uppercase text-muted p-1 text-center" style="width: 90px; font-size: 10px;">Initial Stock</th>
                                                         <th class="text-uppercase text-muted p-1 text-center conv-col" id="convFactorHeader" style="width: 95px; font-size: 10px;">Pcs / Carton</th>
                                                         <th class="text-uppercase text-muted p-1 text-center piece-wt-only-col" style="width: 90px; font-size: 10px;">Piece Wt (g)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="salePriceHeader">Sale Price</th>
@@ -1034,6 +1033,7 @@
                     <td class="p-1">
                         <input type="text" class="form-control-pro form-control-sm base-name-input fw-bold" name="variant_name[]" value="${productName}" placeholder="Name" data-vid="${vid}">
                         <input type="hidden" name="variant_is_base[]" value="1">
+                        <input type="hidden" name="variant_stock[]" value="0">
                     </td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" placeholder="Size"></td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_color[]" placeholder="Color"></td>
@@ -1048,9 +1048,6 @@
                             <option value="Box">Box</option>
                             <option value="Dozen">Dzn</option>
                         </select>
-                    </td>
-                    <td class="p-1">
-                        <input type="number" class="form-control-pro form-control-sm text-center fw-bold text-primary" name="variant_stock[]" step="any" value="0" placeholder="0" title="${isCartonMode ? 'Initial Stock (Cartons)' : 'Initial Stock'}">
                     </td>
                     <td class="p-0 conv-col">
                         <input type="number" class="form-control-pro form-control-sm conv-factor-input text-center fw-bold ${isCartonMode ? 'text-primary' : ''}" name="variant_conv_factor[]" step="any" value="${isCartonMode ? '' : '1'}" ${isCartonMode ? '' : 'readonly'} placeholder="${isCartonMode ? 'e.g. 6' : '1'}" title="${isCartonMode ? 'Pieces per Carton' : 'Base Conv Factor = 1'}" style="border-radius:0; border:1px solid #dee2e6; height:30px; ${isCartonMode ? 'background:#fff;' : 'background:#f8f8f8;'}">
@@ -1208,6 +1205,7 @@
                     <td class="p-1">
                         <input type="text" class="form-control-pro form-control-sm var-name-input" name="variant_name[]" value="${suggestedName}" placeholder="Name">
                         <input type="hidden" name="variant_is_base[]" value="0">
+                        <input type="hidden" name="variant_stock[]" value="0">
                     </td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" placeholder="Size (e.g. Small, 30cm)"></td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_color[]" placeholder="Color"></td>
@@ -1222,9 +1220,6 @@
                             <option value="Box">Box</option>
                             <option value="Dozen">Dzn</option>
                         </select>
-                    </td>
-                    <td class="p-1">
-                        <input type="number" class="form-control-pro form-control-sm text-center fw-bold text-primary stock-input" name="variant_stock[]" step="any" value="0" placeholder="0" title="${isCartonMode ? 'Initial Stock (Cartons)' : 'Initial Stock'}" ${variantMode === 'weight' ? 'readonly style="background:#f8f9ff;color:#0d6efd;font-weight:bold;"' : ''}>
                     </td>
                     <td class="p-0 conv-col">
                         <input type="text" inputmode="decimal" class="form-control-pro form-control-sm conv-factor-input text-center fw-bold text-success" name="variant_conv_factor[]" value="${isCartonMode ? '0' : ''}" placeholder="0" title="${isCartonMode ? 'Pieces per Carton' : 'Conv Factor: weight per Pcs in base unit'}" style="border-radius:0; border:1px solid #198754; height:30px; border-width:1.5px;">
@@ -1580,12 +1575,8 @@
                     </div>
 
                     <div class="mob-section-divider"></div>
-                    <div class="mob-section-label"><i class="fas fa-boxes me-1"></i>Stock & Pricing</div>
-
-                    <div class="mob-field-group">
-                        <div class="mob-label">Initial Stock ${isBase ? '' : (isWeightMode ? '🔵 Auto' : '')}</div>
-                        <input type="number" class="mob-input mob-sync ${!isBase && isWeightMode ? 'auto-field mob-stock-auto' : ''}" data-field="variant_stock[]" value="${stockVal}" placeholder="${!isBase && isWeightMode ? 'Auto' : '0'}" ${!isBase && isWeightMode ? 'readonly' : ''} step="any">
-                    </div>
+                    <div class="mob-section-label"><i class="fas fa-tag me-1"></i>Pricing</div>
+                    <input type="hidden" class="mob-sync" data-field="variant_stock[]" value="0">
 
                     ${unitDropdown && unitDropdown.value === 'by_cartons' ? `
                     <div class="mob-field-group">

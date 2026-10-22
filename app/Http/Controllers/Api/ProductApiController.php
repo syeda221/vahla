@@ -198,11 +198,37 @@ class ProductApiController extends Controller
         $adjList = DB::table('stock_movements')
             ->where('product_id', $product->id)
             ->where('type', 'adjustment')
-            ->select('qty', 'note')
+            ->where(function($q) {
+                $q->whereNull('ref_type')->orWhereNotIn('ref_type', ['INIT', 'OPENING_STOCK', 'OPENING', 'OPENING_STOCK_EDIT', 'OPENING_STOCK_REVERSAL']);
+            })
+            ->where(function($q) {
+                $q->whereNull('note')->orWhere('note', 'not like', '%Opening Stock%');
+            })
+            ->select('qty', 'note', 'ref_type')
             ->get();
 
+        $opStocksList = DB::table('opening_stocks')->where('product_id', $product->id)->get();
+
         foreach ($variants as $idx => $v) {
-            $initial = (float) ($v['stock'] ?? 0);
+            $vName = $v['name'] ?? $product->item_name;
+            $vSize = $v['size'] ?? '-';
+            $vColor = $v['color'] ?? '-';
+            $vKeyStrict = trim($vName) . '|' . trim($vSize) . '|' . trim($vColor);
+
+            $matchingOps = $opStocksList->filter(function($op) use ($vName, $vKeyStrict) {
+                $opKey = trim($op->variant_key ?? '');
+                $opName = trim($op->variant_name ?? '');
+                if ($opKey !== '' && $opKey === $vKeyStrict) return true;
+                if ($opName !== '' && $opName === $vName) return true;
+                if ($opKey === '' && $opName === '') return true;
+                return false;
+            });
+
+            if ($matchingOps->isNotEmpty()) {
+                $initial = (float) $matchingOps->sum('total_pieces');
+            } else {
+                $initial = (float) ($v['stock'] ?? 0);
+            }
 
             // Purchased
             $purchased = 0;
@@ -330,13 +356,29 @@ class ProductApiController extends Controller
 
     private function matchAdjustmentToVariant($adjItem, $variant)
     {
+        $refType = strtoupper($adjItem->ref_type ?? '');
+        if (in_array($refType, ['INIT', 'OPENING_STOCK', 'OPENING', 'OPENING_STOCK_EDIT', 'OPENING_STOCK_REVERSAL'])) {
+            return false;
+        }
+
         $note = strtolower($adjItem->note ?? '');
-        if (empty($note)) {
+        if (empty($note) || $note === 'initial stock' || str_starts_with($note, 'opening stock')) {
             return false;
         }
 
         $vSize  = strtolower(trim($variant['size'] ?? '-'));
         $vColor = strtolower(trim($variant['color'] ?? '-'));
+        $vName  = strtolower(trim($variant['name'] ?? ''));
+
+        if (preg_match('/variant:\s*([^|]+)/i', $note, $matches)) {
+            $noteVariant = strtolower(trim($matches[1]));
+            if ($vName !== '' && $noteVariant === $vName) {
+                return true;
+            }
+            if ($vName !== '' && $noteVariant !== $vName) {
+                return false;
+            }
+        }
 
         $sizeMatch = true;
         if ($vSize !== '-' && !empty($vSize)) {
@@ -348,6 +390,14 @@ class ProductApiController extends Controller
         if ($vColor !== '-' && !empty($vColor)) {
             $pattern = '/\b' . preg_quote($vColor, '/') . '\b/i';
             $colorMatch = preg_match($pattern, $note) === 1;
+        }
+
+        if ($vSize === '-' && $vColor === '-' && $vName !== '') {
+            $namePattern = '/\b' . preg_quote($vName, '/') . '\b/i';
+            if (preg_match($namePattern, $note) === 1) {
+                return true;
+            }
+            return false;
         }
 
         return $sizeMatch && $colorMatch;

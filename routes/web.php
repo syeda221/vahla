@@ -25,6 +25,7 @@ use App\Http\Controllers\SalesOfficerController;
 use App\Http\Controllers\StocksController;
 use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\StockAdjustmentController;
+use App\Http\Controllers\OpeningStockController;
 use App\Http\Controllers\SubcategoryController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\UserController;
@@ -415,6 +416,16 @@ Route::middleware('auth')->group(function () {
     Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store'])->name('stock_adjustments.store');
     Route::post('/stock-adjustments/store-batch', [StockAdjustmentController::class, 'storeBatch'])->name('stock_adjustments.store_batch');
     Route::get('/stock-adjustments/product-variants/{productId}', [StockAdjustmentController::class, 'getProductVariants'])->name('stock_adjustments.product_variants');
+
+    // Opening Stock
+    Route::get('/opening-stock', [OpeningStockController::class, 'index'])->name('opening_stock.index');
+    Route::get('/opening-stock/create', [OpeningStockController::class, 'create'])->name('opening_stock.create');
+    Route::post('/opening-stock', [OpeningStockController::class, 'store'])->name('opening_stock.store');
+    Route::post('/opening-stock/update', [OpeningStockController::class, 'updateProductOpeningStock'])->name('opening_stock.update');
+    Route::get('/opening-stock/search-products', [OpeningStockController::class, 'searchProducts'])->name('opening_stock.search_products');
+    Route::get('/opening-stock/product-stock/{productId}', [OpeningStockController::class, 'getProductStock'])->name('opening_stock.product_stock');
+    Route::delete('/opening-stock/product/{productId}', [OpeningStockController::class, 'destroyProduct'])->name('opening_stock.destroy_product');
+    Route::delete('/opening-stock/{id}', [OpeningStockController::class, 'destroy'])->name('opening_stock.destroy');
     // //////////
     Route::get('/get-stock/{product}', [StocksController::class, 'getStock'])
         ->name('get.stock');

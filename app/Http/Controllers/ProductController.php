@@ -100,12 +100,24 @@ class ProductController extends Controller
     public function ajaxSearch(Request $request)
     {
         $term = $request->get('term') ?? $request->get('q') ?? '';
+        $warehouseId = $request->get('warehouse_id');
 
         $query = Product::query()
             ->select('id', 'item_name', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece')
-            ->with(['unit'])
-            ->withSum('warehouseStocks', 'total_pieces') /* Sum PIECES, not boxes */
-            ->where('is_active', true) /* Only active products */
+            ->with(['unit']);
+
+        if (!empty($warehouseId)) {
+            $query->whereHas('warehouseStocks', function ($q) use ($warehouseId) {
+                $q->where('warehouse_id', $warehouseId)->where('total_pieces', '>', 0);
+            });
+            $query->withSum(['warehouseStocks as warehouse_stocks_sum_total_pieces' => function ($q) use ($warehouseId) {
+                $q->where('warehouse_id', $warehouseId);
+            }], 'total_pieces');
+        } else {
+            $query->withSum('warehouseStocks', 'total_pieces'); /* Sum PIECES, not boxes */
+        }
+
+        $query->where('is_active', true) /* Only active products */
             ->where(function ($q) use ($term) {
                 $q->where('item_name', 'like', "%{$term}%")
                     ->orWhere('item_code', 'like', "%{$term}%")
@@ -114,7 +126,7 @@ class ProductController extends Controller
 
         $products = $query->paginate(10); // Lazy loading (10 per request)
 
-        $results = $products->getCollection()->flatMap(function ($p) {
+        $results = $products->getCollection()->flatMap(function ($p) use ($warehouseId) {
             $stockPieces = (float) ($p->warehouse_stocks_sum_total_pieces ?? 0);
             $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
 
@@ -148,20 +160,24 @@ class ProductController extends Controller
 
             if (count($variants) > 0) {
                 // Fetch all sales and returns for this product to distribute
-                $salesList = DB::table('sale_items')
+                $salesQuery = DB::table('sale_items')
                     ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
                     ->where('sale_items.product_id', $p->id)
-                    ->whereIn('sales.sale_status', ['posted', 'returned'])
-                    ->select('sale_items.total_pieces', 'sale_items.color')
-                    ->get();
+                    ->whereIn('sales.sale_status', ['posted', 'returned']);
+                if (!empty($warehouseId)) {
+                    $salesQuery->where('sale_items.warehouse_id', $warehouseId);
+                }
+                $salesList = $salesQuery->select('sale_items.total_pieces', 'sale_items.color')->get();
 
                 // Fetch confirmed web sales
-                $webSalesList = DB::table('ecommerce_order_items as eoi')
+                $webSalesQuery = DB::table('ecommerce_order_items as eoi')
                     ->join('ecommerce_orders as eo', 'eo.id', '=', 'eoi.ecommerce_order_id')
                     ->where('eoi.product_id', $p->id)
-                    ->where('eo.is_stock_deducted', 1)
-                    ->select('eoi.quantity as total_pieces', 'eoi.color', 'eoi.size')
-                    ->get();
+                    ->where('eo.is_stock_deducted', 1);
+                if (!empty($warehouseId) && $warehouseId != 1) {
+                    $webSalesQuery->whereRaw('1 = 0');
+                }
+                $webSalesList = $webSalesQuery->select('eoi.quantity as total_pieces', 'eoi.color', 'eoi.size')->get();
 
                 $salesListArray = $salesList->toArray();
                 foreach ($webSalesList as $wItem) {
@@ -175,11 +191,13 @@ class ProductController extends Controller
                 }
                 $salesList = collect($salesListArray);
 
-                $returnsList = DB::table('sale_return_items as sri')
+                $returnsQuery = DB::table('sale_return_items as sri')
                     ->join('sale_returns as sr', 'sr.id', '=', 'sri.sale_return_id')
-                    ->where('sri.product_id', $p->id)
-                    ->select('sri.qty', 'sri.color', 'sr.sale_id')
-                    ->get();
+                    ->where('sri.product_id', $p->id);
+                if (!empty($warehouseId)) {
+                    $returnsQuery->where('sri.warehouse_id', $warehouseId);
+                }
+                $returnsList = $returnsQuery->select('sri.qty', 'sri.color', 'sr.sale_id')->get();
 
                 $saleIds = $returnsList->pluck('sale_id')->unique()->toArray();
                 $saleItemsMap = [];
@@ -195,12 +213,22 @@ class ProductController extends Controller
                 }
 
                 // Fetch all approved/returned purchases
-                $purchasesList = DB::table('purchase_items as pi')
+                $purchasesQuery = DB::table('purchase_items as pi')
                     ->join('purchases as pur', 'pur.id', '=', 'pi.purchase_id')
                     ->where('pi.product_id', $p->id)
-                    ->whereIn('pur.status_purchase', ['approved', 'Returned', 'Partial'])
-                    ->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.color')
+                    ->whereIn('pur.status_purchase', ['approved', 'Returned', 'Partial']);
+                if (!empty($warehouseId)) {
+                    $purchasesQuery->where('pur.warehouse_id', $warehouseId);
+                }
+                $purchasesList = $purchasesQuery->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.color')->get();
+
+                $opStocks = DB::table('opening_stocks')
+                    ->where('product_id', $p->id)
+                    ->when(!empty($warehouseId), function($q) use ($warehouseId) {
+                        $q->where('warehouse_id', $warehouseId);
+                    })
                     ->get();
+                $hasAnyOpStocks = DB::table('opening_stocks')->where('product_id', $p->id)->exists();
 
                 // Fetch all purchase returns
                 $purchaseReturnsList = DB::table('purchase_return_items as pri')
@@ -236,18 +264,53 @@ class ProductController extends Controller
                         }
                     } else {
                         // Initial Stock in Pieces
-                        $vRawStock = (string) ($v['stock'] ?? '0');
-                        if ($isCartonMode && $vPpb >= 1) {
-                            if (strpos($vRawStock, '.') !== false) {
-                                $parts = explode('.', $vRawStock);
-                                $boxes = (int) ($parts[0] ?? 0);
-                                $looseP = (int) ($parts[1] ?? 0);
-                                $initial = ($boxes * $vPpb) + $looseP;
+                        if (!empty($warehouseId)) {
+                            if ($hasAnyOpStocks) {
+                                $matchingOp = $opStocks->first(function($op) use ($v, $variants) {
+                                    if (($op->variant_name === ($v['name'] ?? '')) ||
+                                        ($op->variant_key === (($v['name'] ?? '') . '|' . ($v['size'] ?? '-') . '|' . ($v['color'] ?? '-')))) {
+                                        return true;
+                                    }
+                                    if (empty($op->variant_name) && ($v['name'] ?? '') === ($variants[0]['name'] ?? '')) {
+                                        return true;
+                                    }
+                                    return false;
+                                });
+                                $initial = $matchingOp ? (float)$matchingOp->total_pieces : 0;
                             } else {
-                                $initial = (float) $vRawStock * $vPpb;
+                                $wsRecord = \App\Models\WarehouseStock::where('product_id', $p->id)->where('warehouse_id', $warehouseId)->first();
+                                if ($wsRecord && $wsRecord->total_pieces > 0) {
+                                    $vRawStock = (string) ($v['stock'] ?? '0');
+                                    if ($isCartonMode && $vPpb >= 1) {
+                                        if (strpos($vRawStock, '.') !== false) {
+                                            $parts = explode('.', $vRawStock);
+                                            $boxes = (int) ($parts[0] ?? 0);
+                                            $looseP = (int) ($parts[1] ?? 0);
+                                            $initial = ($boxes * $vPpb) + $looseP;
+                                        } else {
+                                            $initial = (float) $vRawStock * $vPpb;
+                                        }
+                                    } else {
+                                        $initial = (float) $vRawStock;
+                                    }
+                                } else {
+                                    $initial = 0;
+                                }
                             }
                         } else {
-                            $initial = (float) $vRawStock;
+                            $vRawStock = (string) ($v['stock'] ?? '0');
+                            if ($isCartonMode && $vPpb >= 1) {
+                                if (strpos($vRawStock, '.') !== false) {
+                                    $parts = explode('.', $vRawStock);
+                                    $boxes = (int) ($parts[0] ?? 0);
+                                    $looseP = (int) ($parts[1] ?? 0);
+                                    $initial = ($boxes * $vPpb) + $looseP;
+                                } else {
+                                    $initial = (float) $vRawStock * $vPpb;
+                                }
+                            } else {
+                                $initial = (float) $vRawStock;
+                            }
                         }
 
                         // Calculate Purchased variant qty
@@ -309,6 +372,16 @@ class ProductController extends Controller
                         }
 
                         $vBalance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned);
+                        if (!empty($warehouseId) && count($variants) === 1) {
+                            $ws = \App\Models\WarehouseStock::where('product_id', $p->id)->where('warehouse_id', $warehouseId)->first();
+                            if ($ws) {
+                                $vBalance = (float) $ws->total_pieces;
+                            }
+                        }
+                    }
+
+                    if (!empty($warehouseId) && $vBalance <= 0) {
+                        continue;
                     }
 
                     $vStockDisplay = $vBalance;
@@ -365,6 +438,10 @@ class ProductController extends Controller
                     ];
                 }
                 return $expanded;
+            }
+
+            if (!empty($warehouseId) && $stockPieces <= 0) {
+                return [];
             }
 
             return [[

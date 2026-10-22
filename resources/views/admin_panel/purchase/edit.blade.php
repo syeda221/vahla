@@ -372,21 +372,21 @@
         <!-- General Info Card -->
         <div class="card-custom mb-3">
             <div class="row g-3">
-                <div class="col-md-2">
+                <div class="col-xl-2 col-lg-2 col-md-4">
                     <label class="form-label">System No.</label>
                     <div class="input-with-icon">
                         <i class="bi bi-file-earmark"></i>
                         <input type="text" class="form-control input-readonly" name="invoice_no" value="{{ $purchase->invoice_no }}" readonly>
                     </div>
                 </div>
-                <div class="col-md-2">
+                <div class="col-xl-2 col-lg-2 col-md-4">
                     <label class="form-label">Vendor Inv#</label>
                     <div class="input-with-icon">
                         <i class="bi bi-file-earmark-text"></i>
                         <input type="text" class="form-control" name="purchase_order_no" placeholder="Manual Ref" value="{{ $purchase->purchase_order_no }}">
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-xl-2 col-lg-2 col-md-4">
                     <label class="form-label">Select Vendor</label>
                     <div class="input-with-icon">
                         <i class="bi bi-building"></i>
@@ -398,32 +398,32 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-md-2">
+                <div class="col-xl-2 col-lg-2 col-md-4">
+                    <label class="form-label">Select Warehouse</label>
+                    <div class="input-with-icon">
+                        <i class="bi bi-shop"></i>
+                        <select name="warehouse_id" id="warehouseSelect" class="form-control select2" required>
+                            @foreach ($Warehouse as $w)
+                                <option value="{{ $w->id }}"
+                                    {{ $w->id == $purchase->warehouse_id ? 'selected' : '' }}>
+                                    {{ $w->warehouse_name ?? $w->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="col-xl-2 col-lg-2 col-md-4">
                     <label class="form-label">Date</label>
                     <div class="input-with-icon">
                         <i class="bi bi-calendar"></i>
                         <input type="date" name="purchase_date" class="form-control" value="{{ $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : date('Y-m-d') }}">
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-xl-2 col-lg-2 col-md-4">
                     <label class="form-label">M.Bill / Remarks</label>
                     <div class="input-with-icon">
                         <i class="bi bi-chat-left-text"></i>
                         <input type="text" class="form-control" name="note" id="remarks" placeholder="Optional notes..." value="{{ $purchase->note }}">
-                    </div>
-                </div>
-                <div class="col-md-3 mt-3 d-none">
-                    <label class="form-label">Warehouse</label>
-                    <div class="input-with-icon">
-                        <i class="bi bi-shop"></i>
-                        <select name="warehouse_id" class="form-control select2">
-                            @foreach ($Warehouse as $w)
-                                <option value="{{ $w->id }}"
-                                    {{ $w->id == $purchase->warehouse_id ? 'selected' : '' }}>
-                                    {{ $w->warehouse_name }}
-                                </option>
-                            @endforeach
-                        </select>
                     </div>
                 </div>
             </div>
@@ -1100,7 +1100,8 @@
                         data: function(params) {
                             return {
                                 term: params.term,
-                                page: params.page || 1
+                                page: params.page || 1,
+                                warehouse_id: $('#warehouseSelect').val()
                             };
                         },
                         processResults: function(data, params) {

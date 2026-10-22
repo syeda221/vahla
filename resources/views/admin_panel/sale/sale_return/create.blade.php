@@ -600,7 +600,6 @@
                 <form action="{{ route('sale.return.store') }}" method="POST">
                     @csrf
                     <input type="hidden" name="sale_id" value="{{ $sale->id }}">
-                    <input type="hidden" name="warehouse_id" value="{{ $sale->warehouse_id ?? 1 }}">
 
                     <!-- Alert Section -->
                     @if (session('success'))
@@ -642,11 +641,25 @@
                     <!-- Return Info -->
                     <div class="row g-2 g-md-3 mb-3 mb-md-4">
                         <div class="col-12 col-md-4">
+                            <label class="form-label"><i class="fas fa-warehouse text-muted me-1" style="font-size: 0.75rem;"></i>Return to Warehouse <span class="text-danger">*</span></label>
+                            <select name="warehouse_id" class="form-select" required style="height: 42px;">
+                                @if(isset($warehouses) && count($warehouses) > 0)
+                                    @foreach($warehouses as $wh)
+                                        <option value="{{ $wh->id }}" {{ (old('warehouse_id', $defaultWarehouseId ?? 1) == $wh->id) ? 'selected' : '' }}>
+                                            {{ $wh->warehouse_name }} {{ $wh->location ? '('.$wh->location.')' : '' }}
+                                        </option>
+                                    @endforeach
+                                @else
+                                    <option value="{{ $defaultWarehouseId ?? 1 }}" selected>Default Warehouse</option>
+                                @endif
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-3">
                             <label class="form-label">Return Date <span class="text-danger">*</span></label>
                             <input type="date" name="return_date" class="form-control" value="{{ date('Y-m-d') }}"
                                 required style="height: 42px;">
                         </div>
-                        <div class="col-12 col-md-8">
+                        <div class="col-12 col-md-5">
                             <label class="form-label">Return Reason / Notes</label>
                             <input type="text" name="return_reason" class="form-control"
                                 placeholder="e.g., Damaged goods, Wrong item sent" style="height: 42px;">

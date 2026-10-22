@@ -1173,8 +1173,9 @@ class SaleController extends Controller
             // Looking at invoice blade: $item['qty'] is boxes.
             // Let's assume input 'qty' is BOXES.
 
-            $defaultWhId = auth()->user()->warehouse_id ?? 1;
-            $warehouses = $request->warehouse_id ?? [];
+            $selectedWh = $request->input('header_warehouse_id') ?: (is_array($request->input('warehouse_id')) ? ($request->input('warehouse_id')[0] ?? null) : $request->input('warehouse_id'));
+            $defaultWhId = $selectedWh ?: (auth()->user()->warehouse_id ?? 1);
+            $warehouses = is_array($request->warehouse_id) ? $request->warehouse_id : [];
             $discounts = $request->item_disc ?? [];
 
             $manualItemsForLedger = [];
@@ -1947,15 +1948,10 @@ class SaleController extends Controller
 
             if ($type === 'out') {
                 // Deduct
-                $available = $this->calculateAvailableForItem($item, $stock);
-                if ($available < $qtyPieces) {
-                    $availFormatted = number_format($available, 3);
+                if ($stock->total_pieces < $qtyPieces) {
+                    $availFormatted = number_format($stock->total_pieces, 3);
                     $unitLabel = ($productMode === 'by_kg' || $productMode === 'by_gm') ? 'Kg' : 'Pcs';
                     throw new \Exception('Insufficient stock for '.$item->product_name.'. Available: '.$availFormatted.' '.$unitLabel);
-                }
-                // Reconcile physical stock with the variant ledger shown in the UI
-                if ($available > $stock->total_pieces) {
-                    $stock->total_pieces = $available;
                 }
                 $stock->total_pieces -= $qtyPieces;
                 // Update approx boxes for display

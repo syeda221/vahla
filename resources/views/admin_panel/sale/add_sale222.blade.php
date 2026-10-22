@@ -1954,14 +1954,25 @@
                                 </div>
                             </div>
 
-                            {{-- Reference / Remarks --}}
-                            <div class="col-12 col-md-5">
-                                <label class="field-label" for="remarks">Reference / Remarks</label>
-                                <input type="text" class="form-control" name="reference" id="remarks" placeholder="Optional" style="border: 1px solid #CBD5E1; border-radius: 10px; height: 42px; font-size: 13.5px;">
+                            {{-- Warehouse --}}
+                            <div class="col-12 col-md-4">
+                                <label class="field-label" for="warehouseSelect">Warehouse <span class="text-danger">*</span></label>
+                                <div class="input-group" style="border: 1px solid #CBD5E1; border-radius: 10px; overflow: hidden; background: #ffffff;">
+                                    <span class="input-group-text bg-white border-0 pe-0 text-muted" style="font-size: 13px;">
+                                        <i class="fas fa-warehouse"></i>
+                                    </span>
+                                    <select class="form-select border-0 fw-semibold" id="warehouseSelect" name="header_warehouse_id" style="font-size: 13.5px; height: 40px; box-shadow: none;">
+                                        @foreach($warehouse ?? [] as $w)
+                                            <option value="{{ $w->id }}" {{ (auth()->user()->warehouse_id ?? 1) == $w->id ? 'selected' : '' }}>
+                                                {{ $w->warehouse_name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
 
                             {{-- Customer --}}
-                            <div class="col-12 col-md-7">
+                            <div class="col-12 col-md-5">
                                 <label class="field-label" for="customerSelect">Customer</label>
                                 <div class="d-flex gap-2">
                                     <div id="customerInputWrapper" class="flex-grow-1" style="min-width: 0;">
@@ -1979,6 +1990,12 @@
                                         <i class="fas fa-plus"></i>
                                     </button>
                                 </div>
+                            </div>
+
+                            {{-- Reference / Remarks --}}
+                            <div class="col-12 col-md-3">
+                                <label class="field-label" for="remarks">Reference / Remarks</label>
+                                <input type="text" class="form-control" name="reference" id="remarks" placeholder="Optional" style="border: 1px solid #CBD5E1; border-radius: 10px; height: 42px; font-size: 13.5px;">
                             </div>
                         </div>
                     </div>

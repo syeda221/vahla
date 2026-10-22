@@ -579,18 +579,18 @@ a.btn-outline-primary:hover {
 
                 <div class="card-panel shadow-sm mb-4 p-4 bg-white border-0" style="border-radius: 12px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;">
                     <div class="row g-3 align-items-end">
-                        <div class="col-md-2">
+                        <div class="col-xl-2 col-lg-2 col-md-4">
                             <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-file-text text-muted fs-6"></i> System No.</label>
                             <input type="text" class="form-control bg-light" name="invoice_no" value="{{ $nextInvoice ?? 'NEW' }}" readonly style="border: 1px solid #e2e8f0 !important; color: #94a3b8 !important;">
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-xl-2 col-lg-2 col-md-4">
                             <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-receipt text-muted fs-6"></i> Vendor Inv#</label>
                             <input type="text" class="form-control" name="purchase_order_no" placeholder="Manual Ref" style="border: 1px solid #e2e8f0 !important;">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-xl-2 col-lg-2 col-md-4">
                             <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-person text-muted fs-6"></i> Select Vendor</label>
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-1">
+                                <div class="flex-grow-1" style="min-width: 0;">
                                     <select class="form-select select2" id="vendorSelect" name="vendor_id" style="border: 1px solid #e2e8f0 !important;">
                                         <option value="" selected disabled>Select Vendor</option>
                                         @foreach ($Vendor as $v)
@@ -598,16 +598,27 @@ a.btn-outline-primary:hover {
                                         @endforeach
                                     </select>
                                 </div>
-                                <button type="button" class="btn btn-primary rounded-3 px-3 py-2" data-toggle="modal" data-target="#addVendorModal" title="Add New Vendor" style="background-color: #0d6efd; border: none;">
+                                <button type="button" class="btn btn-primary rounded-3 px-2 py-2" data-toggle="modal" data-target="#addVendorModal" title="Add New Vendor" style="background-color: #0d6efd; border: none; flex-shrink: 0;">
                                     <i class="bi bi-plus-lg text-white"></i>
                                 </button>
                             </div>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-xl-2 col-lg-2 col-md-4">
+                            <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-shop text-muted fs-6"></i> Select Warehouse</label>
+                            <select class="form-select select2" id="warehouseSelect" name="warehouse_id" required style="border: 1px solid #e2e8f0 !important;">
+                                <option value="" disabled>Select Warehouse</option>
+                                @foreach ($Warehouse as $w)
+                                    <option value="{{ $w->id }}" {{ (old('warehouse_id') == $w->id || $loop->first) ? 'selected' : '' }}>
+                                        {{ $w->warehouse_name ?? $w->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-xl-2 col-lg-2 col-md-4">
                             <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-calendar3 text-muted fs-6"></i> Date</label>
                             <input type="text" name="purchase_date" class="form-control datepicker-custom" value="{{ date('d/m/Y') }}" style="border: 1px solid #e2e8f0 !important;">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-xl-2 col-lg-2 col-md-4">
                             <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-chat-left-text text-muted fs-6"></i> M.BILL / Remarks</label>
                             <input type="text" class="form-control" name="note" id="remarks" placeholder="Optional notes..." style="border: 1px solid #e2e8f0 !important;">
                         </div>
@@ -633,8 +644,6 @@ a.btn-outline-primary:hover {
                             </div>
                         </div>
                     </div>
-
-                    <input type="hidden" name="warehouse_id" value="{{ $Warehouse->first()->id ?? 1 }}">
                 </div>
 
                 {{-- PURCHASE ITEMS (FULL WIDTH) --}}
@@ -1152,7 +1161,8 @@ a.btn-outline-primary:hover {
                         data: function(params) {
                             return {
                                 term: params.term,
-                                page: params.page || 1
+                                page: params.page || 1,
+                                warehouse_id: $('#warehouseSelect').val()
                             };
                         },
                         processResults: function(data, params) {

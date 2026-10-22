@@ -12,6 +12,7 @@ class WarehouseController extends Controller
     public function getWarehouses(Request $request)
     {
         $productId = $request->input('product_id');
+        $variantName = $request->input('variant_name');
 
         // Get all warehouses first
         $allWarehouses = Warehouse::all();
@@ -22,7 +23,10 @@ class WarehouseController extends Controller
             ->get()
             ->keyBy('warehouse_id');
 
-        $response = $allWarehouses->map(function ($warehouse) use ($warehouseStocks, $productId) {
+        $opStocks = \App\Models\OpeningStock::where('product_id', $productId)->get();
+        $hasAnyOpStocks = $opStocks->isNotEmpty();
+
+        $response = $allWarehouses->map(function ($warehouse) use ($warehouseStocks, $productId, $variantName, $hasAnyOpStocks, $opStocks) {
             $ws = $warehouseStocks->get($warehouse->id);
             $stockVal = 0;
             
@@ -37,12 +41,39 @@ class WarehouseController extends Controller
                 }
             }
 
+            if (!empty($variantName) && $hasAnyOpStocks) {
+                $opStock = $opStocks->where('warehouse_id', $warehouse->id)->first(function($op) use ($variantName) {
+                    return ($op->variant_name === $variantName) || empty($op->variant_name);
+                });
+                if ($opStock) {
+                    $vSales = \Illuminate\Support\Facades\DB::table('sale_items')
+                        ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                        ->where('sale_items.warehouse_id', $warehouse->id)
+                        ->where('sale_items.product_id', $productId)
+                        ->whereIn('sales.sale_status', ['posted', 'returned'])
+                        ->get()
+                        ->filter(function($si) use ($variantName) {
+                            $raw = $si->color;
+                            $b64 = base64_decode($raw, true);
+                            if ($b64) $raw = $b64;
+                            $arr = json_decode($raw, true);
+                            return ($arr['name'] ?? null) === $variantName;
+                        })
+                        ->sum('total_pieces');
+                    $stockVal = max(0, (float)$opStock->total_pieces - $vSales);
+                } else {
+                    $stockVal = 0;
+                }
+            }
+
+            $ppb = ($ws && $ws->product && $ws->product->pieces_per_box > 0) ? $ws->product->pieces_per_box : 1;
+
             return [
                 'warehouse_id' => $warehouse->id,
                 'warehouse_name' => $warehouse->warehouse_name,
                 'stock' => $stockVal, // Total pieces
-                'boxes' => $ws ? ($stockVal / $ppb) : 0, // Dynamically calculated box quantity to prevent rounding errors
-                'ppb' => $ws && $ws->product ? $ws->product->pieces_per_box : 1,
+                'boxes' => $ppb > 0 ? ($stockVal / $ppb) : 0, // Dynamically calculated box quantity to prevent rounding errors
+                'ppb' => $ppb,
                 'size_mode' => $ws && $ws->product ? $ws->product->size_mode : 'std',
             ];
         });
@@ -63,18 +94,26 @@ class WarehouseController extends Controller
 
     public function store(Request $request)
     {
-        if ($request->id) {
+        $data = $request->except(['_token']);
+        if (empty($data['creater_id'])) {
+            $data['creater_id'] = auth()->id();
+        }
+
+        if ($request->filled('id')) {
             if (! auth()->user()->can('warehouse.edit')) {
                 return back()->with('error', 'Unauthorized action.');
             }
-            Warehouse::findOrFail($request->id)->update($request->all());
+            $warehouseId = $request->id;
+            unset($data['id']);
+            Warehouse::findOrFail($warehouseId)->update($data);
 
             return back()->with('success', 'Warehouse Updated Successfully');
         } else {
             if (! auth()->user()->can('warehouse.create')) {
                 return back()->with('error', 'Unauthorized action.');
             }
-            Warehouse::create($request->all());
+            unset($data['id']);
+            Warehouse::create($data);
 
             return back()->with('success', 'Warehouse Created Successfully');
         }
@@ -83,13 +122,24 @@ class WarehouseController extends Controller
     public function delete($id)
     {
         if (! auth()->user()->can('warehouse.delete')) {
-            return response()->json(['error' => 'Unauthorized action.'], 403);
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['error' => 'Unauthorized action.'], 403);
+            }
+            return redirect('/warehouse')->with('error', 'Unauthorized action.');
         }
-        Warehouse::findOrFail($id)->delete();
 
-        return response()->json([
-            'success' => 'Warehouse Deleted Successfully',
-            'reload' => true,
-        ]);
+        $warehouse = Warehouse::find($id);
+        if ($warehouse) {
+            $warehouse->delete();
+        }
+
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => 'Warehouse Deleted Successfully',
+                'reload' => true,
+            ]);
+        }
+
+        return redirect('/warehouse')->with('success', 'Warehouse Deleted Successfully');
     }
 }

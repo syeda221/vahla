@@ -11,7 +11,8 @@
                     </div>
                     <div class="page-btn d-flex justify-content-end col-lg-6">
                         @can('warehouse.create')
-                            <button class="btn btn-outline-primary mb-2" data-bs-toggle="modal" data-bs-target="#warehouseModal"
+                            <button class="btn btn-outline-primary mb-2" data-toggle="modal" data-target="#warehouseModal"
+                                data-bs-toggle="modal" data-bs-target="#warehouseModal"
                                 onclick="clearWarehouse()">Add Warehouse</button>
                         @endcan
                     </div>
@@ -38,7 +39,7 @@
                                 @foreach ($warehouses as $key => $w)
                                     <tr>
                                         <td>{{ $key + 1 }}</td>
-                                        <td>{{ $w->user->name }}</td>
+                                        <td>{{ $w->user->name ?? 'N/A' }}</td>
                                         <td>{{ $w->warehouse_name }}</td>
                                         <td>{{ $w->location }}</td>
                                         <td>{{ $w->remarks }}</td>
@@ -47,6 +48,7 @@
                                                 <button class="btn btn-primary btn-sm edit-warehouse-btn"
                                                     data-id="{{ $w->id }}" data-name="{{ $w->warehouse_name }}"
                                                     data-location="{{ $w->location }}" data-remarks="{{ $w->remarks }}"
+                                                    data-toggle="modal" data-target="#warehouseModal"
                                                     data-bs-toggle="modal" data-bs-target="#warehouseModal">
                                                     Edit
                                                 </button>
@@ -80,12 +82,15 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Add/Edit Warehouse</h5>
+                        <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-2"><input class="form-control" name="warehouse_name" id="warehouse_name"
                                 placeholder="Name" required></div>
                         <div class="mb-2 d-none"><input class="form-control" name="creater_id" id=""
-                                value="{{ Auth()->user()->id }}" placeholder="Name" required></div>
+                                value="{{ Auth()->user()->id }}" placeholder="Name"></div>
                         <div class="mb-2"><input class="form-control" name="location" id="location"
                                 placeholder="Location"></div>
                         <div class="mb-2">
@@ -103,9 +108,7 @@
     </div>
 @endsection
 
-{{-- @push('scripts') --}}
 @section('js')
-    
     @if (session('success'))
         <script>
             Swal.fire({
@@ -117,34 +120,38 @@
             });
         </script>
     @endif
+    @if (session('error'))
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: "{{ session('error') }}",
+                timer: 3000,
+                showConfirmButton: false
+            });
+        </script>
+    @endif
     <script>
         function clearWarehouse() {
             $('#warehouse_id').val('');
             $('#warehouse_name').val('');
             $('#location').val('');
             $('#remarks').val('');
+            $('#warehouseModal').modal('show');
         }
-
-        // function editWarehouse(id,name,location,remarks){
-        //     alert(id);
-        //     $('#warehouse_id').val(id);
-        //     $('#warehouse_name').val(name);
-        //     $('#location').val(location);
-        //     $('#remarks').val(remarks);
-        //  }
 
         // Handle Edit button click
         $(document).on('click', '.edit-warehouse-btn', function() {
-            // alert("Edit button clicked ✅"+ $(this).data('id'));
-
             $('#warehouse_id').val($(this).data('id'));
             $('#warehouse_name').val($(this).data('name'));
             $('#location').val($(this).data('location'));
             $('#remarks').val($(this).data('remarks'));
+            $('#warehouseModal').modal('show');
         });
 
-
+        if ($.fn.DataTable.isDataTable('.datanew')) {
+            $('.datanew').DataTable().destroy();
+        }
         $('.datanew').DataTable();
     </script>
-    {{-- @endpush --}}
 @endsection

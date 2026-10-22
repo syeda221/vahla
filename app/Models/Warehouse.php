@@ -11,13 +11,24 @@ class Warehouse extends Model
 
     protected $guarded = [];
 
-    public function user(){
+    public function user()
+    {
         return $this->belongsTo(User::class, 'creater_id');
     }
-public function products() {
-    return $this->belongsToMany(Product::class, 'product_warehouse')
-                ->withPivot('stock');
-}
 
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
 
+    public function warehouseStocks()
+    {
+        return $this->hasMany(WarehouseStock::class, 'warehouse_id');
+    }
+
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'product_warehouse')
+            ->withPivot('stock');
+    }
 }

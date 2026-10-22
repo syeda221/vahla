@@ -182,7 +182,11 @@ class ReportingController extends Controller
             $pRetQuery = \DB::table('purchase_return_items as pri')->join('purchase_returns as pr', 'pr.id', '=', 'pri.purchase_return_id')->where('pri.product_id', $product->id);
             if ($warehouseId && $warehouseId !== 'all') $pRetQuery->where('pr.warehouse_id', $warehouseId);
             $parentPReturned = (float) $pRetQuery->sum('pri.qty');
-            $adjQuery = \DB::table('stock_movements')->where('product_id', $product->id)->where('type', 'adjustment')->where(function($q) { $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT'); });
+            $adjQuery = \DB::table('stock_movements')->where('product_id', $product->id)->where('type', 'adjustment')->where(function($q) {
+                $q->whereNull('ref_type')->orWhereNotIn('ref_type', ['INIT', 'OPENING_STOCK', 'OPENING', 'OPENING_STOCK_EDIT', 'OPENING_STOCK_REVERSAL']);
+            })->where(function($q) {
+                $q->whereNull('note')->orWhere('note', 'not like', '%Opening Stock%');
+            });
             if ($warehouseId && $warehouseId !== 'all') $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
             $parentAdjustments = (float) $adjQuery->sum('qty');
             $parentOpening = max(0, $parentClosing - $parentPurchased + $parentSold - $parentReturnedQty + $parentPReturned - $parentAdjustments);
@@ -210,7 +214,11 @@ class ReportingController extends Controller
             $purchasesList = $purchasesQuery->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.line_total', 'pi.color')->get();
             $pReturnsQuery = \DB::table('purchase_return_items as pri')->where('pri.product_id', $product->id);
             $purchaseReturnsList = $pReturnsQuery->select('pri.qty', 'pri.line_total', 'pri.color')->get();
-            $adjQuery = \DB::table('stock_movements')->where('product_id', $product->id)->where('type', 'adjustment')->where(function($q) { $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT'); });
+            $adjQuery = \DB::table('stock_movements')->where('product_id', $product->id)->where('type', 'adjustment')->where(function($q) {
+                $q->whereNull('ref_type')->orWhereNotIn('ref_type', ['INIT', 'OPENING_STOCK', 'OPENING', 'OPENING_STOCK_EDIT', 'OPENING_STOCK_REVERSAL']);
+            })->where(function($q) {
+                $q->whereNull('note')->orWhere('note', 'not like', '%Opening Stock%');
+            });
             if ($warehouseId && $warehouseId !== 'all') $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
             $adjList = $adjQuery->select('qty', 'note', 'ref_type')->get();
             $saleIds = $returnsList->pluck('sale_id')->unique()->toArray();
@@ -223,6 +231,12 @@ class ReportingController extends Controller
             }
         }
         
+        $opStocksQuery = \DB::table('opening_stocks')->where('product_id', $product->id);
+        if ($warehouseId && $warehouseId !== 'all') {
+            $opStocksQuery->where('warehouse_id', $warehouseId);
+        }
+        $opStocksList = $opStocksQuery->get();
+
         foreach ($parsedVariants as $v) {
             $vName = $v['name'] ?? $product->item_name;
             $vSize = $v['size'] ?? '-';
@@ -250,18 +264,32 @@ class ReportingController extends Controller
                 $adjustments = $parentAdjustments / $factor;
                 $balance = $parentClosing / $factor;
             } else {
-                $vRawStock = (string) ($v['stock'] ?? '0');
-                if ($isCartonMode && $ppb > 1) {
-                    if (strpos($vRawStock, '.') !== false) {
-                        $parts = explode('.', $vRawStock);
-                        $boxes = (int) ($parts[0] ?? 0);
-                        $looseP = (int) ($parts[1] ?? 0);
-                        $initial = ($boxes * $ppb) + $looseP;
-                    } else {
-                        $initial = (float) $vRawStock * $ppb;
-                    }
+                $vKeyStrict = trim($vName) . '|' . trim($vSize) . '|' . trim($vColor);
+                $matchingOps = $opStocksList->filter(function($op) use ($vName, $vKeyStrict) {
+                    $opKey = trim($op->variant_key ?? '');
+                    $opName = trim($op->variant_name ?? '');
+                    if ($opKey !== '' && $opKey === $vKeyStrict) return true;
+                    if ($opName !== '' && $opName === $vName) return true;
+                    if ($opKey === '' && $opName === '') return true;
+                    return false;
+                });
+
+                if ($matchingOps->isNotEmpty()) {
+                    $initial = (float) $matchingOps->sum('total_pieces');
                 } else {
-                    $initial = (float) $vRawStock;
+                    if ($warehouseId && $warehouseId !== 'all' && $warehouseId != 1) {
+                        $initial = 0;
+                    } else {
+                        $vRawStock = (string) ($v['stock'] ?? '0');
+                        if ($isCartonMode && $ppb > 1 && strpos($vRawStock, '.') !== false) {
+                            $parts = explode('.', $vRawStock);
+                            $boxes = (int) ($parts[0] ?? 0);
+                            $looseP = (int) ($parts[1] ?? 0);
+                            $initial = ($boxes * $ppb) + $looseP;
+                        } else {
+                            $initial = (float) $vRawStock;
+                        }
+                    }
                 }
                 
                 $purchased = 0;
@@ -629,7 +657,10 @@ class ReportingController extends Controller
                         ->where('product_id', $product->id)
                         ->where('type', 'adjustment')
                         ->where(function($q) {
-                            $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT');
+                            $q->whereNull('ref_type')->orWhereNotIn('ref_type', ['INIT', 'OPENING_STOCK', 'OPENING', 'OPENING_STOCK_EDIT', 'OPENING_STOCK_REVERSAL']);
+                        })
+                        ->where(function($q) {
+                            $q->whereNull('note')->orWhere('note', 'not like', '%Opening Stock%');
                         });
                     if ($warehouseId && $warehouseId !== 'all') {
                         $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
@@ -713,7 +744,10 @@ class ReportingController extends Controller
                         ->where('product_id', $product->id)
                         ->where('type', 'adjustment')
                         ->where(function($q) {
-                            $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT');
+                            $q->whereNull('ref_type')->orWhereNotIn('ref_type', ['INIT', 'OPENING_STOCK', 'OPENING', 'OPENING_STOCK_EDIT', 'OPENING_STOCK_REVERSAL']);
+                        })
+                        ->where(function($q) {
+                            $q->whereNull('note')->orWhere('note', 'not like', '%Opening Stock%');
                         });
                     if ($warehouseId && $warehouseId !== 'all') {
                         $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
@@ -735,7 +769,13 @@ class ReportingController extends Controller
                         }
                     }
                 }
-                foreach ($parsedVariants as $v) {
+                $opStocksQuery = \DB::table('opening_stocks')->where('product_id', $product->id);
+        if ($warehouseId && $warehouseId !== 'all') {
+            $opStocksQuery->where('warehouse_id', $warehouseId);
+        }
+        $opStocksList = $opStocksQuery->get();
+
+        foreach ($parsedVariants as $v) {
                     $vName = $v['name'] ?? $product->item_name;
                     $vSize = $v['size'] ?? '-';
                     $vColor = $v['color'] ?? '-';
@@ -776,18 +816,31 @@ class ReportingController extends Controller
                         $balance        = $parentClosing / $factor;
                     } else {
                         // Initial Stock in Pieces
-                        $vRawStock = (string) ($v['stock'] ?? '0');
-                        if ($isCartonMode && $ppb > 1) {
-                            if (strpos($vRawStock, '.') !== false) {
-                                $parts = explode('.', $vRawStock);
-                                $boxes = (int) ($parts[0] ?? 0);
-                                $looseP = (int) ($parts[1] ?? 0);
-                                $initial = ($boxes * $ppb) + $looseP;
-                            } else {
-                                $initial = (float) $vRawStock * $ppb;
-                            }
+                        $matchingOps = $opStocksList->filter(function($op) use ($vName, $vKey) {
+                            $opKey = trim($op->variant_key ?? '');
+                            $opName = trim($op->variant_name ?? '');
+                            if ($opKey !== '' && $opKey === $vKey) return true;
+                            if ($opName !== '' && $opName === $vName) return true;
+                            if ($opKey === '' && $opName === '') return true;
+                            return false;
+                        });
+
+                        if ($matchingOps->isNotEmpty()) {
+                            $initial = (float) $matchingOps->sum('total_pieces');
                         } else {
-                            $initial = (float) $vRawStock;
+                            if ($warehouseId && $warehouseId !== 'all' && $warehouseId != 1) {
+                                $initial = 0;
+                            } else {
+                                $vRawStock = (string) ($v['stock'] ?? '0');
+                                if ($isCartonMode && $ppb > 1 && strpos($vRawStock, '.') !== false) {
+                                    $parts = explode('.', $vRawStock);
+                                    $boxes = (int) ($parts[0] ?? 0);
+                                    $looseP = (int) ($parts[1] ?? 0);
+                                    $initial = ($boxes * $ppb) + $looseP;
+                                } else {
+                                    $initial = (float) $vRawStock;
+                                }
+                            }
                         }
 
                         // Purchased for variant
@@ -977,7 +1030,10 @@ class ReportingController extends Controller
                     ->where('product_id', $product->id)
                     ->where('type', 'adjustment')
                     ->where(function($q) {
-                        $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT');
+                        $q->whereNull('ref_type')->orWhereNotIn('ref_type', ['INIT', 'OPENING_STOCK', 'OPENING', 'OPENING_STOCK_EDIT', 'OPENING_STOCK_REVERSAL']);
+                    })
+                    ->where(function($q) {
+                        $q->whereNull('note')->orWhere('note', 'not like', '%Opening Stock%');
                     });
                 if ($warehouseId && $warehouseId !== 'all') {
                     $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
@@ -1318,7 +1374,13 @@ class ReportingController extends Controller
                 }
 
                 $matchedSaleIndices = [];
-                foreach ($parsedVariants as $v) {
+                $opStocksQuery = \DB::table('opening_stocks')->where('product_id', $product->id);
+        if ($warehouseId && $warehouseId !== 'all') {
+            $opStocksQuery->where('warehouse_id', $warehouseId);
+        }
+        $opStocksList = $opStocksQuery->get();
+
+        foreach ($parsedVariants as $v) {
                     $vName = $v['name'] ?? $product->item_name;
                     $vSize = $v['size'] ?? '-';
                     $vColor = $v['color'] ?? '-';
@@ -3477,18 +3539,30 @@ class ReportingController extends Controller
      */
     private function matchAdjustmentToVariant($adjItem, $variant)
     {
-        if (isset($adjItem->ref_type) && $adjItem->ref_type === 'INIT') {
+        $refType = strtoupper($adjItem->ref_type ?? '');
+        if (in_array($refType, ['INIT', 'OPENING_STOCK', 'OPENING', 'OPENING_STOCK_EDIT', 'OPENING_STOCK_REVERSAL'])) {
             return false;
         }
 
         $note = strtolower($adjItem->note ?? '');
-        if (empty($note) || $note === 'initial stock') {
+        if (empty($note) || $note === 'initial stock' || str_starts_with($note, 'opening stock')) {
             return false;
         }
 
         $vSize  = strtolower(trim($variant['size'] ?? '-'));
         $vColor = strtolower(trim($variant['color'] ?? '-'));
         $vName  = strtolower(trim($variant['name'] ?? ''));
+
+        // If note explicitly contains "variant: [name]", check name match
+        if (preg_match('/variant:\s*([^|]+)/i', $note, $matches)) {
+            $noteVariant = strtolower(trim($matches[1]));
+            if ($vName !== '' && $noteVariant === $vName) {
+                return true;
+            }
+            if ($vName !== '' && $noteVariant !== $vName) {
+                return false;
+            }
+        }
 
         $sizeMatch = true;
         if ($vSize !== '-' && !empty($vSize)) {
@@ -3500,6 +3574,14 @@ class ReportingController extends Controller
         if ($vColor !== '-' && !empty($vColor)) {
             $pattern = '/\b' . preg_quote($vColor, '/') . '\b/i';
             $colorMatch = preg_match($pattern, $note) === 1;
+        }
+
+        if ($vSize === '-' && $vColor === '-' && $vName !== '') {
+            $namePattern = '/\b' . preg_quote($vName, '/') . '\b/i';
+            if (preg_match($namePattern, $note) === 1) {
+                return true;
+            }
+            return false;
         }
 
         return $sizeMatch && $colorMatch;
