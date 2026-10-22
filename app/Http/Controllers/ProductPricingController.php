@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Unit;
 use App\Models\Warehouse;
+use App\Models\ItemCodeSeries;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -176,12 +177,24 @@ class ProductPricingController extends Controller
         $lowStockCount     = $items->where('is_low_stock', true)->count();
         $totalProducts     = $paginator->total();
 
+        // Load Item Code Series for quick editing & numbering
+        $itemCodeSeries = ItemCodeSeries::orderBy('is_default', 'desc')->orderBy('prefix')->get();
+        if ($itemCodeSeries->isEmpty()) {
+            ItemCodeSeries::create([
+                'prefix' => 'item-',
+                'next_number' => 1,
+                'is_default' => 1,
+            ]);
+            $itemCodeSeries = ItemCodeSeries::all();
+        }
+
         return view('admin_panel.product.pricing_stock_value', compact(
             'paginator',
             'items',
             'categories',
             'brands',
             'units',
+            'itemCodeSeries',
             'totalStockValue',
             'totalSaleValue',
             'totalStockPieces',
@@ -232,10 +245,27 @@ class ProductPricingController extends Controller
     public function inlineUpdate(Request $request)
     {
         $validated = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'field'      => 'required|in:purchase_price,sale_price,alert_quantity,wholesale_price',
-            'value'      => 'required|numeric|min:0',
+            'product_id'    => 'required|exists:products,id',
+            'variant_index' => 'nullable|integer|min:0',
+            'field'         => 'required|string',
+            'value'         => 'required',
         ]);
+
+        // ── Handle Item Code Update directly via inlineUpdate ──
+        if ($validated['field'] === 'item_code') {
+            return $this->processItemCodeUpdate(
+                (int) $validated['product_id'],
+                trim($validated['value']),
+                trim($request->input('prefix', ''))
+            );
+        }
+
+        if (!is_numeric($validated['value']) || (float)$validated['value'] < 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The value must be a valid non-negative number.',
+            ], 422);
+        }
 
         $product = Product::with('warehouseStocks')->findOrFail($validated['product_id']);
         $field = $validated['field'];
@@ -257,6 +287,63 @@ class ProductPricingController extends Controller
                     ? (isset($decoded[0]) ? $decoded : [$decoded])
                     : array_values($decoded);
             }
+        }
+
+        // ── Variant-specific Rate Override ──
+        if ($request->has('variant_index') && $request->input('variant_index') !== null && $request->input('variant_index') !== '') {
+            $vIdx = (int) $request->input('variant_index');
+            if (!isset($variants[$vIdx])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Variant index not found.',
+                ], 422);
+            }
+
+            if (in_array($field, ['purchase_price', 'purch_price'])) {
+                $variants[$vIdx]['purch_price'] = $val;
+                $variants[$vIdx]['purchase_price'] = $val;
+            } elseif ($field === 'sale_price') {
+                $variants[$vIdx]['sale_price'] = $val;
+                $variants[$vIdx]['retail_price'] = $val;
+            } elseif ($field === 'wholesale_price') {
+                $variants[$vIdx]['wholesale_price'] = $val;
+            } elseif ($field === 'retail_price') {
+                $variants[$vIdx]['retail_price'] = $val;
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid variant field: ' . $field,
+                ], 422);
+            }
+
+            $product->color = json_encode(array_values($variants));
+            $product->save();
+
+            // Calculate updated stock value and margin matching ReportingController
+            $costData = self::calculateProductAverageCost($product);
+            $avgPurch = $costData['avg_purchase_price'];
+            $newStockValue = $costData['stock_value'];
+
+            return response()->json([
+                'success'            => true,
+                'message'            => 'Variant rate updated successfully.',
+                'product_id'         => $product->id,
+                'variant_index'      => $vIdx,
+                'field'              => $field,
+                'value'              => $val,
+                'variant'            => $variants[$vIdx],
+                'variants'           => $variants,
+                'avg_purchase_price' => $avgPurch,
+                'stock_value'        => $newStockValue,
+            ]);
+        }
+
+        // ── Master Product Update ──
+        if (!in_array($field, ['purchase_price', 'sale_price', 'alert_quantity', 'wholesale_price'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid product field: ' . $field,
+            ], 422);
         }
 
         if ($field === 'purchase_price') {
@@ -415,6 +502,77 @@ class ProductPricingController extends Controller
             'margin_pct'         => round($marginPct, 1),
             'is_low_stock'       => $isLowStock,
             'variants'           => $variants,
+        ]);
+    }
+
+    /**
+     * AJAX endpoint to update product item_code with series & strict duplicate prevention.
+     */
+    public function updateItemCode(Request $request)
+    {
+        $validated = $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'item_code'  => 'required|string|max:191',
+            'prefix'     => 'nullable|string|max:50',
+        ]);
+
+        return $this->processItemCodeUpdate(
+            (int) $validated['product_id'],
+            trim($validated['item_code']),
+            trim($request->input('prefix', ''))
+        );
+    }
+
+    /**
+     * Common logic to update item_code, check duplicates, and sync series counter.
+     */
+    private function processItemCodeUpdate(int $productId, string $rawCode, string $prefix)
+    {
+        if (empty($rawCode)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Item code cannot be empty.',
+            ], 422);
+        }
+
+        // Compute full code: prepend prefix if rawCode is pure numeric, else keep as-is
+        $fullCode = (is_numeric($rawCode) && !empty($prefix)) ? ($prefix . $rawCode) : $rawCode;
+
+        // Strict duplicate check against other products (case-insensitive)
+        $duplicate = Product::whereRaw('LOWER(item_code) = ?', [strtolower($fullCode)])
+            ->where('id', '!=', $productId)
+            ->first();
+
+        if ($duplicate) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Item code "' . $fullCode . '" already exists (assigned to "' . $duplicate->item_name . '" [ID: ' . $duplicate->id . ']). Duplicate item codes are not allowed!',
+            ], 422);
+        }
+
+        $product = Product::findOrFail($productId);
+        $oldCode = $product->item_code;
+        $product->item_code = $fullCode;
+        $product->save();
+
+        // Update Series next_number if applicable
+        if (!empty($prefix)) {
+            $series = ItemCodeSeries::where('prefix', $prefix)->first();
+            if ($series) {
+                $numPart = str_replace($prefix, '', $fullCode);
+                if (is_numeric($numPart) && (int)$numPart >= $series->next_number) {
+                    $series->next_number = (int)$numPart + 1;
+                    $series->save();
+                }
+            }
+        }
+
+        return response()->json([
+            'success'   => true,
+            'message'   => 'Item code updated successfully to "' . $fullCode . '".',
+            'product_id'=> $product->id,
+            'item_code' => $fullCode,
+            'old_code'  => $oldCode,
         ]);
     }
 }

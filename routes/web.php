@@ -177,6 +177,8 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:products.view')->name('products.pricing_valuation');
     Route::post('/products/pricing/inline-update', [App\Http\Controllers\ProductPricingController::class, 'inlineUpdate'])
         ->middleware('permission:products.edit')->name('products.pricing.inline_update');
+    Route::post('/products/pricing/update-item-code', [App\Http\Controllers\ProductPricingController::class, 'updateItemCode'])
+        ->middleware('permission:products.edit')->name('products.pricing.update_item_code');
 
     // ── Product Import / Export ──
     Route::get('/products/export',   [App\Http\Controllers\ProductImportExportController::class, 'export'])

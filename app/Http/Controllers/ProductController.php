@@ -551,6 +551,44 @@ class ProductController extends Controller
     // ===== List page =====
     public function product(Request $request)
     {
+        if ($request->has('reset')) {
+            $request->session()->forget('product_filters');
+            return redirect()->route('product');
+        }
+
+        $filterKeys = ['search', 'category_id', 'brand_id', 'status'];
+
+        if ($request->hasAny($filterKeys)) {
+            $activeFilters = array_filter($request->only($filterKeys), function ($val) {
+                return $val !== null && trim($val) !== '';
+            });
+
+            if (!empty($activeFilters)) {
+                $request->session()->put('product_filters', $activeFilters);
+            } else {
+                $request->session()->forget('product_filters');
+            }
+        } elseif ($request->session()->has('product_filters')) {
+            $savedFilters = array_filter($request->session()->get('product_filters') ?: [], function ($val) {
+                return $val !== null && trim($val) !== '';
+            });
+
+            if (!empty($savedFilters)) {
+                $request->merge($savedFilters);
+            } else {
+                $request->session()->forget('product_filters');
+            }
+        }
+
+        if ($request->filled('per_page')) {
+            $perPage = (int) $request->input('per_page');
+            if (in_array($perPage, [25, 50, 100, 250, 500])) {
+                $request->session()->put('product_per_page', $perPage);
+            }
+        } elseif ($request->session()->has('product_per_page')) {
+            $request->merge(['per_page' => $request->session()->get('product_per_page')]);
+        }
+
         $query = Product::with([
             'category_relation',
             'sub_category_relation',
@@ -1272,9 +1310,9 @@ class ProductController extends Controller
             return response()->json(['exists' => false, 'message' => 'Item code is required.']);
         }
 
-        $fullCode = (!empty($prefix) && !str_starts_with($code, $prefix)) ? ($prefix . $code) : $code;
+        $fullCode = (is_numeric($code) && !empty($prefix)) ? ($prefix . $code) : $code;
 
-        $query = Product::where('item_code', $fullCode);
+        $query = Product::whereRaw('LOWER(item_code) = ?', [strtolower($fullCode)]);
         if (!empty($excludeId)) {
             $query->where('id', '!=', $excludeId);
         }
@@ -1751,15 +1789,15 @@ class ProductController extends Controller
         if ($request->filled('item_code_number')) {
             $num = trim($request->input('item_code_number', ''));
             $pref = $request->input('item_code_prefix', '');
-            $targetCode = str_starts_with($num, $pref) ? $num : $pref . $num;
-            if (\App\Models\Product::where('item_code', $targetCode)->where('id', '!=', $id)->exists()) {
+            $targetCode = (is_numeric($num) && !empty($pref)) ? ($pref . $num) : $num;
+            if (\App\Models\Product::whereRaw('LOWER(item_code) = ?', [strtolower($targetCode)])->where('id', '!=', $id)->exists()) {
                 if ($request->wantsJson()) {
                     return response()->json([
                         'status' => 'error',
-                        'errors' => ['item_code_number' => ['Item code "' . $targetCode . '" already exists in this series. Please choose a different one.']]
+                        'errors' => ['item_code_number' => ['Item code "' . $targetCode . '" already exists. Duplicate codes are not allowed.']]
                     ], 422);
                 }
-                return redirect()->back()->withErrors(['item_code_number' => 'Item code "' . $targetCode . '" already exists in this series. Please choose a different one.'])->withInput();
+                return redirect()->back()->withErrors(['item_code_number' => 'Item code "' . $targetCode . '" already exists. Duplicate codes are not allowed.'])->withInput();
             }
         }
 
@@ -2030,16 +2068,16 @@ class ProductController extends Controller
             if ($request->filled('item_code_number')) {
                 $num = trim($request->item_code_number);
                 $pref = $request->input('item_code_prefix', '');
-                $item_code = str_starts_with($num, $pref) ? $num : $pref . $num;
+                $item_code = (is_numeric($num) && !empty($pref)) ? ($pref . $num) : $num;
                 
-                if (\App\Models\Product::where('item_code', $item_code)->where('id', '!=', $id)->exists()) {
+                if (\App\Models\Product::whereRaw('LOWER(item_code) = ?', [strtolower($item_code)])->where('id', '!=', $id)->exists()) {
                     if ($request->wantsJson()) {
                         return response()->json([
                             'status' => 'error',
-                            'errors' => ['item_code_number' => ['Item code "' . $item_code . '" already exists in this series. Please choose a different one.']]
+                            'errors' => ['item_code_number' => ['Item code "' . $item_code . '" already exists. Duplicate codes are not allowed.']]
                         ], 422);
                     }
-                    return redirect()->back()->withErrors(['item_code_number' => 'Item code "' . $item_code . '" already exists in this series. Please choose a different one.'])->withInput();
+                    return redirect()->back()->withErrors(['item_code_number' => 'Item code "' . $item_code . '" already exists. Duplicate codes are not allowed.'])->withInput();
                 }
                 
                 $series = \App\Models\ItemCodeSeries::where('prefix', $pref)->first();

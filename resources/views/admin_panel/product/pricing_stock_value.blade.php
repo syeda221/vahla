@@ -358,16 +358,16 @@
     }
 
     /* ── Inline Double-Click Editable Cells (Preserving solid grid borders) ── */
-    .editable-cell {
+    .editable-cell, .editable-variant-cell {
         cursor: pointer;
         position: relative;
         background: #FFFFFF;
         transition: background 0.12s ease;
     }
-    .editable-cell:hover {
+    .editable-cell:hover, .editable-variant-cell:hover {
         background: #EFF6FF !important;
     }
-    .editable-cell::after {
+    .editable-cell::after, .editable-variant-cell::after {
         content: "\f304";
         font-family: "Font Awesome 5 Free";
         font-weight: 900;
@@ -377,13 +377,143 @@
         opacity: 0;
         transition: opacity 0.1s ease;
     }
-    .editable-cell:hover::after {
+    .editable-cell:hover::after, .editable-variant-cell:hover::after {
         opacity: 1;
         color: var(--saas-accent);
     }
 
+    /* Editable Code Cell in Grid */
+    .editable-code-cell {
+        cursor: pointer;
+        position: relative;
+        background: #FFFFFF;
+        transition: background 0.12s ease;
+    }
+    .editable-code-cell:hover {
+        background: #EFF6FF !important;
+    }
+    .editable-code-cell:hover .edit-code-icon {
+        opacity: 1 !important;
+        color: var(--saas-accent) !important;
+    }
+
+    /* Unified Item Code Series Wrapper in Modal */
+    .eic-code-wrapper {
+        display: flex !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        height: 40px !important;
+        border-radius: 6px !important;
+        overflow: hidden !important;
+        border: 1.5px solid #0ea5e9 !important;
+        box-shadow: 0 1px 3px rgba(14, 165, 233, 0.15);
+        background: #f1f5f9;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .eic-code-wrapper.has-error {
+        border-color: #ef4444 !important;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+    }
+    .eic-code-wrapper.has-success {
+        border-color: #10b981 !important;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+    }
+
+    /* Series Dropdown */
+    .eic-series-select {
+        width: 115px !important;
+        min-width: 95px !important;
+        max-width: 130px !important;
+        height: 100% !important;
+        background-color: #0ea5e9 !important;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+        background-position: right 10px center !important;
+        background-repeat: no-repeat !important;
+        background-size: 11px 11px !important;
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        font-size: 0.95rem !important;
+        border: none !important;
+        border-radius: 0 !important;
+        padding: 0 24px 0 12px !important;
+        cursor: pointer !important;
+        outline: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+    }
+    .eic-series-select option {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        font-weight: 700 !important;
+        padding: 6px 12px !important;
+    }
+
+    /* Code Number Input */
+    .eic-code-input {
+        flex: 1 1 auto !important;
+        height: 100% !important;
+        border: none !important;
+        border-radius: 0 !important;
+        border-left: 1px solid #bae6fd !important;
+        border-right: 1px solid #e2e8f0 !important;
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+        font-weight: 800 !important;
+        font-size: 1rem !important;
+        letter-spacing: 0.5px;
+        text-align: center !important;
+        padding: 0 10px !important;
+        outline: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+    }
+    .eic-code-input.is-invalid {
+        background-color: #fef2f2 !important;
+        color: #dc2626 !important;
+    }
+    .eic-code-input.is-valid {
+        background-color: #f0fdf4 !important;
+        color: #166534 !important;
+    }
+
+    /* Action Buttons (Edit & Add) */
+    .eic-code-btn {
+        width: 40px !important;
+        min-width: 40px !important;
+        height: 100% !important;
+        background: #f8fafc !important;
+        color: #475569 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        font-size: 0.95rem !important;
+        transition: all 0.15s ease !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .eic-code-btn:hover {
+        background: #e2e8f0 !important;
+        color: #0f172a !important;
+    }
+    .eic-code-btn-add {
+        border-left: 1px solid #e2e8f0 !important;
+        font-weight: 800 !important;
+        font-size: 1.25rem !important;
+        color: #0284c7 !important;
+    }
+    .eic-code-btn-add:hover {
+        background: #e0f2fe !important;
+        color: #0369a1 !important;
+    }
+
     /* Active Editing Mode */
-    .editable-cell.is-editing {
+    .editable-cell.is-editing, .editable-variant-cell.is-editing {
         padding: 0 !important;
         background: #FFFFFF !important;
     }
@@ -410,6 +540,17 @@
     @keyframes saasSaveFlash {
         0% { background-color: #DCFCE7 !important; }
         100% { background-color: transparent; }
+    }
+
+    /* Modal stacking context fix for Bootstrap 4 */
+    #editItemCodeModal {
+        z-index: 1060 !important;
+    }
+    #newSeriesModal {
+        z-index: 1070 !important;
+    }
+    .modal-backdrop {
+        z-index: 1050 !important;
     }
 
     /* ── Semantic Status Badges ── */
@@ -657,8 +798,18 @@
                                 </td>
 
                                 {{-- Code --}}
-                                <td class="num-col" style="text-align:left; color:#111827; font-weight:700;">
-                                    {{ $item->item_code }}
+                                <td class="num-col editable-code-cell" 
+                                    data-id="{{ $item->id }}" 
+                                    data-code="{{ $item->item_code }}" 
+                                    data-name="{{ $item->item_name }}"
+                                    style="text-align:left; color:#111827; font-weight:700; cursor:pointer;" 
+                                    title="Click to edit item code series &amp; number">
+                                    <div class="d-flex align-items-center justify-content-between gap-1">
+                                        <span class="product-item-code" id="code-val-{{ $item->id }}" style="color: #0f172a !important; font-weight: 800; font-size: 0.82rem; letter-spacing: 0.3px;">{{ $item->item_code }}</span>
+                                        <button type="button" class="btn btn-xs btn-outline-primary py-0 px-1 ms-1 btn-edit-code-trigger" style="font-size: 10px; line-height: 1.3; border-radius: 3px; font-weight: 600;" title="Edit Series &amp; Number">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                    </div>
                                 </td>
 
                                 {{-- Item Name --}}
@@ -738,8 +889,11 @@
                                 <tr id="drawer-{{ $item->id }}" class="variant-drawer d-none" data-parent-id="{{ $item->id }}">
                                     <td colspan="11">
                                         <div class="p-1">
-                                            <div class="fw-semibold mb-1 text-muted small" style="font-size: 0.69rem;">
-                                                Variants breakdown for {{ $item->item_name }} (Auto-recalculated from base rates):
+                                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                                <div class="fw-semibold text-muted small" style="font-size: 0.69rem;">
+                                                    Variants breakdown for <strong class="text-dark">{{ $item->item_name }}</strong>:
+                                                    <span class="text-primary ms-1"><i class="fas fa-edit me-1"></i>Double-click any rate to edit variant price separately</span>
+                                                </div>
                                             </div>
                                             <table class="variant-inset-table">
                                                 <thead>
@@ -766,8 +920,28 @@
                                                             $vWholeP = (float)($v['wholesale_price'] ?? 0);
                                                             $vRetP   = (float)($v['retail_price'] ?? 0);
                                                             $vStock  = (float)($v['stock'] ?? $v['variant_stock'] ?? 0);
+
+                                                            // Fallbacks if variant rate was not yet saved explicitly
+                                                            if ($vPurchP <= 0 && $item->base_purchase_price > 0) {
+                                                                if (in_array($item->size_mode, ['by_kg', 'by_meter', 'by_feet']) && $vConv > 0) {
+                                                                    $vPurchP = round($item->base_purchase_price * $vConv, 2);
+                                                                } elseif ($item->size_mode === 'by_cartons' && $item->pieces_per_box > 0) {
+                                                                    $vPurchP = round($item->base_purchase_price / $item->pieces_per_box, 2);
+                                                                } else {
+                                                                    $vPurchP = (float)$item->base_purchase_price;
+                                                                }
+                                                            }
+                                                            if ($vSaleP <= 0 && $item->base_sale_price > 0) {
+                                                                if (in_array($item->size_mode, ['by_kg', 'by_meter', 'by_feet']) && $vConv > 0) {
+                                                                    $vSaleP = round($item->base_sale_price * $vConv, 2);
+                                                                } elseif ($item->size_mode === 'by_cartons' && $item->pieces_per_box > 0) {
+                                                                    $vSaleP = round($item->base_sale_price / $item->pieces_per_box, 2);
+                                                                } else {
+                                                                    $vSaleP = (float)$item->base_sale_price;
+                                                                }
+                                                            }
                                                         @endphp
-                                                        <tr class="var-row" data-conv="{{ $vConv }}">
+                                                        <tr class="var-row" data-product-id="{{ $item->id }}" data-variant-index="{{ $vIdx }}" data-conv="{{ $vConv }}">
                                                             <td class="fw-bold" style="color:#111827;">{{ $vName }}</td>
                                                             <td>
                                                                 @if($item->size_mode === 'by_kg' && $vWeight)
@@ -778,16 +952,16 @@
                                                                     <span class="tag-neutral">{{ $v['unit'] ?? 'pcs' }}</span>
                                                                 @endif
                                                             </td>
-                                                            <td class="num-col var-purch-price" style="color:#111827 !important; font-weight:700;">
+                                                            <td class="num-col editable-variant-cell var-purch-price" data-field="purch_price" data-raw="{{ $vPurchP }}" title="Double-click to edit variant purchase rate">
                                                                 Rs. {{ number_format($vPurchP, 2) }}
                                                             </td>
-                                                            <td class="num-col var-sale-price" style="color:#111827 !important; font-weight:700;">
+                                                            <td class="num-col editable-variant-cell var-sale-price" data-field="sale_price" data-raw="{{ $vSaleP }}" title="Double-click to edit variant sale rate">
                                                                 Rs. {{ number_format($vSaleP, 2) }}
                                                             </td>
-                                                            <td class="num-col var-wholesale-price" style="color:#111827 !important; font-weight:700;">
+                                                            <td class="num-col editable-variant-cell var-wholesale-price" data-field="wholesale_price" data-raw="{{ $vWholeP }}" title="Double-click to edit variant wholesale rate">
                                                                 Rs. {{ number_format($vWholeP, 2) }}
                                                             </td>
-                                                            <td class="num-col var-retail-price" style="color:#111827 !important; font-weight:700;">
+                                                            <td class="num-col editable-variant-cell var-retail-price" data-field="retail_price" data-raw="{{ $vRetP }}" title="Double-click to edit variant retail rate">
                                                                 Rs. {{ number_format($vRetP, 2) }}
                                                             </td>
                                                             <td class="num-col" style="color:#111827 !important; font-weight:700;">
@@ -826,11 +1000,95 @@
         </div>
     </div>
 </div>
+
+{{-- Edit Item Code & Series Modal --}}
+<div class="modal fade" id="editItemCodeModal" tabindex="-1" role="dialog" aria-labelledby="editItemCodeModalLabel" aria-hidden="true" data-backdrop="static" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 8px; overflow: hidden; background: #ffffff;">
+            <div class="modal-header py-2 px-3" style="background: #F8FAFC; border-bottom: 1px solid #E2E8F0;">
+                <div>
+                    <h6 class="modal-title fw-bold text-dark mb-0" id="editItemCodeModalLabel" style="font-size: 0.95rem;">
+                        <i class="fas fa-barcode text-primary me-2"></i>Edit Item Code &amp; Series
+                    </h6>
+                    <div class="text-muted small mt-1" style="font-size: 0.75rem;">
+                        Product: <strong id="eic_product_name" class="text-dark"></strong>
+                    </div>
+                </div>
+                <button type="button" class="close text-dark" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" onclick="closeEditItemCodeModal()" style="border:none; background:transparent; font-size:24px; line-height:1; opacity:0.8;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-3">
+                <input type="hidden" id="eic_product_id">
+                <input type="hidden" id="eic_original_code">
+
+                <div class="mb-2">
+                    <label class="form-label fw-bold text-uppercase text-muted mb-1" style="font-size: 11px; letter-spacing: 0.5px;">
+                        ITEM CODE SERIES
+                    </label>
+                    <div class="eic-code-wrapper" id="eic_code_wrapper" style="display: flex !important; height: 40px !important; border: 1.5px solid #0ea5e9 !important; border-radius: 6px !important; overflow: hidden !important;">
+                        <select class="eic-series-select" id="eic_series_dropdown" title="Choose series prefix" style="background-color: #0ea5e9 !important; color: #ffffff !important; font-weight: 800 !important; font-size: 0.95rem !important; border: none !important; width: 110px !important; min-width: 95px !important; padding: 0 24px 0 12px !important;">
+                            @foreach($itemCodeSeries as $series)
+                                <option value="{{ $series->prefix }}" data-next="{{ $series->prefix }}{{ str_pad($series->next_number, 4, '0', STR_PAD_LEFT) }}" style="background-color: #ffffff !important; color: #0f172a !important; font-weight: 700 !important;">
+                                    {{ trim($series->prefix, '-') }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <input type="text" class="eic-code-input" id="eic_code_input" placeholder="e.g. item-024" autocomplete="off" style="background-color: #f1f5f9 !important; color: #0f172a !important; font-weight: 800 !important; font-size: 1rem !important; text-align: center !important;">
+                        <button class="eic-code-btn" type="button" id="eic_btn_unlock" title="Focus &amp; Edit Number" style="background: #f8fafc !important; color: #475569 !important; width: 40px !important; border: none !important;">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="eic-code-btn eic-code-btn-add" type="button" id="eic_btn_add_series" title="Add New Series" style="background: #f8fafc !important; color: #0284c7 !important; width: 40px !important; border: none !important; border-left: 1px solid #e2e8f0 !important; font-size: 1.25rem !important; font-weight: 800 !important;">+</button>
+                    </div>
+                    <div id="eic_feedback" class="small mt-2" style="font-size: 12px; min-height: 20px;"></div>
+                </div>
+
+                <div class="alert alert-light border small mt-2 mb-0 p-2 text-muted" style="font-size: 11.5px; border-radius: 4px; background: #F8FAFC;">
+                    <i class="fas fa-shield-alt text-primary me-1"></i>
+                    <strong>Duplicate Prevention Active:</strong> Agar ye code kisi aur product ko pehle se assign hai (jaise <code>item/024</code>), to system use duplicate nahi hone dega aur error aayega.
+                </div>
+            </div>
+            <div class="modal-footer py-2 px-3" style="background: #F8FAFC; border-top: 1px solid #E2E8F0;">
+                <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal" data-bs-dismiss="modal" onclick="closeEditItemCodeModal()">Cancel</button>
+                <button type="button" class="btn btn-sm btn-primary fw-bold px-3" id="eic_btn_save">
+                    <i class="fas fa-save me-1"></i> Save Item Code
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Add New Series Modal --}}
+<div class="modal fade" id="newSeriesModal" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1065;">
+    <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 6px; background: #ffffff;">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold text-dark"><i class="fas fa-plus-circle text-primary me-1"></i> Add Series</h6>
+                <button type="button" class="close text-dark" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" onclick="$('#newSeriesModal').modal('hide')" style="border:none; background:transparent; font-size:24px; line-height:1; opacity:0.8;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="newSeriesForm">
+                    @csrf
+                    <div class="mb-3">
+                        <label class="form-label small text-muted fw-bold">Prefix (e.g. PRD-, dbd, item/)</label>
+                        <input type="text" name="prefix" id="new_series_prefix" class="form-control form-control-sm" required placeholder="e.g. PRD- or item/">
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary w-100 rounded fw-bold" id="btn_save_series">Save Series</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @section('js')
 <script>
 $(document).ready(function() {
+    
+    // Ensure modals are appended to body to prevent backdrop/overflow issues
+    $('#editItemCodeModal, #newSeriesModal').appendTo('body');
     
     // ── Searchable Ajax Select2 for Category Filter ──
     if ($.fn.select2) {
@@ -874,8 +1132,8 @@ $(document).ready(function() {
         $(this).text(isVisible ? 'Hide' : $(target).find('.var-row').length + ' variants');
     });
 
-    // ── Excel-like Double-Click Inline Editing ──
-    $(document).on('dblclick', '.editable-cell', function() {
+    // ── Excel-like Click or Double-Click Inline Editing ──
+    $(document).on('click dblclick', '.editable-cell', function() {
         startCellEdit($(this));
     });
 
@@ -1013,13 +1271,395 @@ $(document).ready(function() {
                 const wholeP = parseFloat(v.wholesale_price) || 0;
                 const retP   = parseFloat(v.retail_price) || 0;
 
-                $(this).find('.var-purch-price').text(`Rs. ${purchP.toFixed(2)}`);
-                $(this).find('.var-sale-price').text(`Rs. ${saleP.toFixed(2)}`);
-                $(this).find('.var-wholesale-price').text(`Rs. ${wholeP.toFixed(2)}`);
-                $(this).find('.var-retail-price').text(`Rs. ${retP.toFixed(2)}`);
+                $(this).find('.var-purch-price').data('raw', purchP).attr('data-raw', purchP).text(`Rs. ${purchP.toFixed(2)}`);
+                $(this).find('.var-sale-price').data('raw', saleP).attr('data-raw', saleP).text(`Rs. ${saleP.toFixed(2)}`);
+                $(this).find('.var-wholesale-price').data('raw', wholeP).attr('data-raw', wholeP).text(`Rs. ${wholeP.toFixed(2)}`);
+                $(this).find('.var-retail-price').data('raw', retP).attr('data-raw', retP).text(`Rs. ${retP.toFixed(2)}`);
             }
         });
     }
+
+    // ── Variant-specific Inline Click or Double-Click Editing ──
+    $(document).on('click dblclick', '.editable-variant-cell', function() {
+        startVariantCellEdit($(this));
+    });
+
+    function startVariantCellEdit($cell) {
+        if ($cell.hasClass('is-editing')) return;
+
+        const currentVal = parseFloat($cell.data('raw')) || 0;
+        const fieldName = $cell.data('field');
+        const $row = $cell.closest('.var-row');
+
+        // Store original content
+        $cell.data('orig-html', $cell.html());
+        $cell.addClass('is-editing');
+
+        // Create numeric input box
+        const $input = $('<input type="number" step="any" min="0" class="cell-input-box">').val(currentVal);
+        $cell.html($input);
+        $input.focus().select();
+
+        // Keydown handlers: Enter (Save & Down), Tab (Save & Right), Esc (Cancel)
+        $input.on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveVariantCellEdit($cell, $input.val());
+                const $nextRow = $row.next('.var-row');
+                if ($nextRow.length) {
+                    const $nextCell = $nextRow.find(`.editable-variant-cell[data-field="${fieldName}"]`);
+                    if ($nextCell.length) setTimeout(() => startVariantCellEdit($nextCell), 50);
+                }
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                saveVariantCellEdit($cell, $input.val());
+                const $nextEditable = $cell.nextAll('.editable-variant-cell').first();
+                if ($nextEditable.length) {
+                    setTimeout(() => startVariantCellEdit($nextEditable), 50);
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelVariantCellEdit($cell);
+            }
+        });
+
+        // Blur handler: Save
+        $input.on('blur', function() {
+            if ($cell.hasClass('is-editing')) {
+                saveVariantCellEdit($cell, $input.val());
+            }
+        });
+    }
+
+    function cancelVariantCellEdit($cell) {
+        $cell.removeClass('is-editing');
+        $cell.html($cell.data('orig-html'));
+    }
+
+    function saveVariantCellEdit($cell, newVal) {
+        const $row = $cell.closest('.var-row');
+        const productId = $row.data('product-id');
+        const variantIndex = $row.data('variant-index');
+        const field = $cell.data('field');
+        const parsedVal = parseFloat(newVal);
+
+        if (isNaN(parsedVal) || parsedVal < 0) {
+            cancelVariantCellEdit($cell);
+            return;
+        }
+
+        // Show subtle saving state
+        $cell.removeClass('is-editing').html('<span class="text-muted" style="font-size:10px;">Saving…</span>');
+
+        $.ajax({
+            url: '{{ route("products.pricing.inline_update") }}',
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                product_id: productId,
+                variant_index: variantIndex,
+                field: field,
+                value: parsedVal
+            },
+            success: function(res) {
+                if (res.success) {
+                    $cell.data('raw', parsedVal).attr('data-raw', parsedVal);
+                    $cell.html(`<span class="cell-val" style="color:#111827; font-weight:700;">Rs. ${parsedVal.toFixed(2)}</span>`);
+                    $cell.addClass('save-flash');
+                    setTimeout(() => $cell.removeClass('save-flash'), 800);
+
+                    if (res.avg_purchase_price !== undefined) {
+                        $(`#avg-purch-${productId}`).text(`Rs. ${parseFloat(res.avg_purchase_price).toFixed(2)}`);
+                    }
+                    if (res.stock_value !== undefined) {
+                        $(`#stock-value-${productId}`).text(`Rs. ${parseFloat(res.stock_value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+                    }
+
+                    showToast('success', res.message || 'Variant price updated successfully');
+                } else {
+                    cancelVariantCellEdit($cell);
+                    showToast('error', res.message || 'Update failed');
+                }
+            },
+            error: function(xhr) {
+                cancelVariantCellEdit($cell);
+                let err = 'Error updating variant price';
+                if (xhr.responseJSON && xhr.responseJSON.message) err = xhr.responseJSON.message;
+                showToast('error', err);
+            }
+        });
+    }
+
+    // ── Open Edit Item Code Modal on Click or Double-Click ──
+    $(document).on('click', '.editable-code-cell, .btn-edit-code-trigger, .product-item-code', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const $cell = $(this).closest('.editable-code-cell');
+        const productId = $cell.data('id');
+        const currentCode = String($cell.attr('data-code') || $cell.find('.product-item-code').text()).trim();
+        const productName = $cell.data('name') || '';
+
+        openEditItemCodeModal(productId, currentCode, productName);
+    });
+
+    $(document).on('dblclick', '.editable-code-cell', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const $cell = $(this);
+        const productId = $cell.data('id');
+        const currentCode = String($cell.attr('data-code') || $cell.find('.product-item-code').text()).trim();
+        const productName = $cell.data('name') || '';
+
+        openEditItemCodeModal(productId, currentCode, productName);
+    });
+
+    let checkCodeTimer = null;
+
+    window.openEditItemCodeModal = function(productId, currentCode, productName) {
+        $('#eic_product_id').val(productId);
+        $('#eic_original_code').val(currentCode);
+        $('#eic_product_name').text(productName || 'Product #' + productId);
+        $('#eic_code_input').val(currentCode).removeClass('is-invalid is-valid');
+        $('#eic_code_wrapper').removeClass('has-error has-success');
+        $('#eic_feedback').html('');
+        $('#eic_btn_save').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Save Item Code');
+
+        // Match series prefix from dropdown options
+        let matched = false;
+        $('#eic_series_dropdown option').each(function() {
+            const prefix = $(this).val();
+            if (prefix && currentCode.startsWith(prefix)) {
+                $('#eic_series_dropdown').val(prefix);
+                matched = true;
+                return false;
+            }
+        });
+
+        if (!matched) {
+            $('#eic_series_dropdown option').each(function() {
+                const prefix = $(this).val().replace(/[-/_]$/, '');
+                if (prefix && currentCode.startsWith(prefix)) {
+                    $('#eic_series_dropdown').val($(this).val());
+                    matched = true;
+                    return false;
+                }
+            });
+        }
+
+        // Ensure modal is attached directly to body
+        if (!$('#editItemCodeModal').parent().is('body')) {
+            $('#editItemCodeModal').appendTo('body');
+        }
+
+        // Show modal via Bootstrap 4 jQuery
+        $('#editItemCodeModal').modal('show');
+
+        setTimeout(function() {
+            $('#eic_code_input').focus().select();
+            eicCheckAvailability();
+        }, 250);
+    };
+
+    window.closeEditItemCodeModal = function() {
+        $('#editItemCodeModal').modal('hide');
+    };
+
+    // ── When user changes the series prefix dropdown ──
+    $(document).on('change', '#eic_series_dropdown', function() {
+        const $sel = $(this);
+        const $opt = $sel.find('option:selected');
+        const nextVal = $opt.attr('data-next') || $sel.val();
+        $('#eic_code_input').val(nextVal).focus();
+        eicCheckAvailability();
+    });
+
+    // ── Unlock / Focus input button ──
+    $(document).on('click', '#eic_btn_unlock', function() {
+        $('#eic_code_input').focus().select();
+    });
+
+    // ── Open Add Series modal ──
+    $(document).on('click', '#eic_btn_add_series', function() {
+        showNewSeriesModal();
+    });
+
+    // ── Input typing / pasting debounced live check ──
+    $(document).on('input propertychange paste change', '#eic_code_input', function() {
+        eicCheckAvailability();
+    });
+
+    $(document).on('keydown', '#eic_code_input', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (!$('#eic_btn_save').is(':disabled')) {
+                eicSaveItemCode();
+            }
+        }
+    });
+
+    function eicCheckAvailability() {
+        clearTimeout(checkCodeTimer);
+        const code = $('#eic_code_input').val().trim();
+        const prefix = $('#eic_series_dropdown').val() || '';
+        const productId = $('#eic_product_id').val();
+        const origCode = $('#eic_original_code').val().trim();
+
+        if (!code) {
+            $('#eic_feedback').html('<span class="text-danger fw-bold"><i class="fas fa-exclamation-circle me-1"></i> Item code cannot be empty.</span>');
+            $('#eic_code_wrapper').addClass('has-error').removeClass('has-success');
+            $('#eic_code_input').addClass('is-invalid').removeClass('is-valid');
+            $('#eic_btn_save').prop('disabled', true);
+            return;
+        }
+
+        if (code.toLowerCase() === origCode.toLowerCase()) {
+            $('#eic_feedback').html('<span class="fw-bold" style="color: #0284c7 !important;"><i class="fas fa-check-circle me-1"></i> Current item code of this product (unchanged).</span>');
+            $('#eic_code_wrapper').removeClass('has-error has-success');
+            $('#eic_code_input').removeClass('is-invalid is-valid');
+            $('#eic_btn_save').prop('disabled', false);
+            return;
+        }
+
+        $('#eic_feedback').html('<span class="text-muted fw-semibold"><i class="fas fa-spinner fa-spin me-1"></i> Checking availability...</span>');
+
+        checkCodeTimer = setTimeout(function() {
+            $.ajax({
+                url: "{{ route('products.check_item_code') }}",
+                type: 'GET',
+                data: {
+                    code: code,
+                    prefix: prefix,
+                    exclude_id: productId
+                },
+                success: function(res) {
+                    if (res.exists) {
+                        $('#eic_feedback').html(
+                            `<span class="text-danger fw-bold"><i class="fas fa-times-circle me-1"></i> Item code "${res.full_code}" already exists! Duplicate codes are not allowed.</span>`
+                        );
+                        $('#eic_code_wrapper').addClass('has-error').removeClass('has-success');
+                        $('#eic_code_input').addClass('is-invalid').removeClass('is-valid');
+                        $('#eic_btn_save').prop('disabled', true);
+                    } else {
+                        $('#eic_feedback').html(
+                            `<span class="text-success fw-bold"><i class="fas fa-check-circle me-1"></i> Item code "${res.full_code}" is available.</span>`
+                        );
+                        $('#eic_code_wrapper').removeClass('has-error').addClass('has-success');
+                        $('#eic_code_input').removeClass('is-invalid').addClass('is-valid');
+                        $('#eic_btn_save').prop('disabled', false);
+                    }
+                },
+                error: function() {
+                    $('#eic_feedback').html('<span class="text-warning"><i class="fas fa-exclamation-triangle me-1"></i> Unable to verify code availability.</span>');
+                    $('#eic_btn_save').prop('disabled', false);
+                }
+            });
+        }, 220);
+    }
+
+    // ── Save Item Code ──
+    $(document).on('click', '#eic_btn_save', function() {
+        eicSaveItemCode();
+    });
+
+    window.eicSaveItemCode = function() {
+        const productId = $('#eic_product_id').val();
+        const code = $('#eic_code_input').val().trim();
+        const prefix = $('#eic_series_dropdown').val() || '';
+
+        if (!code) {
+            $('#eic_feedback').html('<span class="text-danger fw-bold"><i class="fas fa-times-circle me-1"></i> Please enter an item code.</span>');
+            return;
+        }
+
+        const $btn = $('#eic_btn_save');
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+
+        $.ajax({
+            url: "{{ route('products.pricing.update_item_code') }}",
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                product_id: productId,
+                item_code: code,
+                prefix: prefix
+            },
+            success: function(res) {
+                $btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Save Item Code');
+                if (res.success) {
+                    const updatedCode = res.item_code;
+                    const $cell = $(`#code-val-${productId}`).closest('td');
+                    $(`#code-val-${productId}`).text(updatedCode);
+                    $cell.data('code', updatedCode).attr('data-code', updatedCode);
+                    $cell.addClass('save-flash');
+                    setTimeout(() => $cell.removeClass('save-flash'), 1000);
+
+                    // Close Modal
+                    closeEditItemCodeModal();
+                    showToast('success', res.message || 'Item code updated successfully');
+                } else {
+                    $('#eic_feedback').html(`<span class="text-danger fw-bold"><i class="fas fa-times-circle me-1"></i> ${res.message}</span>`);
+                    showToast('error', res.message || 'Failed to update item code');
+                }
+            },
+            error: function(xhr) {
+                $btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i> Save Item Code');
+                let err = 'Error updating item code.';
+                if (xhr.responseJSON && xhr.responseJSON.message) err = xhr.responseJSON.message;
+                $('#eic_feedback').html(`<span class="text-danger fw-bold"><i class="fas fa-times-circle me-1"></i> ${err}</span>`);
+                $('#eic_code_wrapper').addClass('has-error');
+                showToast('error', err);
+            }
+        });
+    };
+
+    // ── Add New Series Modal ──
+    window.showNewSeriesModal = function() {
+        if (!$('#newSeriesModal').parent().is('body')) {
+            $('#newSeriesModal').appendTo('body');
+        }
+        $('#new_series_prefix').val('');
+        $('#newSeriesModal').modal('show');
+        setTimeout(() => $('#new_series_prefix').focus(), 250);
+    };
+
+    $('#newSeriesForm').on('submit', function(e) {
+        e.preventDefault();
+        const prefixVal = $('#new_series_prefix').val().trim();
+        if (!prefixVal) return;
+
+        const $btn = $('#btn_save_series');
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+
+        $.ajax({
+            url: "{{ route('item-code-series.store') }}",
+            type: 'POST',
+            data: $(this).serialize(),
+            success: function(res) {
+                $btn.prop('disabled', false).html('Save Series');
+                if (res.success && res.series) {
+                    const s = res.series;
+                    if ($(`#eic_series_dropdown option[value="${s.prefix}"]`).length === 0) {
+                        const newOpt = `<option value="${s.prefix}" data-next="${s.formatted_next}">${s.label}</option>`;
+                        $('#eic_series_dropdown').append(newOpt);
+                    }
+                    $('#eic_series_dropdown').val(s.prefix);
+                    $('#eic_code_input').val(s.formatted_next);
+
+                    $('#newSeriesModal').modal('hide');
+                    showToast('success', 'Series "' + s.label + '" created successfully!');
+                    eicCheckAvailability();
+                } else {
+                    showToast('error', res.message || 'Failed to create series');
+                }
+            },
+            error: function(xhr) {
+                $btn.prop('disabled', false).html('Save Series');
+                let err = 'Error creating series.';
+                if (xhr.responseJSON && xhr.responseJSON.message) err = xhr.responseJSON.message;
+                showToast('error', err);
+            }
+        });
+    });
 
     function showToast(icon, title) {
         if (typeof Swal !== 'undefined') {
