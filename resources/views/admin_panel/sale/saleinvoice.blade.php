@@ -61,7 +61,7 @@
         .logo-img {
             max-width: 100%;
             height: auto;
-            max-height: 80px;
+            max-height: 105px;
             margin-bottom: 8px;
         }
 
@@ -70,11 +70,11 @@
             color: #ffffff;
             text-align: center;
             font-weight: bold;
-            font-size: 18px;
-            padding: 4px 10px;
+            font-size: 13px;
+            padding: 3px 10px;
             display: inline-block;
-            letter-spacing: 2px;
-            width: 80%;
+            letter-spacing: 1.5px;
+            width: 70%;
             border-radius: 2px;
         }
 
