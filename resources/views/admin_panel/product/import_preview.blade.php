@@ -192,12 +192,12 @@ $(document).ready(function() {
     
     function processImportChunk(offset) {
         $.ajax({
-            url: "{{ route('products.import.confirm') }}",
+            url: "{{ route('products.import.confirm', [], false) }}",
             type: "POST",
             data: {
                 _token: "{{ csrf_token() }}",
                 offset: offset,
-                chunk_size: 250
+                chunk_size: 50
             },
             success: function(res) {
                 if (res.status === 'success') {
@@ -205,7 +205,7 @@ $(document).ready(function() {
                     $('#importProgressBar').css('width', '100%').text('100%');
                     $('#importProgressText').text('Import complete! Redirecting...');
                     $('#btnConfirmImport').html('<i class="las la-check"></i> Complete!');
-                    window.location.href = "{{ route('product') }}";
+                    window.location.href = "{{ route('product', [], false) }}";
                 } else if (res.status === 'continue') {
                     // Update progress bar
                     let pct = Math.round((res.processed / res.total) * 100);
@@ -223,7 +223,13 @@ $(document).ready(function() {
             },
             error: function(err) {
                 console.error(err);
-                alert('A network error occurred during import. Check console for details.');
+                let msg = 'A network error occurred during import. Check console for details.';
+                if (err.status === 0) {
+                    msg = 'Network connection failed (ERR_CONNECTION_REFUSED). Server might be down, unreachable, or APP_URL is misconfigured.';
+                } else if (err.responseJSON && err.responseJSON.message) {
+                    msg = 'Import error: ' + err.responseJSON.message;
+                }
+                alert(msg);
                 $('#btnConfirmImport').prop('disabled', false).html('<i class="las la-check"></i> Retry Import');
                 $('#importProgressContainer').hide();
             }
