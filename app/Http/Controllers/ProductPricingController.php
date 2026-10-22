@@ -149,6 +149,7 @@ class ProductPricingController extends Controller
                 'avg_purchase_price'   => $avgPurchPrice,
                 'base_purchase_price'  => $basePurchPrice,
                 'base_sale_price'      => $baseSalePrice,
+                'wholesale_price'      => (float) ($product->wholesale_price ?? 0),
                 'stock_value'          => $stockValue,
                 'potential_sale_value' => $potentialSaleValue,
                 'margin_pct'           => $marginPct,
@@ -232,7 +233,7 @@ class ProductPricingController extends Controller
     {
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
-            'field'      => 'required|in:purchase_price,sale_price,alert_quantity',
+            'field'      => 'required|in:purchase_price,sale_price,alert_quantity,wholesale_price',
             'value'      => 'required|numeric|min:0',
         ]);
 
@@ -274,10 +275,16 @@ class ProductPricingController extends Controller
             // Recalculate variant prices
             if (!empty($variants)) {
                 foreach ($variants as &$v) {
-                    if ($product->size_mode === 'by_kg') {
+                    if (in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet'])) {
                         $conv = (float) ($v['conv_factor'] ?? 0);
                         if ($conv <= 0 && isset($v['weight_per_piece'])) {
-                            $conv = (float) $v['weight_per_piece'] / 1000.0;
+                            if ($product->size_mode === 'by_feet') {
+                                $conv = (float) $v['weight_per_piece'] / 12.0;
+                            } elseif ($product->size_mode === 'by_meter') {
+                                $conv = (float) $v['weight_per_piece'] / 1000.0;
+                            } else {
+                                $conv = (float) $v['weight_per_piece'] / 1000.0;
+                            }
                         }
                         if ($conv > 0) {
                             $v['purch_price'] = round($val * $conv, 2);
@@ -308,10 +315,16 @@ class ProductPricingController extends Controller
             // Recalculate variant prices
             if (!empty($variants)) {
                 foreach ($variants as &$v) {
-                    if ($product->size_mode === 'by_kg') {
+                    if (in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet'])) {
                         $conv = (float) ($v['conv_factor'] ?? 0);
                         if ($conv <= 0 && isset($v['weight_per_piece'])) {
-                            $conv = (float) $v['weight_per_piece'] / 1000.0;
+                            if ($product->size_mode === 'by_feet') {
+                                $conv = (float) $v['weight_per_piece'] / 12.0;
+                            } elseif ($product->size_mode === 'by_meter') {
+                                $conv = (float) $v['weight_per_piece'] / 1000.0;
+                            } else {
+                                $conv = (float) $v['weight_per_piece'] / 1000.0;
+                            }
                         }
                         if ($conv > 0) {
                             $v['sale_price']   = round($val * $conv, 2);
@@ -326,6 +339,36 @@ class ProductPricingController extends Controller
                     } else {
                         $v['sale_price']   = $val;
                         $v['retail_price'] = $val;
+                    }
+                }
+                $product->color = json_encode($variants);
+            }
+        } elseif ($field === 'wholesale_price') {
+            $product->wholesale_price = $val;
+
+            // Recalculate variant prices
+            if (!empty($variants)) {
+                foreach ($variants as &$v) {
+                    if (in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet'])) {
+                        $conv = (float) ($v['conv_factor'] ?? 0);
+                        if ($conv <= 0 && isset($v['weight_per_piece'])) {
+                            if ($product->size_mode === 'by_feet') {
+                                $conv = (float) $v['weight_per_piece'] / 12.0;
+                            } elseif ($product->size_mode === 'by_meter') {
+                                $conv = (float) $v['weight_per_piece'] / 1000.0;
+                            } else {
+                                $conv = (float) $v['weight_per_piece'] / 1000.0;
+                            }
+                        }
+                        if ($conv > 0) {
+                            $v['wholesale_price'] = round($val * $conv, 2);
+                        } else {
+                            $v['wholesale_price'] = $val;
+                        }
+                    } elseif ($product->size_mode === 'by_cartons') {
+                        $v['wholesale_price'] = round($val / $ppb, 2);
+                    } else {
+                        $v['wholesale_price'] = $val;
                     }
                 }
                 $product->color = json_encode($variants);
@@ -365,6 +408,7 @@ class ProductPricingController extends Controller
             'field'              => $field,
             'base_purchase_price'=> $basePurch,
             'base_sale_price'    => $baseSale,
+            'wholesale_price'    => (float) ($product->wholesale_price ?? 0),
             'avg_purchase_price' => $avgPurch,
             'alert_quantity'     => (float) $product->alert_quantity,
             'stock_value'        => $newStockValue,

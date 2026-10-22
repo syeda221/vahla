@@ -572,6 +572,17 @@
                         </select>
                     </div>
 
+                    {{-- Rows per page --}}
+                    <div class="erp-filter-field" style="min-width:115px;">
+                        <label class="erp-flabel">Show Rows</label>
+                        <select name="per_page" class="erp-finput" onchange="document.getElementById('filterForm').submit();">
+                            <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25 rows</option>
+                            <option value="50" {{ request('per_page', 50) == 50 ? 'selected' : '' }}>50 rows</option>
+                            <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100 rows</option>
+                            <option value="250" {{ request('per_page') == 250 ? 'selected' : '' }}>250 rows</option>
+                        </select>
+                    </div>
+
                     {{-- Buttons --}}
                     <div class="erp-filter-field erp-filter-btns">
                         <label class="erp-flabel">&nbsp;</label>
@@ -981,10 +992,21 @@
 
         {{-- ── Pagination ── --}}
         <div class="erp-pagination">
-            <span class="showing">
-                Showing <strong>{{ $products->firstItem() }}–{{ $products->lastItem() }}</strong>
-                of <strong>{{ $products->total() }}</strong> products
-            </span>
+            <div class="d-flex align-items-center gap-3">
+                <span class="showing">
+                    Showing <strong>{{ $products->firstItem() ?? 0 }}–{{ $products->lastItem() ?? 0 }}</strong>
+                    of <strong>{{ $products->total() }}</strong> products
+                </span>
+                <div class="d-inline-flex align-items-center gap-1">
+                    <span class="small text-muted fw-bold">Rows:</span>
+                    <select class="form-select form-select-sm" style="width: auto; height: 30px; font-size: 12px; font-weight: 600; border-radius: 6px;" onchange="let url = new URL(window.location.href); url.searchParams.set('per_page', this.value); url.searchParams.set('page', 1); window.location.href = url.toString();">
+                        <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25 rows</option>
+                        <option value="50" {{ request('per_page', 50) == 50 ? 'selected' : '' }}>50 rows</option>
+                        <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100 rows</option>
+                        <option value="250" {{ request('per_page') == 250 ? 'selected' : '' }}>250 rows</option>
+                    </select>
+                </div>
+            </div>
             {{ $products->appends(request()->query())->links() }}
         </div>
 

@@ -41,6 +41,26 @@
         border-left: 4px solid #f59e0b !important;
         box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
     }
+    .dataTables_wrapper .dataTables_length select {
+        height: 38px !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        padding: 4px 10px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+        background-color: #ffffff !important;
+        outline: none !important;
+        margin: 0 4px !important;
+    }
+    .dataTables_wrapper .dataTables_filter input {
+        height: 38px !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        padding: 6px 12px !important;
+        font-size: 13px !important;
+        outline: none !important;
+    }
 </style>
 <div class="content-wrapper">
     <!-- Modern Header -->
@@ -86,9 +106,22 @@
                             <button type="button" id="btnConsolidate" class="btn-consolidate">Consolidate into invoice</button>
                             @endcanany
                         </div>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <label for="per_page" class="form-label mb-0 small text-muted fw-bold text-nowrap">
+                                    <i class="fas fa-list-ol me-1 text-primary"></i>Show:
+                                </label>
+                                <select name="per_page" id="per_page" class="form-select form-select-sm" style="width: auto; min-width: 110px; height: 36px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-weight: 600; font-size: 13px; color: #1e293b; background-color: #ffffff;">
+                                    <option value="25">25 rows</option>
+                                    <option value="50" selected>50 rows</option>
+                                    <option value="100">100 rows</option>
+                                    <option value="250">250 rows</option>
+                                </select>
+                            </div>
+                        </div>
 
                         <div class="table-responsive">
-                            <table class="table table-hover table-bordered align-middle">
+                            <table class="table table-hover table-bordered align-middle" id="dcTable">
                                 <thead class="table-light">
                                     <tr>
                                         <th style="width: 50px;" class="text-center">
@@ -182,6 +215,40 @@
 @section('js')
 <script>
 $(document).ready(function() {
+    if ($.fn.DataTable) {
+        let dcTable = $('#dcTable').DataTable({
+            "pageLength": 50,
+            "lengthMenu": [
+                [25, 50, 100, 250],
+                ['25 rows', '50 rows', '100 rows', '250 rows']
+            ],
+            "order": [],
+            "columnDefs": [
+                { "orderable": false, "targets": [0, 7] }
+            ],
+            "language": {
+                "search": "",
+                "searchPlaceholder": "Search challans...",
+                "lengthMenu": "_MENU_"
+            },
+            "dom": "<'row mb-3 align-items-center'<'col-12 col-md-6 mb-2 mb-md-0'l><'col-12 col-md-6'f>>" +
+                "<'row'<'col-12'tr>>" +
+                "<'row mt-3 align-items-center'<'col-12 col-md-5 mb-2 mb-md-0'i><'col-12 col-md-7'p>>",
+        });
+
+        $(document).on('change', '#per_page', function() {
+            let len = parseInt($(this).val()) || 50;
+            dcTable.page.len(len).draw();
+        });
+
+        $(document).on('change', 'select[name="dcTable_length"]', function() {
+            let len = $(this).val();
+            if (len) {
+                $('#per_page').val(len);
+            }
+        });
+    }
+
     function updateSelection() {
         var selectedCheckboxes = $('.dc-checkbox:checked');
         var count = selectedCheckboxes.length;

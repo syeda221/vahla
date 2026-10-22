@@ -34,7 +34,7 @@ class DirectGRNController extends Controller
 
         $vendors = Vendor::orderBy('name')->get();
         $warehouses = Warehouse::orderBy('warehouse_name')->get();
-        $products = Product::orderBy('item_name')->get();
+        $products = Product::where('is_active', true)->orderBy('item_code', 'asc')->get();
 
         $nextGrnNumber = InvoiceSeries::generateNextNo('DGRN');
 

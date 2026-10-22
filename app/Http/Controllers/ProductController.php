@@ -95,7 +95,7 @@ class ProductController extends Controller
 
     public function productget()
     {
-        $products = Product::all();
+        $products = Product::where('is_active', true)->orderBy('item_code', 'asc')->get();
 
         return response()->json($products);
     }
@@ -150,6 +150,8 @@ class ProductController extends Controller
                 }
             });
         }
+
+        $query->orderBy('item_code', 'asc');
 
         $products = $query->paginate(15); // Lazy loading (15 per request)
 
@@ -588,7 +590,12 @@ class ProductController extends Controller
             $query->where('is_active', $request->status === 'active' ? 1 : 0);
         }
 
-        $products   = $query->latest()->paginate(20)->withQueryString();
+        $perPage = (int) $request->input('per_page', 50);
+        if (!in_array($perPage, [25, 50, 100, 250, 500])) {
+            $perPage = 50;
+        }
+
+        $products   = $query->orderBy('item_code', 'asc')->paginate($perPage)->withQueryString();
         $categories = Category::orderBy('name')->get();
         $brands     = Brand::orderBy('name')->get();
         $warehouses = Warehouse::orderBy('warehouse_name')->get();
@@ -1221,9 +1228,30 @@ class ProductController extends Controller
         return response()->json(Subcategory::orderBy('name')->get(['id', 'name']));
     }
 
-    public function getCategoriesJson()
+    public function getCategoriesJson(Request $request)
     {
-        return response()->json(Category::orderBy('name')->get(['id', 'name']));
+        $q = trim($request->input('q', ''));
+        $query = Category::orderBy('name');
+        if (!empty($q)) {
+            $query->where('name', 'like', "%{$q}%");
+        }
+        $categories = $query->get(['id', 'name']);
+
+        if ($request->has('select2')) {
+            $results = [];
+            if (empty($q) || stripos('All categories', $q) !== false || stripos('all', $q) !== false) {
+                $results[] = ['id' => 'all', 'text' => 'All categories'];
+            }
+            foreach ($categories as $cat) {
+                $results[] = [
+                    'id'   => (string) $cat->id,
+                    'text' => $cat->name,
+                ];
+            }
+            return response()->json(['results' => $results]);
+        }
+
+        return response()->json($categories);
     }
 
     public function getBrandsJson()

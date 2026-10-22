@@ -93,6 +93,26 @@
             align-items: center;
             justify-content: space-between;
         }
+        .dataTables_wrapper .dataTables_length select {
+            height: 38px !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            padding: 4px 10px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            color: #1e293b !important;
+            background-color: #ffffff !important;
+            outline: none !important;
+            margin: 0 4px !important;
+        }
+        .dataTables_wrapper .dataTables_filter input {
+            height: 38px !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            padding: 6px 12px !important;
+            font-size: 13px !important;
+            outline: none !important;
+        }
     </style>
 
     <div class="container-fluid px-4 py-3">
@@ -169,11 +189,11 @@
         <!-- FILTER PANEL -->
         <div class="filter-panel mb-3">
             <form action="{{ route('purchase_orders.index') }}" method="GET" class="row g-2 align-items-end">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label>From Date</label>
                     <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label>To Date</label>
                     <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}">
                 </div>
@@ -184,6 +204,15 @@
                         @foreach($vendors as $v)
                             <option value="{{ $v->id }}" {{ request('vendor_id') == $v->id ? 'selected' : '' }}>{{ $v->name }}</option>
                         @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label>Show Rows</label>
+                    <select name="per_page" id="per_page" class="form-select">
+                        <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25 rows</option>
+                        <option value="50" {{ request('per_page', 50) == 50 ? 'selected' : '' }}>50 rows</option>
+                        <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100 rows</option>
+                        <option value="250" {{ request('per_page') == 250 ? 'selected' : '' }}>250 rows</option>
                     </select>
                 </div>
                 <div class="col-md-3 d-flex gap-2">
@@ -348,6 +377,41 @@
 @section('js')
 <script>
 $(document).ready(function() {
+    if ($.fn.DataTable) {
+        let selectedLen = parseInt($('#per_page').val()) || 50;
+        let ordersTable = $('#ordersTable').DataTable({
+            "pageLength": selectedLen,
+            "lengthMenu": [
+                [25, 50, 100, 250],
+                ['25 rows', '50 rows', '100 rows', '250 rows']
+            ],
+            "order": [],
+            "columnDefs": [
+                { "orderable": false, "targets": [8] }
+            ],
+            "language": {
+                "search": "",
+                "searchPlaceholder": "Search orders...",
+                "lengthMenu": "_MENU_"
+            },
+            "dom": "<'row mb-3 align-items-center'<'col-12 col-md-6 mb-2 mb-md-0'l><'col-12 col-md-6'f>>" +
+                "<'row'<'col-12'tr>>" +
+                "<'row mt-3 align-items-center'<'col-12 col-md-5 mb-2 mb-md-0'i><'col-12 col-md-7'p>>",
+        });
+
+        $(document).on('change', '#per_page', function() {
+            let len = parseInt($(this).val()) || 50;
+            ordersTable.page.len(len).draw();
+        });
+
+        $(document).on('change', 'select[name="ordersTable_length"]', function() {
+            let len = $(this).val();
+            if (len) {
+                $('#per_page').val(len);
+            }
+        });
+    }
+
     // Delete Purchase Order
     $(document).on('click', '.btn-delete-po', function(e) {
         e.preventDefault();

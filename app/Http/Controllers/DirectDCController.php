@@ -31,7 +31,7 @@ class DirectDCController extends Controller
 
         $customers = Customer::orderBy('customer_name')->get();
         $warehouses = Warehouse::orderBy('warehouse_name')->get();
-        $products = Product::orderBy('item_name')->get();
+        $products = Product::where('is_active', true)->orderBy('item_code', 'asc')->get();
         
         $lastDC = DeliveryChallan::where('dc_number', 'like', 'DDC-%')->latest('id')->first();
         $dcCount = $lastDC ? (int) preg_replace('/[^0-9]/', '', $lastDC->dc_number) : 0;
@@ -200,7 +200,7 @@ class DirectDCController extends Controller
 
         $customers = Customer::orderBy('customer_name')->get();
         $warehouses = Warehouse::orderBy('warehouse_name')->get();
-        $products = Product::orderBy('item_name')->get();
+        $products = Product::where('is_active', true)->orderBy('item_code', 'asc')->get();
 
         return view('admin_panel.direct_dc.edit', compact('dc', 'customers', 'warehouses', 'products'));
     }

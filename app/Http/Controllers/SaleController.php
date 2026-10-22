@@ -242,7 +242,7 @@ class SaleController extends Controller
 
         $nextInvoiceNumber = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
 
-        $recentProducts = Product::latest()->take(12)->get();
+        $recentProducts = Product::where('is_active', true)->orderBy('item_code', 'asc')->take(24)->get();
 
         // Filter accounts (Cash/Bank) for Payment Voucher
         $accounts = \App\Models\Account::where(function($query) {
@@ -281,6 +281,7 @@ class SaleController extends Controller
                 'warehouse_stocks.total_pieces as wh_stock',
                 'warehouse_stocks.quantity as wh_box_qty'
             )
+            ->orderBy('products.item_code', 'asc')
             ->limit(50)
             ->get()
             ->map(function ($product) {
@@ -1199,7 +1200,7 @@ class SaleController extends Controller
         $allSeries = \App\Models\InvoiceSeries::whereNotIn('prefix', $exclude)->orderByRaw("is_default DESC, id ASC")->get();
         $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
         $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
-        $recentProducts = Product::latest()->take(12)->get();
+        $recentProducts = Product::where('is_active', true)->orderBy('item_code', 'asc')->take(24)->get();
 
         // Filter accounts (Cash/Bank) for Receipt Voucher
         $accounts = \App\Models\Account::where(function($query) {

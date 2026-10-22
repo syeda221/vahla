@@ -31,7 +31,7 @@ class ProductBookingController extends Controller
 
     public function create()
     {
-        $products = Product::get();
+        $products = Product::where('is_active', true)->orderBy('item_code', 'asc')->get();
         $Customer = Customer::get();
 
         return view('admin_panel.booking.create', compact('products', 'Customer'));

@@ -309,6 +309,27 @@
         .dataTables_wrapper .col-sm-12 {
             overflow: visible !important;
         }
+
+        .dataTables_wrapper .dataTables_length select {
+            height: 38px !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            padding: 4px 10px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            color: #1e293b !important;
+            background-color: #ffffff !important;
+            outline: none !important;
+            margin: 0 4px !important;
+        }
+        .dataTables_wrapper .dataTables_filter input {
+            height: 38px !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            padding: 6px 12px !important;
+            font-size: 13px !important;
+            outline: none !important;
+        }
     </style>
 
     <div class="main-content">
@@ -536,13 +557,26 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="col-12 d-flex justify-content-end gap-2 mt-2">
-                                        <button type="button" class="btn btn-premium-secondary px-3" id="btnReset">
-                                            <i class="fas fa-undo me-1"></i>Reset
-                                        </button>
-                                        <button type="button" class="btn btn-premium-primary px-4" id="btnSearch">
-                                            <i class="fas fa-search me-1"></i>Search
-                                        </button>
+                                    <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2 mt-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <label for="per_page" class="form-label mb-0 small text-muted fw-bold text-nowrap">
+                                                <i class="fas fa-list-ol me-1 text-primary"></i>Show:
+                                            </label>
+                                            <select name="per_page" id="per_page" class="form-select form-select-sm" style="width: auto; min-width: 110px; height: 38px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-weight: 600; font-size: 13px; color: #1e293b; background-color: #ffffff;">
+                                                <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25 rows</option>
+                                                <option value="50" {{ request('per_page', 50) == 50 ? 'selected' : '' }}>50 rows</option>
+                                                <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100 rows</option>
+                                                <option value="250" {{ request('per_page') == 250 ? 'selected' : '' }}>250 rows</option>
+                                            </select>
+                                        </div>
+                                        <div class="d-flex gap-2 ms-auto">
+                                            <button type="button" class="btn btn-premium-secondary px-3" id="btnReset">
+                                                <i class="fas fa-undo me-1"></i>Reset
+                                            </button>
+                                            <button type="button" class="btn btn-premium-primary px-4" id="btnSearch">
+                                                <i class="fas fa-search me-1"></i>Search
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                             </div>
@@ -610,8 +644,13 @@
                         $('#sales-table').DataTable().destroy();
                     }
                     if ($.fn.DataTable) {
+                        let selectedLen = parseInt($('#per_page').val()) || 50;
                         $('#sales-table').DataTable({
-                            "pageLength": 10,
+                            "pageLength": selectedLen,
+                            "lengthMenu": [
+                                [25, 50, 100, 250],
+                                ['25 rows', '50 rows', '100 rows', '250 rows']
+                            ],
                             "order": [],
                             "autoWidth": false,
                             "columnDefs": [
@@ -619,7 +658,8 @@
                             ],
                             "language": {
                                 "search": "",
-                                "searchPlaceholder": "Search sales..."
+                                "searchPlaceholder": "Search sales...",
+                                "lengthMenu": "_MENU_"
                             },
                             "dom": "<'row mb-3 align-items-center'<'col-12 col-md-6 mb-2 mb-md-0'l><'col-12 col-md-6'f>>" +
                                 "<'row'<'col-12'tr>>" +
@@ -633,6 +673,21 @@
 
             // Initial call
             initDataTable();
+
+            // Handle per_page changes & sync with DataTables
+            $(document).on('change', '#per_page', function() {
+                let len = parseInt($(this).val()) || 50;
+                if ($.fn.DataTable && $.fn.DataTable.isDataTable('#sales-table')) {
+                    $('#sales-table').DataTable().page.len(len).draw();
+                }
+            });
+
+            $(document).on('change', 'select[name="sales-table_length"]', function() {
+                let len = $(this).val();
+                if (len) {
+                    $('#per_page').val(len);
+                }
+            });
 
             // Mobile Filter Panel Toggle
             $('#toggleFilterPanel').on('click', function() {
@@ -765,6 +820,7 @@
                 $('#filter_bill_no').val('');
                 $('#filter_reference').val('');
                 $('#quick_filter').val('custom');
+                $('#per_page').val('50');
                 
                 // 2. Clear Select2 Customer Dropdown properly
                 if ($('.select2-customer').length > 0) {

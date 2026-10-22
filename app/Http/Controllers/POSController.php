@@ -16,7 +16,7 @@ class POSController extends Controller
     public function index(Request $request = null)
     {
         // 1. Fetch all active products
-        $products = Product::where('is_active', true)->with('warehouseStocks')->get();
+        $products = Product::where('is_active', true)->with('warehouseStocks')->orderBy('item_code', 'asc')->get();
 
         $posProducts = [];
         foreach ($products as $p) {

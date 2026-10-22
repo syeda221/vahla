@@ -38,12 +38,12 @@
         .invoice-page {
             width: 210mm;
             max-width: 210mm;
-            height: 148.5mm;
-            min-height: 148.5mm;
-            max-height: 148.5mm;
+            height: 148mm;
+            min-height: 148mm;
+            max-height: 148mm;
             margin: 20px auto;
             background: #ffffff;
-            padding: 15px 25px 12px 25px;
+            padding: 10px 18px 8px 18px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             position: relative;
             color: var(--pad-text);
@@ -210,19 +210,20 @@
 
         @media print {
             body { 
-                background: #fff; 
+                background: #fff !important; 
                 margin: 0 !important; 
                 padding: 0 !important; 
             }
-            .action-bar { display: none !important; }
+            .action-bar, .no-print { display: none !important; }
             .invoice-page { 
-                margin: 0 !important; 
+                margin: 0 auto !important; 
                 box-shadow: none !important; 
-                padding: 5mm 10mm 4mm 10mm !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                height: 148.5mm !important;
-                max-height: 148.5mm !important;
+                padding: 4mm 8mm 3mm 8mm !important;
+                width: 210mm !important;
+                max-width: 210mm !important;
+                height: 148mm !important;
+                max-height: 148mm !important;
+                min-height: 148mm !important;
                 box-sizing: border-box !important;
                 page-break-after: always !important;
                 page-break-inside: avoid !important;
@@ -245,7 +246,7 @@
         }
 
         @page {
-            size: A4 portrait;
+            size: A5 landscape;
             margin: 0;
         }
 
@@ -264,6 +265,9 @@
             <span class="fw-bold text-dark fs-6">
                 <i class="fa-solid fa-file-invoice me-1 text-primary"></i>
                 Delivery Challan Preview
+            </span>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 ms-2" style="font-size: 11px;">
+                <i class="fa-solid fa-print me-1"></i> A4 Half / A5 Landscape
             </span>
         </div>
         <div class="d-flex align-items-center gap-2">

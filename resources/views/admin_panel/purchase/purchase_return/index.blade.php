@@ -126,14 +126,17 @@
                         <script>
                             $(document).ready(function() {
                                 $('#return-table').DataTable({
-                                    "pageLength": 10,
-                                    "lengthMenu": [5, 10, 25, 50, 100],
+                                    "pageLength": 50,
+                                    "lengthMenu": [
+                                        [25, 50, 100, 250],
+                                        ['25 rows', '50 rows', '100 rows', '250 rows']
+                                    ],
                                     "order": [
                                         [0, 'desc']
                                     ],
                                     "language": {
                                         "search": "Search Return:",
-                                        "lengthMenu": "Show _MENU_ entries"
+                                        "lengthMenu": "_MENU_"
                                     }
                                 });
                             });

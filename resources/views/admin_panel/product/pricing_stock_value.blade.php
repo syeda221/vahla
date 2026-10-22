@@ -171,6 +171,87 @@
         border-color: var(--saas-accent);
         box-shadow: 0 0 0 2px rgba(52, 82, 217, 0.15);
     }
+
+    /* ── SaaS Themed Select2 Dropdown ── */
+    .select2-cat-wrapper {
+        min-width: 175px;
+    }
+    .select2-cat-wrapper .select2-container {
+        width: 100% !important;
+    }
+    .select2-cat-wrapper .select2-container--default .select2-selection--single {
+        height: 32px !important;
+        border: 1px solid var(--saas-border-dark) !important;
+        border-radius: 4px !important;
+        background-color: #FFFFFF !important;
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 4px !important;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .select2-cat-wrapper .select2-container--default.select2-container--focus .select2-selection--single,
+    .select2-cat-wrapper .select2-container--default.select2-container--open .select2-selection--single {
+        border-color: var(--saas-accent) !important;
+        box-shadow: 0 0 0 2px rgba(52, 82, 217, 0.15) !important;
+        outline: none !important;
+    }
+    .select2-cat-wrapper .select2-container--default .select2-selection--single .select2-selection__rendered {
+        font-size: 0.76rem !important;
+        font-weight: 500 !important;
+        color: var(--saas-text-main) !important;
+        line-height: 30px !important;
+        padding-left: 6px !important;
+        padding-right: 20px !important;
+    }
+    .select2-cat-wrapper .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 30px !important;
+        right: 4px !important;
+    }
+    .select2-cat-wrapper .select2-container--default .select2-selection--single .select2-selection__clear {
+        color: #94a3b8 !important;
+        font-size: 14px !important;
+        line-height: 30px !important;
+        margin-right: 18px !important;
+    }
+    .select2-cat-wrapper .select2-container--default .select2-selection--single .select2-selection__clear:hover {
+        color: #ef4444 !important;
+    }
+    .select2-dropdown {
+        border: 1px solid var(--saas-border-dark) !important;
+        border-radius: 6px !important;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12) !important;
+        font-size: 0.8rem !important;
+        z-index: 9999 !important;
+    }
+    .select2-search--dropdown {
+        padding: 6px 8px !important;
+    }
+    .select2-search--dropdown .select2-search__field {
+        height: 30px !important;
+        border: 1px solid var(--saas-border-dark) !important;
+        border-radius: 4px !important;
+        padding: 4px 8px !important;
+        font-size: 0.78rem !important;
+        outline: none !important;
+    }
+    .select2-search--dropdown .select2-search__field:focus {
+        border-color: var(--saas-accent) !important;
+        box-shadow: 0 0 0 2px rgba(52, 82, 217, 0.15) !important;
+    }
+    .select2-results__option {
+        padding: 6px 10px !important;
+        font-size: 0.78rem !important;
+        font-weight: 500 !important;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--saas-accent) !important;
+        color: #FFFFFF !important;
+    }
+    .select2-container--default .select2-results__option[aria-selected="true"] {
+        background-color: #f1f5f9 !important;
+        color: var(--saas-accent) !important;
+        font-weight: 600 !important;
+    }
     .btn-saas-primary {
         height: 32px;
         background: var(--saas-accent);
@@ -475,15 +556,27 @@
                             class="saas-control w-100" placeholder="Search item name, code, barcode…">
                     </div>
 
-                    {{-- Category --}}
-                    <select name="category_id" class="saas-control" style="min-width: 140px;">
-                        <option value="all">All categories</option>
-                        @foreach ($categories as $cat)
-                            <option value="{{ $cat->id }}" {{ request('category_id') == $cat->id ? 'selected' : '' }}>
-                                {{ $cat->name }}
-                            </option>
-                        @endforeach
-                    </select>
+                    {{-- Category (Searchable Ajax Select2) --}}
+                    <div class="select2-cat-wrapper">
+                        <select name="category_id" id="category_filter" class="saas-control select2-cat" style="width: 100%;">
+                            <option value="all">All categories</option>
+                            @if(request()->filled('category_id') && request('category_id') !== 'all')
+                                @php
+                                    $selectedCat = $categories->firstWhere('id', request('category_id'));
+                                @endphp
+                                @if($selectedCat)
+                                    <option value="{{ $selectedCat->id }}" selected>{{ $selectedCat->name }}</option>
+                                @endif
+                            @endif
+                            @foreach ($categories as $cat)
+                                @if(!request()->filled('category_id') || request('category_id') != $cat->id)
+                                    <option value="{{ $cat->id }}" {{ request('category_id') == $cat->id ? 'selected' : '' }}>
+                                        {{ $cat->name }}
+                                    </option>
+                                @endif
+                            @endforeach
+                        </select>
+                    </div>
 
                     {{-- Brand --}}
                     <select name="brand_id" class="saas-control" style="min-width: 120px;">
@@ -538,15 +631,16 @@
                     <thead>
                         <tr>
                             <th style="width: 3%;" class="text-center">#</th>
-                            <th style="width: 8%;">Code</th>
-                            <th style="width: 21%;">Item name &amp; variants</th>
-                            <th style="width: 12%;">Category</th>
-                            <th style="width: 8%;" class="text-end">Current stock</th>
-                            <th style="width: 8%;" class="text-end" title="Double click to edit">Alert limit</th>
-                            <th style="width: 10%;" class="text-end" title="Weighted average purchase price from invoices">Avg. purchase rate</th>
-                            <th style="width: 10%;" class="text-end" title="Double click to edit base purchase rate">Base purchase rate</th>
-                            <th style="width: 10%;" class="text-end" title="Stock quantity multiplied by average purchase price">Stock value</th>
+                            <th style="width: 7%;">Code</th>
+                            <th style="width: 18%;">Item name &amp; variants</th>
+                            <th style="width: 11%;">Category</th>
+                            <th style="width: 7%;" class="text-end">Current stock</th>
+                            <th style="width: 7%;" class="text-end" title="Double click to edit">Alert limit</th>
+                            <th style="width: 9%;" class="text-end" title="Weighted average purchase price from invoices">Avg. purchase rate</th>
+                            <th style="width: 9%;" class="text-end" title="Double click to edit base purchase rate">Base purchase rate</th>
+                            <th style="width: 9%;" class="text-end" title="Stock quantity multiplied by average purchase price">Stock value</th>
                             <th style="width: 10%;" class="text-end" title="Double click to edit base sale rate">Base sale rate</th>
+                            <th style="width: 10%;" class="text-end" title="Double click to edit wholesale rate">Wholesale rate</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -629,12 +723,20 @@
                                     title="Double-click to edit sale rate">
                                     <span class="cell-val" style="color:#111827; font-weight:700;">Rs. {{ number_format($item->base_sale_price, 2) }}</span>
                                 </td>
+
+                                {{-- Wholesale Rate (Editable) --}}
+                                <td class="num-col editable-cell" 
+                                    data-field="wholesale_price" 
+                                    data-raw="{{ $item->wholesale_price }}"
+                                    title="Double-click to edit wholesale rate">
+                                    <span class="cell-val" style="color:#111827; font-weight:700;">Rs. {{ number_format($item->wholesale_price, 2) }}</span>
+                                </td>
                             </tr>
 
                             {{-- Collapsible Inset Variant Sub-Table --}}
                             @if($hasVariants)
                                 <tr id="drawer-{{ $item->id }}" class="variant-drawer d-none" data-parent-id="{{ $item->id }}">
-                                    <td colspan="10">
+                                    <td colspan="11">
                                         <div class="p-1">
                                             <div class="fw-semibold mb-1 text-muted small" style="font-size: 0.69rem;">
                                                 Variants breakdown for {{ $item->item_name }} (Auto-recalculated from base rates):
@@ -646,6 +748,7 @@
                                                         <th>Weight factor</th>
                                                         <th class="text-end">Piece purchase rate</th>
                                                         <th class="text-end">Piece sale rate</th>
+                                                        <th class="text-end">Piece wholesale rate</th>
                                                         <th class="text-end">Piece retail rate</th>
                                                         <th class="text-end">Stock units</th>
                                                     </tr>
@@ -660,6 +763,7 @@
                                                             if ($vConv <= 0 && $vWeight > 0) $vConv = (float)$vWeight / 1000.0;
                                                             $vPurchP = (float)($v['purch_price'] ?? 0);
                                                             $vSaleP  = (float)($v['sale_price'] ?? 0);
+                                                            $vWholeP = (float)($v['wholesale_price'] ?? 0);
                                                             $vRetP   = (float)($v['retail_price'] ?? 0);
                                                             $vStock  = (float)($v['stock'] ?? $v['variant_stock'] ?? 0);
                                                         @endphp
@@ -680,6 +784,9 @@
                                                             <td class="num-col var-sale-price" style="color:#111827 !important; font-weight:700;">
                                                                 Rs. {{ number_format($vSaleP, 2) }}
                                                             </td>
+                                                            <td class="num-col var-wholesale-price" style="color:#111827 !important; font-weight:700;">
+                                                                Rs. {{ number_format($vWholeP, 2) }}
+                                                            </td>
                                                             <td class="num-col var-retail-price" style="color:#111827 !important; font-weight:700;">
                                                                 Rs. {{ number_format($vRetP, 2) }}
                                                             </td>
@@ -697,7 +804,7 @@
 
                         @empty
                             <tr>
-                                <td colspan="10" class="text-center py-4 text-muted">
+                                <td colspan="11" class="text-center py-4 text-muted">
                                     No products found matching the criteria
                                 </td>
                             </tr>
@@ -724,6 +831,40 @@
 @section('js')
 <script>
 $(document).ready(function() {
+    
+    // ── Searchable Ajax Select2 for Category Filter ──
+    if ($.fn.select2) {
+        $('#category_filter').select2({
+            placeholder: "All categories",
+            allowClear: true,
+            width: '100%',
+            ajax: {
+                url: "{{ route('get-categories') }}",
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        q: params.term || '',
+                        select2: 1
+                    };
+                },
+                processResults: function (data) {
+                    return data;
+                },
+                cache: true
+            }
+        });
+
+        $('#category_filter').on('select2:clear', function () {
+            $(this).val('all');
+        });
+
+        $('#filterForm').on('submit', function () {
+            if (!$('#category_filter').val()) {
+                $('#category_filter').val('all');
+            }
+        });
+    }
     
     // Toggle Variant Inset Rows
     $(document).on('click', '.toggle-variants-btn', function() {
@@ -834,6 +975,9 @@ $(document).ready(function() {
                     } else if (field === 'sale_price') {
                         $cell.html(`<span class="cell-val" style="color:#111827; font-weight:700;">Rs. ${parsedVal.toFixed(2)}</span>`);
                         updateVariantSubtable(productId, res.base_purchase_price, res.base_sale_price, res.variants);
+                    } else if (field === 'wholesale_price') {
+                        $cell.html(`<span class="cell-val" style="color:#111827; font-weight:700;">Rs. ${parsedVal.toFixed(2)}</span>`);
+                        updateVariantSubtable(productId, res.base_purchase_price, res.base_sale_price, res.variants);
                     }
 
                     showToast('success', res.message);
@@ -866,10 +1010,12 @@ $(document).ready(function() {
             if (v) {
                 const purchP = parseFloat(v.purch_price) || 0;
                 const saleP  = parseFloat(v.sale_price) || 0;
+                const wholeP = parseFloat(v.wholesale_price) || 0;
                 const retP   = parseFloat(v.retail_price) || 0;
 
                 $(this).find('.var-purch-price').text(`Rs. ${purchP.toFixed(2)}`);
                 $(this).find('.var-sale-price').text(`Rs. ${saleP.toFixed(2)}`);
+                $(this).find('.var-wholesale-price').text(`Rs. ${wholeP.toFixed(2)}`);
                 $(this).find('.var-retail-price').text(`Rs. ${retP.toFixed(2)}`);
             }
         });

@@ -250,6 +250,26 @@
                 gap: 8px;
             }
         }
+        .dataTables_wrapper .dataTables_length select {
+            height: 38px !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            padding: 4px 10px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            color: #1e293b !important;
+            background-color: #ffffff !important;
+            outline: none !important;
+            margin: 0 4px !important;
+        }
+        .dataTables_wrapper .dataTables_filter input {
+            height: 38px !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            padding: 6px 12px !important;
+            font-size: 13px !important;
+            outline: none !important;
+        }
     </style>
 
     <div class="main-content">
@@ -361,13 +381,26 @@
                                             <option value="invoice_no">Invoice No</option>
                                         </select>
                                     </div> -->
-                                    <div class="col-md-2 d-flex gap-2">
-                                        <button type="button" class="btn btn-premium-secondary w-50" id="btnReset">
-                                            <i class="fas fa-undo me-1"></i>Reset
-                                        </button>
-                                        <button type="submit" class="btn btn-premium-primary w-50" id="btnSearch">
-                                            <i class="fas fa-search me-1"></i>Search
-                                        </button>
+                                    <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2 mt-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <label for="per_page" class="form-label mb-0 small text-muted fw-bold text-nowrap">
+                                                <i class="fas fa-list-ol me-1 text-primary"></i>Show:
+                                            </label>
+                                            <select name="per_page" id="per_page" class="form-select form-select-sm" style="width: auto; min-width: 110px; height: 38px; border: 1.5px solid #cbd5e1; border-radius: 8px; font-weight: 600; font-size: 13px; color: #1e293b; background-color: #ffffff;">
+                                                <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25 rows</option>
+                                                <option value="50" {{ request('per_page', 50) == 50 ? 'selected' : '' }}>50 rows</option>
+                                                <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100 rows</option>
+                                                <option value="250" {{ request('per_page') == 250 ? 'selected' : '' }}>250 rows</option>
+                                            </select>
+                                        </div>
+                                        <div class="d-flex gap-2 ms-auto">
+                                            <button type="button" class="btn btn-premium-secondary px-3" id="btnReset">
+                                                <i class="fas fa-undo me-1"></i>Reset
+                                            </button>
+                                            <button type="submit" class="btn btn-premium-primary px-4" id="btnSearch">
+                                                <i class="fas fa-search me-1"></i>Search
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                             </div>
@@ -472,21 +505,42 @@
                 if ($.fn.DataTable.isDataTable('.datanew')) {
                     $('.datanew').DataTable().destroy();
                 }
+                let selectedLen = parseInt($('#per_page').val()) || 50;
                 $('.datanew').DataTable({
-                    "pageLength": 10,
+                    "pageLength": selectedLen,
+                    "lengthMenu": [
+                        [25, 50, 100, 250],
+                        ['25 rows', '50 rows', '100 rows', '250 rows']
+                    ],
                     "order": [],
                     "language": {
                         "search": "",
-                        "searchPlaceholder": "Search purchases..."
+                        "searchPlaceholder": "Search purchases...",
+                        "lengthMenu": "_MENU_"
                     },
-                    "dom": "<'row mb-3'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                        "<'row'<'col-sm-12'tr>>" +
-                        "<'row mt-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+                    "dom": "<'row mb-3 align-items-center'<'col-12 col-md-6 mb-2 mb-md-0'l><'col-12 col-md-6'f>>" +
+                        "<'row'<'col-12'tr>>" +
+                        "<'row mt-3 align-items-center'<'col-12 col-md-5 mb-2 mb-md-0'i><'col-12 col-md-7'p>>",
                 });
             }
 
             // Initial call
             initDataTable();
+
+            // Sync per_page dropdown
+            $(document).on('change', '#per_page', function() {
+                let len = parseInt($(this).val()) || 50;
+                if ($.fn.DataTable && $.fn.DataTable.isDataTable('.datanew')) {
+                    $('.datanew').DataTable().page.len(len).draw();
+                }
+            });
+
+            $(document).on('change', 'select[name$="_length"]', function() {
+                let len = $(this).val();
+                if (len) {
+                    $('#per_page').val(len);
+                }
+            });
 
             // Submit form via AJAX
             // Quick Filter Logic
@@ -546,17 +600,7 @@
                         $('#purchaseTableBody').html(response.html);
                         
                         // 3. Re-initialize the DataTable on the new HTML
-                        $('.datanew').DataTable({
-                            "pageLength": 10,
-                            "order": [],
-                            "language": {
-                                "search": "",
-                                "searchPlaceholder": "Search purchases..."
-                            },
-                            "dom": "<'row mb-3'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                                "<'row'<'col-sm-12'tr>>" +
-                                "<'row mt-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-                        });
+                        initDataTable();
                     },
                     error: function(err) {
                         $btn.prop('disabled', false).html(origHtml);
@@ -568,6 +612,7 @@
             // Reset form
             $('#btnReset').on('click', function() {
                 $('#filterForm')[0].reset();
+                $('#per_page').val('50');
                 $('#filterForm').trigger('submit');
             });
 
