@@ -24,6 +24,11 @@
             --border-color: #e2e8f0;
             --radius-md: 10px;
             --radius-lg: 16px;
+            --mob-primary: #5B4CF7;
+            --mob-primary-light: #F0EFFF;
+            --mob-border: #E2E8F0;
+            --mob-radius: 12px;
+            --mob-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
 
         body {
@@ -184,6 +189,359 @@
             padding: 4px 3px !important;
             vertical-align: middle;
         }
+
+        /* --- Mobile sticky action bar --- */
+        .mobile-action-bar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1050;
+            background: #fff;
+            border-top: 1px solid var(--mob-border);
+            padding: 12px 16px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            gap: 10px;
+        }
+
+        /* --- Mobile Variant Cards --- */
+        #mobileVariantsContainer {
+            display: none;
+        }
+
+        .mob-variant-card {
+            background: #fff;
+            border-radius: var(--mob-radius);
+            border: 1.5px solid var(--mob-border);
+            margin-bottom: 10px;
+            box-shadow: var(--mob-shadow);
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .mob-variant-card.is-base {
+            border-color: var(--mob-primary);
+            box-shadow: 0 0 0 2px rgba(91,76,247,0.12), var(--mob-shadow);
+        }
+
+        .mob-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            background: #f8fafc;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s;
+            border-bottom: 1px solid transparent;
+        }
+
+        .mob-card-header:active { background: #f1f5f9; }
+
+        .mob-variant-card.is-open .mob-card-header {
+            background: var(--mob-primary-light);
+            border-bottom-color: var(--mob-border);
+        }
+
+        .mob-card-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            color: #1e293b;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .mob-card-title span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mob-base-badge {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            background: var(--mob-primary);
+            color: #fff;
+            padding: 2px 7px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        .mob-chevron {
+            color: #94a3b8;
+            transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+            flex-shrink: 0;
+        }
+
+        .mob-variant-card.is-open .mob-chevron {
+            transform: rotate(180deg);
+            color: var(--mob-primary);
+        }
+
+        .mob-card-body {
+            display: none;
+            padding: 14px;
+            animation: slideDown 0.2s ease;
+        }
+
+        .mob-variant-card.is-open .mob-card-body {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Mobile Form Fields --- */
+        .mob-field-group {
+            margin-bottom: 10px;
+        }
+
+        .mob-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .mob-label .req { color: #ef4444; }
+
+        .mob-input {
+            width: 100%;
+            height: 42px;
+            padding: 0 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #0f172a;
+            background: #fff;
+            border: 1.5px solid var(--mob-border);
+            border-radius: 10px;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            box-sizing: border-box;
+        }
+
+        .mob-input:focus {
+            border-color: var(--mob-primary);
+            box-shadow: 0 0 0 3px rgba(91,76,247,0.12);
+        }
+
+        .mob-input.auto-field {
+            background: #f8f9ff;
+            color: var(--mob-primary);
+            font-weight: 700;
+        }
+
+        .mob-input.conv-field {
+            background: #f0fdf4;
+            color: #059669;
+            font-weight: 700;
+            border-color: #10b981;
+        }
+
+        .mob-input.conv-field:focus {
+            border-color: #059669;
+            box-shadow: 0 0 0 3px rgba(16,185,129,0.12);
+        }
+
+        .mob-select {
+            width: 100%;
+            height: 42px;
+            padding: 0 36px 0 12px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #0f172a;
+            background: #fff url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%235B4CF7' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") no-repeat right 12px center;
+            background-size: 14px;
+            border: 1.5px solid var(--mob-border);
+            border-radius: 10px;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            box-sizing: border-box;
+        }
+
+        .mob-select:focus {
+            border-color: var(--mob-primary);
+            box-shadow: 0 0 0 3px rgba(91,76,247,0.12);
+        }
+
+        /* inline g suffix */
+        .mob-suffix-wrap {
+            position: relative;
+        }
+        .mob-suffix-wrap .mob-input { padding-right: 30px; }
+        .mob-suffix-wrap .mob-suffix {
+            position: absolute;
+            right: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 11px;
+            font-weight: 700;
+            color: #059669;
+            pointer-events: none;
+        }
+
+        /* row dividers in card */
+        .mob-section-divider {
+            height: 1px;
+            background: var(--mob-border);
+            margin: 10px 0;
+        }
+
+        .mob-section-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--mob-primary);
+            margin-bottom: 8px;
+        }
+
+        /* Delete button inside card */
+        .mob-delete-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            padding: 10px;
+            background: #fff5f5;
+            border: 1.5px solid #fecaca;
+            border-radius: 10px;
+            color: #ef4444;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+            margin-top: 6px;
+        }
+
+        .mob-delete-btn:active { background: #fee2e2; }
+
+        /* Add Variant Button mobile */
+        .mob-add-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 12px;
+            background: var(--mob-primary-light);
+            border: 2px dashed var(--mob-primary);
+            border-radius: var(--mob-radius);
+            color: var(--mob-primary);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            margin-top: 4px;
+        }
+
+        .mob-add-btn:active { background: #e0e7ff; }
+
+        /* Responsive breakpoints */
+        @media (max-width: 767.98px) {
+            html, body {
+                overflow-x: hidden !important;
+                max-width: 100vw !important;
+            }
+            body {
+                padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
+            }
+            .page-container {
+                padding: 10px 8px !important;
+                max-width: 100vw !important;
+                overflow-x: hidden !important;
+                box-sizing: border-box !important;
+            }
+            .row {
+                margin-left: -6px !important;
+                margin-right: -6px !important;
+            }
+            .row > [class*="col"] {
+                padding-left: 6px !important;
+                padding-right: 6px !important;
+            }
+            .section-card {
+                overflow: hidden !important;
+                margin-bottom: 14px !important;
+                border-radius: var(--radius-md) !important;
+            }
+            .card-body-pro {
+                padding: 12px 10px !important;
+            }
+            .card-header-pro {
+                padding: 10px 12px !important;
+            }
+            .card-body-pro .d-flex > select,
+            .card-body-pro .d-flex > input {
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
+            }
+            .card-body-pro .d-flex > button {
+                flex-shrink: 0 !important;
+            }
+
+            /* Hide desktop table + show mobile cards */
+            #variantsContainer { display: none !important; }
+            #mobileVariantsContainer {
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            .mob-variant-card {
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .mob-card-body {
+                padding: 12px 10px !important;
+            }
+            div[style*="grid-template-columns:1fr 1fr"],
+            div[style*="grid-template-columns: 1fr 1fr"] {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 8px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            div[style*="grid-template-columns"] > * {
+                min-width: 0 !important;
+            }
+            .mobile-action-bar {
+                display: flex !important;
+                padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)) 14px !important;
+            }
+            .desktop-action-bar {
+                display: none !important;
+            }
+            .modal-dialog {
+                max-width: calc(100% - 20px) !important;
+                margin: 10px auto !important;
+            }
+        }
+
+        @media (min-width: 768px) and (max-width: 991px) {
+            /* Tablet: 2-col inputs */
+            .card-body-pro .col-md-3 { flex: 0 0 50%; max-width: 50%; }
+            .table-responsive {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
     </style>
 
     <div class="page-container">
@@ -192,11 +550,11 @@
         <div class="d-flex align-items-center justify-content-between mb-3">
             <div class="d-flex align-items-center gap-3">
                 <a href="{{ route('product') }}" class="btn btn-white border shadow-sm rounded-circle p-0" style="width: 36px; height: 36px; display: grid; place-items: center;">
-                    <i class="las la-arrow-left"></i>
+                    <i class="fas fa-arrow-left"></i>
                 </a>
                 <div>
                     <h5 class="fw-bold mb-0 text-dark">Edit Product</h5>
-                    <small class="text-muted" style="font-size:0.8rem;">Update item settings and stock values</small>
+                    <small class="text-muted" style="font-size:0.8rem;">Add carton or piece based items to inventory</small>
                 </div>
             </div>
         </div>
@@ -213,67 +571,61 @@
                     {{-- CARD 1: Identity & Categorization --}}
                     <div class="section-card">
                         <div class="card-header-pro">
-                            <h5 class="card-title-pro"><i class="las la-tag text-primary"></i> Product Identity</h5>
+                            <h5 class="card-title-pro"><i class="fas fa-tag text-primary"></i> Product Identity</h5>
                         </div>
                         <div class="card-body-pro">
                             <div class="row g-3">
                                 
                                 {{-- Sub-grid for left content, image on the right --}}
-                                <div class="col-md-9">
-                                    <div class="row g-3">
-                                        <div class="col-md-8">
+                                <div class="col-md-9 col-12">
+                                    <div class="row g-2 g-md-3">
+                                        <div class="col-md-12">
                                             <label class="form-label-pro">Product Name <span class="text-danger">*</span></label>
                                             <input type="text" class="form-control-pro fs-6 fw-bold" name="product_name" required value="{{ $product->item_name }}" placeholder="e.g. Ceramic Floor Tile 60x60">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label-pro">Barcode Auto-Gen</label>
-                                            <div class="d-flex">
-                                                <input type="text" class="form-control-pro" id="barcodeInput" name="barcode_path" value="{{ $product->barcode_path }}" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
-                                                <button type="button" class="btn btn-light border" id="generateBarcodeBtn" style="border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; border-top-right-radius: var(--radius-md); border-bottom-right-radius: var(--radius-md);"><i class="las la-magic"></i></button>
-                                            </div>
+                                            <input type="hidden" id="barcodeInput" name="barcode_path" value="{{ $product->barcode_path }}">
                                         </div>
                                         
-                                        <div class="col-md-3">
+                                        <div class="col-md-3 col-sm-6 col-12">
                                             <label class="form-label-pro">Category <span class="text-danger">*</span></label>
                                             <div class="d-flex gap-1">
-                                                <select class="form-select form-control-pro form-select-pro" id="category-dropdown" name="category_id" required>
+                                                <select class="form-select form-control-pro form-select-pro" id="category-dropdown" name="category_id" required style="min-width: 0; flex: 1 1 auto;">
                                                     <option value="">Select...</option>
                                                     @foreach ($categories as $cat)
                                                         <option value="{{ $cat->id }}" {{ $product->category_id == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
                                                     @endforeach
                                                 </select>
-                                                <button type="button" class="btn btn-light border px-2 shadow-sm" data-toggle="modal" data-target="#categoryModal">+</button>
+                                                <button type="button" class="btn btn-light border px-2 shadow-sm" data-toggle="modal" data-target="#categoryModal" style="flex-shrink: 0;">+</button>
                                             </div>
                                         </div>
-                                        <div class="col-md-3">
+                                        <div class="col-md-3 col-sm-6 col-12">
                                             <label class="form-label-pro">Sub Category</label>
                                             <div class="d-flex gap-1">
-                                                <select class="form-select form-control-pro form-select-pro" id="subcategory-dropdown" name="sub_category_id">
+                                                <select class="form-select form-control-pro form-select-pro" id="subcategory-dropdown" name="sub_category_id" style="min-width: 0; flex: 1 1 auto;">
                                                     <option value="">Select...</option>
                                                     @foreach ($subcategories as $subCat)
                                                         @if ($subCat->category_id == $product->category_id)
-                                                            <option value="{{ $subCat->id }}" {{ $product->sub_category_id == $subCat->id ? 'selected' : '' }}>{{ $subCat->name }}</option>
+                                                             <option value="{{ $subCat->id }}" {{ $product->sub_category_id == $subCat->id ? 'selected' : '' }}>{{ $subCat->name }}</option>
                                                         @endif
                                                     @endforeach
                                                 </select>
-                                                <button type="button" class="btn btn-light border px-2 shadow-sm" data-toggle="modal" data-target="#subcategoryModal">+</button>
+                                                <button type="button" class="btn btn-light border px-2 shadow-sm" data-toggle="modal" data-target="#subcategoryModal" style="flex-shrink: 0;">+</button>
                                             </div>
                                         </div>
-                                        <div class="col-md-3">
+                                        <div class="col-md-3 col-sm-6 col-12">
                                             <label class="form-label-pro">Brand</label>
                                             <div class="d-flex gap-1">
-                                                <select class="form-select form-control-pro form-select-pro" name="brand_id" required>
+                                                <select class="form-select form-control-pro form-select-pro" name="brand_id" required style="min-width: 0; flex: 1 1 auto;">
                                                     <option value="">Select...</option>
                                                     @foreach ($brands as $brand)
                                                         <option value="{{ $brand->id }}" {{ $product->brand_id == $brand->id ? 'selected' : '' }}>{{ $brand->name }}</option>
                                                     @endforeach
                                                 </select>
-                                                <button type="button" class="btn btn-light border px-2 shadow-sm" data-toggle="modal" data-target="#brandModal">+</button>
+                                                <button type="button" class="btn btn-light border px-2 shadow-sm" data-toggle="modal" data-target="#brandModal" style="flex-shrink: 0;">+</button>
                                             </div>
                                         </div>
-                                        <div class="col-md-3">
+                                        <div class="col-md-3 col-sm-6 col-12">
                                             <label class="form-label-pro">Unit</label>
-                                            <select class="form-select form-control-pro form-select-pro fw-bold" name="size_mode" id="unit-dropdown">
+                                            <select class="form-select form-control-pro form-select-pro fw-bold" name="size_mode" id="unit-dropdown" style="min-width: 0; width: 100%;">
                                                 <option value="by_pieces" {{ $product->size_mode == 'by_pieces' ? 'selected' : '' }}>Pcs</option>
                                                 <option value="by_cartons" {{ $product->size_mode == 'by_cartons' ? 'selected' : '' }}>Carton</option>
                                                 <option value="by_bandal" {{ $product->size_mode == 'by_bandal' ? 'selected' : '' }}>Bundal</option>
@@ -288,7 +640,7 @@
                                 </div>
 
                                 {{-- Image Uploader side-by-side (Right) --}}
-                                <div class="col-md-3">
+                                <div class="col-md-3 col-12">
                                     <label class="form-label-pro">Product Image</label>
                                     <input type="file" id="imageInput" name="image" class="d-none" accept="image/*">
                                     <div class="img-uploader" style="height: 110px;" onclick="document.getElementById('imageInput').click()">
@@ -296,13 +648,13 @@
                                         @if($product->image)
                                             <img id="preview" src="{{ asset('uploads/products/' . $product->image) }}" style="max-height: 100px;">
                                             <div id="uploadPlaceholder" class="text-center p-2 d-none">
-                                                <i class="las la-camera fs-3 text-primary"></i>
+                                                <i class="fas fa-camera fs-3 text-primary"></i>
                                                 <div class="fw-bold" style="font-size: 11px;">Upload</div>
                                             </div>
                                         @else
                                             <img id="preview" class="d-none" style="max-height: 100px;">
                                             <div id="uploadPlaceholder" class="text-center p-2">
-                                                <i class="las la-camera fs-3 text-primary"></i>
+                                                <i class="fas fa-camera fs-3 text-primary"></i>
                                                 <div class="fw-bold" style="font-size: 11px;">Upload</div>
                                             </div>
                                         @endif
@@ -323,7 +675,6 @@
                                                         <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Size</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Color</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Unit</th>
-                                                        <th class="text-uppercase text-muted p-1 text-center" style="width: 90px; font-size: 10px;">Initial Stock</th>
                                                         <th class="text-uppercase text-muted p-1 text-center conv-col" id="convFactorHeader" style="width: 95px; font-size: 10px;">Pcs / Carton</th>
                                                         <th class="text-uppercase text-muted p-1 text-center piece-wt-only-col" style="width: 90px; font-size: 10px;">Piece Wt (g)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="salePriceHeader">Sale Price</th>
@@ -359,7 +710,7 @@
                     {{-- CARD 2: Stock Specifications & Pricing --}}
                     <div class="section-card" style="display:none !important;">
                         <div class="card-header-pro d-flex flex-wrap justify-content-between align-items-center gap-3">
-                            <h5 class="card-title-pro"><i class="las la-box-open text-info"></i> Stock & Pricing</h5>
+                            <h5 class="card-title-pro"><i class="fas fa-box-open text-info"></i> Stock & Pricing</h5>
                             
                             <div class="d-flex align-items-center flex-wrap gap-3">
                                 <div class="bg-light px-3 py-1 rounded border d-flex gap-3 text-nowrap align-items-center" style="font-size: 0.82rem;">
@@ -444,10 +795,10 @@
                     </div>
 
                     {{-- INLINE ACTIONS ROW --}}
-                    <div class="d-flex justify-content-end align-items-center bg-white p-3 rounded shadow-sm border mb-4 gap-2">
+                    <div class="d-flex justify-content-end align-items-center bg-white p-3 rounded shadow-sm border mb-4 gap-2 desktop-action-bar">
                         <a href="{{ route('product') }}" class="btn btn-outline-secondary px-4 py-2" style="border-radius: var(--radius-md); font-size: 0.9rem;">Cancel</a>
-                        <button type="submit" class="btn btn-primary px-5 py-2 fw-bold" style="background: var(--primary); border: none; border-radius: var(--radius-md); font-size: 0.9rem;">
-                            <i class="las la-check-circle me-1"></i> UPDATE PRODUCT
+                        <button type="submit" id="desktopSubmitBtn" class="btn btn-primary px-5 py-2 fw-bold" style="background: var(--primary); border: none; border-radius: var(--radius-md); font-size: 0.9rem;">
+                            <i class="fas fa-check-circle me-1"></i> UPDATE PRODUCT
                         </button>
                     </div>
 
@@ -463,6 +814,16 @@
                 <input type="number" name="weight_per_piece" id="weight_per_piece_hidden" step="0.0001" value="0">
                 <input type="number" name="price_per_m2" id="price_per_m2" step="0.01" value="{{ $product->price_per_m2 }}">
                 <input type="number" name="purchase_price_per_m2" id="purchase_price_per_m2" step="0.01" value="{{ $product->purchase_price_per_m2 }}">
+            </div>
+
+            {{-- MOBILE STICKY ACTION BAR (shown only on mobile via CSS) --}}
+            <div class="mobile-action-bar">
+                <a href="{{ route('product') }}" class="btn btn-outline-secondary fw-semibold" style="flex:1;border-radius:10px;height:46px;display:flex;align-items:center;justify-content:center;font-size:15px;">
+                    <i class="fas fa-times me-2"></i>Cancel
+                </a>
+                <button type="button" id="mobileSubmitBtn" onclick="document.getElementById('productForm').requestSubmit()" style="flex:2;background:linear-gradient(135deg,#5B4CF7,#4338ca);border:none;border-radius:10px;height:46px;color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;">
+                    <i class="fas fa-check-circle"></i> UPDATE PRODUCT
+                </button>
             </div>
 
         </form>
@@ -636,6 +997,13 @@
                         const baseInput = document.querySelector('input.base-name-input');
                         if (baseInput && !manualNames[baseInput.dataset.vid]) {
                             baseInput.value = this.value;
+                            const mobBaseCard = document.querySelector('.mob-variant-card.is-base');
+                            if (mobBaseCard) {
+                                const mobLabel = mobBaseCard.querySelector('.mob-card-label');
+                                if (mobLabel) mobLabel.textContent = this.value || 'Base Variant';
+                                const mobName = mobBaseCard.querySelector('[data-field="variant_name[]"]');
+                                if (mobName) mobName.value = this.value;
+                            }
                         }
                     }
                 });
@@ -670,6 +1038,7 @@
                     <td class="p-1 align-middle">
                         <input type="text" class="form-control-pro form-control-sm base-name-input fw-bold" name="variant_name[]" value="${escapeHtml(nameVal)}" placeholder="Name" data-vid="${vid}">
                         <input type="hidden" name="variant_is_base[]" value="1">
+                        <input type="hidden" name="variant_stock[]" value="${escapeHtml(stockVal)}">
                     </td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" value="${escapeHtml(sizeVal)}" placeholder="Size"></td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_color[]" value="${escapeHtml(colorVal)}" placeholder="Color"></td>
@@ -684,9 +1053,6 @@
                             <option value="Box" ${uNorm==='box'?'selected':''}>Box</option>
                             <option value="Dozen" ${uNorm==='dozen'||uNorm==='dzn'?'selected':''}>Dzn</option>
                         </select>
-                    </td>
-                    <td class="p-1">
-                        <input type="number" class="form-control-pro form-control-sm text-center fw-bold text-primary" name="variant_stock[]" step="any" value="${escapeHtml(stockVal)}" placeholder="0" title="${isCartonMode ? 'Initial Stock (Cartons)' : 'Initial Stock'}">
                     </td>
                     <td class="p-0 conv-col">
                         <input type="number" class="form-control-pro form-control-sm conv-factor-input text-center fw-bold ${isCartonMode ? 'text-primary' : ''}" name="variant_conv_factor[]" step="any" value="${escapeHtml(convVal)}" ${isCartonMode ? '' : 'readonly'} placeholder="${isCartonMode ? 'e.g. 6' : '1'}" title="${isCartonMode ? 'Pieces per Carton' : 'Base Conv Factor = 1'}" style="border-radius:0; border:1px solid #dee2e6; height:30px; ${isCartonMode ? 'background:#fff;' : 'background:#f8f8f8;'}">
@@ -862,6 +1228,7 @@
                     <td class="p-1">
                         <input type="text" class="form-control-pro form-control-sm var-name-input" name="variant_name[]" value="${escapeHtml(suggestedName)}" placeholder="Name">
                         <input type="hidden" name="variant_is_base[]" value="0">
+                        <input type="hidden" name="variant_stock[]" value="${escapeHtml(stockVal)}">
                     </td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" value="${escapeHtml(sizeVal)}" placeholder="Size (e.g. Small, 30cm)"></td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_color[]" value="${escapeHtml(colorVal)}" placeholder="Color"></td>
@@ -876,9 +1243,6 @@
                             <option value="Box" ${uNorm==='box'?'selected':''}>Box</option>
                             <option value="Dozen" ${uNorm==='dozen'||uNorm==='dzn'?'selected':''}>Dzn</option>
                         </select>
-                    </td>
-                    <td class="p-1">
-                        <input type="number" class="form-control-pro form-control-sm text-center fw-bold text-primary stock-input" name="variant_stock[]" step="any" value="${escapeHtml(stockVal)}" placeholder="0" title="${isCartonMode ? 'Initial Stock (Cartons)' : 'Initial Stock'}" ${variantMode === 'weight' ? 'readonly style="background:#f8f9ff;color:#0d6efd;font-weight:bold;"' : ''}>
                     </td>
                     <td class="p-0 conv-col">
                         <input type="text" inputmode="decimal" class="form-control-pro form-control-sm conv-factor-input text-center fw-bold text-success" name="variant_conv_factor[]" value="${escapeHtml(convVal)}" placeholder="0" title="${isCartonMode ? 'Pieces per Carton' : 'Conv Factor: weight per Pcs in base unit'}" style="border-radius:0; border:1px solid #198754; height:30px; border-width:1.5px;">
@@ -1172,6 +1536,9 @@
                 $(unitDropdown).on('change', function() {
                     updateVariantMode();
                     toggleFactorColumns();
+                    if (typeof isMobile === 'function' && isMobile() && typeof rebuildMobileCards === 'function') {
+                        rebuildMobileCards();
+                    }
                 });
             }
 
@@ -1357,11 +1724,17 @@
                         if (elAlert) elAlert.value = firstAlert;
                     }
 
-                    const btn = form.querySelector('button[type="submit"]');
-                    const originalContent = btn ? btn.innerHTML : '';
-                    if (btn) {
-                        btn.innerHTML = '<i class="las la-spinner la-spin"></i> Updating...';
-                        btn.disabled = true;
+                    const desktopBtn = document.getElementById('desktopSubmitBtn');
+                    const mobileBtn = document.getElementById('mobileSubmitBtn');
+                    const origDesktop = desktopBtn ? desktopBtn.innerHTML : '';
+                    const origMobile = mobileBtn ? mobileBtn.innerHTML : '';
+                    if (desktopBtn) {
+                        desktopBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Updating...';
+                        desktopBtn.disabled = true;
+                    }
+                    if (mobileBtn) {
+                        mobileBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Updating...';
+                        mobileBtn.disabled = true;
                     }
 
                     const formData = new FormData(form);
@@ -1384,9 +1757,13 @@
                     })
                     .catch(err => Swal.fire({icon: 'error', title: 'Error', text: 'Server Error'}))
                     .finally(() => {
-                        if (btn) {
-                            btn.innerHTML = originalContent;
-                            btn.disabled = false;
+                        if (desktopBtn) {
+                            desktopBtn.innerHTML = origDesktop;
+                            desktopBtn.disabled = false;
+                        }
+                        if (mobileBtn) {
+                            mobileBtn.innerHTML = origMobile;
+                            mobileBtn.disabled = false;
                         }
                     });
                 });
@@ -1396,10 +1773,6 @@
             if (typeof isMobile === 'function' && isMobile() && typeof rebuildMobileCards === 'function') {
                 rebuildMobileCards();
             }
-        });
-    </script>
-
-    <script>
         // ============================================================
         //  MOBILE VARIANT CARDS SYSTEM
         //  Two-way sync: desktop table <-> mobile accordion cards
@@ -1729,9 +2102,21 @@
             if (isMobile()) rebuildMobileCards();
         });
 
+        // Initial render on load if on mobile
+        if (isMobile()) {
+            rebuildMobileCards();
+        }
+        window.addEventListener('load', () => {
+            if (isMobile()) rebuildMobileCards();
+        });
+
+
         // Make functions global
+        window.isMobile = isMobile;
+        window.rebuildMobileCards = rebuildMobileCards;
         window.mobileAddVariant = mobileAddVariant;
         window.mobToggleCard = mobToggleCard;
         window.mobDeleteCard = mobDeleteCard;
-    </script>
+    });
+</script>
 @endsection

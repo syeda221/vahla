@@ -15,44 +15,77 @@
         .filter-panel {
             background-color: #f8fafc !important;
             border: 2px dashed #94a3b8 !important;
-            border-radius: 10px !important;
+            border-radius: 12px !important;
             padding: 18px !important;
         }
         
-        .filter-panel label {
-            font-size: 12px;
+        .filter-panel label,
+        .filter-panel .form-label {
+            display: block !important;
+            width: 100% !important;
+            font-size: 11px !important;
             font-weight: 700 !important;
             color: #475569 !important;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+            margin-bottom: 5px !important;
+            line-height: 1.2 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
         }
         
         .filter-panel .form-control,
-        .filter-panel .form-select {
-            border: 2px solid #cbd5e1 !important;
-            border-radius: 6px !important;
+        .filter-panel .form-select,
+        .filter-panel select,
+        .filter-panel input {
+            display: block !important;
+            width: 100% !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 8px !important;
             font-weight: 500 !important;
+            font-size: 13px !important;
             color: #1e293b !important;
             transition: all 0.2s ease-in-out;
             height: 38px !important;
+            padding: 6px 12px !important;
+            box-sizing: border-box !important;
+            background-color: #ffffff !important;
+        }
+        
+        .filter-panel select.form-select {
+            padding-right: 28px !important;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+            background-repeat: no-repeat !important;
+            background-position: right 10px center !important;
+            background-size: 12px 10px !important;
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
         }
         
         .filter-panel .form-control:focus,
-        .filter-panel .form-select:focus {
-            border-color: #3b82f6 !important;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+        .filter-panel .form-select:focus,
+        .filter-panel select:focus,
+        .filter-panel input:focus {
+            border-color: #2563eb !important;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+            outline: none !important;
         }
         
         /* Elegant & Bold Buttons */
         .btn-premium-primary {
             background-color: #2563eb !important;
-            border: 2px solid #1d4ed8 !important;
+            border: 1.5px solid #1d4ed8 !important;
             color: #ffffff !important;
             font-weight: 600 !important;
-            border-radius: 6px !important;
+            border-radius: 8px !important;
             height: 38px !important;
             padding: 0 16px !important;
             transition: all 0.2s;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
         .btn-premium-primary:hover {
             background-color: #1d4ed8 !important;
@@ -61,13 +94,16 @@
         
         .btn-premium-secondary {
             background-color: #ffffff !important;
-            border: 2px solid #cbd5e1 !important;
+            border: 1.5px solid #cbd5e1 !important;
             color: #475569 !important;
             font-weight: 600 !important;
-            border-radius: 6px !important;
+            border-radius: 8px !important;
             height: 38px !important;
             padding: 0 16px !important;
             transition: all 0.2s;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
         .btn-premium-secondary:hover {
             background-color: #f1f5f9 !important;
@@ -185,36 +221,107 @@
             color: #0f172a !important;
         }
 
-        /* Mobile Breakpoints (< 768px) */
-        @media (max-width: 768px) {
-            .purch-hdr-actions {
-                display: grid !important;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-                width: 100%;
+        /* Financial Chips */
+        .financial-chip {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border-radius: 8px;
+            padding: 6px 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .financial-chip .chip-label {
+            font-size: 9.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            line-height: 1;
+            margin-bottom: 3px;
+        }
+        .financial-chip .chip-value {
+            font-size: 13px;
+            font-weight: 700;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            line-height: 1.2;
+        }
+        .financial-chip .chip-sub {
+            font-size: 10px;
+            font-weight: 500;
+            margin-left: 2px;
+        }
+
+        .chip-inline {
+            background: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+        .chip-inline .chip-label {
+            color: #64748b !important;
+        }
+        .chip-inline .chip-value {
+            color: #334155 !important;
+        }
+
+        .chip-extra {
+            background: #fffbeb !important;
+            border: 1px solid #fde68a !important;
+        }
+        .chip-extra .chip-label {
+            color: #b45309 !important;
+        }
+        .chip-extra .chip-value {
+            color: #b45309 !important;
+        }
+
+        .chip-net {
+            background: #ecfdf5 !important;
+            border: 1.5px solid #6ee7b7 !important;
+            box-shadow: 0 1px 3px rgba(16, 185, 129, 0.1) !important;
+        }
+        .chip-net .chip-label {
+            color: #047857 !important;
+            font-weight: 800 !important;
+        }
+        .chip-net .chip-value {
+            color: #065f46 !important;
+            font-size: 13.5px !important;
+            font-weight: 800 !important;
+        }
+
+        .chip-paid {
+            background: #f0fdf4 !important;
+            border: 1px solid #bbf7d0 !important;
+        }
+        .chip-paid .chip-label {
+            color: #166534 !important;
+        }
+        .chip-paid .chip-value {
+            color: #16a34a !important;
+        }
+
+        .chip-due {
+            background: #fef2f2 !important;
+            border: 1px solid #fecaca !important;
+        }
+        .chip-due .chip-label {
+            color: #991b1b !important;
+        }
+
+        @media (min-width: 992px) {
+            .financial-chip {
+                display: block;
+                background: transparent !important;
+                border: none !important;
+                padding: 0 !important;
+                box-shadow: none !important;
             }
-            .purch-hdr-actions .btn {
-                width: 100%;
-                justify-content: center;
-                height: 38px;
-                font-size: 0.8rem;
-            }
-            .purch-status-pills {
-                display: flex !important;
-                gap: 6px;
-                overflow-x: auto;
-                padding-bottom: 6px;
-                -webkit-overflow-scrolling: touch;
-            }
-            .purch-status-pills .btn {
-                flex: 0 0 auto;
-                white-space: nowrap;
-            }
-            .table-responsive {
+            .financial-chip .chip-label {
                 display: none !important;
             }
-        }
-        @media (min-width: 769px) {
+            .financial-chip .chip-value {
+                font-size: 13px !important;
+                color: inherit !important;
+            }
             .purch-hdr-actions {
                 display: flex;
                 gap: 8px;
@@ -222,6 +329,284 @@
             .purch-status-pills {
                 display: flex;
                 gap: 8px;
+            }
+        }
+
+        /* Mobile Breakpoints (<= 991.98px) */
+        @media (max-width: 991.98px) {
+            body, html {
+                overflow-x: hidden !important;
+                max-width: 100vw !important;
+            }
+            .container-fluid {
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+                overflow-x: hidden !important;
+                max-width: 100vw !important;
+            }
+            .premium-card {
+                margin-top: 6px !important;
+                border-radius: 10px !important;
+            }
+            .premium-card .card-body {
+                padding: 10px !important;
+            }
+
+            /* Header Actions */
+            .purch-hdr-actions {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 8px !important;
+                width: 100% !important;
+                margin-top: 6px !important;
+            }
+            .purch-hdr-actions .btn {
+                width: 100% !important;
+                justify-content: center !important;
+                height: 38px !important;
+                font-size: 12.5px !important;
+                border-radius: 8px !important;
+                padding: 0 10px !important;
+            }
+            .purch-hdr-actions a[href*="add_purchase"],
+            .purch-hdr-actions a[href*="Add"] {
+                grid-column: 1 / -1 !important;
+                order: -1 !important;
+                height: 42px !important;
+                font-size: 13.5px !important;
+            }
+
+            /* Status Pills Horizontal Scroll */
+            .purch-status-pills {
+                display: flex !important;
+                gap: 6px !important;
+                overflow-x: auto !important;
+                padding-bottom: 6px !important;
+                -webkit-overflow-scrolling: touch !important;
+                margin-bottom: 12px !important;
+            }
+            .purch-status-pills .btn {
+                flex: 0 0 auto !important;
+                white-space: nowrap !important;
+                padding: 6px 12px !important;
+                font-size: 12px !important;
+                border-radius: 8px !important;
+            }
+
+            /* Filter Panel Mobile */
+            .filter-panel {
+                padding: 14px 12px !important;
+                border: 1.5px dashed #94a3b8 !important;
+                border-radius: 12px !important;
+                margin-bottom: 14px !important;
+                background-color: #ffffff !important;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+            }
+            .filter-panel .form-label,
+            .filter-panel label {
+                font-size: 11px !important;
+                font-weight: 700 !important;
+                margin-bottom: 4px !important;
+                color: #334155 !important;
+            }
+            .filter-panel .form-control,
+            .filter-panel .form-select,
+            .filter-panel select,
+            .filter-panel input {
+                height: 40px !important;
+                font-size: 13px !important;
+                border-radius: 8px !important;
+                border: 1.5px solid #cbd5e1 !important;
+                background-color: #f8fafc !important;
+            }
+            .filter-panel .btn-premium-primary,
+            .filter-panel .btn-premium-secondary {
+                height: 40px !important;
+                font-size: 13px !important;
+                border-radius: 8px !important;
+            }
+
+            /* DataTables Mobile Controls */
+            .dataTables_wrapper .dataTables_length {
+                display: none !important;
+            }
+            .dataTables_wrapper .dataTables_filter {
+                float: none !important;
+                text-align: left !important;
+                width: 100% !important;
+                margin-bottom: 10px !important;
+            }
+            .dataTables_wrapper .dataTables_filter label {
+                width: 100% !important;
+                margin: 0 !important;
+            }
+            .dataTables_wrapper .dataTables_filter input {
+                width: 100% !important;
+                margin-left: 0 !important;
+                height: 38px !important;
+                border-radius: 8px !important;
+                border: 1.5px solid #cbd5e1 !important;
+                padding: 6px 12px !important;
+                font-size: 13px !important;
+                background-color: #ffffff !important;
+                box-sizing: border-box !important;
+            }
+            .dataTables_wrapper .dataTables_info {
+                text-align: center !important;
+                font-size: 12px !important;
+                margin-bottom: 6px !important;
+            }
+            .dataTables_wrapper .dataTables_paginate {
+                text-align: center !important;
+                float: none !important;
+                display: flex !important;
+                justify-content: center !important;
+            }
+            .dataTables_wrapper .dataTables_paginate .pagination {
+                justify-content: center !important;
+                flex-wrap: wrap !important;
+                gap: 4px !important;
+            }
+
+            /* Transform Table to Sleek Mobile Cards */
+            .table-responsive {
+                overflow: visible !important;
+                border: none !important;
+                display: block !important;
+                width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            #purchase-table {
+                border: none !important;
+                display: block !important;
+                width: 100% !important;
+            }
+            #purchase-table thead {
+                display: none !important;
+            }
+            #purchase-table tbody {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 12px !important;
+                width: 100% !important;
+            }
+            #purchase-table tbody tr {
+                display: grid !important;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+                grid-template-areas:
+                    "check status"
+                    "vendor vendorinv"
+                    "location date"
+                    "inlinedisc extradisc"
+                    "nettotal due"
+                    "action action" !important;
+                align-items: center !important;
+                row-gap: 8px !important;
+                column-gap: 8px !important;
+                background: #ffffff !important;
+                border: 1.5px solid #cbd5e1 !important;
+                border-radius: 14px !important;
+                padding: 12px 10px !important;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+                position: relative !important;
+                box-sizing: border-box !important;
+                width: 100% !important;
+            }
+            #purchase-table tbody tr:hover td {
+                background-color: transparent !important;
+            }
+            #purchase-table tbody td {
+                border: none !important;
+                padding: 0 !important;
+                background: transparent !important;
+                min-width: 0 !important;
+                box-sizing: border-box !important;
+            }
+
+            /* Grid Cells on Mobile */
+            .cell-check {
+                grid-area: check !important;
+                display: flex !important;
+                align-items: center !important;
+                gap: 6px !important;
+                text-align: left !important;
+                width: auto !important;
+            }
+            .cell-status {
+                grid-area: status !important;
+                text-align: right !important;
+                justify-self: end !important;
+            }
+            .cell-vendor {
+                grid-area: vendor !important;
+                border-top: 1px dashed #f1f5f9 !important;
+                padding-top: 6px !important;
+            }
+            .cell-vendor-inv {
+                grid-area: vendorinv !important;
+                text-align: right !important;
+                border-top: 1px dashed #f1f5f9 !important;
+                padding-top: 6px !important;
+                font-size: 12px !important;
+            }
+            .cell-location {
+                grid-area: location !important;
+                font-size: 12px !important;
+            }
+            .cell-date {
+                grid-area: date !important;
+                text-align: right !important;
+                font-size: 12px !important;
+            }
+            .cell-inlinedisc {
+                grid-area: inlinedisc !important;
+            }
+            .cell-extradisc {
+                grid-area: extradisc !important;
+            }
+            .cell-nettotal {
+                grid-area: nettotal !important;
+            }
+            .cell-due {
+                grid-area: due !important;
+            }
+            .cell-action {
+                grid-area: action !important;
+                border-top: 1px dashed #e2e8f0 !important;
+                padding-top: 8px !important;
+                margin-top: 2px !important;
+                width: 100% !important;
+            }
+            .cell-action .dropdown {
+                width: 100% !important;
+            }
+            .cell-action .btn-premium-action {
+                width: 100% !important;
+                height: 38px !important;
+                justify-content: center !important;
+                border-radius: 8px !important;
+                font-size: 12px !important;
+            }
+            .cell-action .dropdown-menu {
+                width: 100% !important;
+            }
+
+            /* Sticky Bulk Discount Bar on Mobile */
+            #bulk-discount-bar {
+                position: fixed !important;
+                left: 8px !important;
+                right: 8px !important;
+                bottom: 10px !important;
+                width: calc(100% - 16px) !important;
+                margin: 0 !important;
+                border-radius: 12px !important;
+                z-index: 1060 !important;
+                max-height: 80vh !important;
+                overflow-y: auto !important;
+            }
+            #bulk-discount-bar .card-body {
+                padding: 12px !important;
             }
         }
     </style>
@@ -297,9 +682,9 @@
                         {{-- AJAX Filter Panel --}}
                         <div class="card filter-panel mb-4">
                             <div class="card-body p-0">
-                                <form id="filterForm" class="row g-3 align-items-end" autocomplete="off">
-                                    <div class="col-md-2">
-                                        <label class="form-label mb-1">Quick Filter</label>
+                                <form id="filterForm" class="row g-2 g-lg-3 align-items-end" autocomplete="off">
+                                    <div class="col-12 col-lg-2">
+                                        <label class="form-label mb-1"><i class="fas fa-filter text-primary me-1"></i> Quick Filter</label>
                                         <select id="quick_filter" class="form-select">
                                             <option value="custom">Custom Range</option>
                                             <option value="daily">Daily (Today)</option>
@@ -308,28 +693,24 @@
                                             <option value="yearly">Yearly (This Year)</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label mb-1">From Date</label>
+                                    <div class="col-6 col-lg-2">
+                                        <label class="form-label mb-1"><i class="far fa-calendar-alt text-primary me-1"></i> From Date</label>
                                         <input type="text" class="form-control datepicker-custom bg-white" name="from_date" id="filter_from_date" placeholder="dd/mm/yyyy">
                                     </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label mb-1">To Date</label>
+                                    <div class="col-6 col-lg-2">
+                                        <label class="form-label mb-1"><i class="far fa-calendar-alt text-primary me-1"></i> To Date</label>
                                         <input type="text" class="form-control datepicker-custom bg-white" name="to_date" id="filter_to_date" placeholder="dd/mm/yyyy">
                                     </div>
-                                    <!-- <div class="col-md-2">
-                                        <label class="form-label mb-1">Mobile No</label>
-                                        <input type="text" class="form-control" name="mobile_no" id="filter_mobile_no" placeholder="Search mobile...">
-                                    </div> -->
-                                    <div class="col-md-1">
-                                        <label class="form-label mb-1">Bill#</label>
+                                    <div class="col-6 col-lg-1">
+                                        <label class="form-label mb-1"><i class="fas fa-hashtag text-primary me-1"></i> Bill#</label>
                                         <input type="text" class="form-control" name="bill_no" id="filter_bill_no" placeholder="PUR-...">
                                     </div>
-                                    <div class="col-md-1">
-                                        <label class="form-label mb-1">M.Bill#</label>
+                                    <div class="col-6 col-lg-1">
+                                        <label class="form-label mb-1"><i class="fas fa-receipt text-primary me-1"></i> M.Bill#</label>
                                         <input type="text" class="form-control" name="reference" id="filter_reference" placeholder="M.Bill...">
                                     </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label mb-1">Vendor</label>
+                                    <div class="col-12 col-lg-2">
+                                        <label class="form-label mb-1"><i class="fas fa-user-tie text-primary me-1"></i> Vendor</label>
                                         <select class="form-select" name="vendor_id" id="filter_vendor_id">
                                             <option value="">All Vendors</option>
                                             @foreach ($vendors as $v)
@@ -337,20 +718,15 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <!-- <div class="col-md-2">
-                                        <label class="form-label mb-1">Order By</label>
-                                        <select class="form-select" name="order_by" id="filter_order_by">
-                                            <option value="purchase_date">Invoice Date</option>
-                                            <option value="invoice_no">Invoice No</option>
-                                        </select>
-                                    </div> -->
-                                    <div class="col-md-2 d-flex gap-2">
-                                        <button type="button" class="btn btn-premium-secondary w-50" id="btnReset">
-                                            <i class="fas fa-undo me-1"></i>Reset
-                                        </button>
-                                        <button type="submit" class="btn btn-premium-primary w-50" id="btnSearch">
-                                            <i class="fas fa-search me-1"></i>Search
-                                        </button>
+                                    <div class="col-12 col-lg-2">
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-premium-secondary flex-fill" id="btnReset">
+                                                <i class="fas fa-undo me-1"></i>Reset
+                                            </button>
+                                            <button type="submit" class="btn btn-premium-primary flex-fill" id="btnSearch">
+                                                <i class="fas fa-search me-1"></i>Search
+                                            </button>
+                                        </div>
                                     </div>
                                 </form>
                             </div>
@@ -363,9 +739,9 @@
                                         <th class="py-3 ps-3 rounded-start text-secondary fw-semibold text-uppercase small" style="width: 40px; vertical-align: middle;">
                                             <input type="checkbox" id="selectAllPurchases" style="cursor: pointer; width: 16px; height: 16px; margin: 0 auto !important;">
                                         </th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Bill#</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small d-none d-lg-table-cell">Bill#</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Date</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Invoice No</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small d-none d-lg-table-cell">Invoice No</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Vendor Inv#</th><th class="d-none">Note</th>
                                         
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Status</th>
@@ -374,7 +750,7 @@
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Inline Disc</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Add. Disc</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Net Amount</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Paid</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end d-none d-lg-table-cell">Paid</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Due</th>
                                         <th class="py-3 pe-3 rounded-end text-secondary fw-semibold text-uppercase small text-center">Action</th>
                                     </tr>

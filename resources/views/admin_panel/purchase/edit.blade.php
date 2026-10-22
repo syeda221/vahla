@@ -1,4 +1,4 @@
-﻿@extends('admin_panel.layout.app')
+@extends('admin_panel.layout.app')
 
 @section('content')
 <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
@@ -343,6 +343,566 @@
     .btn-submit:hover {
         background-color: #059669;
     }
+
+    /* =========================================================
+       MOBILE RESPONSIVE STYLING (Zero Horizontal Scroll - Like Add Purchase)
+       ========================================================= */
+    @media (max-width: 991.98px) {
+        body, html {
+            overflow-x: hidden !important;
+            max-width: 100vw !important;
+        }
+
+        .main-wrapper {
+            padding: 10px 6px !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
+        }
+
+        .card-custom {
+            padding: 14px 12px !important;
+            margin-bottom: 12px !important;
+            border-radius: 10px !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Header Card */
+        .header-card {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+        }
+        .header-title-container {
+            order: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+        }
+        .header-title-container .icon-box {
+            width: 42px !important;
+            height: 42px !important;
+            border-radius: 10px !important;
+            font-size: 1.3rem !important;
+            flex-shrink: 0 !important;
+            background-color: #4371e9 !important;
+        }
+        .header-title-container .header-title {
+            font-size: 1.15rem !important;
+            font-weight: 800 !important;
+            margin: 0 !important;
+            color: #0d1b46 !important;
+        }
+        .header-date {
+            order: 2 !important;
+            font-size: 12px !important;
+            color: #64748b !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+        }
+        .header-card .btn-back {
+            order: 3 !important;
+            width: fit-content !important;
+            padding: 5px 14px !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            border-radius: 20px !important;
+            background-color: #f1f5f9 !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #2563eb !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+        }
+
+        /* General Info Form Labels & Inputs */
+        .card-custom .form-label {
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            color: #475569 !important;
+            margin-bottom: 3px !important;
+        }
+        .card-custom .form-control,
+        .card-custom .form-select {
+            height: 38px !important;
+            border-radius: 8px !important;
+            border: 1.5px solid #cbd5e1 !important;
+            font-size: 13px !important;
+        }
+        .input-with-icon .select2-container .select2-selection--single {
+            height: 38px !important;
+            border-radius: 8px !important;
+            border: 1.5px solid #cbd5e1 !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        .input-with-icon .select2-container .select2-selection--single .select2-selection__rendered {
+            line-height: 36px !important;
+            font-size: 13px !important;
+        }
+        .input-with-icon .select2-container .select2-selection--single .select2-selection__arrow {
+            height: 36px !important;
+            right: 8px !important;
+        }
+
+        /* Purchase Items Card Title */
+        .card-title-container {
+            display: flex !important;
+            align-items: center !important;
+            gap: 10px !important;
+        }
+        .card-title-container .icon-box {
+            width: 38px !important;
+            height: 38px !important;
+            font-size: 1.15rem !important;
+            border-radius: 10px !important;
+        }
+        .card-title-container .card-title {
+            font-size: 1.1rem !important;
+            font-weight: 700 !important;
+            margin: 0 !important;
+        }
+        .card-title-container .card-subtitle {
+            font-size: 11px !important;
+            margin: 0 !important;
+        }
+        .btn-add-row {
+            padding: 6px 14px !important;
+            font-size: 13px !important;
+            border-radius: 8px !important;
+        }
+
+        /* Transform Items Table into Modern Cards (Exact match to Add Purchase) */
+        .table-container {
+            overflow: visible !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            min-height: auto !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            margin-top: 10px !important;
+        }
+
+        .sales-table,
+        .sales-table tbody {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+            border: none !important;
+            background: transparent !important;
+        }
+
+        .sales-table thead {
+            display: none !important;
+        }
+
+        .sales-table tbody tr {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+            grid-column-gap: 10px !important;
+            grid-row-gap: 8px !important;
+            background: #ffffff !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 12px !important;
+            padding: 12px !important;
+            margin-bottom: 12px !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            position: relative !important;
+        }
+
+        .sales-table tbody tr:hover td {
+            background-color: transparent !important;
+        }
+
+        .sales-table tbody td {
+            display: block !important;
+            padding: 0 !important;
+            border: none !important;
+            background: transparent !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+            text-align: left !important;
+        }
+
+        /* Inputs in mobile cards */
+        .sales-table tbody .form-control {
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            height: 38px !important;
+            font-size: 13.5px !important;
+            padding: 6px 8px !important;
+            background-color: #ffffff !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+        }
+
+        .sales-table tbody .input-readonly,
+        .sales-table tbody input[readonly],
+        .sales-table tbody .amount-cell {
+            background-color: #f1f5f9 !important;
+            border-color: #cbd5e1 !important;
+            color: #334155 !important;
+            font-weight: 700 !important;
+        }
+
+        .sales-table tbody .row-total {
+            background-color: #eff6ff !important;
+            border-color: #bfdbfe !important;
+            color: #1d4ed8 !important;
+            font-weight: 800 !important;
+        }
+
+        .sales-table tbody .unit-toggle-btn {
+            height: 38px !important;
+            width: 100% !important;
+            border-radius: 8px !important;
+            font-size: 13px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-sizing: border-box !important;
+            font-weight: 600 !important;
+        }
+
+        /* Cell layout and labels */
+        .sales-table tbody td.col-index {
+            display: none !important;
+        }
+
+        .sales-table tbody td.col-action {
+            grid-row: 1 !important;
+            grid-column: 1 / -1 !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding-bottom: 6px !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            margin-bottom: 4px !important;
+            width: 100% !important;
+        }
+        .sales-table tbody td.col-action::before {
+            content: "ITEM DETAILS";
+            font-size: 11px !important;
+            font-weight: 800 !important;
+            color: #2563eb !important;
+            background: #eff6ff !important;
+            border: 1px solid #dbeafe !important;
+            padding: 3px 8px !important;
+            border-radius: 6px !important;
+            letter-spacing: .5px !important;
+            margin-bottom: 0 !important;
+        }
+        .sales-table tbody td.col-action .remove-row {
+            width: 32px !important;
+            height: 32px !important;
+            padding: 0 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            border-radius: 8px !important;
+            border: 1px solid #fecaca !important;
+            background: #fef2f2 !important;
+            color: #ef4444 !important;
+        }
+
+        .sales-table tbody td.col-product {
+            grid-row: 2 !important;
+            grid-column: 1 / -1 !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+        }
+        .sales-table tbody td.col-product::before {
+            content: "PRODUCT";
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #64748b;
+            display: block;
+            margin-bottom: 3px;
+            letter-spacing: .5px;
+        }
+        .sales-table tbody td.col-product .input-with-icon {
+            position: static !important;
+        }
+        .sales-table tbody td.col-product .input-with-icon > i {
+            display: none !important;
+        }
+        .sales-table tbody td.col-product .select2-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            display: block !important;
+        }
+        .sales-table tbody td.col-product .select2-selection--single {
+            height: 40px !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            background-color: #ffffff !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        .sales-table tbody td.col-product .select2-selection__rendered {
+            line-height: 38px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            padding-left: 10px !important;
+            padding-right: 25px !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+        .sales-table tbody td.col-product .select2-selection__arrow {
+            height: 38px !important;
+            right: 8px !important;
+        }
+
+        .sales-table tbody td.col-unit {
+            grid-row: 3 !important;
+            grid-column: 1 / 2 !important;
+        }
+        .sales-table tbody td.col-unit::before {
+            content: "UNIT (TAP TO CHANGE)";
+            font-size: 10px;
+            font-weight: 700;
+            color: #64748b;
+            display: block;
+            margin-bottom: 3px;
+            letter-spacing: .5px;
+        }
+
+        .sales-table tbody td.col-qty {
+            grid-row: 3 !important;
+            grid-column: 2 / 3 !important;
+        }
+        .sales-table tbody td.col-qty::before {
+            content: "QUANTITY";
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #64748b;
+            display: block;
+            margin-bottom: 3px;
+            letter-spacing: .5px;
+        }
+
+        .sales-table tbody td.col-price {
+            grid-row: 4 !important;
+            grid-column: 1 / 2 !important;
+        }
+        .sales-table tbody td.col-price::before {
+            content: "PURCHASE PRICE";
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #64748b;
+            display: block;
+            margin-bottom: 3px;
+            letter-spacing: .5px;
+        }
+
+        .sales-table tbody td.col-disc {
+            grid-row: 4 !important;
+            grid-column: 2 / 3 !important;
+        }
+        .sales-table tbody td.col-disc::before {
+            content: "DISCOUNT %";
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #64748b;
+            display: block;
+            margin-bottom: 3px;
+            letter-spacing: .5px;
+        }
+        .sales-table tbody .disc-wrapper {
+            border: none !important;
+            background: transparent !important;
+            position: relative !important;
+            width: 100% !important;
+            height: 38px !important;
+        }
+        .sales-table tbody .disc-wrapper input {
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            height: 38px !important;
+            width: 100% !important;
+            padding-right: 24px !important;
+            text-align: right !important;
+            background-color: #ffffff !important;
+        }
+        .sales-table tbody .disc-wrapper .disc-addon {
+            position: absolute !important;
+            right: 8px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            color: #94a3b8 !important;
+            pointer-events: none !important;
+            line-height: 1 !important;
+            height: auto !important;
+        }
+
+        .sales-table tbody td.col-disc-amt {
+            grid-row: 5 !important;
+            grid-column: 1 / 2 !important;
+        }
+        .sales-table tbody td.col-disc-amt::before {
+            content: "DISCOUNT AMOUNT";
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #64748b;
+            display: block;
+            margin-bottom: 3px;
+            letter-spacing: .5px;
+        }
+
+        .sales-table tbody td.col-amount {
+            grid-row: 5 !important;
+            grid-column: 2 / 3 !important;
+        }
+        .sales-table tbody td.col-amount::before {
+            content: "TOTAL AMOUNT";
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #2563eb;
+            display: block;
+            margin-bottom: 3px;
+            letter-spacing: .5px;
+        }
+
+        /* Total amount row below items */
+        .total-amount-row {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            background: #f8fafc !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 10px !important;
+            padding: 12px 14px !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+            margin-top: 8px !important;
+        }
+        .total-amount-label {
+            font-weight: 700 !important;
+            color: #475569 !important;
+            font-size: 13px !important;
+        }
+        .total-amount-value {
+            font-weight: 800 !important;
+            color: #0f172a !important;
+            font-size: 16px !important;
+        }
+
+        /* Payment Voucher on Mobile */
+        .payment-row {
+            background: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 10px !important;
+            padding: 10px !important;
+            margin-bottom: 10px !important;
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+        }
+        .payment-row > div:nth-child(1) {
+            width: 100% !important;
+            padding: 0 !important;
+        }
+        .payment-row > div:nth-child(2) {
+            width: calc(100% - 66px) !important;
+            flex: 1 1 auto !important;
+            padding: 0 !important;
+        }
+        .payment-row > div:nth-child(3) {
+            width: 58px !important;
+            flex-shrink: 0 !important;
+            padding: 0 !important;
+        }
+        .payment-row > div:nth-child(3) button {
+            width: 100% !important;
+            height: 38px !important;
+            border-radius: 8px !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .payment-row .input-with-icon > i {
+            display: none !important;
+        }
+        .payment-row .form-select,
+        .payment-row .form-control {
+            padding-left: 10px !important;
+            height: 38px !important;
+            border-radius: 8px !important;
+            border: 1.5px solid #cbd5e1 !important;
+            font-size: 13.5px !important;
+        }
+
+        /* Summary Card & Submit Button */
+        .summary-row {
+            padding: 8px 0 !important;
+            font-size: 13.5px !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+        }
+        .summary-row:last-child {
+            border-bottom: none !important;
+        }
+        .summary-row input.form-control-sm {
+            min-width: 0 !important;
+        }
+        .summary-box {
+            background-color: #f0fdf4 !important;
+            border: 1.5px solid #bbf7d0 !important;
+            border-radius: 10px !important;
+            padding: 14px !important;
+            margin-top: 14px !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+        }
+        .summary-box-label {
+            font-weight: 700 !important;
+            color: #166534 !important;
+            font-size: 13.5px !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+        .summary-box-value {
+            font-weight: 800 !important;
+            color: #15803d !important;
+            font-size: 1.3rem !important;
+        }
+
+        .btn-submit {
+            width: 100% !important;
+            padding: 14px 20px !important;
+            font-size: 1rem !important;
+            font-weight: 700 !important;
+            border-radius: 10px !important;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+    }
 </style>
 
 <div class="main-wrapper">
@@ -371,22 +931,22 @@
 
         <!-- General Info Card -->
         <div class="card-custom mb-3">
-            <div class="row g-3">
-                <div class="col-xl-2 col-lg-2 col-md-4">
+            <div class="row g-2 g-md-3">
+                <div class="col-xl-2 col-lg-2 col-md-4 col-6">
                     <label class="form-label">System No.</label>
                     <div class="input-with-icon">
                         <i class="bi bi-file-earmark"></i>
                         <input type="text" class="form-control input-readonly" name="invoice_no" value="{{ $purchase->invoice_no }}" readonly>
                     </div>
                 </div>
-                <div class="col-xl-2 col-lg-2 col-md-4">
+                <div class="col-xl-2 col-lg-2 col-md-4 col-6">
                     <label class="form-label">Vendor Inv#</label>
                     <div class="input-with-icon">
                         <i class="bi bi-file-earmark-text"></i>
                         <input type="text" class="form-control" name="purchase_order_no" placeholder="Manual Ref" value="{{ $purchase->purchase_order_no }}">
                     </div>
                 </div>
-                <div class="col-xl-2 col-lg-2 col-md-4">
+                <div class="col-xl-2 col-lg-2 col-md-4 col-12">
                     <label class="form-label">Select Vendor</label>
                     <div class="input-with-icon">
                         <i class="bi bi-building"></i>
@@ -398,7 +958,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-xl-2 col-lg-2 col-md-4">
+                <div class="col-xl-2 col-lg-2 col-md-4 col-6">
                     <label class="form-label">Select Warehouse</label>
                     <div class="input-with-icon">
                         <i class="bi bi-shop"></i>
@@ -412,14 +972,14 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-xl-2 col-lg-2 col-md-4">
+                <div class="col-xl-2 col-lg-2 col-md-4 col-6">
                     <label class="form-label">Date</label>
                     <div class="input-with-icon">
                         <i class="bi bi-calendar"></i>
                         <input type="date" name="purchase_date" class="form-control" value="{{ $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : date('Y-m-d') }}">
                     </div>
                 </div>
-                <div class="col-xl-2 col-lg-2 col-md-4">
+                <div class="col-xl-2 col-lg-2 col-md-4 col-12">
                     <label class="form-label">M.Bill / Remarks</label>
                     <div class="input-with-icon">
                         <i class="bi bi-chat-left-text"></i>
@@ -431,7 +991,7 @@
 
         <!-- Purchase Items Card -->
         <div class="card-custom mb-3">
-            <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                 <div class="card-title-container">
                     <div class="icon-box bg-cyan">
                         <i class="bi bi-cart3"></i>
@@ -546,10 +1106,10 @@
                                 $dPct = $gross > 0 ? ($item->item_discount / $gross) * 100 : 0;
                             @endphp
                             <tr data-sizemode="{{ $sizeMode }}" data-pieces_per_m2="{{ $item->pieces_per_m2 }}">
-                                <td class="text-center fw-bold text-muted">
+                                <td class="text-center fw-bold text-muted col-index">
                                     {{ $loop->iteration }}
                                 </td>
-                                <td class="product-col text-start ps-3">
+                                <td class="product-col col-product text-start ps-3">
                                     <div class="input-with-icon">
                                         <i class="bi bi-box-seam" style="z-index:100; color: #64748b;"></i>
                                         <select class="form-select product-select2" name="product_id[]">
@@ -571,7 +1131,7 @@
                                     <input type="hidden" name="width[]" class="hidden-width" value="{{ $item->width }}">
                                     <input type="hidden" name="color[]" class="hidden-variant-data" value="{{ $rawVariantData }}">
                                 </td>
-                                <td>
+                                <td class="col-unit">
                                     @php
                                         $btnClass = $isCtn ? 'btn-outline-success' : ($isKg ? 'btn-outline-primary' : 'btn-outline-info');
                                     @endphp
@@ -580,25 +1140,25 @@
                                     </button>
                                     <input type="hidden" name="unit[]" class="unit-input-val" value="{{ $unitName }}">
                                 </td>
-                                <td>
+                                <td class="col-qty">
                                     <input type="number" step="any" min="0.0001" name="qty[]" class="form-control main-qty-input" value="{{ $displayQty }}">
                                 </td>
-                                <td>
+                                <td class="col-price">
                                     <input type="number" name="price[]" class="form-control price" step="0.01" value="{{ (float) $item->price }}">
                                 </td>
-                                <td>
+                                <td class="col-disc">
                                     <div class="disc-wrapper">
                                         <input type="number" name="item_discount[]" class="form-control item-disc-percent" step="0.01" value="{{ round($dPct, 2) }}">
                                         <span class="disc-addon">%</span>
                                     </div>
                                 </td>
-                                <td>
+                                <td class="col-disc-amt">
                                     <input type="number" class="form-control amount-cell item-disc-amt" value="{{ (float) $item->item_discount }}" readonly>
                                 </td>
-                                <td>
+                                <td class="col-amount">
                                     <input type="number" class="form-control amount-cell row-total" value="{{ (float) $item->line_total }}" readonly>
                                 </td>
-                                <td>
+                                <td class="col-action">
                                     <button type="button" class="action-btn remove-row text-danger border-danger"><i class="bi bi-trash"></i></button>
                                 </td>
                             </tr>
@@ -693,8 +1253,8 @@
                             </div>
                         @endif
                     </div>
-                    <div class="text-end mt-3 d-none">
-                        <span class="me-2 fw-bold text-muted">Total Paid:</span>
+                    <div class="text-end mt-2">
+                        <span class="me-2 fw-bold text-muted small">Total Paid:</span>
                         <span class="fw-bold fs-6 text-success" id="totalPaid">0.00</span>
                     </div>
                 </div>
@@ -844,8 +1404,8 @@
             window.addBlankRow = function() {
                 const html = `
                 <tr>
-                    <td class="text-center fw-bold text-muted row-number">#</td>
-                    <td class="product-col text-start ps-3">
+                    <td class="text-center fw-bold text-muted row-number col-index">#</td>
+                    <td class="product-col col-product text-start ps-3">
                         <div class="input-with-icon">
                             <i class="bi bi-box-seam" style="z-index:100; color: #64748b;"></i>
                             <select class="form-select product-select2" name="product_id[]"></select>
@@ -863,31 +1423,31 @@
                         <input type="hidden" name="width[]" class="hidden-width">
                         <input type="hidden" name="color[]" class="hidden-variant-data">
                     </td>
-                    <td>
+                    <td class="col-unit">
                         <button type="button" class="unit-toggle-btn btn-outline-info" data-unit="Pcs" title="Toggle unit">
                             <i class="bi bi-box"></i> <span class="unit-text ms-1">Pcs</span> <i class="bi bi-chevron-down ms-1" style="font-size:0.7rem"></i>
                         </button>
                         <input type="hidden" name="unit[]" class="unit-input-val" value="Pcs">
                     </td>
-                    <td>
+                    <td class="col-qty">
                         <input type="number" step="any" min="0.0001" name="qty[]" class="form-control main-qty-input" value="1">
                     </td>
-                    <td>
+                    <td class="col-price">
                         <input type="number" step="0.01" name="price[]" class="form-control price" value="0">
                     </td>
-                    <td>
+                    <td class="col-disc">
                         <div class="disc-wrapper">
                             <input type="number" step="0.01" name="item_discount[]" class="form-control item-disc-percent" value="0">
                             <span class="disc-addon">%</span>
                         </div>
                     </td>
-                    <td>
+                    <td class="col-disc-amt">
                         <input type="number" class="form-control amount-cell item-disc-amt" value="0.00" readonly>
                     </td>
-                    <td>
+                    <td class="col-amount">
                         <input type="number" class="form-control amount-cell row-total" value="0.00" readonly>
                     </td>
-                    <td>
+                    <td class="col-action">
                         <button type="button" class="action-btn remove-row text-danger border-danger"><i class="bi bi-trash"></i></button>
                     </td>
                 </tr>`;
@@ -944,17 +1504,31 @@
             // --- Payment Section Logic ---
             $('#btnAddPayment').on('click', function() {
                 const row = `
-                <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
-                    <select class="form-select rv-account" name="payment_account_id[]" style="max-width: 300px; flex-grow: 1;">
-                        <option value="" selected disabled>Select Account</option>
-                        @foreach ($accounts as $acc)
-                            <option value="{{ $acc->id }}">{{ $acc->title }}</option>
-                        @endforeach
-                    </select>
-                    <input type="number" class="form-control text-end payment-amount" name="payment_amount[]" placeholder="Amount" style="width:140px" step="0.01">
-                    <button type="button" class="btn btn-sm btn-outline-danger remove-payment">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                <div class="row g-2 g-md-3 payment-row mb-3 align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label d-md-none">Payment Method</label>
+                        <div class="input-with-icon">
+                            <i class="bi bi-box"></i>
+                            <select class="form-select rv-account" name="payment_account_id[]">
+                                <option value="" selected disabled>Select Account</option>
+                                @foreach ($accounts as $acc)
+                                    <option value="{{ $acc->id }}">{{ $acc->title }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label d-md-none">Amount</label>
+                        <div class="input-with-icon">
+                            <i class="bi bi-cash"></i>
+                            <input type="number" class="form-control payment-amount" name="payment_amount[]" placeholder="Enter amount..." step="0.01">
+                        </div>
+                    </div>
+                    <div class="col-md-2 pb-1">
+                        <button type="button" class="btn btn-outline-danger remove-payment w-100" style="height: 42px;">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 </div>`;
                 $('#paymentWrapper').append(row);
             });

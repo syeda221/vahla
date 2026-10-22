@@ -497,28 +497,89 @@
         }
 
         /* Responsive breakpoints */
-        @media (max-width: 767px) {
-            body { padding-bottom: 80px; }
-
-            .page-container { padding: 12px; }
+        @media (max-width: 767.98px) {
+            html, body {
+                overflow-x: hidden !important;
+                max-width: 100vw !important;
+            }
+            body {
+                padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
+            }
+            .page-container {
+                padding: 10px 8px !important;
+                max-width: 100vw !important;
+                overflow-x: hidden !important;
+                box-sizing: border-box !important;
+            }
+            .row {
+                margin-left: -6px !important;
+                margin-right: -6px !important;
+            }
+            .row > [class*="col"] {
+                padding-left: 6px !important;
+                padding-right: 6px !important;
+            }
+            .section-card {
+                overflow: hidden !important;
+                margin-bottom: 14px !important;
+                border-radius: var(--radius-md) !important;
+            }
+            .card-body-pro {
+                padding: 12px 10px !important;
+            }
+            .card-header-pro {
+                padding: 10px 12px !important;
+            }
+            .card-body-pro .d-flex > select,
+            .card-body-pro .d-flex > input {
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
+            }
 
             /* Hide desktop table + show mobile cards */
             #variantsContainer { display: none !important; }
-            #mobileVariantsContainer { display: block; }
-            .mobile-action-bar { display: flex; }
-            /* Hide desktop action buttons row */
-            .desktop-action-bar { display: none !important; }
-            /* Mobile info section */
-            .mob-info-section { display: block; }
-
-            /* Product identity card responsive */
-            .card-body-pro { padding: 14px; }
-            .card-header-pro { padding: 10px 14px; }
+            #mobileVariantsContainer {
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            .mob-variant-card {
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .mob-card-body {
+                padding: 12px 10px !important;
+            }
+            div[style*="grid-template-columns:1fr 1fr"],
+            div[style*="grid-template-columns: 1fr 1fr"] {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 8px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            div[style*="grid-template-columns"] > * {
+                min-width: 0 !important;
+            }
+            .mobile-action-bar {
+                display: flex !important;
+                padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)) 14px !important;
+            }
+            .desktop-action-bar {
+                display: none !important;
+            }
+            .mob-info-section {
+                display: block !important;
+            }
         }
 
         @media (min-width: 768px) and (max-width: 991px) {
             /* Tablet: 2-col inputs */
             .card-body-pro .col-md-3 { flex: 0 0 50%; max-width: 50%; }
+            .table-responsive {
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
         }
     </style>
 
@@ -869,10 +930,12 @@
                 document.getElementById('alert_carton_quantity').value = firstAlert;
                 // ------------------------------------------------------------------------
 
-                const btn = document.querySelector('button[type="submit"]');
-                const originalContent = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-                btn.disabled = true;
+                const desktopBtn = document.getElementById('desktopSubmitBtn');
+                const mobileBtn = document.getElementById('mobileSubmitBtn');
+                const origDesktop = desktopBtn ? desktopBtn.innerHTML : '';
+                const origMobile = mobileBtn ? mobileBtn.innerHTML : '';
+                if (desktopBtn) { desktopBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...'; desktopBtn.disabled = true; }
+                if (mobileBtn) { mobileBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Saving...'; mobileBtn.disabled = true; }
 
                 const formData = new FormData(form);
                 fetch(form.action, {
@@ -894,8 +957,8 @@
                 })
                 .catch(err => Swal.fire({icon: 'error', title: 'Error', text: 'Server Error'}))
                 .finally(() => {
-                    btn.innerHTML = originalContent;
-                    btn.disabled = false;
+                    if (desktopBtn) { desktopBtn.innerHTML = origDesktop; desktopBtn.disabled = false; }
+                    if (mobileBtn) { mobileBtn.innerHTML = origMobile; mobileBtn.disabled = false; }
                 });
             });
 
@@ -1019,6 +1082,13 @@
                     const baseInput = document.querySelector('input.base-name-input');
                     if (baseInput && !manualNames[baseInput.dataset.vid]) {
                         baseInput.value = this.value;
+                        const mobBaseCard = document.querySelector('.mob-variant-card.is-base');
+                        if (mobBaseCard) {
+                            const mobLabel = mobBaseCard.querySelector('.mob-card-label');
+                            if (mobLabel) mobLabel.textContent = this.value || 'Base Variant';
+                            const mobName = mobBaseCard.querySelector('[data-field="variant_name[]"]');
+                            if (mobName) mobName.value = this.value;
+                        }
                     }
                 });
             }
@@ -1410,6 +1480,9 @@
                 $(unitDropdown).on('change', function() {
                     updateVariantMode();
                     toggleFactorColumns();
+                    if (typeof isMobile === 'function' && isMobile() && typeof rebuildMobileCards === 'function') {
+                        rebuildMobileCards();
+                    }
                 });
                 // Initialize mode on load
                 updateVariantMode();
@@ -1803,7 +1876,19 @@
             if (isMobile()) rebuildMobileCards();
         });
 
-        // Make mobileAddVariant global
+        // Initial render of mobile cards on load
+        if (typeof isMobile === 'function' && isMobile() && typeof rebuildMobileCards === 'function') {
+            rebuildMobileCards();
+        }
+        window.addEventListener('load', () => {
+            if (typeof isMobile === 'function' && isMobile() && typeof rebuildMobileCards === 'function') {
+                rebuildMobileCards();
+            }
+        });
+
+        // Make functions global
+        window.isMobile = isMobile;
+        window.rebuildMobileCards = rebuildMobileCards;
         window.mobileAddVariant = mobileAddVariant;
         window.mobToggleCard = mobToggleCard;
         window.mobDeleteCard = mobDeleteCard;

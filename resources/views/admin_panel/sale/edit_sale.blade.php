@@ -892,7 +892,10 @@
         /* ==================== RESPONSIVE ITEMS CARD & TABLE UI ==================== */
         @media (max-width: 991.98px) {
             .pos-table-wrap {
-                overflow: visible !important;
+                overflow: hidden !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
                 border: none !important;
                 background: transparent !important;
             }
@@ -900,6 +903,8 @@
             .sales-table tbody {
                 display: block !important;
                 width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
                 border: none !important;
             }
             .sales-table thead,
@@ -910,17 +915,20 @@
             /* Each table row transforms into a clean modern ERP Item Card */
             .sales-table tbody tr {
                 display: grid !important;
-                grid-template-columns: 1fr 1fr !important;
-                grid-column-gap: 12px !important;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+                grid-column-gap: 10px !important;
                 grid-row-gap: 10px !important;
                 background: #FFFFFF !important;
                 border: 1px solid #E2E8F0 !important;
                 border-radius: 14px !important;
-                padding: 14px !important;
-                margin-bottom: 14px !important;
+                padding: 12px !important;
+                margin-bottom: 12px !important;
                 box-shadow: 0 2px 10px rgba(10, 37, 64, 0.05) !important;
                 position: relative !important;
                 align-items: end !important;
+                box-sizing: border-box !important;
+                width: 100% !important;
+                max-width: 100% !important;
             }
             .sales-table tbody tr:hover {
                 background: #FFFFFF !important;
@@ -931,6 +939,8 @@
                 border: none !important;
                 height: auto !important;
                 min-width: 0 !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
                 width: auto !important;
                 background: transparent !important;
             }
@@ -993,6 +1003,8 @@
                 grid-row: 2 !important;
                 grid-column: 1 / -1 !important;
                 width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
             }
             .sales-table tbody td.col-product::before {
                 content: "PRODUCT";
@@ -1006,18 +1018,26 @@
             }
             .sales-table tbody td.col-product .select2-container {
                 width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
             }
             .sales-table tbody td.col-product .select2-selection--single {
                 height: 42px !important;
                 border: 1px solid #CBD5E1 !important;
                 border-radius: 8px !important;
                 background: #ffffff !important;
+                width: 100% !important;
+                max-width: 100% !important;
             }
             .sales-table tbody td.col-product .select2-selection__rendered {
                 line-height: 40px !important;
                 font-size: 13.5px !important;
                 font-weight: 600 !important;
                 padding-left: 12px !important;
+                padding-right: 28px !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
             }
             .sales-table tbody td.col-product .select2-selection__arrow {
                 height: 40px !important;
@@ -1028,6 +1048,8 @@
             .sales-table tbody td.col-qty-wrapper {
                 grid-row: 3 !important;
                 grid-column: 1 / 2 !important;
+                min-width: 0 !important;
+                max-width: 100% !important;
             }
             .sales-table tbody td.col-qty-wrapper::before {
                 content: "QUANTITY";
@@ -1043,6 +1065,8 @@
                 display: flex;
                 gap: 4px;
                 align-items: stretch;
+                width: 100% !important;
+                min-width: 0 !important;
             }
             .sales-table tbody td.col-qty-wrapper .carton-qty {
                 height: 40px !important;
@@ -1051,15 +1075,21 @@
                 border: 1px solid #CBD5E1 !important;
                 border-radius: 8px !important;
                 text-align: center !important;
+                min-width: 0 !important;
+                flex: 1 1 auto !important;
+                width: 100% !important;
             }
             .sales-table tbody td.col-qty-wrapper .qty-unit-toggle {
                 height: 40px !important;
-                min-width: 44px !important;
+                min-width: 38px !important;
+                flex-shrink: 0 !important;
             }
 
             .sales-table tbody td.col-stock {
                 grid-row: 3 !important;
                 grid-column: 2 / 3 !important;
+                min-width: 0 !important;
+                max-width: 100% !important;
             }
             .sales-table tbody td.col-stock::before {
                 content: "STOCK";
@@ -1081,12 +1111,16 @@
                 font-size: 14px !important;
                 font-weight: 800 !important;
                 text-align: center !important;
+                min-width: 0 !important;
+                width: 100% !important;
             }
 
             /* 4. Size (Left) & Pcs / Ctn (Right) on Row 4 */
             .sales-table tbody td.col-size {
                 grid-row: 4 !important;
                 grid-column: 1 / 2 !important;
+                min-width: 0 !important;
+                max-width: 100% !important;
             }
             .sales-table tbody td.col-size::before {
                 content: "SIZE";
@@ -1105,11 +1139,15 @@
                 font-size: 13.5px !important;
                 font-weight: 600 !important;
                 text-align: center !important;
+                min-width: 0 !important;
+                width: 100% !important;
             }
 
             .sales-table tbody td.col-pcs-ctn {
                 grid-row: 4 !important;
                 grid-column: 2 / 3 !important;
+                min-width: 0 !important;
+                max-width: 100% !important;
             }
             .sales-table tbody td.col-pcs-ctn::before {
                 content: "PCS / CTN";
@@ -1129,12 +1167,16 @@
                 font-size: 13.5px !important;
                 font-weight: 600 !important;
                 text-align: center !important;
+                min-width: 0 !important;
+                width: 100% !important;
             }
 
             /* 5. Price (Left) & Discount (Right) on Row 5 */
             .sales-table tbody td.col-price-p {
                 grid-row: 5 !important;
                 grid-column: 1 / 2 !important;
+                min-width: 0 !important;
+                max-width: 100% !important;
             }
             .sales-table tbody td.col-price-p::before {
                 content: "PRICE";
@@ -1154,10 +1196,12 @@
                 display: flex !important;
                 align-items: stretch !important;
                 overflow: hidden !important;
+                width: 100% !important;
+                min-width: 0 !important;
             }
             .sales-table tbody td.col-price-p .price-mode-row-toggle {
                 height: 40px !important;
-                min-width: 34px !important;
+                min-width: 32px !important;
                 background: #F8FAFC !important;
                 border: none !important;
                 border-right: 1px solid #E2E8F0 !important;
@@ -1165,6 +1209,7 @@
                 color: #64748B !important;
                 font-size: 12px !important;
                 font-weight: 700 !important;
+                flex-shrink: 0 !important;
             }
             .sales-table tbody td.col-price-p .visible-price {
                 height: 40px !important;
@@ -1173,12 +1218,17 @@
                 border: none !important;
                 box-shadow: none !important;
                 text-align: right !important;
-                padding-right: 10px !important;
+                padding-right: 8px !important;
+                min-width: 0 !important;
+                flex: 1 1 auto !important;
+                width: 100% !important;
             }
 
             .sales-table tbody td.col-disc {
                 grid-row: 5 !important;
                 grid-column: 2 / 3 !important;
+                min-width: 0 !important;
+                max-width: 100% !important;
             }
             .sales-table tbody td.col-disc::before {
                 content: "DISCOUNT";
@@ -1198,10 +1248,12 @@
                 display: flex !important;
                 align-items: stretch !important;
                 overflow: hidden !important;
+                width: 100% !important;
+                min-width: 0 !important;
             }
             .sales-table tbody td.col-disc .discount-toggle {
                 height: 40px !important;
-                min-width: 34px !important;
+                min-width: 32px !important;
                 background: #F8FAFC !important;
                 border: none !important;
                 border-right: 1px solid #E2E8F0 !important;
@@ -1209,6 +1261,7 @@
                 color: #64748B !important;
                 font-size: 12px !important;
                 font-weight: 700 !important;
+                flex-shrink: 0 !important;
             }
             .sales-table tbody td.col-disc .discount-value {
                 height: 40px !important;
@@ -1217,7 +1270,10 @@
                 border: none !important;
                 box-shadow: none !important;
                 text-align: right !important;
-                padding-right: 10px !important;
+                padding-right: 8px !important;
+                min-width: 0 !important;
+                flex: 1 1 auto !important;
+                width: 100% !important;
             }
 
             /* 6. Line Total / Amount (Full Width on Row 6) */
@@ -1232,8 +1288,13 @@
                 flex-direction: row !important;
                 align-items: center !important;
                 justify-content: space-between !important;
+                gap: 12px !important;
                 margin-top: 4px !important;
                 white-space: nowrap !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
             }
             .sales-table tbody td.col-amount::before {
                 content: "ITEM TOTAL:" !important;
@@ -1243,6 +1304,7 @@
                 letter-spacing: .5px !important;
                 white-space: nowrap !important;
                 margin-bottom: 0 !important;
+                flex-shrink: 0 !important;
             }
             .sales-table tbody td.col-amount .sales-amount {
                 border: none !important;
@@ -1251,9 +1313,12 @@
                 font-weight: 800 !important;
                 color: #2563EB !important;
                 text-align: right !important;
-                width: auto !important;
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
                 height: auto !important;
-                padding: 0 !important;
+                padding: 0 4px 0 0 !important;
                 box-shadow: none !important;
                 white-space: nowrap !important;
             }

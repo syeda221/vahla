@@ -538,6 +538,377 @@ a.btn-outline-primary:hover {
     content: '\F28B'; /* bi-credit-card */
     color: #3b82f6;
 }
+
+/* =========================================================
+   MOBILE RESPONSIVE STYLING (Zero Horizontal Scroll)
+   ========================================================= */
+@media (max-width: 991.98px) {
+    body, html {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+    }
+    
+    .container-fluid {
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+        max-width: 100vw !important;
+        overflow-x: hidden !important;
+    }
+
+    .main-container {
+        padding: 12px 10px !important;
+        border-radius: 10px !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    .card-panel {
+        padding: 14px 12px !important;
+        border-radius: 10px !important;
+        margin-bottom: 12px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Transform Items Table into modern cards */
+    .table-responsive {
+        overflow: visible !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        min-height: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .sales-table,
+    .sales-table tbody {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        border: none !important;
+        background: transparent !important;
+    }
+
+    .sales-table thead {
+        display: none !important;
+    }
+
+    .sales-table tbody tr {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+        grid-column-gap: 10px !important;
+        grid-row-gap: 8px !important;
+        background: #ffffff !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 12px !important;
+        padding: 12px !important;
+        margin-bottom: 12px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        position: relative !important;
+    }
+
+    .sales-table tbody tr:hover td {
+        background-color: transparent !important;
+    }
+
+    .sales-table tbody td {
+        display: block !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Inputs in mobile cards */
+    .sales-table tbody .form-control {
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        height: 38px !important;
+        font-size: 13.5px !important;
+        padding: 6px 8px !important;
+        background-color: #ffffff !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .sales-table tbody .input-readonly,
+    .sales-table tbody input[readonly] {
+        background-color: #f1f5f9 !important;
+        border-color: #cbd5e1 !important;
+        color: #334155 !important;
+        font-weight: 700 !important;
+    }
+
+    .sales-table tbody .row-total {
+        background-color: #eff6ff !important;
+        border-color: #bfdbfe !important;
+        color: #1d4ed8 !important;
+        font-weight: 800 !important;
+    }
+
+    .sales-table tbody .unit-toggle-btn {
+        height: 38px !important;
+        width: 100% !important;
+        border-radius: 8px !important;
+        font-size: 13px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border: 1.5px solid #0dcaf0 !important;
+    }
+
+    /* Cell layout and labels */
+    .sales-table tbody td.col-action {
+        grid-row: 1 !important;
+        grid-column: 1 / -1 !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        padding-bottom: 6px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        margin-bottom: 4px !important;
+    }
+    .sales-table tbody td.col-action::before {
+        content: "ITEM DETAILS";
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        color: #2563eb !important;
+        background: #eff6ff !important;
+        border: 1px solid #dbeafe !important;
+        padding: 3px 8px !important;
+        border-radius: 6px !important;
+        letter-spacing: .5px !important;
+        margin-bottom: 0 !important;
+    }
+    .sales-table tbody td.col-action .remove-row {
+        width: 32px !important;
+        height: 32px !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 8px !important;
+        border: 1px solid #fecaca !important;
+        background: #fef2f2 !important;
+        color: #ef4444 !important;
+    }
+
+    .sales-table tbody td.col-product {
+        grid-row: 2 !important;
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    .sales-table tbody td.col-product::before {
+        content: "PRODUCT";
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #64748b;
+        display: block;
+        margin-bottom: 3px;
+        letter-spacing: .5px;
+    }
+    .sales-table tbody td.col-product .select2-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        display: block !important;
+    }
+    .sales-table tbody td.col-product .select2-selection--single {
+        height: 40px !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        background-color: #ffffff !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .sales-table tbody td.col-product .select2-selection__rendered {
+        line-height: 38px !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        padding-left: 10px !important;
+        padding-right: 25px !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+    .sales-table tbody td.col-product .select2-selection__arrow {
+        height: 38px !important;
+        right: 8px !important;
+    }
+
+    .sales-table tbody td.col-unit {
+        grid-row: 3 !important;
+        grid-column: 1 / 2 !important;
+    }
+    .sales-table tbody td.col-unit::before {
+        content: "UNIT (TAP TO CHANGE)";
+        font-size: 10px;
+        font-weight: 700;
+        color: #64748b;
+        display: block;
+        margin-bottom: 3px;
+        letter-spacing: .5px;
+    }
+
+    .sales-table tbody td.col-qty {
+        grid-row: 3 !important;
+        grid-column: 2 / 3 !important;
+    }
+    .sales-table tbody td.col-qty::before {
+        content: "QUANTITY";
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #64748b;
+        display: block;
+        margin-bottom: 3px;
+        letter-spacing: .5px;
+    }
+
+    .sales-table tbody td.col-price {
+        grid-row: 4 !important;
+        grid-column: 1 / 2 !important;
+    }
+    .sales-table tbody td.col-price::before {
+        content: "PURCHASE PRICE";
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #64748b;
+        display: block;
+        margin-bottom: 3px;
+        letter-spacing: .5px;
+    }
+
+    .sales-table tbody td.col-disc {
+        grid-row: 4 !important;
+        grid-column: 2 / 3 !important;
+    }
+    .sales-table tbody td.col-disc::before {
+        content: "DISCOUNT %";
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #64748b;
+        display: block;
+        margin-bottom: 3px;
+        letter-spacing: .5px;
+    }
+
+    .sales-table tbody td.col-disc-amt {
+        grid-row: 5 !important;
+        grid-column: 1 / 2 !important;
+    }
+    .sales-table tbody td.col-disc-amt::before {
+        content: "DISCOUNT AMOUNT";
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #64748b;
+        display: block;
+        margin-bottom: 3px;
+        letter-spacing: .5px;
+    }
+
+    .sales-table tbody td.col-amount {
+        grid-row: 5 !important;
+        grid-column: 2 / 3 !important;
+    }
+    .sales-table tbody td.col-amount::before {
+        content: "TOTAL AMOUNT";
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #2563eb;
+        display: block;
+        margin-bottom: 3px;
+        letter-spacing: .5px;
+    }
+
+    /* Table Footer */
+    .sales-table tfoot {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        border: none !important;
+        background: transparent !important;
+        margin-top: 8px !important;
+    }
+    .sales-table tfoot tr {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        background: #f8fafc !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 10px !important;
+        padding: 12px 14px !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+    }
+    .sales-table tfoot td {
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+    .sales-table tfoot td:first-child {
+        display: block !important;
+        font-weight: 700 !important;
+        color: #475569 !important;
+        font-size: 13px !important;
+        text-align: left !important;
+    }
+    .sales-table tfoot td:nth-child(2) {
+        display: block !important;
+        font-weight: 800 !important;
+        color: #0f172a !important;
+        font-size: 16px !important;
+        text-align: right !important;
+    }
+    .sales-table tfoot td:last-child {
+        display: none !important;
+    }
+
+    /* Payment Voucher & Summary */
+    .payment-row {
+        gap: 6px !important;
+    }
+    .payment-row .rv-account {
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+        width: 100% !important;
+    }
+    .payment-row .payment-amount {
+        flex: 1 1 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .main-container form > .d-flex.justify-content-end {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+    .main-container form > .d-flex.justify-content-end button {
+        width: 100% !important;
+        padding: 10px 16px !important;
+        font-size: 14px !important;
+    }
+
+    .modal-dialog {
+        max-width: calc(100% - 20px) !important;
+        margin: 10px auto !important;
+    }
+}
 </style>
 
     <div class="container-fluid py-2 px-1">
@@ -550,22 +921,22 @@ a.btn-outline-primary:hover {
                 <input type="hidden" id="action" name="action" value="purchase">
 
                                 {{-- TOP HEADER & INVOICE / VENDOR CARD --}}
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="bg-primary text-white rounded-3 p-2 d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 50px; background-color: #4371e9 !important;">
-                             <i class="bi bi-file-earmark-text fs-3"></i>
+                        <div class="bg-primary text-white rounded-3 p-2 d-flex align-items-center justify-content-center shadow-sm" style="width: 44px; height: 44px; background-color: #4371e9 !important; flex-shrink: 0;">
+                             <i class="bi bi-file-earmark-text fs-4"></i>
                         </div>
                         <div>
-                            <h3 class="header-text text-dark fw-bolder mb-1" style="color: #0d1b46 !important;">Purchase Entry</h3>
-                            <small class="text-secondary fw-medium">Add new purchase record and manage your vendor invoices</small>
+                            <h3 class="header-text text-dark fw-bolder mb-1 fs-5" style="color: #0d1b46 !important;">Purchase Entry</h3>
+                            <small class="text-secondary fw-medium" style="font-size: 11px;">Add new purchase record and manage your vendor invoices</small>
                         </div>
                     </div>
                     <div>
-                        <div class="d-flex align-items-center bg-white border rounded-3 px-3 py-2 shadow-sm" style="min-width: 150px;">
-                            <i class="bi bi-calendar3 text-muted me-3 fs-5"></i>
+                        <div class="d-flex align-items-center bg-white border rounded-3 px-3 py-1 shadow-sm" style="min-width: 130px;">
+                            <i class="bi bi-calendar3 text-muted me-2 fs-6"></i>
                             <div>
-                                 <small class="text-muted d-block fw-semibold" style="font-size: 11px;">Date</small>
-                                 <span class="fw-bold text-dark" style="font-size: 14px;">{{ date('d/m/Y') }}</span>
+                                 <small class="text-muted d-block fw-semibold" style="font-size: 10px;">Date</small>
+                                 <span class="fw-bold text-dark" style="font-size: 13px;">{{ date('d/m/Y') }}</span>
                             </div>
                         </div>
                     </div>
@@ -577,18 +948,18 @@ a.btn-outline-primary:hover {
                      </a>
                 </div>
 
-                <div class="card-panel shadow-sm mb-4 p-4 bg-white border-0" style="border-radius: 12px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-xl-2 col-lg-2 col-md-4">
-                            <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-file-text text-muted fs-6"></i> System No.</label>
+                <div class="card-panel shadow-sm mb-4 p-3 p-md-4 bg-white border-0" style="border-radius: 12px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;">
+                    <div class="row g-2 g-md-3 align-items-end">
+                        <div class="col-xl-2 col-lg-2 col-md-4 col-6">
+                            <label class="form-label fw-bold mb-1 text-dark small d-flex align-items-center gap-1"><i class="bi bi-file-text text-muted fs-6"></i> System No.</label>
                             <input type="text" class="form-control bg-light" name="invoice_no" value="{{ $nextInvoice ?? 'NEW' }}" readonly style="border: 1px solid #e2e8f0 !important; color: #94a3b8 !important;">
                         </div>
-                        <div class="col-xl-2 col-lg-2 col-md-4">
-                            <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-receipt text-muted fs-6"></i> Vendor Inv#</label>
+                        <div class="col-xl-2 col-lg-2 col-md-4 col-6">
+                            <label class="form-label fw-bold mb-1 text-dark small d-flex align-items-center gap-1"><i class="bi bi-receipt text-muted fs-6"></i> Vendor Inv#</label>
                             <input type="text" class="form-control" name="purchase_order_no" placeholder="Manual Ref" style="border: 1px solid #e2e8f0 !important;">
                         </div>
-                        <div class="col-xl-2 col-lg-2 col-md-4">
-                            <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-person text-muted fs-6"></i> Select Vendor</label>
+                        <div class="col-xl-2 col-lg-2 col-md-4 col-12">
+                            <label class="form-label fw-bold mb-1 text-dark small d-flex align-items-center gap-1"><i class="bi bi-person text-muted fs-6"></i> Select Vendor</label>
                             <div class="d-flex align-items-center gap-1">
                                 <div class="flex-grow-1" style="min-width: 0;">
                                     <select class="form-select select2" id="vendorSelect" name="vendor_id" style="border: 1px solid #e2e8f0 !important;">
@@ -603,8 +974,8 @@ a.btn-outline-primary:hover {
                                 </button>
                             </div>
                         </div>
-                        <div class="col-xl-2 col-lg-2 col-md-4">
-                            <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-shop text-muted fs-6"></i> Select Warehouse</label>
+                        <div class="col-xl-2 col-lg-2 col-md-4 col-6">
+                            <label class="form-label fw-bold mb-1 text-dark small d-flex align-items-center gap-1"><i class="bi bi-shop text-muted fs-6"></i> Select Warehouse</label>
                             <select class="form-select select2" id="warehouseSelect" name="warehouse_id" required style="border: 1px solid #e2e8f0 !important;">
                                 <option value="" disabled>Select Warehouse</option>
                                 @foreach ($Warehouse as $w)
@@ -614,12 +985,12 @@ a.btn-outline-primary:hover {
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-xl-2 col-lg-2 col-md-4">
-                            <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-calendar3 text-muted fs-6"></i> Date</label>
+                        <div class="col-xl-2 col-lg-2 col-md-4 col-6">
+                            <label class="form-label fw-bold mb-1 text-dark small d-flex align-items-center gap-1"><i class="bi bi-calendar3 text-muted fs-6"></i> Date</label>
                             <input type="text" name="purchase_date" class="form-control datepicker-custom" value="{{ date('d/m/Y') }}" style="border: 1px solid #e2e8f0 !important;">
                         </div>
-                        <div class="col-xl-2 col-lg-2 col-md-4">
-                            <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-chat-left-text text-muted fs-6"></i> M.BILL / Remarks</label>
+                        <div class="col-xl-2 col-lg-2 col-md-4 col-12">
+                            <label class="form-label fw-bold mb-1 text-dark small d-flex align-items-center gap-1"><i class="bi bi-chat-left-text text-muted fs-6"></i> M.BILL / Remarks</label>
                             <input type="text" class="form-control" name="note" id="remarks" placeholder="Optional notes..." style="border: 1px solid #e2e8f0 !important;">
                         </div>
                     </div>
@@ -648,11 +1019,11 @@ a.btn-outline-primary:hover {
 
                 {{-- PURCHASE ITEMS (FULL WIDTH) --}}
                 <div class="card-panel shadow-sm p-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                         <div class="section-title mb-0">Purchase Items</div>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-success px-3 shadow-sm" data-toggle="modal" data-target="#quickAddProductModal">
-                                <i class="bi bi-plus-circle me-1"></i>Quick Add Product
+                            <button type="button" class="btn btn-sm btn-outline-success px-2 px-sm-3 shadow-sm" data-toggle="modal" data-target="#quickAddProductModal">
+                                <i class="bi bi-plus-circle me-1"></i><span class="d-none d-sm-inline">Quick </span>Add Product
                             </button>
                             <button type="button" class="btn btn-sm btn-primary px-3 shadow-sm" id="btnAdd">
                                 <i class="bi bi-plus-lg"></i> Add Row
@@ -722,33 +1093,33 @@ a.btn-outline-primary:hover {
                             <div class="section-title summary-title mb-3">Summary</div>
                             <div class="p-3 bg-light rounded-3 border">
                                 <div class="row py-1 align-items-center">
-                                    <div class="col-7 text-muted fw-medium">Total Qty</div>
-                                    <div class="col-5 text-end"><span id="tQty" class="fw-bold">0</span></div>
+                                    <div class="col-6 col-sm-7 text-muted fw-medium">Total Qty</div>
+                                    <div class="col-6 col-sm-5 text-end"><span id="tQty" class="fw-bold">0</span></div>
                                 </div>
                                 <div class="row py-1 align-items-center">
-                                    <div class="col-7 text-muted fw-medium">Sub-Total</div>
-                                    <div class="col-5 text-end fw-bold"><span id="tSub">0.00</span></div>
+                                    <div class="col-6 col-sm-7 text-muted fw-medium">Sub-Total</div>
+                                    <div class="col-6 col-sm-5 text-end fw-bold"><span id="tSub">0.00</span></div>
                                 </div>
                                 <div class="row py-1 align-items-center">
-                                <div class="col-7 text-muted fw-medium">Bill Discount</div>
-                                <div class="col-5 text-end d-flex gap-1">
-                                    <input type="number" class="form-control text-end form-control-sm"
-                                        id="billDiscountPct" placeholder="%" style="width: 70px;" step="0.01">
-                                    <input type="number" class="form-control text-end form-control-sm"
-                                        id="billDiscount" value="0" step="0.01">
-                                    <input type="hidden" name="discount" id="discountInput" value="0">
-                                </div>
-                            </div>
-                                <div class="row py-1 align-items-center">
-                                    <div class="col-7 text-muted fw-medium">Extra Cost</div>
-                                    <div class="col-5 text-end">
+                                    <div class="col-5 col-sm-6 text-muted fw-medium">Bill Discount</div>
+                                    <div class="col-7 col-sm-6 text-end d-flex gap-1 justify-content-end">
                                         <input type="number" class="form-control text-end form-control-sm"
-                                            name="extra_cost" id="extraCost" value="0">
+                                            id="billDiscountPct" placeholder="%" style="width: 58px; min-width: 48px;" step="0.01">
+                                        <input type="number" class="form-control text-end form-control-sm"
+                                            id="billDiscount" value="0" step="0.01" style="max-width: 90px; min-width: 60px;">
+                                        <input type="hidden" name="discount" id="discountInput" value="0">
                                     </div>
                                 </div>
                                 <div class="row py-1 align-items-center">
-                                    <div class="col-7 text-danger fw-medium">Previous Balance</div>
-                                    <div class="col-5 text-end text-danger fw-bold"><span id="tPrev">0.00</span></div>
+                                    <div class="col-6 col-sm-7 text-muted fw-medium">Extra Cost</div>
+                                    <div class="col-6 col-sm-5 text-end">
+                                        <input type="number" class="form-control text-end form-control-sm ms-auto"
+                                            name="extra_cost" id="extraCost" value="0" style="max-width: 100px;">
+                                    </div>
+                                </div>
+                                <div class="row py-1 align-items-center">
+                                    <div class="col-6 col-sm-7 text-danger fw-medium">Previous Balance</div>
+                                    <div class="col-6 col-sm-5 text-end text-danger fw-bold"><span id="tPrev">0.00</span></div>
                                 </div>
                                 <hr class="my-2 border-secondary">
                                 <div class="row py-2">
@@ -1107,7 +1478,7 @@ a.btn-outline-primary:hover {
             function addBlankRow() {
                 const html = `
                 <tr>
-                    <td>
+                    <td class="col-product">
                         <select class="form-select product-select2" name="product_id[]"></select>
                         <!-- Hidden fields for product data snapshot -->
                         <input type="hidden" name="size_mode[]" class="hidden-size-mode" value="">
@@ -1120,27 +1491,27 @@ a.btn-outline-primary:hover {
                         <input type="hidden" name="width[]" class="hidden-width" value="">
                         <input type="hidden" name="color[]" class="hidden-variant-data" value="">
                     </td>
-                    <td class="text-center align-middle">
+                    <td class="col-unit text-center align-middle">
                         <button type="button" class="btn btn-sm btn-outline-info fw-bold unit-toggle-btn py-0 px-2" data-unit="Pcs" title="Click to toggle unit (Carton ↔ Pcs / Kg ↔ Gm)" style="font-size:0.75rem; min-width: 55px; cursor: pointer;">Pcs</button>
                         <input type="hidden" name="unit[]" class="unit-input-val" value="Pcs">
                     </td>
-                    <td>
+                    <td class="col-qty">
                         <input type="number" step="any" min="0.01" name="qty[]" class="form-control text-center main-qty-input" value="1" placeholder="Qty">
                     </td>
-                    <td>
+                    <td class="col-price">
                         <input type="number" step="0.01" name="price[]" class="form-control text-end price" value="0">
                     </td>
-                    <td>
+                    <td class="col-disc">
                         <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-percent" value="0">
                     </td>
-                    <td>
+                    <td class="col-disc-amt">
                         <input type="number" class="form-control text-end input-readonly item-disc-amt" value="0.00" readonly>
                     </td>
-                    <td>
+                    <td class="col-amount">
                         <input type="number" class="form-control text-end input-readonly row-total" value="0.00" readonly>
                     </td>
-                    <td class="text-center align-middle">
-                        <button type="button" class="btn btn-sm btn-outline-danger remove-row"><i class="bi bi-x-lg"></i></button>
+                    <td class="col-action text-center align-middle">
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-row" title="Remove Item"><i class="bi bi-trash3"></i></button>
                     </td>
                 </tr>
                 `;
