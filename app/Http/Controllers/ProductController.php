@@ -155,6 +155,63 @@ class ProductController extends Controller
 
         $products = $query->paginate(15); // Lazy loading (15 per request)
 
+        $setResults = collect();
+        if ((int)($request->get('page') ?? 1) === 1) {
+            $setQuery = \App\Models\ProductSet::with(['items.product'])->where('is_active', true);
+            if (!empty($words)) {
+                $setQuery->where(function ($q) use ($words) {
+                    foreach ($words as $w) {
+                        $q->where(function ($subQ) use ($w) {
+                            $subQ->where('name', 'like', "%{$w}%")
+                                ->orWhere('code', 'like', "%{$w}%")
+                                ->orWhere('description', 'like', "%{$w}%");
+                        });
+                    }
+                });
+            }
+            $matchedSets = $setQuery->take(10)->get();
+
+            $setResults = $matchedSets->map(function ($s) {
+                // Calculate set price if not explicit
+                $price = (float)($s->set_price ?? 0);
+                if ($price <= 0) {
+                    foreach ($s->items as $sItem) {
+                        $pPrice = (float)($sItem->sale_price ?? 0);
+                        if ($pPrice <= 0 && $sItem->product) {
+                            $pPrice = (float)($sItem->product->sale_price_per_piece ?? 0);
+                        }
+                        $price += ((float)$sItem->quantity * $pPrice);
+                    }
+                }
+
+                $codeStr = $s->code ? " [{$s->code}]" : "";
+                return [
+                    'id' => 'set_' . $s->id,
+                    'text' => "[SET] " . $s->name . $codeStr,
+                    'sku' => $s->code ?? '',
+                    'item_code' => $s->code ?? '',
+                    'stock' => 'SET',
+                    'stock_pieces' => 9999,
+                    'name' => $s->name,
+                    'size_mode' => 'by_pieces',
+                    'unit_name' => 'Set',
+                    'pieces_per_box' => 1,
+                    'ppb' => 1,
+                    'trade_price' => $price,
+                    'retail_price' => $price,
+                    'wholesale_price' => $price,
+                    'weight_per_piece' => 0,
+                    'purchase_price_per_piece' => 0,
+                    'purchase_price_per_box' => 0,
+                    'purchase_price_per_m2' => 0,
+                    'sale_discount_percent' => 0,
+                    'variant_data' => '',
+                    'is_set' => true,
+                    'set_id' => $s->id,
+                ];
+            });
+        }
+
         $results = $products->getCollection()->flatMap(function ($p) use ($words) {
             $stockPieces = (float) ($p->warehouse_stocks_sum_total_pieces ?? 0);
             $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
@@ -488,8 +545,10 @@ class ProductController extends Controller
             ]];
         });
 
+        $finalResults = $setResults->concat($results)->values();
+
         return response()->json([
-            'results' => $results,
+            'results' => $finalResults,
             'pagination' => ['more' => $products->hasMorePages()],
         ]);
     }

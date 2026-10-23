@@ -168,6 +168,8 @@ Route::middleware('auth')->group(function () {
     // ── Product Sets / Bundles (Pairing) ──
     Route::get('/product-sets', [ProductSetController::class, 'index'])->name('product-sets.index');
     Route::post('/product-sets', [ProductSetController::class, 'store'])->name('product-sets.store');
+    Route::get('/product-sets/next-code', [ProductSetController::class, 'nextCode'])->name('product-sets.next_code');
+    Route::get('/product-sets/ajax-products', [ProductSetController::class, 'ajaxProducts'])->name('product-sets.ajax-products');
     Route::get('/product-sets/{id}', [ProductSetController::class, 'show'])->name('product-sets.show');
     Route::delete('/product-sets/{id}', [ProductSetController::class, 'destroy'])->name('product-sets.destroy');
     Route::get('/product-sets/check-product/{id}', [ProductSetController::class, 'checkProductSet'])->name('product-sets.check_product');

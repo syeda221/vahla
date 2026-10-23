@@ -207,6 +207,24 @@
 
     function formatProduct(repo) {
         if (repo.loading) return repo.text;
+        if (repo.is_set || (repo.id && repo.id.toString().startsWith('set_'))) {
+            let code = repo.sku || repo.item_code || 'SET';
+            let price = parseFloat(repo.retail_price || 0);
+            return $(`
+                <div class="clearfix py-1">
+                    <div class="float-start">
+                        <div class="fw-bold text-primary">
+                            <i class="fas fa-layer-group me-1"></i> ${repo.name || repo.text} 
+                            <span class="badge bg-primary text-white ms-1" style="font-size:10px; font-weight:700;">SET / PAIR</span>
+                        </div>
+                        <small class="text-muted font-monospace">CODE: <b>${code}</b></small>
+                    </div>
+                    <div class="float-end text-end">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 fw-bold">Rs. ${price.toLocaleString()}</span>
+                    </div>
+                </div>
+            `);
+        }
         let stock = repo.stock !== undefined ? repo.stock : 0;
         let sku = repo.sku || 'N/A';
         let stockVal = parseFloat(repo.stock_pieces !== undefined ? repo.stock_pieces : repo.stock) || 0;
@@ -257,6 +275,8 @@
         <option value=""></option>
       </select>
       <input type="hidden" class="product-id-hidden" name="product_id[]">
+      <input type="hidden" class="product-set-id-hidden" name="product_set_id[]" value="">
+      <input type="hidden" class="is-set-hidden" name="is_set[]" value="0">
       <input type="hidden" class="variant-data-hidden" name="color[]">
       <input type="hidden" class="size-h">
       <input type="hidden" class="size-w">
@@ -1310,9 +1330,9 @@
         // ========================================================
         window.isPopulatingSet = false;
 
-        // Check if selected product belongs to any Product Set
+        // Check if selected product belongs to any Product Set (DISABLED: Sets are now selected directly from product search without popups)
         window.checkProductSetAndPrompt = function($row, pid, productData) {
-            if (!pid || window.isPopulatingSet || window.isEditModeLoading) return;
+            return; // Completely disabled to prevent unwanted popups
 
             const currentWarehouseId = $row.find('.warehouse').val() || $('#warehouseSelect').val() || 1;
             const checkUrl = "{{ url('product-sets/check-product') }}/" + pid;
@@ -1603,6 +1623,50 @@
             if (!data.id) return;
             
             const $row = $(this).closest('tr');
+
+            // Handle Product Set / Combo selection directly
+            const isSet = data.is_set || (data.id && data.id.toString().startsWith('set_'));
+            if (isSet) {
+                const setId = data.set_id || data.id.toString().replace('set_', '');
+                $row.find('.product-id-hidden').val('set_' + setId);
+                if ($row.find('.product-set-id-hidden').length === 0) {
+                    $row.find('.col-product').append(`<input type="hidden" class="product-set-id-hidden" name="product_set_id[]" value="${setId}">`);
+                    $row.find('.col-product').append(`<input type="hidden" class="is-set-hidden" name="is_set[]" value="1">`);
+                } else {
+                    $row.find('.product-set-id-hidden').val(setId);
+                    $row.find('.is-set-hidden').val('1');
+                }
+
+                $row.find('.variant-data-hidden').val('');
+                $row.find('.size-display').val('-');
+                $row.find('.color-display').val('-');
+                $row.find('.stock').val('SET');
+                $row.find('.variant-stock-value').val('SET');
+                $row.find('.item-code-display').val(data.sku || data.item_code || '');
+
+                const setPrice = parseFloat(data.retail_price || data.trade_price || 0);
+                $row.find('.retail-price').val(setPrice);
+                $row.find('.wholesale-price').val(setPrice);
+                $row.find('.visible-price').val(setPrice);
+                $row.find('.price-per-piece').val(setPrice);
+                $row.find('.weight-per-piece').val(0);
+
+                if (!$row.find('.carton-qty').val() || parseFloat($row.find('.carton-qty').val()) <= 0) {
+                    $row.find('.carton-qty').val(1);
+                }
+                $row.find('.total-pieces').val($row.find('.carton-qty').val() || 1);
+
+                $row.find('.qty-unit-toggle').addClass('d-none').attr('data-unit-mode', 'main').text('Set');
+                $row.data('size_mode', 'by_pieces');
+                $row.data('pieces_per_box', 1);
+
+                computeRow($row);
+                return;
+            }
+
+            // Normal product selected: clear set hidden fields
+            $row.find('.product-set-id-hidden').val('');
+            $row.find('.is-set-hidden').val('0');
             
             let pid = data.id.toString().split('|')[0];
             $row.find('.product-id-hidden').val(pid);
@@ -1688,10 +1752,8 @@
                 checkCustomerLastPrice($row, pid, currentSelectedCustId, true);
             }
 
-            // Check if product is part of a Product Set / Combo Bundle
-            if (!window.isPopulatingSet && !window.isEditModeLoading && pid) {
-                checkProductSetAndPrompt($row, pid, data);
-            }
+            // NOTE: Annoying popup checkProductSetAndPrompt disabled as per user instruction.
+            // When selling individual products, sell individually without interruption.
         });
 
         // Customer selection change -> re-check recent sale prices for all loaded products

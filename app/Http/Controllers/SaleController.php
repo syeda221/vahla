@@ -1350,7 +1350,6 @@ class SaleController extends Controller
 
         $rules = [
             'product_id' => 'required|array|min:1',
-            'product_id.*' => 'nullable|exists:products,id',
             'qty' => 'required|array|min:1',
             'warehouse_id' => 'nullable|array',
         ];
@@ -1503,8 +1502,11 @@ class SaleController extends Controller
 
             foreach ($productIds as $index => $pid) {
                 $isManual = (isset($request->is_manual[$index]) && $request->is_manual[$index] == '1');
+                $isSet = (!empty($request->is_set[$index]) && $request->is_set[$index] == '1')
+                    || (is_string($pid) && str_starts_with($pid, 'set_'))
+                    || !empty($request->product_set_id[$index]);
 
-                if (! $isManual && ! $pid) {
+                if (! $isManual && ! $isSet && ! $pid) {
                     continue;
                 }
 
@@ -1513,7 +1515,30 @@ class SaleController extends Controller
                     continue;
                 }
 
-                if ($isManual) {
+                $actualProductSetId = null;
+                $productSet = null;
+
+                if ($isSet) {
+                    $setId = !empty($request->product_set_id[$index]) 
+                        ? $request->product_set_id[$index] 
+                        : (is_string($pid) ? str_replace('set_', '', $pid) : null);
+
+                    $productSet = \App\Models\ProductSet::find($setId);
+                    $actualProductSetId = $productSet ? $productSet->id : (int)$setId;
+                    $productName = $productSet ? $productSet->name : 'Product Set';
+
+                    $inputPrice = (float) ($request->price_per_piece[$index] ?? 0);
+                    $dbPrice = $inputPrice > 0 ? $inputPrice : (float)($productSet->set_price ?? 0);
+                    $ppb = 1;
+                    $brandId = null;
+                    $unitId = null;
+                    $sizeMode = 'by_pieces';
+                    
+                    $totalPieces = (float) ($request->total_pieces[$index] ?? 0);
+                    if ($totalPieces <= 0) $totalPieces = $qtyInput;
+                    $loose = 0;
+                    $storedQtyBox = $totalPieces;
+                } elseif ($isManual) {
                     $inputPrice = (float) ($request->price_per_piece[$index] ?? 0);
                     $dbPrice = $inputPrice;
                     $ppb = 1;
@@ -1703,11 +1728,12 @@ class SaleController extends Controller
 
                 $saleItem = new SaleItem;
                 $saleItem->sale_id = $sale->id;
-                $saleItem->product_id = $isManual ? null : $pid;
+                $saleItem->product_id = ($isManual || $isSet) ? null : $pid;
+                $saleItem->product_set_id = $isSet ? $actualProductSetId : null;
                 $saleItem->color = $colorVal;
                 $saleItem->warehouse_id = !empty($warehouses[$index]) ? $warehouses[$index] : $defaultWhId;
                 $saleItem->product_name = $productName; // Store name snapshot
-                $saleItem->description = $request->description[$index] ?? null;
+                $saleItem->description = $request->description[$index] ?? ($isSet && $productSet && $productSet->code ? "[{$productSet->code}]" : null);
 
                 $saleItem->qty = $storedQtyBox; // Store as Box equivalent for consistency
                 $saleItem->total_pieces = $totalPieces;
@@ -2420,11 +2446,102 @@ class SaleController extends Controller
 
         // Load items relationship if not already loaded (always re-query so edits
         // don't deduct against the stale pre-edit items collection)
-        $sale->load('items.product');
+        $sale->load(['items.product', 'items.productSet.items.product']);
 
         foreach ($sale->items as $item) {
             // Outsourced / Manual products do not affect warehouse stock
             if ($item->is_manual) {
+                continue;
+            }
+
+            // Handle Product Set items
+            if ($item->product_set_id) {
+                $set = $item->productSet ?: \App\Models\ProductSet::with('items.product')->find($item->product_set_id);
+                if ($set && $set->items) {
+                    $setCount = (float)($item->total_pieces > 0 ? $item->total_pieces : ($item->qty > 0 ? $item->qty : 1));
+                    $targetWhId = $item->warehouse_id ?: (auth()->user()->warehouse_id ?? 1);
+
+                    foreach ($set->items as $setItem) {
+                        $p = $setItem->product;
+                        if (!$p) continue;
+
+                        $stock = WarehouseStock::where('product_id', $p->id)
+                            ->where('warehouse_id', $targetWhId)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if (! $stock) {
+                            $stock = WarehouseStock::where('product_id', $p->id)->lockForUpdate()->first();
+                        }
+                        if (! $stock) {
+                            $stock = WarehouseStock::create([
+                                'warehouse_id' => $targetWhId,
+                                'product_id' => $p->id,
+                                'total_pieces' => 0,
+                                'quantity' => 0,
+                            ]);
+                        }
+
+                        $pMode = $p->size_mode ?? '';
+                        $itemSetQty = (float)$setItem->quantity * $setCount;
+                        $qtyDeduct = $itemSetQty;
+
+                        if ($pMode === 'by_kg' || $pMode === 'by_gm') {
+                            $conv = (float)($setItem->conv_factor > 0 ? $setItem->conv_factor : 0);
+                            $wpp = (float)($setItem->weight_per_piece > 0 ? $setItem->weight_per_piece : 0);
+                            $unit = strtolower(trim($setItem->variant_unit ?? ''));
+
+                            if ($unit === 'gm' || $unit === 'g') {
+                                $qtyDeduct = $itemSetQty / 1000.0;
+                            } elseif (in_array($unit, ['pcs', 'pc', 'piece', 'pieces']) || ($conv > 0 && $conv != 1) || $wpp > 0) {
+                                if ($conv > 0 && $conv != 1) {
+                                    $qtyDeduct = $itemSetQty * $conv;
+                                } elseif ($wpp > 0) {
+                                    $qtyDeduct = $itemSetQty * ($wpp / 1000.0);
+                                }
+                            } else {
+                                $qtyDeduct = $itemSetQty;
+                            }
+                        } elseif ($pMode === 'by_meter' || $pMode === 'by_feet') {
+                            $conv = (float)($setItem->conv_factor > 0 ? $setItem->conv_factor : 1);
+                            $qtyDeduct = $itemSetQty * ($conv > 0 ? $conv : 1);
+                        }
+
+                        $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
+
+                        if ($type === 'out') {
+                            $stock->total_pieces -= $qtyDeduct;
+                            $stock->quantity = round($stock->total_pieces / $ppb, 2);
+                            $stock->save();
+
+                            DB::table('stock_movements')->insert([
+                                'product_id' => $p->id,
+                                'type' => 'out',
+                                'qty' => -$qtyDeduct,
+                                'ref_type' => 'sale',
+                                'ref_id' => $sale->id,
+                                'note' => 'Sale Posted #' . $sale->invoice_no . ' (Set: ' . $set->name . ' x' . $setCount . ')',
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        } elseif ($type === 'in' || $type === 'return') {
+                            $stock->total_pieces += $qtyDeduct;
+                            $stock->quantity = round($stock->total_pieces / $ppb, 2);
+                            $stock->save();
+
+                            DB::table('stock_movements')->insert([
+                                'product_id' => $p->id,
+                                'type' => 'in',
+                                'qty' => $qtyDeduct,
+                                'ref_type' => 'sale_' . $type,
+                                'ref_id' => $sale->id,
+                                'note' => 'Sale ' . ucfirst($type) . ' #' . $sale->invoice_no . ' (Set: ' . $set->name . ' x' . $setCount . ')',
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+                    }
+                }
                 continue;
             }
 
@@ -2577,6 +2694,48 @@ class SaleController extends Controller
         // Legacy support wrapper or direct relation
         // Re-implementing correctly based on new structure
         return $sale->items->map(function ($item) {
+            if ($item->product_set_id) {
+                $set = $item->productSet ?: \App\Models\ProductSet::find($item->product_set_id);
+                $qty = (float) ($item->total_pieces > 0 ? $item->total_pieces : ($item->qty > 0 ? $item->qty : 1));
+                $price = (float) $item->price;
+                $disc = (float) $item->discount_percent;
+                $discAmt = (float) $item->discount_amount;
+                $total = (float) $item->total;
+
+                return [
+                    'is_manual' => false,
+                    'is_set' => true,
+                    'product_set_id' => $item->product_set_id,
+                    'product_id' => 'set_' . $item->product_set_id,
+                    'item_name' => $set ? $set->name : ($item->product_name ?: 'Product Set'),
+                    'item_code' => $set ? $set->code : 'SET',
+                    'brand' => 'SET',
+                    'unit' => 'Set',
+                    'qty' => $qty,
+                    'qty_box' => (float) $item->qty,
+                    'total_pieces' => $qty,
+                    'loose_pieces' => 0,
+                    'price' => $price,
+                    'discount' => $disc,
+                    'discount_percent' => $disc,
+                    'discount_amount' => $discAmt,
+                    'total' => $total,
+                    'description' => $item->description ?? '',
+                    'variant_name' => '',
+                    'color_val' => '',
+                    'size_val' => '',
+                    'variant_unit' => 'Set',
+                    'weight_per_piece' => 0,
+                    'color' => [],
+                    'pieces_per_box' => 1,
+                    'price_per_piece' => ($qty > 0) ? ($total / $qty) : $price,
+                    'height' => 0,
+                    'width' => 0,
+                    'pieces_per_m2' => 0,
+                    'size_mode' => 'std',
+                ];
+            }
+
             $variant = [];
             if (!empty($item->color)) {
                 // Try base64 decode first (since frontend sends base64 variant_data in color field)
@@ -3262,6 +3421,64 @@ class SaleController extends Controller
                     $now = now();
 
                     foreach ($sale->items as $it) {
+                        if ($it->product_set_id) {
+                            $set = $it->productSet ?: \App\Models\ProductSet::with('items.product')->find($it->product_set_id);
+                            if ($set && $set->items) {
+                                $setCount = (float)($it->total_pieces > 0 ? $it->total_pieces : ($it->qty > 0 ? $it->qty : 1));
+                                $targetWhId = (int)($it->warehouse_id ?: ($sale->warehouse_id ?: 1));
+
+                                foreach ($set->items as $setItem) {
+                                    $p = $setItem->product;
+                                    if (!$p) continue;
+
+                                    $pMode = $p->size_mode ?? '';
+                                    $itemSetQty = (float)$setItem->quantity * $setCount;
+                                    $qtyDeduct = $itemSetQty;
+
+                                    if ($pMode === 'by_kg' || $pMode === 'by_gm') {
+                                        $conv = (float)($setItem->conv_factor > 0 ? $setItem->conv_factor : 0);
+                                        $wpp = (float)($setItem->weight_per_piece > 0 ? $setItem->weight_per_piece : 0);
+                                        $unit = strtolower(trim($setItem->variant_unit ?? ''));
+
+                                        if ($unit === 'gm' || $unit === 'g') {
+                                            $qtyDeduct = $itemSetQty / 1000.0;
+                                        } elseif (in_array($unit, ['pcs', 'pc', 'piece', 'pieces']) || ($conv > 0 && $conv != 1) || $wpp > 0) {
+                                            if ($conv > 0 && $conv != 1) {
+                                                $qtyDeduct = $itemSetQty * $conv;
+                                            } elseif ($wpp > 0) {
+                                                $qtyDeduct = $itemSetQty * ($wpp / 1000.0);
+                                            }
+                                        } else {
+                                            $qtyDeduct = $itemSetQty;
+                                        }
+                                    } elseif ($pMode === 'by_meter' || $pMode === 'by_feet') {
+                                        $conv = (float)($setItem->conv_factor > 0 ? $setItem->conv_factor : 1);
+                                        $qtyDeduct = $itemSetQty * ($conv > 0 ? $conv : 1);
+                                    }
+
+                                    $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
+                                    $stock = WarehouseStock::where('warehouse_id', $targetWhId)->where('product_id', $p->id)->first();
+                                    if ($stock) {
+                                        $stock->total_pieces += $qtyDeduct;
+                                        $stock->quantity = round($stock->total_pieces / $ppb, 2);
+                                        $stock->save();
+                                    }
+
+                                    $movs[] = [
+                                        'product_id' => $p->id,
+                                        'type' => 'in',
+                                        'qty' => $qtyDeduct,
+                                        'ref_type' => 'SALE_DELETE',
+                                        'ref_id' => $sale->id,
+                                        'note' => 'Reverted on Sale Invoice deletion #' . $sale->invoice_no . ' (Set: ' . $set->name . ' x' . $setCount . ')',
+                                        'created_at' => $now,
+                                        'updated_at' => $now,
+                                    ];
+                                }
+                            }
+                            continue;
+                        }
+
                         $pid = (int) $it->product_id;
                         $itemWhId = (int) ($it->warehouse_id ?: ($sale->warehouse_id ?: 1));
                         $qtyPieces = (float) ($it->total_pieces > 0 ? $it->total_pieces : $it->qty);

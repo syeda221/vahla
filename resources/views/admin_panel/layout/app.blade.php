@@ -841,7 +841,7 @@
                                                         <li><a href="{{ route('product') }}"><i class="fas fa-box"></i>
                                                                 Products</a></li>
                                                         <li><a href="{{ route('product-sets.index') }}"><i class="fas fa-layer-group text-primary"></i>
-                                                                Product Sets / Pairing</a></li>
+                                                                Product Assembly / Sets</a></li>
                                                     @endcan
 
                                                     @can('discount.products.view')

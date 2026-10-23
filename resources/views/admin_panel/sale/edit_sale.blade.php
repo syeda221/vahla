@@ -869,8 +869,10 @@
                                         @if(isset($sale) && $sale->items && count($sale->items) > 0)
                                             @foreach ($sale->items as $index => $item)
                                                 @php
+                                                    $isSet = !empty($item->product_set_id);
+                                                    $set = $isSet ? ($item->productSet ?: \App\Models\ProductSet::find($item->product_set_id)) : null;
                                                     $prod = $item->product;
-                                                    $sizeMode = $item->size_mode ?? ($prod->size_mode ?? 'std');
+                                                    $sizeMode = $isSet ? 'std' : ($item->size_mode ?? ($prod->size_mode ?? 'std'));
 
                                                     $variantData = [];
                                                     if ($item->color) {
@@ -1204,12 +1206,16 @@
                                                     <!-- PRODUCT -->
                                                     <td class="col-product" style="width: 220px; min-width: 180px; max-width: 250px;">
                                                         <select class="form-select product" style="width:100%">
-                                                            @if ($prod)
+                                                            @if ($isSet && $set)
+                                                                <option value="set_{{ $set->id }}" selected>[SET] {{ $set->name }}</option>
+                                                            @elseif ($prod)
                                                                 <option value="{{ $item->product_id }}" selected>
                                                                     {{ $prod->item_name }}{{ $variantLabel }}</option>
                                                             @endif
                                                         </select>
-                                                        <input type="hidden" class="product-id-hidden" name="product_id[]" value="{{ $item->product_id }}">
+                                                        <input type="hidden" class="product-id-hidden" name="product_id[]" value="{{ $isSet && $set ? ('set_'.$set->id) : $item->product_id }}">
+                                                        <input type="hidden" class="product-set-id-hidden" name="product_set_id[]" value="{{ $item->product_set_id ?? '' }}">
+                                                        <input type="hidden" class="is-set-hidden" name="is_set[]" value="{{ $isSet ? '1' : '' }}">
                                                         <input type="hidden" class="variant-data-hidden" name="color[]" value="{{ $item->color ?? '' }}">
                                                         <input type="hidden" class="size-h" value="{{ $prod->height ?? '-' }}">
                                                         <input type="hidden" class="size-w" value="{{ $prod->width ?? '-' }}">
@@ -1218,7 +1224,7 @@
 
                                                     <!-- ITEM CODE -->
                                                     <td class="col-code" style="width: 110px; min-width: 105px;">
-                                                        <input type="text" class="form-control item-code-display text-center input-readonly" readonly value="{{ $prod->item_code ?? '' }}" placeholder="Code" tabindex="-1" style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600;">
+                                                        <input type="text" class="form-control item-code-display text-center input-readonly" readonly value="{{ $isSet && $set ? $set->code : ($prod->item_code ?? '') }}" placeholder="Code" tabindex="-1" style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600;">
                                                     </td>
 
                                                     <!-- STOCK -->

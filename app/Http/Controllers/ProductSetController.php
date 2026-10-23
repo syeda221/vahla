@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ItemCodeSeries;
 use App\Models\Product;
 use App\Models\ProductSet;
 use App\Models\ProductSetItem;
@@ -12,6 +13,31 @@ use Illuminate\Support\Facades\DB;
 class ProductSetController extends Controller
 {
     /**
+     * Get the next auto-incrementing code for the SET- series.
+     */
+    public static function getNextSetCode()
+    {
+        $series = ItemCodeSeries::firstOrCreate(['prefix' => 'SET-'], ['next_number' => 1]);
+        $nextNum = (int)$series->next_number;
+        do {
+            $code = 'SET-' . str_pad($nextNum, 4, '0', STR_PAD_LEFT);
+            $nextNum++;
+        } while (ProductSet::where('code', $code)->exists());
+
+        return $code;
+    }
+
+    /**
+     * API: Get the next auto SET- code.
+     */
+    public function nextCode()
+    {
+        return response()->json([
+            'next_code' => self::getNextSetCode(),
+        ]);
+    }
+
+    /**
      * Display a listing of product sets.
      */
     public function index(Request $request)
@@ -21,13 +47,171 @@ class ProductSetController extends Controller
             ->orderBy('id', 'desc')
             ->get();
 
-        $allProducts = Product::where('is_active', true)
-            ->select('id', 'item_name', 'item_code', 'sale_price_per_piece', 'sale_price_per_box', 'size_mode', 'pieces_per_box', 'unit_id', 'color', 'weight_per_piece')
-            ->with('unit')
-            ->orderBy('item_name')
-            ->get();
+        $nextSetCode = self::getNextSetCode();
 
-        return view('admin_panel.product.sets.index', compact('sets', 'allProducts'));
+        return view('admin_panel.product.sets.index', compact('sets', 'nextSetCode'));
+    }
+
+    /**
+     * AJAX Search for Products and Variants for Product Set creation / editing.
+     * High performance, paginated, with instant multi-attribute matching.
+     */
+    public function ajaxProducts(Request $request)
+    {
+        $term = trim($request->input('q') ?? $request->input('term') ?? '');
+        $page = max(1, (int)$request->input('page', 1));
+        $perPage = 25;
+
+        $query = Product::where('is_active', true)
+            ->select('id', 'item_name', 'item_code', 'barcode_path', 'sale_price_per_piece', 'sale_price_per_box', 'size_mode', 'pieces_per_box', 'unit_id', 'color', 'weight_per_piece')
+            ->with('unit');
+
+        $words = [];
+        if ($term !== '') {
+            $words = array_filter(explode(' ', $term));
+            $cleanTerm = preg_replace('/[^a-zA-Z0-9]/', '', $term);
+            $numTerm = preg_replace('/\D/', '', $term);
+            $unpaddedNum = ltrim($numTerm, '0');
+
+            $query->where(function ($q) use ($words, $term, $cleanTerm, $numTerm, $unpaddedNum) {
+                // Space-separated words search across name, code, variants
+                if (!empty($words)) {
+                    $q->where(function ($subQ) use ($words) {
+                        foreach ($words as $w) {
+                            $subQ->where(function ($wQ) use ($w) {
+                                $wQ->where('item_name', 'like', "%{$w}%")
+                                   ->orWhere('item_code', 'like', "%{$w}%")
+                                   ->orWhere('color', 'like', "%{$w}%");
+                            });
+                        }
+                    });
+                }
+
+                // Direct code / barcode match
+                $q->orWhere('item_code', 'like', "%{$term}%")
+                  ->orWhere('barcode_path', 'like', "%{$term}%");
+
+                // Clean alphanumeric match
+                if ($cleanTerm !== '') {
+                    $q->orWhereRaw("REPLACE(REPLACE(REPLACE(item_code, '-', ''), ' ', ''), '_', '') LIKE ?", ["%{$cleanTerm}%"]);
+                }
+
+                // Number only match (e.g. '1616', '24' for 'ITEM-0024')
+                if ($unpaddedNum !== '') {
+                    $q->orWhere('item_code', 'like', "%{$unpaddedNum}%");
+                }
+            });
+        }
+
+        $query->orderBy('item_code', 'asc')->orderBy('item_name', 'asc');
+
+        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+        $results = [];
+
+        foreach ($paginator->items() as $p) {
+            $variants = [];
+            if (!empty($p->color)) {
+                $parsed = is_string($p->color) ? json_decode($p->color, true) : $p->color;
+                if (is_string($parsed)) {
+                    $parsed = json_decode($parsed, true);
+                }
+                if (is_array($parsed) && count($parsed) > 0) {
+                    $variants = $parsed;
+                }
+            }
+
+            $code = (string)($p->item_code ?? '');
+            $codePrefix = $code !== '' ? "[{$code}] " : '';
+
+            if (!empty($variants)) {
+                foreach ($variants as $vIdx => $v) {
+                    $vKey = (string)($v['barcode'] ?? $v['name'] ?? $vIdx);
+                    $vUnit = $v['unit'] ?? ($p->unit->name ?? 'Pcs');
+                    $vName = $v['name'] ?? $p->item_name;
+                    $vBarcode = (string)($v['barcode'] ?? '');
+
+                    // Filter variant if a specific query was provided
+                    if ($term !== '') {
+                        $pNameMatch = stripos($p->item_name, $term) !== false;
+                        $pCodeMatch = stripos($code, $term) !== false;
+                        $vNameMatch = stripos($vName, $term) !== false;
+                        $vUnitMatch = stripos($vUnit, $term) !== false;
+                        $vBarcodeMatch = $vBarcode !== '' && stripos($vBarcode, $term) !== false;
+
+                        if (!$pNameMatch && !$pCodeMatch && !$vNameMatch && !$vUnitMatch && !$vBarcodeMatch) {
+                            $anyWordMatch = false;
+                            foreach ($words as $w) {
+                                if (stripos($vName, $w) !== false || stripos($vUnit, $w) !== false || stripos($vBarcode, $w) !== false) {
+                                    $anyWordMatch = true;
+                                    break;
+                                }
+                            }
+                            if (!$anyWordMatch) {
+                                continue;
+                            }
+                        }
+                    }
+
+                    $vWeight = (isset($v['weight_per_piece']) && $v['weight_per_piece'] !== '' && $v['weight_per_piece'] !== null)
+                        ? (float)$v['weight_per_piece']
+                        : (float)($p->weight_per_piece ?? 0);
+                    $vPrice = (float)($v['sale_price'] ?? $p->sale_price_per_piece ?? 0);
+                    $vConv = (float)($v['conv_factor'] ?? 1);
+
+                    $vDataEncoded = base64_encode(json_encode($v));
+
+                    $weightLabel = $vWeight > 0 ? " | {$vWeight}g" : '';
+                    $priceLabel = $vPrice > 0 ? " | Rs. " . number_format($vPrice, 2) : '';
+                    $displayText = "{$codePrefix}{$vName} [{$vUnit}{$weightLabel}{$priceLabel}]";
+
+                    $results[] = [
+                        'id'       => "{$p->id}||{$vIdx}",
+                        'pid'      => $p->id,
+                        'vidx'     => $vIdx,
+                        'code'     => $code,
+                        'vkey'     => $vKey,
+                        'vunit'    => $vUnit,
+                        'vname'    => $vName,
+                        'vweight'  => $vWeight,
+                        'vconv'    => $vConv,
+                        'vprice'   => $vPrice,
+                        'vdata'    => $vDataEncoded,
+                        'text'     => $displayText,
+                    ];
+                }
+            } else {
+                $stdUnit = $p->unit->name ?? ($p->size_mode === 'by_cartons' ? 'Carton' : 'Pcs');
+                $stdPrice = (float)($p->sale_price_per_piece ?: ($p->sale_price_per_box ?? 0));
+                $stdWeight = (float)($p->weight_per_piece ?? 0);
+
+                $weightLabel = $stdWeight > 0 ? " | {$stdWeight}g" : '';
+                $priceLabel = $stdPrice > 0 ? " | Rs. " . number_format($stdPrice, 2) : '';
+                $displayText = "{$codePrefix}{$p->item_name} [{$stdUnit}{$weightLabel}{$priceLabel}]";
+
+                $results[] = [
+                    'id'       => "{$p->id}||base",
+                    'pid'      => $p->id,
+                    'vidx'     => 'base',
+                    'code'     => $code,
+                    'vkey'     => 'base',
+                    'vunit'    => $stdUnit,
+                    'vname'    => $p->item_name,
+                    'vweight'  => $stdWeight,
+                    'vconv'    => 1,
+                    'vprice'   => $stdPrice,
+                    'vdata'    => '',
+                    'text'     => $displayText,
+                ];
+            }
+        }
+
+        return response()->json([
+            'results'    => $results,
+            'pagination' => [
+                'more' => $paginator->hasMorePages(),
+            ],
+        ]);
     }
 
     /**
@@ -48,15 +232,42 @@ class ProductSetController extends Controller
             $isEdit = $request->filled('set_id');
             $set = $isEdit ? ProductSet::findOrFail($request->set_id) : new ProductSet();
 
+            $code = trim($request->input('code') ?? '');
+            if (!$code && !$isEdit) {
+                $code = self::getNextSetCode();
+            }
+
+            if ($code) {
+                $existsQuery = ProductSet::where('code', $code);
+                if ($isEdit) {
+                    $existsQuery->where('id', '!=', $set->id);
+                }
+                if ($existsQuery->exists()) {
+                    throw new \Exception("Set code '{$code}' already exists. Please choose a different code.");
+                }
+            }
+
             $set->name = $request->name;
-            $set->code = $request->code ?: null;
+            $set->code = $code ?: null;
             $set->description = $request->description ?: null;
-            $set->set_price = $request->filled('set_price') ? (float)$request->set_price : null;
+            $set->set_price = $request->filled('set_price') && (float)$request->set_price > 0 ? (float)$request->set_price : null;
             $set->is_active = $request->has('is_active') ? (bool)$request->is_active : true;
             if (!$isEdit) {
                 $set->created_by = auth()->id();
             }
             $set->save();
+
+            // Update SET- series next number if applicable
+            if ($code && str_starts_with($code, 'SET-')) {
+                $numPart = str_replace('SET-', '', $code);
+                if (is_numeric($numPart)) {
+                    $series = ItemCodeSeries::firstOrCreate(['prefix' => 'SET-'], ['next_number' => 1]);
+                    if ((int)$numPart >= $series->next_number) {
+                        $series->next_number = (int)$numPart + 1;
+                        $series->save();
+                    }
+                }
+            }
 
             // Re-sync items
             if ($isEdit) {
@@ -65,6 +276,7 @@ class ProductSetController extends Controller
 
             $productIds = $request->product_id;
             $quantities = $request->quantity;
+            $calculatedSetPrice = 0;
 
             foreach ($productIds as $idx => $pid) {
                 $qty = (float)($quantities[$idx] ?? 1);
@@ -87,6 +299,9 @@ class ProductSetController extends Controller
                         $vUnit = $vData['unit'];
                     }
 
+                    $rowPrice = !empty($request->sale_price[$idx]) ? (float)$request->sale_price[$idx] : 0;
+                    $calculatedSetPrice += ($qty * $rowPrice);
+
                     ProductSetItem::create([
                         'product_set_id'   => $set->id,
                         'product_id'       => $pid,
@@ -96,10 +311,15 @@ class ProductSetController extends Controller
                         'variant_name'     => $vName,
                         'weight_per_piece' => !empty($request->weight_per_piece[$idx]) ? (float)$request->weight_per_piece[$idx] : null,
                         'conv_factor'      => !empty($request->conv_factor[$idx]) ? (float)$request->conv_factor[$idx] : null,
-                        'sale_price'       => !empty($request->sale_price[$idx]) ? (float)$request->sale_price[$idx] : null,
+                        'sale_price'       => $rowPrice > 0 ? $rowPrice : null,
                         'variant_data'     => $rawVData,
                     ]);
                 }
+            }
+
+            if ((!$request->filled('set_price') || (float)$request->set_price <= 0) && $calculatedSetPrice > 0) {
+                $set->set_price = $calculatedSetPrice;
+                $set->save();
             }
 
             DB::commit();
@@ -128,7 +348,7 @@ class ProductSetController extends Controller
      */
     public function show($id)
     {
-        $set = ProductSet::with(['items.product'])->findOrFail($id);
+        $set = ProductSet::with(['items.product.unit'])->findOrFail($id);
         return response()->json($set);
     }
 
