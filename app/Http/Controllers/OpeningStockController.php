@@ -602,6 +602,155 @@ class OpeningStockController extends Controller
     }
 
     /**
+     * Dedicated Edit Opening Stock Page
+     */
+    public function edit(Request $request, $productId)
+    {
+        $this->checkPermission();
+
+        $permittedWarehouses = $this->getPermittedWarehouses();
+        $permittedWarehouseIds = $permittedWarehouses->pluck('id')->toArray();
+
+        $product = Product::with('unit')->findOrFail($productId);
+
+        $products = Product::with('unit')
+            ->select('id', 'item_name', 'item_code', 'size_mode', 'pieces_per_box', 'purchase_price_per_piece', 'wholesale_price', 'sale_price_per_piece', 'alert_quantity', 'alert_carton_quantity', 'color', 'image', 'unit_id')
+            ->orderBy('item_name')
+            ->get()
+            ->map(function ($p) {
+                $variants = $this->extractProductVariants($p);
+                $p->has_variants    = count($variants) > 0;
+                $p->variants        = $variants;
+                $p->cost_price      = (float)($p->purchase_price_per_piece ?? 0);
+                $p->wholesale_price = (float)($p->wholesale_price ?? $p->purchase_price_per_piece ?? 0);
+                $p->sale_price      = (float)($p->sale_price_per_piece ?? 0);
+                $p->alert_qty       = (float)($p->alert_quantity ?? 0);
+                $p->unit_name       = $p->unit?->name ?? 'Pcs';
+                return $p;
+            });
+
+        $targetVariantKey  = $request->query('variant_key');
+        $targetVariantName = $request->query('variant_name');
+
+        // Query existing opening stock entries for this product
+        $query = OpeningStock::with('warehouse')
+            ->where('product_id', $productId)
+            ->whereIn('warehouse_id', $permittedWarehouseIds);
+
+        if ($request->filled('variant_key')) {
+            $query->where(function($q) use ($targetVariantKey, $targetVariantName) {
+                $q->where('variant_key', $targetVariantKey);
+                if (!empty($targetVariantName)) {
+                    $q->orWhere('variant_name', $targetVariantName);
+                }
+            });
+        } elseif ($request->filled('variant_name')) {
+            $query->where('variant_name', $targetVariantName);
+        }
+
+        $existingEntries = $query->get();
+
+        $variantsMap = collect($this->extractProductVariants($product))->keyBy('variant_key');
+        $productPpb = (float)($product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+
+        $initialRows = [];
+
+        if ($existingEntries->isNotEmpty()) {
+            // Group entries by variant so each variant has its row
+            $groupedByVariant = $existingEntries->groupBy(function($item) {
+                return (string)($item->variant_key ?? ($item->variant_name ?? ''));
+            });
+
+            foreach ($groupedByVariant as $vKey => $entries) {
+                $first = $entries->first();
+                $varObj = $variantsMap->get($vKey);
+                $effectivePpb = $varObj && !empty($varObj['conv_factor']) ? (float)$varObj['conv_factor'] : $productPpb;
+
+                $locations = [];
+                foreach ($entries as $e) {
+                    $qty = 0;
+                    $unit = 'pcs';
+
+                    if ($product->size_mode === 'by_cartons') {
+                        $unit = 'carton';
+                        if ((float)$e->boxes_quantity > 0) {
+                            $qty = (float)$e->boxes_quantity;
+                        } elseif ($effectivePpb > 1 && (float)$e->total_pieces > 0) {
+                            $qty = round((float)$e->total_pieces / $effectivePpb, 2);
+                        } else {
+                            $qty = (float)$e->total_pieces;
+                            $unit = 'pcs';
+                        }
+                    } elseif ($product->size_mode === 'by_bandal') {
+                        $unit = 'bandal';
+                        if ((float)$e->boxes_quantity > 0) {
+                            $qty = (float)$e->boxes_quantity;
+                        } elseif ($effectivePpb > 1 && (float)$e->total_pieces > 0) {
+                            $qty = round((float)$e->total_pieces / $effectivePpb, 2);
+                        } else {
+                            $qty = (float)$e->total_pieces;
+                            $unit = 'pcs';
+                        }
+                    } else {
+                        $unit = 'pcs';
+                        $qty = (float)$e->total_pieces > 0 ? (float)$e->total_pieces : (float)$e->boxes_quantity;
+                    }
+
+                    $locations[] = [
+                        'warehouse_id' => $e->warehouse_id,
+                        'qty'          => $qty,
+                        'unit'         => $unit,
+                    ];
+                }
+
+                $costPrice = (float)($first->cost_price ?? $varObj['cost_price'] ?? $product->wholesale_price ?? $product->purchase_price_per_piece ?? 0);
+                $wholesalePrice = $costPrice;
+                $salePrice = (float)($first->sale_price ?? $varObj['sale_price'] ?? $product->sale_price_per_piece ?? 0);
+                $alertQty = (float)($first->alert_quantity ?? $varObj['alert_qty'] ?? $product->alert_quantity ?? 0);
+
+                $initialRows[] = [
+                    'product_id'           => $productId,
+                    'original_product_id'  => $productId,
+                    'variant_key'          => $first->variant_key ?? ($targetVariantKey ?: null),
+                    'variant_name'         => $first->variant_name ?? ($targetVariantName ?: null),
+                    'original_variant_key' => $first->variant_key ?? ($targetVariantKey ?: null),
+                    'original_variant_name'=> $first->variant_name ?? ($targetVariantName ?: null),
+                    'wholesale_price'      => $wholesalePrice,
+                    'retail_price'         => $salePrice,
+                    'alert_qty'            => $alertQty,
+                    'locations'            => $locations,
+                ];
+            }
+        } else {
+            // No existing opening stock entries found for this product/variant, prepare default row
+            $varObj = $targetVariantKey ? $variantsMap->get($targetVariantKey) : null;
+            $costPrice = (float)($varObj['cost_price'] ?? $product->wholesale_price ?? $product->purchase_price_per_piece ?? 0);
+            $salePrice = (float)($varObj['sale_price'] ?? $product->sale_price_per_piece ?? 0);
+            $alertQty = (float)($varObj['alert_qty'] ?? $product->alert_quantity ?? 0);
+
+            $initialRows[] = [
+                'product_id'           => $productId,
+                'original_product_id'  => $productId,
+                'variant_key'          => $targetVariantKey ?: null,
+                'variant_name'         => $targetVariantName ?: null,
+                'original_variant_key' => $targetVariantKey ?: null,
+                'original_variant_name'=> $targetVariantName ?: null,
+                'wholesale_price'      => $costPrice,
+                'retail_price'         => $salePrice,
+                'alert_qty'            => $alertQty,
+                'locations'            => [],
+            ];
+        }
+
+        return view('admin_panel.inventory.opening_stock.edit', [
+            'warehouses'  => $permittedWarehouses,
+            'products'    => $products,
+            'product'     => $product,
+            'initialRows' => $initialRows,
+        ]);
+    }
+
+    /**
      * Helper to extract parsed variants with cost price and formatted labels
      */
     public function getVariantConversionFactor(Product $product, ?string $variantKey = null, ?string $variantName = null): float
@@ -1191,6 +1340,247 @@ class OpeningStockController extends Controller
     public function updateProductOpeningStock(Request $request)
     {
         $this->checkPermission();
+
+        $entryType = $request->input('entry_type');
+        if ($entryType === 'unified' || $request->has('products')) {
+            $productsInput = $request->input('products', []);
+            if (empty($productsInput) || !is_array($productsInput)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No products provided. Please enter at least one product with quantity.'
+                ], 422);
+            }
+
+            try {
+                DB::beginTransaction();
+
+                $permittedWarehouses = $this->getPermittedWarehouses();
+                $permittedWarehouseIds = $permittedWarehouses->pluck('id')->toArray();
+                $totalUpdated = 0;
+
+                foreach ($productsInput as $pData) {
+                    $pId = (int)($pData['product_id'] ?? 0);
+                    if (!$pId) continue;
+
+                    $product = Product::lockForUpdate()->findOrFail($pId);
+                    $variantKey  = !empty($pData['variant_key']) ? trim($pData['variant_key']) : null;
+                    $variantName = !empty($pData['variant_name']) ? trim($pData['variant_name']) : null;
+                    if ($variantKey && !$variantName) {
+                        $parts = explode('|', $variantKey);
+                        $variantName = $parts[0] ?? null;
+                    }
+                    $ppb = $this->getVariantConversionFactor($product, $variantKey, $variantName);
+
+                    $wholesalePrice = (isset($pData['wholesale_price']) && is_numeric($pData['wholesale_price'])) ? (float)$pData['wholesale_price'] : (float)($product->wholesale_price ?? $product->purchase_price_per_piece ?? 0);
+                    $costPrice = (isset($pData['cost_price']) && is_numeric($pData['cost_price'])) ? (float)$pData['cost_price'] : $wholesalePrice;
+                    $salePrice = (isset($pData['retail_price']) && is_numeric($pData['retail_price'])) ? (float)$pData['retail_price'] : (float)($product->sale_price_per_piece ?? 0);
+                    $alertQty  = (isset($pData['alert_qty']) && is_numeric($pData['alert_qty'])) ? (float)$pData['alert_qty'] : (float)($product->alert_quantity ?? 0);
+
+                    $origPId = !empty($pData['original_product_id']) ? (int)$pData['original_product_id'] : $pId;
+                    $origVKey = !empty($pData['original_variant_key']) ? trim($pData['original_variant_key']) : $variantKey;
+                    $origVName = !empty($pData['original_variant_name']) ? trim($pData['original_variant_name']) : $variantName;
+
+                    // Query existing entries for the original product & variant
+                    $existingQuery = OpeningStock::where('product_id', $origPId)
+                        ->whereIn('warehouse_id', $permittedWarehouseIds);
+
+                    if (!empty($origVKey)) {
+                        $existingQuery->where(function($q) use ($origVKey, $origVName) {
+                            $q->where('variant_key', $origVKey);
+                            if (!empty($origVName)) {
+                                $q->orWhere('variant_name', $origVName);
+                            }
+                        });
+                    } elseif (!empty($origVName)) {
+                        $existingQuery->where('variant_name', $origVName);
+                    } else {
+                        $existingQuery->where(function($q) {
+                            $q->whereNull('variant_key')->orWhere('variant_key', '');
+                        });
+                    }
+                    $existingEntries = $existingQuery->get()->keyBy('warehouse_id');
+
+                    // Parse submitted locations
+                    $locations = $pData['locations'] ?? [];
+                    $locationsByWh = [];
+                    foreach ($locations as $loc) {
+                        $whId = (int)($loc['warehouse_id'] ?? 0);
+                        $qty  = (float)($loc['qty'] ?? 0);
+                        $unit = strtolower(trim($loc['unit'] ?? 'pcs'));
+                        $note = !empty($loc['notes']) ? trim($loc['notes']) : 'Opening Stock';
+
+                        if ($whId <= 0 || !in_array($whId, $permittedWarehouseIds)) continue;
+
+                        $calculatedTotalPieces = 0;
+                        $boxesCount = 0;
+
+                        if ($unit === 'carton' || $unit === 'bandal' || $unit === 'box') {
+                            $boxesCount = $qty;
+                            $calculatedTotalPieces = $qty * $ppb;
+                        } else {
+                            $calculatedTotalPieces = $qty;
+                            $boxesCount = ($ppb > 1 && in_array($product->size_mode, ['by_cartons', 'by_size', 'by_bandal'])) ? round($qty / $ppb, 2) : 0;
+                        }
+
+                        if (!isset($locationsByWh[$whId])) {
+                            $locationsByWh[$whId] = [
+                                'boxes' => 0,
+                                'pieces' => 0,
+                                'note' => $note,
+                            ];
+                        }
+                        $locationsByWh[$whId]['boxes'] += $boxesCount;
+                        $locationsByWh[$whId]['pieces'] += $calculatedTotalPieces;
+                    }
+
+                    // Process locations
+                    foreach ($locationsByWh as $whId => $locData) {
+                        $calculatedTotalPieces = $locData['pieces'];
+                        $boxesCount = $locData['boxes'];
+                        $note = $locData['note'];
+
+                        $existingEntry = $existingEntries->get($whId);
+                        $oldOpeningPieces = $existingEntry ? (float)$existingEntry->total_pieces : 0.0;
+                        $piecesDelta = $calculatedTotalPieces - $oldOpeningPieces;
+
+                        if ($calculatedTotalPieces > 0) {
+                            if ($existingEntry) {
+                                $existingEntry->boxes_quantity = $boxesCount;
+                                $existingEntry->total_pieces   = $calculatedTotalPieces;
+                                $existingEntry->cost_price     = $costPrice;
+                                $existingEntry->sale_price     = $salePrice;
+                                $existingEntry->alert_quantity = $alertQty;
+                                $existingEntry->variant_key    = $variantKey;
+                                $existingEntry->variant_name   = $variantName;
+                                $existingEntry->notes          = $note;
+                                $existingEntry->save();
+                            } else {
+                                $existingEntry = OpeningStock::create([
+                                    'user_id'        => auth()->id(),
+                                    'warehouse_id'   => $whId,
+                                    'product_id'     => $pId,
+                                    'variant_key'    => $variantKey,
+                                    'variant_name'   => $variantName,
+                                    'boxes_quantity' => $boxesCount,
+                                    'total_pieces'   => $calculatedTotalPieces,
+                                    'cost_price'     => $costPrice,
+                                    'sale_price'     => $salePrice,
+                                    'alert_quantity' => $alertQty,
+                                    'notes'          => $note,
+                                ]);
+                            }
+                            $totalUpdated++;
+                        } else {
+                            if ($existingEntry) {
+                                $existingEntry->delete();
+                                $totalUpdated++;
+                            }
+                        }
+
+                        // Apply WarehouseStock delta
+                        if ($piecesDelta != 0) {
+                            $ws = WarehouseStock::firstOrCreate(
+                                ['warehouse_id' => $whId, 'product_id' => $pId],
+                                ['quantity' => 0, 'total_pieces' => 0, 'remarks' => 'Opening Stock']
+                            );
+
+                            $ws->total_pieces = max(0, (float)$ws->total_pieces + $piecesDelta);
+                            if ($ppb > 1 && in_array($product->size_mode, ['by_cartons', 'by_size', 'by_bandal'])) {
+                                $ws->quantity = round($ws->total_pieces / $ppb, 2);
+                            } else {
+                                $ws->quantity = $ws->total_pieces;
+                            }
+                            $ws->remarks = 'Opening Stock Adjusted via Edit';
+                            $ws->save();
+
+                            StockMovement::create([
+                                'product_id' => $pId,
+                                'type'       => 'adjustment',
+                                'qty'        => $piecesDelta,
+                                'ref_type'   => 'OPENING_STOCK_EDIT',
+                                'ref_id'     => $existingEntry ? $existingEntry->id : null,
+                                'note'       => "Opening Stock Updated | Warehouse #{$whId}" . ($variantName ? " | Variant: {$variantName}" : "") . " | Delta: {$piecesDelta} Pcs",
+                            ]);
+                        }
+                    }
+
+                    // Handle warehouses removed by user
+                    foreach ($existingEntries as $whId => $existingEntry) {
+                        if (!isset($locationsByWh[$whId])) {
+                            $oldOpeningPieces = (float)$existingEntry->total_pieces;
+                            $piecesDelta = 0 - $oldOpeningPieces;
+                            $existingEntry->delete();
+                            $totalUpdated++;
+
+                            if ($piecesDelta != 0) {
+                                $ws = WarehouseStock::firstOrCreate(
+                                    ['warehouse_id' => $whId, 'product_id' => $origPId],
+                                    ['quantity' => 0, 'total_pieces' => 0, 'remarks' => 'Opening Stock']
+                                );
+                                $ws->total_pieces = max(0, (float)$ws->total_pieces + $piecesDelta);
+                                if ($ppb > 1 && in_array($product->size_mode, ['by_cartons', 'by_size', 'by_bandal'])) {
+                                    $ws->quantity = round($ws->total_pieces / $ppb, 2);
+                                } else {
+                                    $ws->quantity = $ws->total_pieces;
+                                }
+                                $ws->remarks = 'Opening Stock Removed via Edit';
+                                $ws->save();
+
+                                StockMovement::create([
+                                    'product_id' => $origPId,
+                                    'type'       => 'adjustment',
+                                    'qty'        => $piecesDelta,
+                                    'ref_type'   => 'OPENING_STOCK_EDIT',
+                                    'ref_id'     => null,
+                                    'note'       => "Opening Stock Removed | Warehouse #{$whId}" . ($origVName ? " | Variant: {$origVName}" : "") . " | Reverted: {$oldOpeningPieces} Pcs",
+                                ]);
+                            }
+                        }
+                    }
+
+                    // Update prices on variant or product
+                    if ($variantKey && !empty($product->color)) {
+                        try {
+                            $parsed = is_string($product->color) ? json_decode($product->color, true) : $product->color;
+                            if (is_array($parsed)) {
+                                foreach ($parsed as &$v) {
+                                    $vKey = ($v['name'] ?? $product->item_name) . '|' . ($v['size'] ?? '-') . '|' . ($v['color'] ?? '-');
+                                    if ($vKey === $variantKey || ($variantName && ($v['name'] ?? '') === $variantName)) {
+                                        if ($salePrice > 0) $v['sale_price'] = $salePrice;
+                                        if ($costPrice > 0) $v['purch_price'] = $costPrice;
+                                        if ($alertQty > 0)  $v['alert'] = (string)$alertQty;
+                                        break;
+                                    }
+                                }
+                                unset($v);
+                                $product->color = json_encode($parsed);
+                                $product->save();
+                            }
+                        } catch (\Exception $e) {}
+                    } else {
+                        if ($costPrice > 0) $product->purchase_price_per_piece = $costPrice;
+                        if ($wholesalePrice > 0) $product->wholesale_price = $wholesalePrice;
+                        if ($salePrice > 0) $product->sale_price_per_piece = $salePrice;
+                        if ($alertQty > 0)  $product->alert_quantity = $alertQty;
+                        $product->save();
+                    }
+                }
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Opening Stock updated successfully!'
+                ]);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update Opening Stock: ' . $e->getMessage()
+                ], 500);
+            }
+        }
 
         $request->validate([
             'product_id'            => 'required|exists:products,id',

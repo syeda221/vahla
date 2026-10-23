@@ -420,6 +420,7 @@ Route::middleware('auth')->group(function () {
     // Opening Stock
     Route::get('/opening-stock', [OpeningStockController::class, 'index'])->name('opening_stock.index');
     Route::get('/opening-stock/create', [OpeningStockController::class, 'create'])->name('opening_stock.create');
+    Route::get('/opening-stock/{productId}/edit', [OpeningStockController::class, 'edit'])->name('opening_stock.edit');
     Route::post('/opening-stock', [OpeningStockController::class, 'store'])->name('opening_stock.store');
     Route::post('/opening-stock/update', [OpeningStockController::class, 'updateProductOpeningStock'])->name('opening_stock.update');
     Route::get('/opening-stock/search-products', [OpeningStockController::class, 'searchProducts'])->name('opening_stock.search_products');

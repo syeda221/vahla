@@ -313,9 +313,9 @@
         /* Page Overflow Protection */
         html, body {
             max-width: 100vw;
-            overflow-x: hidden;
+            overflow-x: clip;
         }
-        .main-content, .main-content-inner, .container-fluid {
+        .main-content, .main-content-inner, .main-content .container-fluid {
             max-width: 100%;
             overflow-x: hidden;
         }
@@ -341,7 +341,7 @@
 
         /* Responsive Breakpoints (Mobile & Tablet <= 991.98px) */
         @media (max-width: 991.98px) {
-            .container-fluid {
+            .main-content .container-fluid {
                 padding-left: 12px !important;
                 padding-right: 12px !important;
             }

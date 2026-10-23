@@ -13,8 +13,19 @@
         /* =========================================================
            ERP Mega Menu & Navbar Responsive Styling
            ========================================================= */
+        /* Universal Navbar & Container Overflow Fix */
+        .rt_nav_header,
+        .rt_nav_header .top_nav,
+        .rt_nav_header .nav-bottom,
+        .rt_nav_header .container-fluid,
+        .rt_nav_header .page-navigation,
+        .rt_nav_header .nav-item {
+            overflow: visible !important;
+        }
+
         .rt_nav_header.horizontal-layout .nav-bottom {
             position: relative;
+            z-index: 1020 !important;
         }
 
         /* Base Submenu Styling */
@@ -25,7 +36,7 @@
             border-radius: 8px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.04);
             border: 1px solid #eef2f6;
-            z-index: 1050;
+            z-index: 99999 !important;
         }
 
         .mega-menu .category-heading {
@@ -82,13 +93,62 @@
             color: #1d4ed8;
         }
 
-        /* Desktop Mega Menu Positioning */
+        /* Desktop Menu & Mega Menu Positioning & Hover */
         @media (min-width: 992px) {
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) {
+                position: relative !important;
+            }
+
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) .submenu {
+                display: none;
+                position: absolute !important;
+                top: 100% !important;
+                left: 0 !important;
+                min-width: 215px !important;
+                box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+                border-radius: 10px !important;
+                margin-top: 0 !important;
+                z-index: 99999 !important;
+            }
+
+            /* Invisible bridge to prevent mouse leaving hover gap */
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu::before {
+                content: '';
+                position: absolute;
+                top: -8px;
+                left: 0;
+                right: 0;
+                height: 8px;
+                background: transparent;
+            }
+
+            /* Open dropdown on hover or when toggled */
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:hover > .submenu,
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.hover > .submenu,
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.show-submenu > .submenu {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+            }
+
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:hover > .nav-link,
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.show-submenu > .nav-link {
+                color: #2563eb !important;
+            }
+
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:hover > .nav-link .menu-arrow,
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.show-submenu > .nav-link .menu-arrow {
+                transform: rotate(180deg) !important;
+                color: #2563eb !important;
+            }
+
             .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.mega-menu {
                 position: static !important;
             }
 
             .mega-menu .submenu {
+                display: none;
                 position: absolute !important;
                 top: 100% !important;
                 left: 50% !important;
@@ -100,6 +160,7 @@
                 border-radius: 10px !important;
                 box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04) !important;
                 border: 1px solid #eef2f6 !important;
+                z-index: 99999 !important;
             }
 
             .mega-menu .col-group-wrapper {
@@ -668,6 +729,7 @@
                         </button>
                     </div>
 
+                </div>
             </div>
 
             <!-- Notifications Polling Script -->
@@ -1504,28 +1566,37 @@
                 }
             });
 
-            // 2. Mobile Submenu Accordion
+            // 2. Navigation Dropdown Accordion / Click Toggle (Desktop & Mobile)
             $(document).on('click', '.page-navigation > .nav-item > .nav-link', function(e) {
-                if (window.innerWidth <= 991) {
-                    var $parent = $(this).closest('.nav-item');
-                    var $submenu = $parent.find('.submenu');
+                var $parent = $(this).closest('.nav-item');
+                var $submenu = $parent.find('.submenu');
 
-                    // If has submenu, prevent navigation and toggle accordion
-                    if ($submenu.length > 0) {
-                        e.preventDefault();
-                        e.stopPropagation();
+                if ($submenu.length > 0) {
+                    e.preventDefault();
+                    e.stopPropagation();
 
-                        // Close all other open submenus
-                        $('.page-navigation > .nav-item').not($parent).removeClass('show-submenu');
-
-                        // Toggle this submenu
-                        $parent.toggleClass('show-submenu');
+                    var isAlreadyOpen = $parent.hasClass('show-submenu');
+                    // Close other submenus
+                    $('.page-navigation > .nav-item').not($parent).removeClass('show-submenu');
+                    // Toggle this one
+                    if (isAlreadyOpen) {
+                        $parent.removeClass('show-submenu');
                     } else {
-                        // If direct link (e.g. Dashboard), close mobile menu
+                        $parent.addClass('show-submenu');
+                    }
+                } else {
+                    if (window.innerWidth <= 991) {
                         $('.rt_nav_header.horizontal-layout .nav-bottom').removeClass('header-toggled');
                         $('#mobileMenuIcon, .navbar-toggler i').removeClass('fa-times').addClass('fa-bars');
                         $('body').css('overflow', '');
                     }
+                }
+            });
+
+            // Close active dropdowns when clicked outside (Desktop)
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.page-navigation > .nav-item').length) {
+                    $('.page-navigation > .nav-item').removeClass('show-submenu');
                 }
             });
 
