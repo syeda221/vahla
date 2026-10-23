@@ -164,6 +164,10 @@ class WarehouseStockController extends Controller
             ->groupBy('product_id', 'to_warehouse_id', 'variant_key', 'variant_name')
             ->get();
 
+        $adjustments = DB::table('stock_adjustments')
+            ->select('warehouse_id', 'product_id', 'variant_key', 'variant_name', 'old_stock', 'new_stock')
+            ->get();
+
         $variantMatches = function ($rawColor, $targetVariantName) {
             if (!$targetVariantName) return true;
             if (empty($rawColor)) return false;
@@ -252,7 +256,15 @@ class WarehouseStockController extends Controller
                         })->sum('total_qty'));
                         $vTransfersInPieces = $vTransfersInQty * $vPpb;
 
-                        $livePieces = max(0, $opPieces + $vPurchases - $vSales + $vReturns + $vTransfersInPieces - $vTransfersOutPieces);
+                        $vAdj = (float) $adjustments->where('warehouse_id', $w->id)->where('product_id', $p->id)
+                            ->filter(function($a) use ($vKey, $vName) {
+                                return empty($a->variant_key) || $a->variant_key === $vKey || $a->variant_name === $vName;
+                            })
+                            ->sum(function($a) {
+                                return (float)$a->new_stock - (float)$a->old_stock;
+                            });
+
+                        $livePieces = max(0, $opPieces + $vPurchases - $vSales + $vReturns + $vTransfersInPieces - $vTransfersOutPieces + $vAdj);
 
                         if ($livePieces > 0) {
                             $variantsAdded++;
@@ -367,10 +379,14 @@ class WarehouseStockController extends Controller
                     $vTransfersInQty = (float)($transfersIn->where('warehouse_id', $w->id)->where('product_id', $p->id)->sum('total_qty'));
                     $vTransfersInPieces = $vTransfersInQty * $vPpb;
 
-                    $hasMovements = ($vPurchases > 0 || $vSales > 0 || $vReturns > 0 || $vTransfersInPieces > 0 || $vTransfersOutPieces > 0);
-                    $livePieces = ($opPieces > 0 || $hasMovements)
-                        ? max(0, $opPieces + $vPurchases - $vSales + $vReturns + $vTransfersInPieces - $vTransfersOutPieces)
-                        : (float)$ws->total_pieces;
+                    $vAdj = (float) $adjustments->where('warehouse_id', $w->id)->where('product_id', $p->id)
+                        ->sum(function($a) {
+                            return (float)$a->new_stock - (float)$a->old_stock;
+                        });
+
+                    $hasMovements = ($vPurchases > 0 || $vSales > 0 || $vReturns > 0 || $vTransfersInPieces > 0 || $vTransfersOutPieces > 0 || $vAdj != 0);
+                    // If adjustments were made, or if warehouse stock is directly maintained, prioritize accurate live stock
+                    $livePieces = (float)$ws->total_pieces;
 
                     if ($livePieces > 0) {
                         $price = (float)($pOps->first()?->sale_price ?? $decodedVariants[0]['sale_price'] ?? $p->sale_price_per_piece ?? 0);

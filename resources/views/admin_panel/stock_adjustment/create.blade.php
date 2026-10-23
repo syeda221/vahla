@@ -495,17 +495,86 @@ $(document).ready(function () {
     let cart = [];
     let totalProductCards = $('.product-card').length;
     let isCartCollapsed = false;
+    let currentStockScope = 'all'; // 'all' or 'in_stock'
+    let previousWhId = $('#terminal_warehouse_id').val();
 
-    // Toggle Collapse / Bottom Dock Cart Mode
-    $('#toggleCartCollapseBtn').on('click', function () {
-        toggleCartPanel();
+    // ── 1. Load Live Warehouse Stocks for Cards ──
+    function loadWarehouseStocks(warehouseId) {
+        $('.product-wh-stock-badge').html('<i class="fas fa-spinner fa-spin me-1"></i> Checking...');
+
+        $.ajax({
+            url: "{{ route('stock_adjustments.warehouse_products') }}",
+            type: "GET",
+            data: { warehouse_id: warehouseId },
+            success: function (res) {
+                if (res.success && res.stocks) {
+                    $.each(res.stocks, function (pid, st) {
+                        let card = $('.product-card[data-id="' + pid + '"]');
+                        card.data('in-stock', st.in_stock ? 1 : 0);
+                        card.data('pieces', st.total_pieces);
+
+                        let badge = $('#card_stock_' + pid);
+                        if (st.in_stock) {
+                            badge.removeClass('bg-light text-muted')
+                                 .addClass('bg-primary-lt text-primary fw-bold')
+                                 .html('<i class="fas fa-boxes me-1"></i> ' + st.formatted.full);
+                        } else {
+                            badge.removeClass('bg-primary-lt text-primary fw-bold')
+                                 .addClass('bg-light text-muted')
+                                 .html('<i class="fas fa-box-open me-1"></i> 0 In Stock');
+                        }
+                    });
+                    filterGrid();
+                }
+            },
+            error: function () {
+                $('.product-wh-stock-badge').html('<i class="fas fa-box me-1"></i> Adjust Stock');
+            }
+        });
+    }
+
+    // Initial load on page ready
+    loadWarehouseStocks(previousWhId);
+
+    // ── 2. Warehouse Change Handler ──
+    $('#terminal_warehouse_id').on('change', function () {
+        let newWhId = $(this).val();
+        if (cart.length > 0) {
+            Swal.fire({
+                title: 'Warehouse Badlein?',
+                text: 'Warehouse badalne se cart mein mojood staged items clear ho jayenge. Kya aap aagay barhna chahte hain?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#4f46e5',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Haan, Clear & Change',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    cart = [];
+                    renderCart();
+                    previousWhId = newWhId;
+                    loadWarehouseStocks(newWhId);
+                } else {
+                    $('#terminal_warehouse_id').val(previousWhId);
+                }
+            });
+        } else {
+            previousWhId = newWhId;
+            loadWarehouseStocks(newWhId);
+        }
     });
 
-    $('#expandDockCartBtn').on('click', function () {
-        toggleCartPanel();
+    // ── 3. Stock Scope Toggle (All Items vs In-Stock Only) ──
+    $('.stock-scope-btn').on('click', function () {
+        $('.stock-scope-btn').removeClass('active');
+        $(this).addClass('active');
+        currentStockScope = $(this).data('scope');
+        filterGrid();
     });
 
-    function toggleCartPanel() {
+    // ── 4. Toggle Collapse / Bottom Dock Cart Mode ──
+    $('#toggleCartCollapseBtn, #expandDockCartBtn').on('click', function () {
         isCartCollapsed = !isCartCollapsed;
         let layout = $('#posGridLayout');
         let icon   = $('#toggleCartIcon');
@@ -519,16 +588,15 @@ $(document).ready(function () {
             $('#posCartPanel').removeClass('dock-minimized');
             icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
         }
-    }
+    });
 
-    // Category Filter Pills
+    // ── 5. Category & Search Filters ──
     $('.cat-pill').on('click', function () {
         $('.cat-pill').removeClass('active');
         $(this).addClass('active');
         filterGrid();
     });
 
-    // Real-time Search Input Filter
     $('#posProductSearch').on('input', function () {
         filterGrid();
     });
@@ -539,14 +607,16 @@ $(document).ready(function () {
         let visibleCount = 0;
 
         $('.product-card').each(function () {
-            let card   = $(this);
-            let itemCat= card.data('cat');
+            let card    = $(this);
+            let itemCat = card.data('cat');
             let itemSearch = card.data('search');
+            let inStock = card.data('in-stock') == 1;
 
-            let matchCat = !cat || itemCat == cat;
-            let matchSearch = !search || itemSearch.indexOf(search) > -1;
+            let matchCat   = !cat || itemCat == cat;
+            let matchSearch= !search || itemSearch.indexOf(search) > -1;
+            let matchStock = (currentStockScope === 'all') || inStock;
 
-            if (matchCat && matchSearch) {
+            if (matchCat && matchSearch && matchStock) {
                 card.removeClass('d-none');
                 visibleCount++;
             } else {
@@ -578,137 +648,191 @@ $(document).ready(function () {
         });
     });
 
-    // Click on Product Card (Matches POS Sale behavior)
+    // ── 6. Click on Product Card: Opens Modal with Live Carton & Variant Stock ──
     $('.product-card').on('click', function () {
         let card        = $(this);
         let productId   = card.data('id');
         let productName = card.data('name');
         let productCode = card.data('code');
-        let hasVariants = card.data('has-variants') == 1;
         let warehouseId = $('#terminal_warehouse_id').val();
+        let whName      = $('#terminal_warehouse_id option:selected').text();
 
-        if (hasVariants) {
-            // Reset modal search
-            $('#variantModalSearch').val('');
-            $('#variantsModalLabel').text('Select Variant - ' + productName + ' (' + productCode + ')');
-            let tbody = $('#variantsModalList');
-            tbody.html('<tr><td colspan="5" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Loading variants & live stock...</td></tr>');
-            $('#variantsModal').modal('show');
+        $('#variantModalSearch').val('');
+        $('#variantsModalLabel').html('<i class="fas fa-boxes text-primary me-2"></i>' + productName + ' <span class="text-muted fw-normal">(' + productCode + ') &bull; ' + whName + '</span>');
+        let tbody = $('#variantsModalList');
+        tbody.html('<tr><td colspan="5" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Loading live warehouse stock &amp; carton packaging...</td></tr>');
+        $('#variantsModal').modal('show');
 
-            $.ajax({
-                url: "/stock-adjustments/product-variants/" + productId,
-                type: "GET",
-                data: { warehouse_id: warehouseId },
-                success: function (res) {
-                    tbody.empty();
+        $.ajax({
+            url: "/stock-adjustments/product-variants/" + productId,
+            type: "GET",
+            data: { warehouse_id: warehouseId },
+            success: function (res) {
+                tbody.empty();
 
-                    if (res.has_variants && res.variants.length > 0) {
-                        $.each(res.variants, function (i, v) {
-                            let row = `
-                            <tr data-pid="${productId}" data-pname="${productName}" data-pcode="${productCode}" data-vkey="${v.variant_key}" data-vname="${v.name}" data-stock="${v.current_stock}">
-                                <td class="ps-4 fw-bold">
-                                    ${v.name}
-                                    <div class="text-muted small font-monospace">Size: ${v.size} | Color: ${v.color}</div>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-primary px-2 py-1" style="font-size:.78rem;">
-                                        ${v.current_stock} Pcs
-                                    </span>
-                                </td>
-                                <td class="text-center">
-                                    <select class="form-select form-select-sm modal-action-type mx-auto" style="width:110px; font-weight:600; font-size:.78rem;">
-                                        <option value="add">🟢 Add (+)</option>
-                                        <option value="subtract">🔴 Deduct (-)</option>
-                                        <option value="set">🔵 Set (=)</option>
-                                    </select>
-                                </td>
-                                <td class="text-center">
-                                    <div class="qty-controls mx-auto">
+                if (res.variants && res.variants.length > 0) {
+                    $.each(res.variants, function (i, v) {
+                        let fmt = v.formatted || {};
+                        let isCarton = fmt.is_carton ? 1 : 0;
+                        let ppb = fmt.ppb || 1;
+                        let unitLabel = fmt.unit_label || 'Pcs';
+                        let mainFmt = fmt.main || (v.current_stock + ' Pcs');
+                        let subFmt = fmt.sub ? `(${fmt.sub})` : '';
+
+                        let row = `
+                        <tr data-pid="${productId}" 
+                            data-pname="${productName}" 
+                            data-pcode="${productCode}" 
+                            data-vkey="${v.variant_key}" 
+                            data-vname="${v.name}" 
+                            data-stock="${v.current_stock}" 
+                            data-is-carton="${isCarton}" 
+                            data-ppb="${ppb}" 
+                            data-unit-label="${unitLabel}" 
+                            data-formatted-stock="${mainFmt}">
+                            
+                            <td class="ps-4 fw-bold">
+                                <div>${v.name}</div>
+                                <div class="text-muted small font-monospace">
+                                    ${v.size !== '-' || v.color !== '-' ? 'Size: ' + v.size + ' | Color: ' + v.color : (isCarton ? subFmt : 'Standard Item')}
+                                </div>
+                            </td>
+
+                            <td class="text-center">
+                                <span class="badge bg-primary px-2 py-1" style="font-size:.82rem;">
+                                    ${mainFmt}
+                                </span>
+                                ${isCarton ? `<div class="text-muted font-monospace mt-1" style="font-size:.70rem;">(${v.current_stock} Pcs)</div>` : ''}
+                            </td>
+
+                            <td class="text-center">
+                                <select class="form-select form-select-sm modal-action-type mx-auto" style="width:115px; font-weight:600; font-size:.78rem;">
+                                    <option value="add">🟢 Add (+)</option>
+                                    <option value="subtract">🔴 Deduct (-)</option>
+                                    <option value="set">🔵 Set (=)</option>
+                                </select>
+                            </td>
+
+                            <td class="text-center">
+                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                    <div class="qty-controls">
                                         <button type="button" class="qty-btn modal-qty-minus">-</button>
-                                        <input type="number" step="1" min="1" value="1" class="qty-input modal-qty-val">
+                                        <input type="number" step="any" min="0.01" value="1" class="qty-input modal-qty-val">
                                         <button type="button" class="qty-btn modal-qty-plus">+</button>
                                     </div>
-                                </td>
-                                <td class="text-center pe-4">
-                                    <button type="button" class="btn btn-primary btn-sm px-3 modal-add-btn fw-bold">
-                                        <i class="fas fa-plus me-1"></i> Add
-                                    </button>
-                                </td>
-                            </tr>`;
-                            tbody.append(row);
-                        });
-                    } else {
-                        tbody.html('<tr><td colspan="5" class="text-center py-4 text-muted">No variants found for this product.</td></tr>');
-                    }
-                }
-            });
-        } else {
-            // Standard Product (No variants) -> Add directly to cart
-            $.ajax({
-                url: "/stock-adjustments/product-variants/" + productId,
-                type: "GET",
-                data: { warehouse_id: warehouseId },
-                success: function (res) {
-                    let curStock = res.total_stock || 0;
-                    addItemToCart({
-                        cartKey:      productId + '_std',
-                        product_id:   productId,
-                        product_name: productName,
-                        product_code: productCode,
-                        variant_key:  '',
-                        variant_name: '',
-                        type:         'add',
-                        qty:          1,
-                        cur_stock:    curStock
+                                    ${isCarton ? `
+                                    <select class="form-select form-select-sm modal-unit-select" style="width:85px; font-size:.75rem; font-weight:700;">
+                                        <option value="carton" selected>${unitLabel}</option>
+                                        <option value="piece">Pcs</option>
+                                    </select>` : `<span class="badge bg-light text-dark border px-2 py-1" style="font-size:.75rem;">Pcs</span>`}
+                                </div>
+                                ${isCarton ? `<div class="text-muted small text-center mt-1 modal-qty-hint" style="font-size:.68rem;">= <strong>${ppb}</strong> Pcs</div>` : ''}
+                            </td>
+
+                            <td class="text-center pe-4">
+                                <button type="button" class="btn btn-primary btn-sm px-3 modal-add-btn fw-bold">
+                                    <i class="fas fa-plus me-1"></i> Add
+                                </button>
+                            </td>
+                        </tr>`;
+                        tbody.append(row);
                     });
+                } else {
+                    tbody.html('<tr><td colspan="5" class="text-center py-4 text-muted">No stock or variants found for this product in this warehouse.</td></tr>');
                 }
-            });
-        }
+            },
+            error: function () {
+                tbody.html('<tr><td colspan="5" class="text-center py-4 text-danger"><i class="fas fa-exclamation-triangle me-1"></i> Failed to load variant details.</td></tr>');
+            }
+        });
     });
 
     // Modal Stepper + / - Click Handlers
     $(document).on('click', '.modal-qty-plus', function () {
         let input = $(this).siblings('.modal-qty-val');
         let val = parseFloat(input.val()) || 0;
-        input.val(val + 1);
+        input.val(val + 1).trigger('input');
     });
 
     $(document).on('click', '.modal-qty-minus', function () {
         let input = $(this).siblings('.modal-qty-val');
         let val = parseFloat(input.val()) || 0;
-        if (val > 1) input.val(val - 1);
+        if (val > 1) input.val(val - 1).trigger('input');
     });
 
-    // Add Variant to Cart from Modal Row
-    $(document).on('click', '.modal-add-btn', function () {
-        let row      = $(this).closest('tr');
-        let pid      = row.data('pid');
-        let pname    = row.data('pname');
-        let pcode    = row.data('pcode');
-        let vkey     = row.data('vkey');
-        let vname    = row.data('vname');
-        let curStock = parseFloat(row.data('stock')) || 0;
-        let type     = row.find('.modal-action-type').val();
-        let qty      = parseFloat(row.find('.modal-qty-val').val()) || 0;
+    // Live update of converted pieces hint in modal
+    $(document).on('input change', '.modal-qty-val, .modal-unit-select', function () {
+        let row = $(this).closest('tr');
+        let isCarton = row.data('is-carton') == 1;
+        if (isCarton) {
+            let val  = parseFloat(row.find('.modal-qty-val').val()) || 0;
+            let unit = row.find('.modal-unit-select').val();
+            let ppb  = parseFloat(row.data('ppb')) || 1;
+            let lbl  = row.data('unit-label') || 'Ctn';
+            let hint = row.find('.modal-qty-hint');
 
-        if (qty <= 0) {
+            if (unit === 'carton') {
+                hint.html('= <strong>' + (val * ppb) + '</strong> Pcs');
+            } else {
+                let ctns = (val / ppb).toFixed(2);
+                hint.html('= <strong>' + ctns + '</strong> ' + lbl);
+            }
+        }
+    });
+
+    // ── 7. Add to Cart from Modal ──
+    $(document).on('click', '.modal-add-btn', function () {
+        let row          = $(this).closest('tr');
+        let pid          = row.data('pid');
+        let pname        = row.data('pname');
+        let pcode        = row.data('pcode');
+        let vkey         = row.data('vkey');
+        let vname        = row.data('vname');
+        let curStock     = parseFloat(row.data('stock')) || 0;
+        let isCarton     = row.data('is-carton') == 1;
+        let ppb          = parseFloat(row.data('ppb')) || 1;
+        let unitLabel    = row.data('unit-label') || 'Pcs';
+        let formattedStock = row.data('formatted-stock') || (curStock + ' Pcs');
+        let type         = row.find('.modal-action-type').val();
+        let inputVal     = parseFloat(row.find('.modal-qty-val').val()) || 0;
+        let unit         = isCarton ? (row.find('.modal-unit-select').val() || 'carton') : 'piece';
+
+        if (inputVal <= 0) {
             Swal.fire('Invalid Qty', 'Please enter quantity > 0.', 'warning');
             return;
         }
 
+        // Calculate pieces for backend processing
+        let piecesQty = (isCarton && unit === 'carton') ? (inputVal * ppb) : inputVal;
+        let displayQty = (isCarton && unit === 'carton')
+            ? (inputVal + ' ' + unitLabel + ' (' + piecesQty + ' Pcs)')
+            : (piecesQty + ' Pcs');
+
         addItemToCart({
-            cartKey:     pid + '_' + vkey,
-            product_id:   pid,
-            product_name: pname,
-            product_code: pcode,
-            variant_key:  vkey,
-            variant_name: vname,
-            type:         type,
-            qty:          qty,
-            cur_stock:    curStock
+            cartKey:             pid + '_' + vkey,
+            product_id:          pid,
+            product_name:        pname,
+            product_code:        pcode,
+            variant_key:         vkey,
+            variant_name:        vname,
+            type:                type,
+            qty:                 piecesQty,
+            display_qty:         displayQty,
+            unit_label:          unitLabel,
+            ppb:                 ppb,
+            is_carton:           isCarton,
+            cur_stock_formatted: formattedStock,
+            cur_stock:           curStock
         });
 
-        Swal.fire({ toast:true, position:'top-end', icon:'success', title: vname + ' added to adjustment cart!', showConfirmButton:false, timer:1200 });
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: (vname || pname) + ' added to adjustment cart!',
+            showConfirmButton: false,
+            timer: 1200
+        });
     });
 
     function addItemToCart(item) {
@@ -721,7 +845,19 @@ $(document).ready(function () {
         renderCart();
     }
 
-    // Render Cart Items & Calculate POS Totals Box
+    // Helper: format pieces into Carton + Pieces for Cart Display
+    function formatStockDisplay(pieces, item) {
+        if (item.is_carton && item.ppb > 1) {
+            let ctns = Math.floor(pieces / item.ppb);
+            let loose = Math.round(pieces - (ctns * item.ppb));
+            if (ctns > 0 && loose > 0) return `${ctns} ${item.unit_label} + ${loose} Pcs`;
+            if (ctns > 0) return `${ctns} ${item.unit_label}`;
+            return `${loose} Pcs`;
+        }
+        return pieces + ' Pcs';
+    }
+
+    // ── 8. Render Cart Items & Summary ──
     function renderCart() {
         let container = $('#cartItemsWrap');
         container.empty();
@@ -750,23 +886,25 @@ $(document).ready(function () {
         $.each(cart, function (index, item) {
             uniqueProducts.add(item.product_id);
 
-            let expStock = item.cur_stock;
+            let expStockPieces = item.cur_stock;
             let typeBadge = '';
             if (item.type === 'add') {
                 typeBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle">+ Add</span>';
-                expStock  = item.cur_stock + item.qty;
+                expStockPieces = item.cur_stock + item.qty;
                 totalAdded += item.qty;
             } else if (item.type === 'subtract') {
                 typeBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">- Deduct</span>';
-                expStock  = Math.max(0, item.cur_stock - item.qty);
+                expStockPieces = Math.max(0, item.cur_stock - item.qty);
                 totalDeducted += item.qty;
             } else {
                 typeBadge = '<span class="badge bg-info-subtle text-info border border-info-subtle text-dark border-info">= Set</span>';
-                expStock  = Math.max(0, item.qty);
-                let diff = expStock - item.cur_stock;
+                expStockPieces = Math.max(0, item.qty);
+                let diff = expStockPieces - item.cur_stock;
                 if (diff > 0) totalAdded += diff;
                 else totalDeducted += Math.abs(diff);
             }
+
+            let expStockFormatted = formatStockDisplay(expStockPieces, item);
 
             let rowHtml = `
             <div class="cart-item-row">
@@ -781,8 +919,8 @@ $(document).ready(function () {
                 </div>
 
                 <div class="cart-flow">
-                    <div>${typeBadge} <strong>${item.qty} Pcs</strong></div>
-                    <div>Stock: <span class="text-muted">${item.cur_stock}</span> &rarr; <strong class="text-success">${expStock} Pcs</strong></div>
+                    <div>${typeBadge} <strong>${item.display_qty}</strong></div>
+                    <div>Stock: <span class="text-muted">${item.cur_stock_formatted}</span> &rarr; <strong class="text-success">${expStockFormatted}</strong></div>
                 </div>
             </div>`;
 
@@ -814,7 +952,7 @@ $(document).ready(function () {
         renderCart();
     });
 
-    // Submit Terminal Adjustment AJAX
+    // ── 9. Submit Terminal Adjustment AJAX ──
     $('#submitTerminalBtn').on('click', function () {
         let warehouseId  = $('#terminal_warehouse_id').val();
         let globalReason = $('#terminal_reason').val();

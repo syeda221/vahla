@@ -416,6 +416,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store'])->name('stock_adjustments.store');
     Route::post('/stock-adjustments/store-batch', [StockAdjustmentController::class, 'storeBatch'])->name('stock_adjustments.store_batch');
     Route::get('/stock-adjustments/product-variants/{productId}', [StockAdjustmentController::class, 'getProductVariants'])->name('stock_adjustments.product_variants');
+    Route::get('/stock-adjustments/warehouse-products', [StockAdjustmentController::class, 'getWarehouseProducts'])->name('stock_adjustments.warehouse_products');
 
     // Opening Stock
     Route::get('/opening-stock', [OpeningStockController::class, 'index'])->name('opening_stock.index');

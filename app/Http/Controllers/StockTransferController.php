@@ -317,6 +317,11 @@ class StockTransferController extends Controller
             ->whereIn('product_id', $productIds)
             ->get(['product_id', 'quantity', 'variant_key', 'variant_name']);
 
+        $stockAdjustments = DB::table('stock_adjustments')
+            ->where('warehouse_id', $warehouseId)
+            ->whereIn('product_id', $productIds)
+            ->get(['product_id', 'variant_key', 'variant_name', 'old_stock', 'new_stock']);
+
         // ── Build result ───────────────────────────────────────────────────────
         $result = [];
 
@@ -436,10 +441,17 @@ class StockTransferController extends Controller
                     }
                 }
 
+                $adjPieces = 0;
+                foreach ($stockAdjustments->where('product_id', $productId) as $adj) {
+                    if (empty($adj->variant_key) || $adj->variant_key === $vKey || $adj->variant_name === $vName) {
+                        $adjPieces += ((float)$adj->new_stock - (float)$adj->old_stock);
+                    }
+                }
+
                 // Live pieces for this variant
-                $hasMovements = ($opPieces > 0 || $purchasedPieces > 0 || $soldPieces > 0 || $returnPieces > 0 || $tInPieces > 0 || $tOutPieces > 0);
+                $hasMovements = ($opPieces > 0 || $purchasedPieces > 0 || $soldPieces > 0 || $returnPieces > 0 || $tInPieces > 0 || $tOutPieces > 0 || $adjPieces != 0);
                 if ($hasMovements) {
-                    $livePieces = max(0, $opPieces + $purchasedPieces - $soldPieces + $returnPieces + $tInPieces - $tOutPieces);
+                    $livePieces = max(0, $opPieces + $purchasedPieces - $soldPieces + $returnPieces + $tInPieces - $tOutPieces + $adjPieces);
                 } else {
                     $livePieces = 0;
                 }

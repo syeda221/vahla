@@ -353,14 +353,65 @@
                                 @endif
                             </td>
                             <td class="fw-bold" style="font-size:.85rem;">
-                                {{ number_format($adj->qty, 2) }}
+                                @php
+                                    $p = $adj->product;
+                                    $ppb = $p ? (float)($p->pieces_per_box > 0 ? $p->pieces_per_box : 1) : 1;
+                                    $vUnit = null;
+                                    if ($p && $p->color) {
+                                        $parsed = is_string($p->color) ? json_decode($p->color, true) : $p->color;
+                                        if (is_array($parsed)) {
+                                            foreach ($parsed as $dv) {
+                                                if (($adj->variant_name && ($dv['name'] ?? '') === $adj->variant_name) ||
+                                                    ($adj->variant_key && (($dv['name'] ?? '').'|'.($dv['size'] ?? '-').'|'.($dv['color'] ?? '-')) === $adj->variant_key)) {
+                                                    if (!empty($dv['conv_factor']) && (float)$dv['conv_factor'] > 0) $ppb = (float)$dv['conv_factor'];
+                                                    $vUnit = $dv['unit'] ?? null;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    $isCarton = $p && in_array($p->size_mode, ['by_cartons', 'by_bandal']) && $ppb > 1;
+                                    $ctnLbl = ($p && $p->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
+                                @endphp
+
+                                @if($isCarton)
+                                    @php
+                                        $qtyCtns = floor($adj->qty / $ppb);
+                                        $qtyLoose = round(fmod($adj->qty, $ppb));
+                                        $qtyText = ($qtyCtns > 0 && $qtyLoose > 0) ? "{$qtyCtns} {$ctnLbl} + {$qtyLoose} Pcs" : (($qtyCtns > 0) ? "{$qtyCtns} {$ctnLbl}" : "{$qtyLoose} Pcs");
+                                    @endphp
+                                    <span style="color:#0f172a;">{{ $qtyText }}</span>
+                                    <div class="text-muted font-monospace" style="font-size:.70rem; font-weight:normal;">({{ number_format($adj->qty, 0) }} Pcs)</div>
+                                @else
+                                    <span>{{ number_format($adj->qty, (fmod($adj->qty, 1) !== 0.0 ? 2 : 0)) }}</span>
+                                @endif
                             </td>
                             <td>
-                                <div class="stock-flow">
-                                    <span class="stock-old">{{ number_format($adj->old_stock, 0) }}</span>
-                                    <i class="fas fa-long-arrow-alt-right stock-arrow"></i>
-                                    <span class="stock-new">{{ number_format($adj->new_stock, 0) }}</span>
-                                </div>
+                                @if($isCarton)
+                                    @php
+                                        $oldCtns = floor($adj->old_stock / $ppb);
+                                        $oldLoose = round(fmod($adj->old_stock, $ppb));
+                                        $oldText = ($oldCtns > 0 && $oldLoose > 0) ? "{$oldCtns} {$ctnLbl} + {$oldLoose} Pcs" : (($oldCtns > 0) ? "{$oldCtns} {$ctnLbl}" : "{$oldLoose} Pcs");
+
+                                        $newCtns = floor($adj->new_stock / $ppb);
+                                        $newLoose = round(fmod($adj->new_stock, $ppb));
+                                        $newText = ($newCtns > 0 && $newLoose > 0) ? "{$newCtns} {$ctnLbl} + {$newLoose} Pcs" : (($newCtns > 0) ? "{$newCtns} {$ctnLbl}" : "{$newLoose} Pcs");
+                                    @endphp
+                                    <div class="stock-flow d-flex align-items-center gap-1">
+                                        <span class="stock-old fw-bold">{{ $oldText }}</span>
+                                        <i class="fas fa-long-arrow-alt-right stock-arrow text-muted mx-1"></i>
+                                        <span class="stock-new fw-bold text-success">{{ $newText }}</span>
+                                    </div>
+                                    <div class="text-muted font-monospace mt-1" style="font-size:.68rem;">
+                                        ({{ number_format($adj->old_stock, 0) }} &rarr; {{ number_format($adj->new_stock, 0) }} Pcs)
+                                    </div>
+                                @else
+                                    <div class="stock-flow">
+                                        <span class="stock-old">{{ number_format($adj->old_stock, (fmod($adj->old_stock, 1) !== 0.0 ? 2 : 0)) }}</span>
+                                        <i class="fas fa-long-arrow-alt-right stock-arrow"></i>
+                                        <span class="stock-new">{{ number_format($adj->new_stock, (fmod($adj->new_stock, 1) !== 0.0 ? 2 : 0)) }}</span>
+                                    </div>
+                                @endif
                             </td>
                             <td style="max-width:240px; white-space:normal;">
                                 <span style="font-size:.78rem; color:#334155;">{{ $adj->reason }}</span>

@@ -271,6 +271,13 @@ class OpeningStockController extends Controller
             ->select('product_id', 'to_warehouse_id as warehouse_id', 'quantity', 'variant_key', 'variant_name')
             ->get();
 
+        // Fetch stock adjustments for accurate live stock calculation
+        $stockAdjustments = DB::table('stock_adjustments')
+            ->whereIn('product_id', $pageProductIds)
+            ->whereIn('warehouse_id', $permittedWarehouseIds)
+            ->select('product_id', 'warehouse_id', 'variant_key', 'variant_name', DB::raw('(new_stock - old_stock) as delta_qty'))
+            ->get();
+
         $variantMatches = function ($rawColor, $targetVariantName, $targetVariantKey) {
             if (!$targetVariantName && !$targetVariantKey) {
                 return true;
@@ -416,7 +423,13 @@ class OpeningStockController extends Controller
                     $hasTransfersOut = $stockTransfersOut->where('product_id', $pId)->where('warehouse_id', $pWhId)->contains(function($st) use ($vName, $vKey) {
                         return empty($st->variant_key) || $st->variant_key === $vKey || $st->variant_name === $vName;
                     });
-                    if ($hasReturns || $hasPurchases || $hasTransfersIn || $hasTransfersOut) {
+                    $hasAdjustments = $stockAdjustments->where('product_id', $pId)->where('warehouse_id', $pWhId)->contains(function($sa) use ($vName, $vKey) {
+                        if ($vKey !== '' && !empty($sa->variant_key) && $sa->variant_key === $vKey) return true;
+                        if ($vName !== '' && !empty($sa->variant_name) && $sa->variant_name === $vName) return true;
+                        if (empty($sa->variant_key) && empty($sa->variant_name)) return true;
+                        return false;
+                    });
+                    if ($hasReturns || $hasPurchases || $hasTransfersIn || $hasTransfersOut || $hasAdjustments) {
                         $allVariantWhIds->push($pWhId);
                     }
                 }
@@ -472,7 +485,20 @@ class OpeningStockController extends Controller
                     }
                 }
 
-                $entryLivePieces = max(0, $entryOpeningPieces + $whPurchases - $whSales + $whReturns + $whTransferIn - $whTransferOut);
+                // Adjustment delta for this variant & warehouse
+                $whAdjustments = 0;
+                foreach ($stockAdjustments->where('product_id', $pId)->where('warehouse_id', $whId) as $sa) {
+                    $m = false;
+                    if ($vKey !== '' && !empty($sa->variant_key) && $sa->variant_key === $vKey) $m = true;
+                    elseif ($vName !== '' && !empty($sa->variant_name) && $sa->variant_name === $vName) $m = true;
+                    elseif (empty($sa->variant_key) && empty($sa->variant_name)) $m = true;
+
+                    if ($m) {
+                        $whAdjustments += (float)$sa->delta_qty;
+                    }
+                }
+
+                $entryLivePieces = max(0, $entryOpeningPieces + $whPurchases - $whSales + $whReturns + $whTransferIn - $whTransferOut + $whAdjustments);
                 if ($entryLivePieces <= 0 && $entryOpeningPieces <= 0) {
                     continue;
                 }
