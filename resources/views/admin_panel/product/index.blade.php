@@ -305,6 +305,81 @@
     .btn-act-act:hover     { background: var(--erp-success); color: #fff; }
     .btn-act-delete  { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
     .btn-act-delete:hover  { background: #dc2626; color: #fff; }
+    .btn-act-link    { background: #f3e8ff; color: #7e22ce; border-color: #d8b4fe; font-weight:600; }
+    .btn-act-link:hover    { background: #7e22ce; color: #fff; border-color: #7e22ce; }
+
+    /* ── Link Products Modal Select2 Styling ── */
+    #linkProductsModal .card-body .select2-container {
+        width: 100% !important;
+    }
+    #linkProductsModal .select2-container--default .select2-selection--single {
+        height: 40px !important;
+        border: 1.5px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        background-color: #ffffff !important;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    #linkProductsModal .select2-container--default.select2-container--open .select2-selection--single,
+    #linkProductsModal .select2-container--default.select2-container--focus .select2-selection--single {
+        border-color: #7c3aed !important;
+        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15) !important;
+        outline: 0 !important;
+    }
+    #linkProductsModal .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 38px !important;
+        padding-left: 12px !important;
+        font-size: 0.88rem !important;
+        font-weight: 600 !important;
+        color: #1e293b !important;
+    }
+    #linkProductsModal .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 38px !important;
+        right: 10px !important;
+    }
+    .select2-container--open {
+        z-index: 99999 !important;
+    }
+    .select2-dropdown {
+        z-index: 99999 !important;
+        border: 1.5px solid #7c3aed !important;
+        border-radius: 8px !important;
+        box-shadow: 0 14px 35px rgba(15, 23, 42, 0.25) !important;
+        background-color: #ffffff !important;
+        overflow: hidden !important;
+    }
+    .select2-search--dropdown {
+        padding: 8px 10px !important;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .select2-search--dropdown .select2-search__field {
+        border: 1.5px solid #7c3aed !important;
+        border-radius: 6px !important;
+        padding: 7px 12px !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        width: 100% !important;
+        outline: none !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+    }
+    .select2-results__options {
+        max-height: 280px !important;
+        overflow-y: auto !important;
+    }
+    .select2-results__option {
+        font-size: 0.84rem !important;
+        padding: 9px 12px !important;
+        font-weight: 500 !important;
+        color: #1e293b;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+    }
+    .select2-results__option--highlighted[aria-selected] {
+        background-color: #7c3aed !important;
+        color: #ffffff !important;
+    }
 
     /* ── Pagination ── */
     .erp-pagination { padding: 14px 20px; border-top: 1px solid var(--erp-border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
@@ -837,6 +912,15 @@
                                                 <i class="fas fa-pencil-alt"></i> Edit
                                             </a>
                                         @endif
+                                        @if (auth()->user()->can('products.edit') || auth()->user()->email === 'admin@admin.com')
+                                            <button type="button" class="btn-act btn-act-link openLinkProductsBtn"
+                                                data-id="{{ $product->id }}"
+                                                data-name="{{ $product->item_name }}"
+                                                data-code="{{ $product->item_code }}"
+                                                title="🔗 Link Complementary / Upsell Products">
+                                                <i class="fas fa-link"></i> Link
+                                            </button>
+                                        @endif
                                         <a href="{{ route('generate-barcode-image', $product->id) }}"
                                             class="btn-act btn-act-barcode" title="Generate Barcode">
                                             <i class="fas fa-barcode"></i>
@@ -961,6 +1045,11 @@
                             <a href="{{ route('products.edit', $product->id) }}" class="btn-act btn-act-edit">
                                 <i class="fas fa-pencil-alt"></i> Edit
                             </a>
+                        @endif
+                        @if (auth()->user()->can('products.edit') || auth()->user()->email === 'admin@admin.com')
+                            <button type="button" class="btn-act btn-act-link openLinkProductsBtn" data-id="{{ $product->id }}" data-name="{{ $product->item_name }}" data-code="{{ $product->item_code }}">
+                                <i class="fas fa-link"></i> Link
+                            </button>
                         @endif
                         <a href="{{ route('generate-barcode-image', $product->id) }}" class="btn-act btn-act-barcode">
                             <i class="fas fa-barcode"></i> Barcode
@@ -1348,6 +1437,108 @@
 </div>
 
 @endsection
+
+<!-- ================= LINK PRODUCTS MODAL ================= -->
+<div class="modal fade" id="linkProductsModal" tabindex="-1" role="dialog" aria-labelledby="linkProductsModalLabel" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:16px; overflow:hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #6b21a8, #7c3aed); color:#fff; border-bottom: none; padding: 16px 22px;">
+                <div>
+                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2" id="linkProductsModalLabel" style="font-size:1.1rem; color:#fff;">
+                        <i class="fas fa-link" style="color:#f3e8ff;"></i> Link Complementary / Upsell Products
+                    </h5>
+                    <div class="d-flex align-items-center gap-2 mt-1" style="font-size:.82rem; color:rgba(255,255,255,0.9);">
+                        <span>Main Product:</span>
+                        <span id="lp_main_item_name" class="fw-bold text-white">Loading...</span>
+                        <span>•</span>
+                        <code id="lp_main_item_code" class="text-white" style="background:rgba(255,255,255,0.2); padding:1px 6px; border-radius:4px;">-</code>
+                    </div>
+                </div>
+                <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="opacity:.9; text-shadow:none; font-size:1.4rem; background:none; border:none;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            
+            <div class="modal-body p-4" style="background:#f8fafc; max-height:calc(85vh - 120px); overflow-y:auto;">
+                <!-- Link New Product Card -->
+                <div class="card mb-4 border-0 shadow-sm" style="border-radius:12px; background:#fff;">
+                    <div class="card-header bg-white border-bottom py-2 px-3">
+                        <span class="fw-bold" style="font-size:.8rem; color:#475569; text-transform:uppercase; letter-spacing:.5px;">
+                            <i class="fas fa-plus-circle text-purple me-1" style="color:#7c3aed;"></i> Link Another Product / Variant
+                        </span>
+                    </div>
+                    <div class="card-body p-3">
+                        <form id="formAddProductLink">
+                            <input type="hidden" id="lp_current_product_id" name="product_id">
+                            <input type="hidden" id="lp_selected_linked_product_id" name="linked_product_id">
+                            <input type="hidden" id="lp_selected_variant_key" name="variant_key">
+                            <input type="hidden" id="lp_selected_variant_unit" name="variant_unit">
+                            <input type="hidden" id="lp_selected_variant_name" name="variant_name">
+                            <input type="hidden" id="lp_selected_variant_data" name="variant_data">
+
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-7">
+                                    <label class="form-label small fw-bold text-muted mb-1">
+                                        <i class="fas fa-search me-1" style="color:#7c3aed;"></i> Search Product / Variant <span class="text-danger">*</span>
+                                    </label>
+                                    <select id="lp_select_product" class="form-select form-control" style="width:100%;">
+                                        <option value="">-- Type Item Code, Barcode, or Name --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label small fw-bold text-muted mb-1">Recommended Qty</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" step="any" min="0.01" class="form-control form-control-sm text-center fw-bold" id="lp_default_qty" name="default_qty" value="1.00">
+                                        <span class="input-group-text bg-light fw-bold" id="lp_unit_badge">Pcs</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 col-6">
+                                    <button type="submit" class="btn btn-sm w-100 fw-bold text-white shadow-sm d-flex align-items-center justify-content-center gap-1" id="btnSaveLink" style="background:#7c3aed; height:34px;">
+                                        <i class="fas fa-link"></i> Link
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Existing Links Table Card -->
+                <div class="card border-0 shadow-sm" style="border-radius:12px; background:#fff;">
+                    <div class="card-header bg-white border-bottom py-2 px-3 d-flex justify-content-between align-items-center">
+                        <span class="fw-bold" style="font-size:.8rem; color:#475569; text-transform:uppercase; letter-spacing:.5px;">
+                            <i class="fas fa-list text-primary me-1"></i> Currently Linked Products
+                        </span>
+                        <span class="badge bg-purple-subtle text-purple fw-bold px-2 py-1" id="lp_links_count_badge" style="background:#f3e8ff; color:#7c3aed; font-size:.75rem;">
+                            0 Linked
+                        </span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="lpExistingLinksTable" style="font-size:.86rem;">
+                                <thead style="background:#f1f5f9; color:#475569; font-size:.76rem; text-transform:uppercase;">
+                                    <tr>
+                                        <th style="padding:10px 14px;">Linked Product</th>
+                                        <th style="padding:10px 14px;" class="text-center">Variant / Unit</th>
+                                        <th style="padding:10px 14px;" class="text-center">Rec. Qty</th>
+                                        <th style="padding:10px 14px;" class="text-center" style="width:80px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lpExistingLinksBody">
+                                    <!-- Rendered dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-white border-top py-2 px-3 d-flex justify-content-between">
+                <small class="text-muted"><i class="fas fa-info-circle text-primary"></i> When selling this product, cashier will be prompted to add these linked items with one click.</small>
+                <button type="button" class="btn btn-sm btn-secondary px-3" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section('js')
 <script>
@@ -2074,6 +2265,330 @@ $(document).ready(function () {
                     msg = xhr.responseJSON.message;
                 }
                 Swal.fire('Error', msg, 'error');
+            }
+        });
+    });
+
+    // ========================================================
+    // LINK PRODUCTS MODAL (COMPLEMENTARY / UPSELL)
+    // ========================================================
+    function escapeHtmlAttr(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function initLinkProductsSelect2() {
+        if ($('#lp_select_product').hasClass('select2-hidden-accessible')) {
+            return;
+        }
+
+        $('#lp_select_product').select2({
+            dropdownParent: $('#linkProductsModal'),
+            width: '100%',
+            placeholder: '-- Type Item Code, Barcode, or Name --',
+            allowClear: true,
+            minimumInputLength: 0,
+            ajax: {
+                url: '{{ route("product-sets.ajax-products") }}',
+                dataType: 'json',
+                delay: 150,
+                data: function(params) {
+                    return {
+                        q: params.term || '',
+                        page: params.page || 1
+                    };
+                },
+                processResults: function(data, params) {
+                    params.page = params.page || 1;
+                    let currentPid = parseInt($('#lp_current_product_id').val() || 0);
+                    let filtered = (data.results || []).filter(function(item) {
+                        return parseInt(item.pid) !== currentPid;
+                    });
+                    return {
+                        results: filtered,
+                        pagination: {
+                            more: Boolean(data.pagination && data.pagination.more)
+                        }
+                    };
+                },
+                cache: true
+            },
+            templateResult: function(state) {
+                if (!state.id || state.loading) return state.text;
+                let code = state.code || '';
+                let vunit = state.vunit || 'Pcs';
+                let vweight = parseFloat(state.vweight || 0);
+                let vprice = parseFloat(state.vprice || 0);
+                let vname = state.vname || state.text;
+
+                let codeBadge = code ? `<span style="background: #0f172a; color: #38bdf8; font-family: monospace; font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; margin-right: 6px;"><i class="fas fa-barcode"></i> ${escapeHtmlAttr(code)}</span>` : '';
+                let unitBadge = `<span style="background: #e0f2fe; color: #0369a1; font-size: 0.70rem; padding: 1px 5px; border-radius: 3px; font-weight: 700; margin-left: 6px;">${escapeHtmlAttr(vunit.toUpperCase())}</span>`;
+                let weightBadge = vweight > 0 ? `<span style="background: #f0fdf4; color: #15803d; font-size: 0.70rem; padding: 1px 5px; border-radius: 3px; margin-left: 4px;">${vweight}g</span>` : '';
+                let priceBadge = vprice > 0 ? `<span style="background: #fefce8; color: #a16207; font-size: 0.70rem; padding: 1px 5px; border-radius: 3px; font-weight: 700; margin-left: 4px;">Rs. ${vprice.toLocaleString()}</span>` : '';
+
+                return $(`<div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 2px;">
+                    <div style="display: flex; align-items: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 65%;">
+                        ${codeBadge}
+                        <span style="font-weight: 600; color: #1e293b; font-size: 0.84rem;">${escapeHtmlAttr(vname)}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; flex-shrink: 0;">
+                        ${unitBadge}
+                        ${weightBadge}
+                        ${priceBadge}
+                    </div>
+                </div>`);
+            },
+            templateSelection: function(state) {
+                if (!state.id) return state.text;
+                let code = state.code || '';
+                let vname = state.vname || state.text;
+                let vunit = state.vunit || '';
+                return code ? `[${code}] ${vname} (${vunit})` : (vunit ? `${vname} (${vunit})` : vname);
+            },
+            escapeMarkup: function(m) { return m; }
+        });
+
+        // Disable Bootstrap modal focus-trap and auto-load on open
+        $('#lp_select_product').on('select2:open', function() {
+            $(document).off('focusin.modal focusin.bs.modal');
+            setTimeout(function() {
+                let $searchField = $('.select2-container--open .select2-search__field');
+                if ($searchField.length) {
+                    $searchField.focus();
+                    if (!$searchField.val()) {
+                        let select2Instance = $('#lp_select_product').data('select2');
+                        if (select2Instance) {
+                            select2Instance.trigger('query', { term: '' });
+                        }
+                    }
+                }
+            }, 50);
+        });
+
+        $('#lp_select_product').on('select2:select', function(e) {
+            let data = e.params.data;
+            if (!data) return;
+
+            $('#lp_selected_linked_product_id').val(data.pid || '');
+            $('#lp_selected_variant_key').val(data.vkey || '');
+            $('#lp_selected_variant_unit').val(data.vunit || '');
+            $('#lp_selected_variant_name').val(data.vname || '');
+            $('#lp_selected_variant_data').val(data.vdata || '');
+
+            let vunit = data.vunit || 'Pcs';
+            $('#lp_unit_badge').text(vunit.toUpperCase());
+        });
+
+        $('#lp_select_product').on('select2:unselect select2:clear', function() {
+            $('#lp_selected_linked_product_id').val('');
+            $('#lp_selected_variant_key').val('');
+            $('#lp_selected_variant_unit').val('');
+            $('#lp_selected_variant_name').val('');
+            $('#lp_selected_variant_data').val('');
+            $('#lp_unit_badge').text('Pcs');
+        });
+    }
+
+    function loadProductLinks(productId) {
+        $('#lpExistingLinksBody').html('<tr><td colspan="4" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin me-1"></i> Loading linked products...</td></tr>');
+
+        $.get('/product-links/' + productId, function(res) {
+            if (!res || !res.success) {
+                $('#lpExistingLinksBody').html('<tr><td colspan="4" class="text-center py-4 text-danger">Failed to load links.</td></tr>');
+                return;
+            }
+
+            let links = res.links || [];
+            $('#lp_links_count_badge').text(links.length + (links.length === 1 ? ' Linked' : ' Linked'));
+
+            if (links.length === 0) {
+                $('#lpExistingLinksBody').html(`
+                    <tr>
+                        <td colspan="4" class="text-center py-4 text-muted">
+                            <i class="fas fa-link text-purple opacity-50 mb-2 d-block" style="font-size: 2rem; color: #a855f7;"></i>
+                            <div class="fw-bold text-dark" style="font-size: 0.92rem;">No Complementary Products Linked Yet</div>
+                            <small class="text-muted d-block mt-1">Select a product or variant from above and click <b>[Link]</b>.</small>
+                        </td>
+                    </tr>
+                `);
+            } else {
+                let tbodyHtml = '';
+                links.forEach(function(link) {
+                    tbodyHtml += `
+                        <tr>
+                            <td style="padding: 9px 14px; vertical-align: middle;">
+                                <div class="fw-bold text-dark" style="font-size: 0.88rem;">${escapeHtmlAttr(link.name)}</div>
+                                <small class="font-monospace text-muted" style="font-size: 0.72rem;">
+                                    <i class="fas fa-barcode text-primary me-1"></i>${escapeHtmlAttr(link.code || '-')}
+                                </small>
+                            </td>
+                            <td class="text-center" style="padding: 9px 14px; vertical-align: middle;">
+                                <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-weight: 700; padding: 4px 8px; border-radius: 4px; font-size: 0.74rem;">
+                                    ${escapeHtmlAttr((link.unit || 'Pcs').toUpperCase())}
+                                </span>
+                            </td>
+                            <td class="text-center font-monospace fw-bold text-dark" style="padding: 9px 14px; vertical-align: middle;">
+                                ${link.default_qty}
+                            </td>
+                            <td class="text-center" style="padding: 9px 14px; vertical-align: middle;">
+                                <button type="button" class="btn btn-sm btn-outline-danger btnDeleteProductLink" data-id="${link.id}" title="Remove Link" style="width: 28px; height: 28px; padding: 0; line-height: 28px; border-radius: 50%;">
+                                    <i class="fas fa-trash-alt" style="font-size: 0.75rem;"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                $('#lpExistingLinksBody').html(tbodyHtml);
+            }
+        }).fail(function() {
+            $('#lpExistingLinksBody').html('<tr><td colspan="4" class="text-center py-4 text-danger">Failed to load links.</td></tr>');
+        });
+    }
+
+    // Open Link Products Modal
+    $(document).on('click', '.openLinkProductsBtn', function() {
+        let productId = $(this).data('id');
+        let productName = $(this).data('name') || '';
+        let productCode = $(this).data('code') || '';
+
+        $('#lp_current_product_id').val(productId);
+        $('#lp_main_item_name').text(productName);
+        $('#lp_main_item_code').text(productCode || '-');
+
+        // Reset form
+        $('#formAddProductLink')[0].reset();
+        $('#lp_selected_linked_product_id').val('');
+        $('#lp_selected_variant_key').val('');
+        $('#lp_selected_variant_unit').val('');
+        $('#lp_selected_variant_name').val('');
+        $('#lp_selected_variant_data').val('');
+        $('#lp_default_qty').val('1.00');
+        $('#lp_unit_badge').text('Pcs');
+
+        if ($('#lp_select_product').hasClass('select2-hidden-accessible')) {
+            $('#lp_select_product').val(null).trigger('change');
+        }
+
+        $('#linkProductsModal').modal('show');
+        $(document).off('focusin.modal focusin.bs.modal');
+        initLinkProductsSelect2();
+        loadProductLinks(productId);
+    });
+
+    $('#linkProductsModal').on('shown.bs.modal', function() {
+        $(document).off('focusin.modal focusin.bs.modal');
+        initLinkProductsSelect2();
+    });
+
+    // Initialize Select2 early
+    initLinkProductsSelect2();
+
+    // Submit Add Link Form
+    $('#formAddProductLink').on('submit', function(e) {
+        e.preventDefault();
+
+        let currentPid = $('#lp_current_product_id').val();
+        let linkedPid = $('#lp_selected_linked_product_id').val();
+
+        if (!linkedPid) {
+            Swal.fire('Please Select Product', 'Select a product or variant to link.', 'warning');
+            return;
+        }
+
+        if (parseInt(currentPid) === parseInt(linkedPid)) {
+            Swal.fire('Invalid Selection', 'Cannot link a product to itself.', 'warning');
+            return;
+        }
+
+        let btn = $('#btnSaveLink');
+        let origHtml = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Linking...');
+
+        let payload = {
+            _token: '{{ csrf_token() }}',
+            product_id: currentPid,
+            linked_product_id: linkedPid,
+            variant_key: $('#lp_selected_variant_key').val(),
+            variant_unit: $('#lp_selected_variant_unit').val(),
+            variant_name: $('#lp_selected_variant_name').val(),
+            variant_data: $('#lp_selected_variant_data').val(),
+            default_qty: $('#lp_default_qty').val() || 1
+        };
+
+        $.post('{{ route("product-links.store") }}', payload, function(res) {
+            btn.prop('disabled', false).html(origHtml);
+
+            if (res && res.success) {
+                // Reset select
+                $('#lp_select_product').val(null).trigger('change');
+                $('#lp_selected_linked_product_id').val('');
+                $('#lp_selected_variant_key').val('');
+                $('#lp_selected_variant_unit').val('');
+                $('#lp_selected_variant_name').val('');
+                $('#lp_selected_variant_data').val('');
+                $('#lp_default_qty').val('1.00');
+                $('#lp_unit_badge').text('Pcs');
+
+                loadProductLinks(currentPid);
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: res.message || 'Product linked successfully!',
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true
+                });
+            } else {
+                Swal.fire('Error', res.message || 'Failed to link product.', 'error');
+            }
+        }).fail(function(xhr) {
+            btn.prop('disabled', false).html(origHtml);
+            let msg = 'Failed to link product.';
+            if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+            Swal.fire('Error', msg, 'error');
+        });
+    });
+
+    // Delete Product Link
+    $(document).on('click', '.btnDeleteProductLink', function() {
+        let linkId = $(this).data('id');
+        let currentPid = $('#lp_current_product_id').val();
+        if (!linkId) return;
+
+        let $row = $(this).closest('tr');
+        $row.css('opacity', '0.4');
+
+        $.ajax({
+            url: '/product-links/' + linkId,
+            type: 'DELETE',
+            data: { _token: '{{ csrf_token() }}' },
+            success: function(res) {
+                if (res && res.success) {
+                    loadProductLinks(currentPid);
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Product link removed!',
+                        showConfirmButton: false,
+                        timer: 2000,
+                        timerProgressBar: true
+                    });
+                } else {
+                    $row.css('opacity', '1');
+                    Swal.fire('Error', res.message || 'Failed to remove link.', 'error');
+                }
+            },
+            error: function() {
+                $row.css('opacity', '1');
+                Swal.fire('Error', 'Failed to remove link.', 'error');
             }
         });
     });

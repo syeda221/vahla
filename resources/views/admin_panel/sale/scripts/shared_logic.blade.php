@@ -1754,6 +1754,9 @@
 
             // NOTE: Annoying popup checkProductSetAndPrompt disabled as per user instruction.
             // When selling individual products, sell individually without interruption.
+            if (!window.suppressLinkedProductPrompt && pid && !isSet) {
+                checkAndPromptLinkedProducts(pid, $row);
+            }
         });
 
         // Customer selection change -> re-check recent sale prices for all loaded products
@@ -3012,6 +3015,258 @@
         refreshPostedState();
 
         // ========================================================
+        // ========================================================
+        // LINKED / COMPLEMENTARY PRODUCTS PROMPT ON SALE SCREEN
+        // ========================================================
+        window.suppressLinkedProductPrompt = false;
+        window.lastPromptParentRow = null;
+        window.currentLinkedProductsList = [];
+
+        function recalcPromptTotals() {
+            let totalAmount = 0;
+            let selectedCount = 0;
+
+            $('#lpPromptTableBody tr').each(function() {
+                let $tr = $(this);
+                let isChecked = $tr.find('.lp-item-check').is(':checked');
+                let idx = parseInt($tr.attr('data-idx'));
+                let item = window.currentLinkedProductsList[idx];
+
+                if (item) {
+                    let price = parseFloat(item.retail_price) || 0;
+                    let qty = parseFloat($tr.find('.lp-item-qty').val()) || 0;
+                    let lineTotal = price * qty;
+                    $tr.find('.lp-item-line-total').text('Rs. ' + lineTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+
+                    if (isChecked && qty > 0) {
+                        totalAmount += lineTotal;
+                        selectedCount++;
+                    }
+                }
+            });
+
+            $('#lp_selected_count_label').text(selectedCount + (selectedCount === 1 ? ' item' : ' items'));
+            $('#lp_selected_total_label').text('Rs. ' + totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $('#btnAddLinkedProductsToSale').prop('disabled', selectedCount === 0);
+        }
+
+        window.checkAndPromptLinkedProducts = function(pid, $row) {
+            if (!pid || window.suppressLinkedProductPrompt) return;
+
+            let whId = $row.find('.warehouse').val() || $('#globalWarehouseSelect').val() || 1;
+            $.get('/sales/check-linked-products/' + pid, { warehouse_id: whId }, function(res) {
+                if (!res || !res.has_links || !res.linked_products || res.linked_products.length === 0) {
+                    return;
+                }
+
+                // Check existing product IDs in table to avoid re-prompting already added items
+                let existingPids = [];
+                $('#salesTableBody tr').each(function() {
+                    let curPid = $(this).find('.product-id-hidden').val();
+                    if (curPid) existingPids.push(curPid.toString());
+                });
+
+                let newLinkedItems = res.linked_products.filter(function(item) {
+                    return !existingPids.includes(item.product_id.toString());
+                });
+
+                if (newLinkedItems.length === 0) {
+                    return; // All linked products already added
+                }
+
+                window.lastPromptParentRow = $row;
+                window.currentLinkedProductsList = newLinkedItems;
+
+                $('#lp_prompt_parent_name').text(res.main_product ? res.main_product.item_name : '-');
+                $('#lp_prompt_parent_code').text(res.main_product ? res.main_product.item_code : '-');
+                $('#lp_prompt_items_count').text(newLinkedItems.length);
+
+                let tbodyHtml = '';
+                newLinkedItems.forEach(function(item, idx) {
+                    let price = parseFloat(item.retail_price) || 0;
+                    let qty = parseFloat(item.default_qty) || 1;
+                    let total = price * qty;
+                    let rawStock = parseFloat(item.stock_pieces) || 0;
+                    let stockBadge = '';
+
+                    if (rawStock > 0) {
+                        stockBadge = `<span class="badge" style="background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; font-weight: 700; padding: 3px 6px; font-size: 0.72rem;">${item.stock}</span>`;
+                    } else {
+                        stockBadge = `<span class="badge" style="background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; font-weight: 600; padding: 3px 6px; font-size: 0.72rem;">0 In Stock</span>`;
+                    }
+
+                    tbodyHtml += `
+                        <tr class="lp-prompt-row" data-idx="${idx}">
+                            <td class="text-center" style="vertical-align: middle;">
+                                <input type="checkbox" class="lp-item-check" checked style="cursor: pointer; transform: scale(1.15);">
+                            </td>
+                            <td style="vertical-align: middle;">
+                                <div class="fw-bold text-dark" style="font-size: 0.88rem;">${item.item_name}</div>
+                                <small class="font-monospace text-muted" style="font-size: 0.72rem;">
+                                    <i class="fas fa-barcode text-primary me-1"></i>${item.item_code || '-'}
+                                </small>
+                            </td>
+                            <td class="text-center" style="vertical-align: middle;">
+                                ${stockBadge}
+                            </td>
+                            <td class="text-end font-monospace fw-bold text-dark" style="vertical-align: middle;">
+                                Rs. ${price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </td>
+                            <td style="vertical-align: middle;">
+                                <div class="input-group input-group-sm mx-auto" style="max-width: 110px;">
+                                    <input type="number" step="any" min="0.01" class="form-control form-control-sm text-center fw-bold lp-item-qty" value="${qty}">
+                                    <span class="input-group-text bg-light text-muted fw-bold" style="font-size: 0.70rem;">${(item.unit_name || 'Pcs').toUpperCase()}</span>
+                                </div>
+                            </td>
+                            <td class="text-end font-monospace fw-bold text-success lp-item-line-total" style="vertical-align: middle;">
+                                Rs. ${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                $('#lpPromptTableBody').html(tbodyHtml);
+                $('#lp_check_all').prop('checked', true);
+                recalcPromptTotals();
+
+                $('#linkedProductsModal').modal('show');
+            });
+        };
+
+        // Recalculate totals on quantity change or checkbox toggle
+        $(document).on('input change', '.lp-item-qty', function() {
+            recalcPromptTotals();
+        });
+
+        $(document).on('change', '.lp-item-check', function() {
+            let allChecked = $('.lp-item-check:not(:checked)').length === 0;
+            $('#lp_check_all').prop('checked', allChecked);
+            recalcPromptTotals();
+        });
+
+        $(document).on('change', '#lp_check_all', function() {
+            let isChecked = $(this).is(':checked');
+            $('.lp-item-check').prop('checked', isChecked);
+            recalcPromptTotals();
+        });
+
+        // Add single linked product item to sales table
+        window.addLinkedProductItemToSale = function(item) {
+            if (!item || !$('#salesTableBody').length) return;
+
+            let $targetRow = null;
+            $('#salesTableBody tr').each(function() {
+                let pVal = $(this).find('.product-id-hidden').val();
+                let pSelectVal = $(this).find('.product').val();
+                if (!pVal && !pSelectVal && !$targetRow) {
+                    $targetRow = $(this);
+                }
+            });
+
+            if (!$targetRow) {
+                if (typeof addNewRow === 'function') {
+                    addNewRow();
+                    $targetRow = $('#salesTableBody tr:last');
+                } else {
+                    return;
+                }
+            }
+
+            let displayText = item.item_name + (item.unit_name ? ' [' + item.unit_name + ']' : '');
+            let optionVal = item.product_id + '|' + (item.variant_name || item.variant_key || 'Base');
+
+            let selectData = {
+                id: optionVal,
+                text: displayText,
+                name: displayText,
+                sku: item.item_code || '',
+                stock: item.stock !== undefined ? item.stock : 0,
+                stock_pieces: item.stock_pieces !== undefined ? item.stock_pieces : 0,
+                retail_price: item.retail_price || 0,
+                trade_price: item.retail_price || 0,
+                wholesale_price: item.wholesale_price || 0,
+                purchase_price: 0,
+                size_mode: item.size_mode || 'by_pieces',
+                pieces_per_box: item.pieces_per_box || 1,
+                variant_data: item.variant_data || ''
+            };
+
+            let $select = $targetRow.find('.product');
+            let newOption = new Option(displayText, optionVal, true, true);
+            $(newOption).data('data', selectData);
+            $select.empty().append(newOption);
+
+            $select.trigger({
+                type: 'select2:select',
+                params: {
+                    data: selectData
+                }
+            });
+
+            let finalQty = parseFloat(item.quantity) || parseFloat(item.default_qty) || 1;
+            $targetRow.find('.carton-qty').val(finalQty).trigger('input');
+            if (typeof computeRow === 'function') {
+                computeRow($targetRow);
+            }
+        };
+
+        // Add Selected Linked Products to Invoice
+        $('#btnAddLinkedProductsToSale').on('click', function() {
+            window.suppressLinkedProductPrompt = true;
+
+            let addedCount = 0;
+            $('.lp-prompt-row').each(function() {
+                let $tr = $(this);
+                let isChecked = $tr.find('.lp-item-check').is(':checked');
+                if (isChecked) {
+                    let idx = parseInt($tr.attr('data-idx'));
+                    let item = window.currentLinkedProductsList[idx];
+                    if (item) {
+                        item.quantity = parseFloat($tr.find('.lp-item-qty').val()) || item.default_qty || 1;
+                        addLinkedProductItemToSale(item);
+                        addedCount++;
+                    }
+                }
+            });
+
+            window.suppressLinkedProductPrompt = false;
+
+            if (typeof updateGrandTotals === 'function') {
+                updateGrandTotals();
+            }
+
+            $('#linkedProductsModal').modal('hide');
+
+            if (addedCount > 0 && typeof Swal !== 'undefined') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: addedCount + ' linked product(s) added to invoice!',
+                    showConfirmButton: false,
+                    timer: 2500,
+                    timerProgressBar: true
+                });
+            }
+        });
+
+        // Refocus on parent row when modal is closed
+        $('#linkedProductsModal').on('hidden.bs.modal', function() {
+            if (window.lastPromptParentRow && window.lastPromptParentRow.length) {
+                setTimeout(function() {
+                    window.lastPromptParentRow.find('.carton-qty').focus().select();
+                }, 100);
+            }
+        });
+
+        // Enter key to add, Esc to skip
+        $('#linkedProductsModal').on('keydown', function(e) {
+            if (e.which === 13) { // Enter
+                e.preventDefault();
+                $('#btnAddLinkedProductsToSale').click();
+            }
+        });
+
         // SALE DRAFT PRESERVATION & AUTO-ADD NEWLY CREATED PRODUCT
         // ========================================================
 

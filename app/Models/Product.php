@@ -94,6 +94,18 @@ class Product extends Model
             ->withTimestamps();
     }
 
+    public function productLinks()
+    {
+        return $this->hasMany(ProductLink::class, 'product_id');
+    }
+
+    public function linkedProducts()
+    {
+        return $this->belongsToMany(Product::class, 'product_links', 'product_id', 'linked_product_id')
+            ->withPivot('id', 'variant_key', 'variant_unit', 'variant_name', 'variant_data', 'default_qty')
+            ->withTimestamps();
+    }
+
     protected static function booted()
     {
         static::saved(function ($product) {

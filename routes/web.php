@@ -174,6 +174,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/product-sets/{id}', [ProductSetController::class, 'destroy'])->name('product-sets.destroy');
     Route::get('/product-sets/check-product/{id}', [ProductSetController::class, 'checkProductSet'])->name('product-sets.check_product');
 
+    // ── Product Links (Complementary / Upsell) ──
+    Route::get('/product-links/{productId}', [App\Http\Controllers\ProductLinkController::class, 'getLinks'])->name('product-links.get');
+    Route::post('/product-links', [App\Http\Controllers\ProductLinkController::class, 'storeLink'])->name('product-links.store');
+    Route::delete('/product-links/{id}', [App\Http\Controllers\ProductLinkController::class, 'deleteLink'])->name('product-links.delete');
+    Route::get('/sales/check-linked-products/{productId}', [App\Http\Controllers\ProductLinkController::class, 'checkLinkedProducts'])->name('sales.check-linked-products');
+
     // ── Product Pricing & Valuation (Spreadsheet / Inline Edit) ──
     Route::get('/products/pricing-valuation', [App\Http\Controllers\ProductPricingController::class, 'index'])
         ->middleware('permission:products.view')->name('products.pricing_valuation');

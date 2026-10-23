@@ -60,11 +60,16 @@ class ProductSetController extends Controller
     {
         $term = trim($request->input('q') ?? $request->input('term') ?? '');
         $page = max(1, (int)$request->input('page', 1));
-        $perPage = 25;
+        $perPage = 40;
+        $categoryId = $request->input('category_id');
 
         $query = Product::where('is_active', true)
-            ->select('id', 'item_name', 'item_code', 'barcode_path', 'sale_price_per_piece', 'sale_price_per_box', 'size_mode', 'pieces_per_box', 'unit_id', 'color', 'weight_per_piece')
-            ->with('unit');
+            ->select('id', 'item_name', 'item_code', 'category_id', 'barcode_path', 'sale_price_per_piece', 'sale_price_per_box', 'size_mode', 'pieces_per_box', 'unit_id', 'color', 'weight_per_piece')
+            ->with(['unit', 'category']);
+
+        if (!empty($categoryId) && is_numeric($categoryId)) {
+            $query->where('category_id', $categoryId);
+        }
 
         $words = [];
         if ($term !== '') {
@@ -74,14 +79,17 @@ class ProductSetController extends Controller
             $unpaddedNum = ltrim($numTerm, '0');
 
             $query->where(function ($q) use ($words, $term, $cleanTerm, $numTerm, $unpaddedNum) {
-                // Space-separated words search across name, code, variants
+                // Space-separated words search across name, code, variants, and category name
                 if (!empty($words)) {
                     $q->where(function ($subQ) use ($words) {
                         foreach ($words as $w) {
                             $subQ->where(function ($wQ) use ($w) {
                                 $wQ->where('item_name', 'like', "%{$w}%")
                                    ->orWhere('item_code', 'like', "%{$w}%")
-                                   ->orWhere('color', 'like', "%{$w}%");
+                                   ->orWhere('color', 'like', "%{$w}%")
+                                   ->orWhereHas('category', function ($catQ) use ($w) {
+                                       $catQ->where('name', 'like', "%{$w}%");
+                                   });
                             });
                         }
                     });
@@ -170,6 +178,7 @@ class ProductSetController extends Controller
                         'pid'      => $p->id,
                         'vidx'     => $vIdx,
                         'code'     => $code,
+                        'cat'      => $p->category->name ?? '',
                         'vkey'     => $vKey,
                         'vunit'    => $vUnit,
                         'vname'    => $vName,
@@ -194,6 +203,7 @@ class ProductSetController extends Controller
                     'pid'      => $p->id,
                     'vidx'     => 'base',
                     'code'     => $code,
+                    'cat'      => $p->category->name ?? '',
                     'vkey'     => 'base',
                     'vunit'    => $stdUnit,
                     'vname'    => $p->item_name,

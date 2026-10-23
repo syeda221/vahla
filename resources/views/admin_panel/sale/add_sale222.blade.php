@@ -1723,6 +1723,8 @@
         });
     </script>
 
+    @include('admin_panel.sale.partials.linked_products_modal')
+
     <!-- Modal: Add / Manage Invoice Series -->
     <div class="modal fade" id="modalAddInvoiceSeries" tabindex="-1" aria-labelledby="modalAddInvoiceSeriesLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-sm">
