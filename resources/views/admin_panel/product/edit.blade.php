@@ -1,4 +1,4 @@
-@extends('admin_panel.layout.app')
+﻿@extends('admin_panel.layout.app')
 
 @section('content')
     {{-- 
@@ -1769,16 +1769,17 @@
                 });
             }
 
-            // Mobile initial render if on mobile screen
-            if (typeof isMobile === 'function' && isMobile() && typeof rebuildMobileCards === 'function') {
-                rebuildMobileCards();
-            }
         // ============================================================
         //  MOBILE VARIANT CARDS SYSTEM
         //  Two-way sync: desktop table <-> mobile accordion cards
         // ============================================================
 
         const isMobile = () => window.innerWidth < 768;
+
+            // Mobile initial render if on mobile screen
+            if (isMobile()) {
+                rebuildMobileCards();
+            }
         let mobVariantIndex = 0;
 
         function escapeHtml(str) {

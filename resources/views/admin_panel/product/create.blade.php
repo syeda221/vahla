@@ -1,4 +1,4 @@
-@extends('admin_panel.layout.app')
+﻿@extends('admin_panel.layout.app')
 
 @section('content')
     {{--
@@ -1569,7 +1569,6 @@
                     }
                 }
             });
-        });
         // ============================================================
         //  MOBILE VARIANT CARDS SYSTEM
         //  Two-way sync: desktop table <-> mobile accordion cards
@@ -1893,5 +1892,6 @@
         window.mobToggleCard = mobToggleCard;
         window.mobDeleteCard = mobDeleteCard;
 
+    });
     </script>
 @endsection
