@@ -19,6 +19,10 @@ class StockAdjustmentController extends Controller
     private function checkPermission()
     {
         $user = auth()->user();
+        if (!$user) {
+            abort(401, 'Unauthenticated');
+        }
+
         if ($user->email === 'admin@admin.com' || $user->hasRole('Super Admin') || $user->hasRole('Admin')) {
             return true;
         }
@@ -36,6 +40,9 @@ class StockAdjustmentController extends Controller
     private function getPermittedWarehouses()
     {
         $user = auth()->user();
+        if (!$user) {
+            return Warehouse::where('id', 1)->get();
+        }
 
         if ($user->email === 'admin@admin.com' || $user->hasRole('Super Admin') || $user->hasRole('Admin') || $user->can('warehouse.view')) {
             return Warehouse::orderByRaw("CASE WHEN id = 1 THEN 0 ELSE 1 END, id ASC")->get();
@@ -241,7 +248,7 @@ public function getProductVariants(Request $request, $productId)
 
                         $variants[] = [
                             'index'           => $idx,
-                            'variant_key'     => ($vName . '|' . $vSize . '|' . $vColor),
+                            'variant_key'     => ($vName . '|' . $vSize . '|' . $vColor . '|' . $vUnit),
                             'name'            => $vName,
                             'size'            => $vSize,
                             'color'           => $vColor,
@@ -313,6 +320,10 @@ public function getProductVariants(Request $request, $productId)
                 'message' => 'Stock adjustment processed successfully!',
             ]);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('StockAdjustmentController::store error: ' . $e->getMessage(), [
+                'exception' => $e->getTraceAsString(),
+                'request'   => $request->all()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to adjust stock: ' . $e->getMessage(),
@@ -339,7 +350,7 @@ public function getProductVariants(Request $request, $productId)
             'items'        => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.type'       => 'required|in:add,subtract,set',
-            'items.*.qty'        => 'required|numeric|min:0.01',
+            'items.*.qty'        => 'required|numeric|min:0',
             'global_reason'      => 'required|string|max:1000',
         ]);
 
@@ -368,6 +379,10 @@ public function getProductVariants(Request $request, $productId)
                 'message' => count($request->items) . ' stock adjustment(s) saved successfully!',
             ]);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('StockAdjustmentController::storeBatch error: ' . $e->getMessage(), [
+                'exception' => $e->getTraceAsString(),
+                'request'   => $request->all()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to process batch adjustment: ' . $e->getMessage(),

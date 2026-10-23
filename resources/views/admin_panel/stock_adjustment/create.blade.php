@@ -1121,8 +1121,13 @@ $(document).ready(function () {
             $('#variantsModal').modal('show');
 
             $.ajax({
-                url: "/stock-adjustments/product-variants/" + productId,
+                url: "{{ url('stock-adjustments/product-variants') }}/" + productId,
                 type: "GET",
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                dataType: "json",
                 data: { warehouse_id: warehouseId },
                 success: function (res) {
                     container.empty();
@@ -1200,8 +1205,13 @@ $(document).ready(function () {
         } else {
             // Standard Product (No variants) -> Add directly to cart
             $.ajax({
-                url: "/stock-adjustments/product-variants/" + productId,
+                url: "{{ url('stock-adjustments/product-variants') }}/" + productId,
                 type: "GET",
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                dataType: "json",
                 data: { warehouse_id: warehouseId },
                 success: function (res) {
                     let curStock = res.total_stock || 0;
@@ -1444,32 +1454,57 @@ $(document).ready(function () {
         $.ajax({
             url: "{{ route('stock_adjustments.store_batch') }}",
             type: "POST",
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || "{{ csrf_token() }}",
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            dataType: 'json',
             data: {
-                _token: "{{ csrf_token() }}",
+                _token: $('meta[name="csrf-token"]').attr('content') || "{{ csrf_token() }}",
                 warehouse_id: warehouseId,
                 global_reason: globalReason,
                 items: cart
             },
             success: function (res) {
-                if (res.success) {
+                if (res && res.success) {
                     Swal.fire({
                         icon: 'success',
                         title: 'Stock Adjusted Successfully!',
-                        text: res.message,
+                        text: res.message || 'Adjustments saved successfully.',
                         timer: 1800,
                         showConfirmButton: false
                     }).then(() => {
                         window.location.href = "{{ route('stock_adjustments.index') }}";
                     });
                 } else {
-                    Swal.fire('Error', res.message || 'Failed to process adjustment.', 'error');
+                    let errMsg = (res && res.message) ? res.message : 'Failed to process adjustment.';
+                    Swal.fire('Error', errMsg, 'error');
                     btn.html(origHtml).prop('disabled', false);
                 }
             },
             error: function (xhr) {
                 btn.html(origHtml).prop('disabled', false);
-                let msg = xhr.responseJSON?.message || 'Server error occurred.';
-                Swal.fire('Error', msg, 'error');
+                let msg = 'Failed to process adjustment.';
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.errors) {
+                        msg = Object.values(xhr.responseJSON.errors).flat().join('<br>');
+                    } else if (xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                } else if (xhr.responseText) {
+                    try {
+                        let parsed = JSON.parse(xhr.responseText);
+                        msg = parsed.message || msg;
+                    } catch (e) {
+                        msg = 'Server returned error (' + xhr.status + ')';
+                    }
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Adjustment Error',
+                    html: msg
+                });
             }
         });
     });
