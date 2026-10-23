@@ -273,32 +273,34 @@
     /* Product Cards Grid */
     .pos-items-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+        gap: 14px;
         flex: 1 1 auto;
         overflow-y: auto;
-        padding-right: 4px;
+        padding: 4px 6px 14px 4px;
         align-content: start;
     }
 
     .pos-prod-card {
         background: #ffffff;
-        border: 1px solid var(--pos-border);
-        border-radius: var(--pos-radius-md);
-        padding: 12px 14px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 14px 10px 14px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        min-height: 130px;
+        min-height: 145px;
+        box-sizing: border-box;
         cursor: pointer;
         user-select: none;
         transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
         position: relative;
+        overflow: hidden;
     }
     .pos-prod-card:hover {
         transform: translateY(-2px);
         border-color: var(--pos-primary);
-        box-shadow: 0 4px 14px rgba(79,70,229,0.12);
+        box-shadow: 0 6px 16px rgba(79,70,229,0.12);
     }
     .pos-prod-card-top {
         display: flex;
@@ -309,23 +311,25 @@
     }
     .pos-prod-code {
         font-family: monospace;
-        font-size: 0.68rem;
+        font-size: 0.70rem;
+        font-weight: 700;
         color: #475569;
-        background: #f8fafc;
-        border: 1px solid var(--pos-border);
-        border-radius: 4px;
-        padding: 1px 6px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 2px 7px;
     }
     .pos-prod-title {
         font-weight: 700;
         font-size: 0.84rem;
-        color: var(--pos-text-main);
-        line-height: 1.3;
+        color: #1e293b;
+        line-height: 1.35;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
+        word-break: break-word;
     }
 
     .pos-prod-variant-tag {
@@ -334,43 +338,45 @@
         gap: 4px;
         font-size: 0.70rem;
         font-weight: 700;
-        background: var(--pos-primary-light);
-        color: var(--pos-primary);
+        background: #eef2ff;
+        color: #4f46e5;
         border: 1px solid #c7d2fe;
-        border-radius: 4px;
-        padding: 2px 6px;
-        margin-top: 4px;
+        border-radius: 6px;
+        padding: 2px 7px;
     }
     .pos-prod-standard-tag {
         font-size: 0.70rem;
+        font-weight: 600;
         color: #94a3b8;
-        margin-top: 4px;
     }
 
     .pos-prod-action {
-        margin-top: 10px;
-        padding-top: 8px;
-        border-top: 1px solid var(--pos-border-subtle);
+        margin-top: auto;
+        padding-top: 10px;
+        width: 100%;
+        box-sizing: border-box;
     }
     .pos-prod-btn-action {
         width: 100%;
-        height: 28px;
+        height: 30px;
         background: #f8fafc;
-        border: 1px solid var(--pos-border);
+        border: 1px solid #cbd5e1;
         border-radius: 6px;
-        font-size: 0.72rem;
+        font-size: 0.74rem;
         font-weight: 700;
-        color: var(--pos-primary);
+        color: #4f46e5;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 6px;
         transition: all 0.15s ease;
+        box-sizing: border-box;
     }
     .pos-prod-card:hover .pos-prod-btn-action {
-        background: var(--pos-primary);
-        border-color: var(--pos-primary);
+        background: #4f46e5;
+        border-color: #4f46e5;
         color: #ffffff;
+        box-shadow: 0 2px 6px rgba(79,70,229,0.25);
     }
 
     /* ── RIGHT PANEL: Cart & Totals ── */
@@ -844,7 +850,7 @@
                             $hasVariants = count($variants) > 0;
                         @endphp
 
-                        <div class="pos-prod-card product-card" 
+                        <div class="pos-prod-card" 
                              data-id="{{ $p->id }}"
                              data-name="{{ $p->item_name }}"
                              data-code="{{ $p->item_code }}"
@@ -1076,7 +1082,7 @@ $(document).ready(function () {
                                 : `<div class="pos-prod-standard-tag"><i class="fas fa-box me-1"></i> Standard Product</div>`;
 
                             let cardHtml = `
-                            <div class="pos-prod-card product-card" 
+                            <div class="pos-prod-card" 
                                  data-id="${p.id}"
                                  data-name="${p.item_name}"
                                  data-code="${p.item_code}"
