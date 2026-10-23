@@ -38,7 +38,7 @@ class StockAdjustmentController extends Controller
         $user = auth()->user();
 
         if ($user->email === 'admin@admin.com' || $user->hasRole('Super Admin') || $user->hasRole('Admin') || $user->can('warehouse.view')) {
-            return Warehouse::orderBy('warehouse_name')->get();
+            return Warehouse::orderByRaw("CASE WHEN id = 1 THEN 0 ELSE 1 END, id ASC")->get();
         }
 
         if (isset($user->warehouse_id) && $user->warehouse_id) {
@@ -50,7 +50,7 @@ class StockAdjustmentController extends Controller
             return $userWarehouses;
         }
 
-        return Warehouse::limit(1)->get();
+        return Warehouse::orderByRaw("CASE WHEN id = 1 THEN 0 ELSE 1 END, id ASC")->get();
     }
 
     /**
@@ -135,11 +135,11 @@ class StockAdjustmentController extends Controller
         return view('admin_panel.stock_adjustment.create', compact('warehouses', 'categories', 'brands', 'products'));
     }
 
-    public function getProductVariants(Request $request, $productId)
+public function getProductVariants(Request $request, $productId)
     {
         $this->checkPermission();
 
-        $product = Product::findOrFail($productId);
+        $product = Product::with('unit')->findOrFail($productId);
         $warehouseId = $request->query('warehouse_id');
         if (!$warehouseId) {
             $warehouseId = $this->getPermittedWarehouses()->first()->id ?? 1;
@@ -153,65 +153,121 @@ class StockAdjustmentController extends Controller
             $stockPieces = (float) WarehouseStock::where('product_id', $productId)->sum('total_pieces');
         }
 
+        $ppb = (float) ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+        $sizeMode = $product->size_mode;
+
+        // Default base unit
+        $defaultUnit = $product->unit->name ?? match($sizeMode) {
+            'by_kg'      => 'Kg',
+            'by_meter'   => 'Meter',
+            'by_feet'    => 'Ft',
+            'by_cartons' => 'Carton',
+            default      => 'Pcs'
+        };
+
         $variants = [];
         if ($product->color) {
             try {
                 $parsed = is_string($product->color) ? json_decode($product->color, true) : $product->color;
                 if (is_array($parsed) && count($parsed) > 0) {
-                    if (isset($parsed[0]['name']) || isset($parsed[0]['color'])) {
-                        foreach ($parsed as $v) {
-                            $vName = $v['name'] ?? $product->item_name;
-                            $vSize = $v['size'] ?? '-';
-                            $vColor = $v['color'] ?? '-';
-                            $vInitial = (float)($v['stock'] ?? 0);
+                    $rawList = isset($parsed['name']) || isset($parsed['color']) ? (isset($parsed[0]) ? $parsed : [$parsed]) : array_values($parsed);
 
-                            // Calculate live variant stock balance
-                            $purchased = DB::table('purchase_items as pi')
-                                ->join('purchases as pur', 'pur.id', '=', 'pi.purchase_id')
-                                ->where('pi.product_id', $productId)
-                                ->whereIn('pur.status_purchase', ['approved', 'Returned', 'Partial'])
-                                ->where(function($q) use ($vColor) {
-                                    if ($vColor !== '-') $q->where('pi.color', 'like', "%{$vColor}%");
-                                })
-                                ->sum('pi.qty');
+                    foreach ($rawList as $idx => $v) {
+                        $vName  = $v['name'] ?? $v['variant_name'] ?? $product->item_name;
+                        $vSize  = $v['size'] ?? $v['variant_size'] ?? '-';
+                        $vColor = $v['color'] ?? $v['variant_color'] ?? '-';
 
-                            $sold = DB::table('sale_items')
-                                ->where('product_id', $productId)
-                                ->where(function($q) use ($vColor) {
-                                    if ($vColor !== '-') $q->where('color', 'like', "%{$vColor}%");
-                                })
-                                ->sum('total_pieces');
-
-                            $returned = DB::table('sale_return_items')
-                                ->where('product_id', $productId)
-                                ->where(function($q) use ($vColor) {
-                                    if ($vColor !== '-') $q->where('color', 'like', "%{$vColor}%");
-                                })
-                                ->sum('qty');
-
-                            $vCurrentStock = max(0, $vInitial + $purchased - $sold + $returned);
-
-                            $variants[] = [
-                                'variant_key'   => ($vName . '|' . $vSize . '|' . $vColor),
-                                'name'          => $vName,
-                                'size'          => $vSize,
-                                'color'         => $vColor,
-                                'initial_stock' => $vInitial,
-                                'current_stock' => $vCurrentStock,
-                                'display_label' => "{$vName} (Size: {$vSize}, Color: {$vColor})"
-                            ];
+                        // 1. Calculate Conversion Factor
+                        $convFactor = 1.0;
+                        if (isset($v['conv_factor']) && (float)$v['conv_factor'] > 0) {
+                            $convFactor = (float) $v['conv_factor'];
+                        } elseif (isset($v['weight_per_piece']) && (float)$v['weight_per_piece'] > 0) {
+                            if ($sizeMode === 'by_feet') {
+                                $convFactor = (float) $v['weight_per_piece'] / 12.0;
+                            } elseif ($sizeMode === 'by_kg' || $sizeMode === 'by_meter') {
+                                $convFactor = (float) $v['weight_per_piece'] / 1000.0;
+                            }
+                        } elseif ($sizeMode === 'by_cartons') {
+                            $convFactor = $ppb;
                         }
+
+                        // 2. Identify if base variant
+                        $isBase = !empty($v['is_base_variant']) || (in_array($sizeMode, ['by_kg', 'by_meter', 'by_feet']) && $convFactor == 1.0);
+
+                        // 3. Determine variant unit label
+                        if (!empty($v['unit'])) {
+                            $vUnit = trim($v['unit']);
+                        } elseif ($sizeMode === 'by_kg') {
+                            $vUnit = $isBase ? 'Kg' : 'Pcs';
+                        } elseif ($sizeMode === 'by_meter') {
+                            $vUnit = $isBase ? 'Meter' : 'Pcs';
+                        } elseif ($sizeMode === 'by_feet') {
+                            $vUnit = $isBase ? 'Ft' : 'Pcs';
+                        } elseif ($sizeMode === 'by_cartons') {
+                            $vUnit = ($convFactor == $ppb) ? 'Carton' : 'Pcs';
+                        } else {
+                            $vUnit = $defaultUnit;
+                        }
+
+                        // 4. Calculate live warehouse stock converted for this variant
+                        if (in_array($sizeMode, ['by_kg', 'by_meter', 'by_feet'])) {
+                            $vCurrentStock = ($convFactor > 0) ? round($stockPieces / $convFactor, 2) : round($stockPieces, 2);
+                        } elseif ($sizeMode === 'by_cartons') {
+                            if (strtolower($vUnit) === 'carton' || strtolower($vUnit) === 'box' || $convFactor == $ppb) {
+                                $vCurrentStock = round($stockPieces / $ppb, 2);
+                            } else {
+                                $vCurrentStock = round($stockPieces, 2);
+                            }
+                        } else {
+                            if ($convFactor > 0 && $convFactor != 1.0) {
+                                $vCurrentStock = round($stockPieces / $convFactor, 2);
+                            } else {
+                                if (isset($v['stock']) && !in_array($sizeMode, ['by_kg', 'by_meter', 'by_feet', 'by_cartons', 'by_pieces'])) {
+                                    $vCurrentStock = (float)$v['stock'];
+                                } else {
+                                    $vCurrentStock = round($stockPieces, 2);
+                                }
+                            }
+                        }
+
+                        // Step precision for HTML input
+                        $step = (in_array(strtolower($vUnit), ['pcs', 'pc', 'piece', 'pieces']) && $convFactor == 1.0) ? 1 : 0.01;
+
+                        // Display label
+                        $metaParts = [];
+                        if ($vSize !== '-' && $vSize !== '') $metaParts[] = "Size: {$vSize}";
+                        if ($vColor !== '-' && $vColor !== '') $metaParts[] = "Color: {$vColor}";
+                        $metaDesc = count($metaParts) > 0 ? ' (' . implode(', ', $metaParts) . ')' : '';
+
+                        $variants[] = [
+                            'index'           => $idx,
+                            'variant_key'     => ($vName . '|' . $vSize . '|' . $vColor),
+                            'name'            => $vName,
+                            'size'            => $vSize,
+                            'color'           => $vColor,
+                            'unit'            => $vUnit,
+                            'conv_factor'     => $convFactor,
+                            'is_base_variant' => $isBase ? 1 : 0,
+                            'current_stock'   => $vCurrentStock,
+                            'step'            => $step,
+                            'display_label'   => $vName . $metaDesc,
+                        ];
                     }
                 }
             } catch (\Exception $e) {}
         }
+
+        $defaultStep = in_array(strtolower($defaultUnit), ['pcs', 'pc', 'piece', 'pieces']) ? 1 : 0.01;
 
         return response()->json([
             'success'        => true,
             'product_id'     => $product->id,
             'product_name'   => $product->item_name,
             'item_code'      => $product->item_code,
-            'total_stock'    => $stockPieces,
+            'size_mode'      => $sizeMode,
+            'unit'           => $defaultUnit,
+            'step'           => $defaultStep,
+            'total_stock'    => round($stockPieces, 2),
             'has_variants'   => count($variants) > 0,
             'variants'       => $variants
         ]);
@@ -322,9 +378,12 @@ class StockAdjustmentController extends Controller
     /**
      * Private helper to execute a single stock adjustment
      */
-    private function processSingleAdjustment(array $data)
+private function processSingleAdjustment(array $data)
     {
-        $product = Product::where('id', $data['product_id'])->lockForUpdate()->first();
+        $product = Product::with('unit')->where('id', $data['product_id'])->lockForUpdate()->first();
+        if (!$product) {
+            throw new \Exception("Product #{$data['product_id']} not found.");
+        }
 
         $warehouseStock = WarehouseStock::firstOrCreate(
             [
@@ -337,80 +396,212 @@ class StockAdjustmentController extends Controller
             ]
         );
 
-        $variantKey  = $data['variant_key'];
-        $variantName = $data['variant_name'];
+        $sizeMode = $product->size_mode;
+        $ppb = (float) ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+        $defaultUnit = $product->unit->name ?? match($sizeMode) {
+            'by_kg'      => 'Kg',
+            'by_meter'   => 'Meter',
+            'by_feet'    => 'Ft',
+            'by_cartons' => 'Carton',
+            default      => 'Pcs'
+        };
 
-        $oldStock = (float) $warehouseStock->total_pieces;
-        $inputQty = (float) $data['qty'];
-        $deltaQty = 0;
+        $variantKey  = $data['variant_key'] ?? null;
+        $variantName = $data['variant_name'] ?? null;
+        $inputQty    = (float) $data['qty'];
+        $type        = $data['type']; // 'add', 'subtract', 'set'
 
-        if ($data['type'] === 'add') {
-            $deltaQty = $inputQty;
-            $newStock = $oldStock + $deltaQty;
-        } elseif ($data['type'] === 'subtract') {
-            $deltaQty = -1 * min($oldStock, $inputQty);
-            $newStock = max(0, $oldStock + $deltaQty);
-        } else { // 'set'
-            $deltaQty = $inputQty - $oldStock;
-            $newStock = max(0, $inputQty);
-        }
+        // Determine variant's conv_factor and unit
+        $convFactor = 1.0;
+        $unit = $defaultUnit;
+        $parsedVariants = [];
+        $matchedIndex = null;
 
-        // Adjust variant stock in product JSON if variant selected
-        if ($variantKey && $product->color) {
+        if ($product->color) {
             try {
                 $parsed = is_string($product->color) ? json_decode($product->color, true) : $product->color;
-                if (is_array($parsed)) {
-                    foreach ($parsed as &$v) {
-                        $vKey = ($v['name'] ?? $product->item_name) . '|' . ($v['size'] ?? '-') . '|' . ($v['color'] ?? '-');
-                        if ($vKey === $variantKey || ($variantName && ($v['name'] ?? '') === $variantName)) {
-                            $vOld = (float)($v['stock'] ?? 0);
-                            $v['stock'] = max(0, $vOld + $deltaQty);
+                if (is_array($parsed) && count($parsed) > 0) {
+                    $rawList = isset($parsed['name']) || isset($parsed['color']) ? (isset($parsed[0]) ? $parsed : [$parsed]) : array_values($parsed);
+                    $parsedVariants = $rawList;
+
+                    // First pass: try matching by exact variant_key (which includes unit)
+                    foreach ($parsedVariants as $idx => $v) {
+                        $vName  = $v['name'] ?? $product->item_name;
+                        $vSize  = $v['size'] ?? '-';
+                        $vColor = $v['color'] ?? '-';
+
+                        // Pre-calculate convFactor & unit for this variant
+                        $vCf = 1.0;
+                        if (isset($v['conv_factor']) && (float)$v['conv_factor'] > 0) {
+                            $vCf = (float)$v['conv_factor'];
+                        } elseif (isset($v['weight_per_piece']) && (float)$v['weight_per_piece'] > 0) {
+                            if ($sizeMode === 'by_feet') {
+                                $vCf = (float)$v['weight_per_piece'] / 12.0;
+                            } elseif ($sizeMode === 'by_kg' || $sizeMode === 'by_meter') {
+                                $vCf = (float)$v['weight_per_piece'] / 1000.0;
+                            }
+                        } elseif ($sizeMode === 'by_cartons') {
+                            $vCf = $ppb;
+                        }
+
+                        $isBase = !empty($v['is_base_variant']) || (in_array($sizeMode, ['by_kg', 'by_meter', 'by_feet']) && $vCf == 1.0);
+                        if (!empty($v['unit'])) {
+                            $vU = trim($v['unit']);
+                        } elseif ($sizeMode === 'by_kg') {
+                            $vU = $isBase ? 'Kg' : 'Pcs';
+                        } elseif ($sizeMode === 'by_meter') {
+                            $vU = $isBase ? 'Meter' : 'Pcs';
+                        } elseif ($sizeMode === 'by_feet') {
+                            $vU = $isBase ? 'Ft' : 'Pcs';
+                        } elseif ($sizeMode === 'by_cartons') {
+                            $vU = ($vCf == $ppb) ? 'Carton' : 'Pcs';
+                        } else {
+                            $vU = $defaultUnit;
+                        }
+
+                        $vKeyWithUnit = "{$vName}|{$vSize}|{$vColor}|{$vU}";
+                        $vKeyWithoutUnit = "{$vName}|{$vSize}|{$vColor}";
+
+                        if ($variantKey && ($vKeyWithUnit === $variantKey || $vKeyWithoutUnit === $variantKey)) {
+                            $matchedIndex = $idx;
+                            $convFactor   = $vCf;
+                            $unit         = $vU;
                             break;
+                        } elseif ($variantName && $vName === $variantName) {
+                            $matchedIndex = $idx;
+                            $convFactor   = $vCf;
+                            $unit         = $vU;
+                            // continue in case an exact match appears later
                         }
                     }
-                    unset($v);
-                    $product->color = json_encode($parsed);
-                    $product->save();
                 }
             } catch (\Exception $e) {}
         }
 
-        // Update WarehouseStock
-        $warehouseStock->total_pieces = max(0, $oldStock + $deltaQty);
-        $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
-        if ($ppb > 1 && in_array($product->size_mode, ['by_cartons', 'by_size'])) {
-            $warehouseStock->boxes_quantity = floor($warehouseStock->total_pieces / $ppb);
-            $warehouseStock->quantity       = $warehouseStock->boxes_quantity;
+        // Special check if standard product is by_cartons
+        if ($sizeMode === 'by_cartons' && empty($variantKey) && (strtolower($unit) === 'carton' || strtolower($unit) === 'box')) {
+            $convFactor = $ppb;
+        }
+
+        if ($convFactor <= 0) {
+            $convFactor = 1.0;
+        }
+
+        $currentBaseStock = (float) $warehouseStock->total_pieces;
+
+        // Current stock in the variant's own unit
+        $oldVariantStock = ($convFactor > 0) ? round($currentBaseStock / $convFactor, 2) : round($currentBaseStock, 2);
+
+        // Calculate Delta in Base Units (e.g. Kg, Ft, Meter, Carton Pieces)
+        // 1 Variant Unit = $convFactor Base Units
+        $deltaBase = 0;
+        $newBaseStock = $currentBaseStock;
+
+        if ($type === 'add') {
+            $deltaBase = $inputQty * $convFactor;
+            $newBaseStock = $currentBaseStock + $deltaBase;
+        } elseif ($type === 'subtract') {
+            $deductBase = $inputQty * $convFactor;
+            $deltaBase = -1.0 * min(max(0, $currentBaseStock), $deductBase);
+            $newBaseStock = max(0, $currentBaseStock + $deltaBase);
+        } else { // 'set'
+            $targetBaseStock = max(0, $inputQty * $convFactor);
+            $deltaBase = $targetBaseStock - $currentBaseStock;
+            $newBaseStock = $targetBaseStock;
+        }
+
+        // New stock in the variant's own unit
+        if ($type === 'set') {
+            $newVariantStock = $inputQty;
         } else {
-            $warehouseStock->quantity       = $warehouseStock->total_pieces;
+            $newVariantStock = ($convFactor > 0) ? round($newBaseStock / $convFactor, 2) : round($newBaseStock, 2);
+        }
+
+        // Update variant stock in product JSON
+        if (count($parsedVariants) > 0) {
+            try {
+                if (in_array($sizeMode, ['by_kg', 'by_feet', 'by_meter', 'by_cartons'])) {
+                    // All variants are different units of the same base stock -> update all
+                    foreach ($parsedVariants as &$pv) {
+                        $cf = (float)($pv['conv_factor'] ?? 0);
+                        if ($cf <= 0) {
+                            if ($sizeMode === 'by_feet' && !empty($pv['weight_per_piece'])) {
+                                $cf = (float)$pv['weight_per_piece'] / 12.0;
+                            } elseif (($sizeMode === 'by_kg' || $sizeMode === 'by_meter') && !empty($pv['weight_per_piece'])) {
+                                $cf = (float)$pv['weight_per_piece'] / 1000.0;
+                            } elseif ($sizeMode === 'by_cartons') {
+                                $cf = $ppb;
+                            } else {
+                                $cf = 1.0;
+                            }
+                        }
+                        $pv['stock'] = round($newBaseStock / ($cf > 0 ? $cf : 1.0), 2);
+                    }
+                    unset($pv);
+                } else {
+                    // Independent variants
+                    if ($matchedIndex !== null) {
+                        $vOld = (float)($parsedVariants[$matchedIndex]['stock'] ?? 0);
+                        if ($type === 'add') {
+                            $parsedVariants[$matchedIndex]['stock'] = $vOld + $inputQty;
+                        } elseif ($type === 'subtract') {
+                            $parsedVariants[$matchedIndex]['stock'] = max(0, $vOld - $inputQty);
+                        } else {
+                            $parsedVariants[$matchedIndex]['stock'] = max(0, $inputQty);
+                        }
+                    }
+                }
+
+                $product->color = json_encode($parsedVariants);
+                $product->save();
+            } catch (\Exception $e) {}
+        }
+
+        // Update WarehouseStock
+        $warehouseStock->total_pieces = $newBaseStock;
+        if ($ppb > 1 && in_array($sizeMode, ['by_cartons', 'by_size'])) {
+            $warehouseStock->quantity = round($warehouseStock->total_pieces / $ppb, 2);
+        } else {
+            $warehouseStock->quantity = $warehouseStock->total_pieces;
         }
         $warehouseStock->remarks = 'Adjusted via Stock Adjustment module';
         $warehouseStock->save();
 
         // Log Stock Movement
+        $noteUnitInfo = "{$inputQty} {$unit}";
+        if ($convFactor != 1.0) {
+            $noteUnitInfo .= " = " . round(abs($deltaBase), 4) . " " . $defaultUnit;
+        }
+        $note = "Warehouse #{$data['warehouse_id']} | " 
+              . ($variantName ? "Variant: {$variantName} | " : '')
+              . "Adjustment: {$noteUnitInfo} ({$type}) | "
+              . "Stock: " . round($currentBaseStock, 3) . " -> " . round($newBaseStock, 3) . " | "
+              . "Reason: " . $data['reason'];
+
         DB::table('stock_movements')->insert([
             'product_id'   => $product->id,
             'type'         => 'adjustment',
-            'qty'          => $deltaQty,
+            'qty'          => round($deltaBase, 4),
             'ref_type'     => 'STOCK_ADJUSTMENT',
             'ref_id'       => null,
-            'note'         => "Warehouse #{$data['warehouse_id']} | " . ($variantName ? "Variant: {$variantName} | " : '') . "Reason: " . $data['reason'],
+            'note'         => substr($note, 0, 250),
             'created_at'   => now(),
             'updated_at'   => now(),
         ]);
 
         // Create StockAdjustment audit record
+        $adjVariantDisplay = $variantName ?: ($product->item_name . " ({$unit})");
         StockAdjustment::create([
             'user_id'      => auth()->id(),
             'warehouse_id' => $data['warehouse_id'],
             'product_id'   => $product->id,
             'variant_key'  => $variantKey,
-            'variant_name' => $variantName ?: null,
+            'variant_name' => $adjVariantDisplay,
             'type'         => $data['type'],
             'qty'          => $inputQty,
-            'old_stock'    => $oldStock,
-            'new_stock'    => $newStock,
-            'reason'       => $data['reason'],
+            'old_stock'    => $oldVariantStock,
+            'new_stock'    => $newVariantStock,
+            'reason'       => $data['reason'] . ($convFactor != 1.0 ? " [Base: " . ($deltaBase >= 0 ? '+' : '') . round($deltaBase, 3) . " {$defaultUnit}]" : ''),
         ]);
     }
 }

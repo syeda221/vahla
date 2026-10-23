@@ -57,11 +57,92 @@ class WarehouseStockController extends Controller
         }));
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $stocks = WarehouseStock::with('warehouse', 'product')->latest()->paginate(10);
+        $itemType    = $request->get('item_type', 'all');
+        $warehouseId = $request->get('warehouse_id', 'all');
+        $search      = $request->get('search');
 
-        return view('admin_panel.warehouses.warehouse_stocks.index', compact('stocks'));
+        $query = WarehouseStock::with(['warehouse', 'product.unit', 'product.category_relation']);
+
+        // Filter by Item Nature (Finished Goods vs Raw Materials)
+        if ($itemType && $itemType !== 'all') {
+            if ($itemType === 'finish_goods') {
+                $query->whereHas('product', function ($q) {
+                    $q->where(function ($sub) {
+                        $sub->whereIn('item_type', ['finish_goods', 'both'])
+                            ->orWhere(function ($s) {
+                                $s->where(function ($n) {
+                                    $n->whereNull('item_type')->orWhere('item_type', '');
+                                })->where('is_part', 0);
+                            });
+                    });
+                });
+            } elseif ($itemType === 'raw_material') {
+                $query->whereHas('product', function ($q) {
+                    $q->where(function ($sub) {
+                        $sub->whereIn('item_type', ['raw_material', 'both'])
+                            ->orWhere(function ($s) {
+                                $s->where(function ($n) {
+                                    $n->whereNull('item_type')->orWhere('item_type', '');
+                                })->where('is_assembled', 0);
+                            });
+                    });
+                });
+            } else {
+                $query->whereHas('product', function ($q) use ($itemType) {
+                    $q->where('item_type', $itemType);
+                });
+            }
+        }
+
+        // Filter by Warehouse
+        if ($warehouseId && $warehouseId !== 'all') {
+            $query->where('warehouse_id', $warehouseId);
+        }
+
+        // Search by Product name, code or warehouse
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('product', function ($pq) use ($search) {
+                    $pq->where('item_name', 'like', "%{$search}%")
+                       ->orWhere('item_code', 'like', "%{$search}%");
+                })->orWhereHas('warehouse', function ($wq) use ($search) {
+                    $wq->where('warehouse_name', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        $stocks = $query->latest()->paginate(15)->appends($request->query());
+        $warehouses = Warehouse::orderBy('warehouse_name')->get();
+
+        // Counts for filter badges
+        $totalCount = WarehouseStock::count();
+        $fgCount = WarehouseStock::whereHas('product', function ($q) {
+            $q->where(function ($sub) {
+                $sub->whereIn('item_type', ['finish_goods', 'both'])
+                    ->orWhere(function ($s) {
+                        $s->where(function ($n) {
+                            $n->whereNull('item_type')->orWhere('item_type', '');
+                        })->where('is_part', 0);
+                    });
+            });
+        })->count();
+
+        $rmCount = WarehouseStock::whereHas('product', function ($q) {
+            $q->where(function ($sub) {
+                $sub->whereIn('item_type', ['raw_material', 'both'])
+                    ->orWhere(function ($s) {
+                        $s->where(function ($n) {
+                            $n->whereNull('item_type')->orWhere('item_type', '');
+                        })->where('is_assembled', 0);
+                    });
+            });
+        })->count();
+
+        return view('admin_panel.warehouses.warehouse_stocks.index', compact(
+            'stocks', 'warehouses', 'itemType', 'warehouseId', 'search', 'totalCount', 'fgCount', 'rmCount'
+        ));
     }
 
     public function show($id)
@@ -205,9 +286,7 @@ class WarehouseStockController extends Controller
             ->select('id', 'item_name', 'item_code', 'pieces_per_box', 'image')
             ->when($term, function ($query) use ($term) {
                 $query->where('item_name', 'like', "%{$term}%")
-                    ->orWhere('item_code', 'like', "%{$term}%")
-                    ->orWhere('barcode_path', $term)
-                    ->orWhere('color', 'like', "%\"barcode\":\"{$term}\"%");
+                    ->orWhere('item_code', 'like', "%{$term}%");
             })
             ->limit(20)
             ->get();

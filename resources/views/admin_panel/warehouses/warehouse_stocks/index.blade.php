@@ -111,6 +111,67 @@
                 @endcan
             </div>
             <div class="card-body">
+                <!-- Filter Bar (Finished Goods & Raw Materials + Warehouse & Search) -->
+                <div class="row align-items-center g-3 mb-4">
+                    <!-- Type Filter Pills -->
+                    <div class="col-12 col-xl-auto">
+                        <div class="btn-group p-1 bg-light rounded-pill border shadow-sm" role="group">
+                            <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'item_type'), ['item_type' => 'all'])) }}" 
+                               class="btn btn-sm rounded-pill px-3 fw-bold {{ ($itemType ?? 'all') === 'all' ? 'btn-primary shadow-sm' : 'btn-light text-muted' }}">
+                                <i class="fas fa-boxes me-1"></i> All Items 
+                                <span class="badge {{ ($itemType ?? 'all') === 'all' ? 'bg-white text-primary' : 'bg-secondary' }} ms-1">{{ number_format($totalCount ?? 0) }}</span>
+                            </a>
+                            <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'item_type'), ['item_type' => 'finish_goods'])) }}" 
+                               class="btn btn-sm rounded-pill px-3 fw-bold {{ ($itemType ?? '') === 'finish_goods' ? 'btn-primary shadow-sm' : 'btn-light text-muted' }}">
+                                <i class="fas fa-box me-1"></i> Finished Goods 
+                                <span class="badge {{ ($itemType ?? '') === 'finish_goods' ? 'bg-white text-primary' : 'bg-primary-subtle text-primary border border-primary-subtle' }} ms-1">{{ number_format($fgCount ?? 0) }}</span>
+                            </a>
+                            <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'item_type'), ['item_type' => 'raw_material'])) }}" 
+                               class="btn btn-sm rounded-pill px-3 fw-bold {{ ($itemType ?? '') === 'raw_material' ? 'btn-warning text-dark shadow-sm' : 'btn-light text-muted' }}">
+                                <i class="fas fa-cogs me-1"></i> Raw Materials 
+                                <span class="badge {{ ($itemType ?? '') === 'raw_material' ? 'bg-dark text-white' : 'bg-warning-subtle text-dark border border-warning-subtle' }} ms-1">{{ number_format($rmCount ?? 0) }}</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Warehouse & Search Form -->
+                    <div class="col-12 col-xl ms-auto">
+                        <form method="GET" action="{{ route('warehouse_stocks.index') }}" class="row g-2 justify-content-xl-end">
+                            <input type="hidden" name="item_type" value="{{ $itemType ?? 'all' }}">
+
+                            <div class="col-12 col-sm-auto">
+                                <select name="warehouse_id" class="form-select form-select-sm" onchange="this.form.submit()" style="height: 38px; border-radius: 8px;">
+                                    <option value="all">-- All Warehouses --</option>
+                                    @if(isset($warehouses))
+                                        @foreach($warehouses as $w)
+                                            <option value="{{ $w->id }}" {{ (string)($warehouseId ?? '') === (string)$w->id ? 'selected' : '' }}>
+                                                {{ $w->warehouse_name }}
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+
+                            <div class="col-12 col-sm-auto">
+                                <div class="input-group input-group-sm" style="min-width: 240px;">
+                                    <input type="text" name="search" value="{{ $search ?? '' }}" class="form-control form-control-sm" placeholder="Search product name, code..." style="height: 38px; border-radius: 8px 0 0 8px;">
+                                    <button class="btn btn-primary btn-sm" type="submit" style="height: 38px; border-radius: 0 8px 8px 0;">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            @if(($itemType ?? 'all') !== 'all' || (($warehouseId ?? 'all') && $warehouseId !== 'all') || !empty($search))
+                                <div class="col-12 col-sm-auto">
+                                    <a href="{{ route('warehouse_stocks.index') }}" class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center" style="height: 38px; border-radius: 8px;" title="Reset All Filters">
+                                        <i class="fas fa-times me-1"></i> Reset
+                                    </a>
+                                </div>
+                            @endif
+                        </form>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
                     <table class="table table-hover align-middle" id="stockTable">
                         <thead class="bg-light text-muted">
@@ -118,7 +179,7 @@
                                 <th class="text-uppercase small fw-bold">#</th>
                                 <th class="text-uppercase small fw-bold">Warehouse</th>
                                 <th class="text-uppercase small fw-bold">Product</th>
-                                <th class="text-uppercase small fw-bold text-center">Total box</th>
+                                <th class="text-uppercase small fw-bold text-center">Quantity</th>
                                 <th class="text-uppercase small fw-bold text-center">Total Pieces</th>
                                 {{-- <th class="text-uppercase small fw-bold">Remarks</th> --}}
                                 <th class="text-uppercase small fw-bold text-end">Actions</th>
@@ -140,17 +201,33 @@
                                                     style="width: 30px; height: 30px; font-size: 10px;">IMG</div>
                                             @endif
                                             <div>
-                                                <div class="fw-bold text-dark">{{ $stock->product->item_name ?? 'N/A' }}
+                                                <div class="fw-bold text-dark">{{ $stock->product->item_name ?? 'N/A' }}</div>
+                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                    <span class="small text-muted font-monospace">{{ $stock->product->item_code ?? '' }}</span>
+                                                    @if($stock->product)
+                                                        @if($stock->product->item_type === 'raw_material')
+                                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0.5" style="font-size: 0.68rem;">
+                                                                <i class="fas fa-cog me-1"></i> Raw Material
+                                                            </span>
+                                                        @elseif($stock->product->item_type === 'finish_goods')
+                                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5" style="font-size: 0.68rem;">
+                                                                <i class="fas fa-box me-1"></i> Finished Good
+                                                            </span>
+                                                        @elseif($stock->product->item_type === 'both')
+                                                            <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-0.5" style="font-size: 0.68rem;">
+                                                                <i class="fas fa-layer-group me-1"></i> Both (FG/RM)
+                                                            </span>
+                                                        @endif
+                                                    @endif
                                                 </div>
-                                                <div class="small text-muted">{{ $stock->product->item_code ?? '' }}</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="text-center text-nowrap">
-                                        <span class="badge bg-info text-dark">{{ $stock->quantity }} Boxes</span>
+                                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle font-monospace fw-bold px-2.5 py-1" style="font-size: 0.85rem;">{{ number_format($stock->quantity) }}</span>
                                     </td>
-                                    <td class="text-center fw-bold {{ $stock->total_pieces < 0 ? 'text-danger' : 'text-primary' }}">
-                                        {{ rtrim(rtrim(number_format($stock->total_pieces, 3, '.', ''), '0'), '.') }}</td>
+                                    <td class="text-center fw-bold text-primary font-monospace" style="font-size: 0.92rem;">
+                                        {{ number_format($stock->total_pieces) }} <span class="text-muted small fw-normal">{{ $stock->product->unit->name ?? "Pcs" }}</span></td>
                                     <td class="text-end">
                                         @can('warehouse.stock.edit')
                                             <button onclick="editStock({{ $stock->id }})"
@@ -245,7 +322,7 @@
                             </div>
                             <div class="col-md-6 mt-3 mt-md-0">
                                 <div class="calc-box">
-                                    <div class="text-uppercase small text-muted fw-bold mb-1">Total Boxes</div>
+                                    <div class="text-uppercase small text-muted fw-bold mb-1">Total Quantity</div>
                                     <div class="calc-number" id="calc-result">0</div>
                                     <input type="hidden" name="total_pieces" id="total_pieces" value="0">
                                     <input type="hidden" name="total_box" id="total_box" value="0">
@@ -410,7 +487,7 @@
                 if (data.pieces_per_box > 0 && data.total_pieces > 0) {
                     let boxes = Math.floor(data.total_pieces / data.pieces_per_box);
                     let loose = data.total_pieces % data.pieces_per_box;
-                    $('#calc-result').html(`<span class="text-primary">${boxes} Boxes</span>` + (loose > 0 ?
+                    $('#calc-result').html(`<span class="text-primary">${boxes}</span>` + (loose > 0 ?
                         ` <span class="text-muted text-small">+ ${loose} Loose</span>` : ''));
                     $('#total_box').val(boxes);
                 } else {
@@ -479,7 +556,7 @@
                     if (piecesPerBox > 0) {
                         let b = Math.floor(currentTotal / piecesPerBox);
                         let l = currentTotal % piecesPerBox;
-                        displayStock = `${b} Boxes` + (l > 0 ? ` + ${l} Loose` : '');
+                        displayStock = `${b}` + (l > 0 ? ` + ${l} Loose` : '');
                     }
                     $('#prod-current').text(displayStock);
                 });
@@ -491,7 +568,7 @@
                 if (piecesPerBox > 0) {
                     let b = Math.floor(currentTotal / piecesPerBox);
                     let l = currentTotal % piecesPerBox;
-                    displayStock = `${b} Boxes` + (l > 0 ? ` + ${l} Loose` : '') + " (Current Rec)";
+                    displayStock = `${b}` + (l > 0 ? ` + ${l} Loose` : '') + " (Current Rec)";
                 }
                 $('#prod-current').text(displayStock);
             }
@@ -508,7 +585,7 @@
             if (piecesPerBox > 0 && total > 0) {
                 let boxes = Math.floor(total / piecesPerBox);
                 let loose = total % piecesPerBox;
-                $('#calc-result').html(`<span class="text-primary">${boxes} Boxes</span>` + (loose > 0 ?
+                $('#calc-result').html(`<span class="text-primary">${boxes}</span>` + (loose > 0 ?
                     ` <span class="text-muted text-small">+ ${loose} Loose</span>` : ''));
 
                 // Set hidden box input
