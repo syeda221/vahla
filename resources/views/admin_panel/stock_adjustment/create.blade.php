@@ -1152,8 +1152,8 @@ $(document).ready(function () {
         group.data('action', $(this).data('action'));
     });
 
-    // Click on Product Card
-    $('.pos-prod-card').on('click', function () {
+    // Click on Product Card (Delegated for dynamically searched cards)
+    $(document).on('click', '.pos-prod-card', function () {
         let card        = $(this);
         let productId   = card.data('id');
         let productName = card.data('name');
