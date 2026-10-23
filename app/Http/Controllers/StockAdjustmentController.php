@@ -110,8 +110,6 @@ class StockAdjustmentController extends Controller
                                           ->whereYear('created_at', now()->year)
                                           ->count();
 
-        $products = Product::select('id', 'item_name', 'item_code', 'color', 'size_mode', 'pieces_per_box')->get();
-
         return view('admin_panel.stock_adjustment.index', [
             'adjustments'       => $adjustments,
             'totalAdjustments'  => $totalAdjustments,
@@ -119,7 +117,6 @@ class StockAdjustmentController extends Controller
             'totalSubtracted'   => $totalSubtracted,
             'thisMonthCount'    => $thisMonthCount,
             'warehouses'        => $permittedWarehouses,
-            'products'          => $products,
         ]);
     }
 
@@ -128,18 +125,76 @@ class StockAdjustmentController extends Controller
      */
     public function create(Request $request)
     {
+        @ini_set('memory_limit', '512M');
         $this->checkPermission();
 
         $warehouses = $this->getPermittedWarehouses();
         $categories = Category::all();
         $brands     = Brand::all();
 
-        // Fetch products with variant details
-        $products = Product::with(['category_relation', 'brand'])
-            ->select('id', 'item_name', 'item_code', 'barcode_path', 'image', 'category_id', 'brand_id', 'color', 'size_mode', 'pieces_per_box')
+        // Load lightweight initial batch of latest products
+        $products = Product::select('id', 'item_name', 'item_code', 'category_id', 'color', 'size_mode', 'pieces_per_box')
+            ->latest()
+            ->take(60)
             ->get();
+        $totalProductsCount = Product::count();
 
-        return view('admin_panel.stock_adjustment.create', compact('warehouses', 'categories', 'brands', 'products'));
+        return view('admin_panel.stock_adjustment.create', compact('warehouses', 'categories', 'brands', 'products', 'totalProductsCount'));
+    }
+
+    /**
+     * AJAX search products for POS Terminal grid
+     */
+    public function searchProducts(Request $request)
+    {
+        @ini_set('memory_limit', '512M');
+        $this->checkPermission();
+
+        $q = trim($request->get('q', ''));
+        $categoryId = $request->get('category_id');
+
+        $query = Product::select('id', 'item_name', 'item_code', 'category_id', 'color', 'size_mode', 'pieces_per_box');
+
+        if (!empty($categoryId)) {
+            $query->where('category_id', $categoryId);
+        }
+
+        if (!empty($q)) {
+            $query->where(function ($sq) use ($q) {
+                $sq->where('item_name', 'LIKE', "%{$q}%")
+                   ->orWhere('item_code', 'LIKE', "%{$q}%");
+            });
+        }
+
+        $products = $query->latest()->take(60)->get();
+
+        $items = $products->map(function ($p) {
+            $variants = [];
+            if ($p->color) {
+                try {
+                    $parsed = is_string($p->color) ? json_decode($p->color, true) : $p->color;
+                    if (is_array($parsed) && count($parsed) > 0 && (isset($parsed[0]['name']) || isset($parsed[0]['color']))) {
+                        $variants = $parsed;
+                    }
+                } catch (\Exception $e) {}
+            }
+            $hasVariants = count($variants) > 0;
+
+            return [
+                'id'            => $p->id,
+                'item_name'     => $p->item_name,
+                'item_code'     => $p->item_code,
+                'category_id'   => $p->category_id,
+                'has_variants'  => $hasVariants ? 1 : 0,
+                'variant_count' => count($variants),
+            ];
+        });
+
+        return response()->json([
+            'success'  => true,
+            'count'    => $items->count(),
+            'products' => $items,
+        ]);
     }
 
 public function getProductVariants(Request $request, $productId)

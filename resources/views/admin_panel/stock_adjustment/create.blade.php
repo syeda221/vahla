@@ -850,7 +850,6 @@
                              data-code="{{ $p->item_code }}"
                              data-cat="{{ $p->category_id }}"
                              data-has-variants="{{ $hasVariants ? 1 : 0 }}"
-                             data-variants="{{ json_encode($variants) }}"
                              data-search="{{ strtolower($p->item_name . ' ' . $p->item_code) }}">
                             
                             <div>
@@ -1022,50 +1021,97 @@ $(document).ready(function () {
 
     // Staged Cart Array
     let cart = [];
-    let totalProductCards = $('.pos-prod-card').length;
+    let searchTimer = null;
+    let initialCardsHtml = $('#posItemsGrid').html();
 
     // Category Filter Pills
     $('.pos-cat-pill').on('click', function () {
         $('.pos-cat-pill').removeClass('active');
         $(this).addClass('active');
-        filterGrid();
+        triggerProductSearch();
     });
 
-    // Real-time Search Input Filter
+    // Real-time Search Input Filter with debounce
     $('#posProductSearch').on('input', function () {
-        filterGrid();
+        triggerProductSearch();
     });
 
-    function filterGrid() {
-        let cat    = $('.pos-cat-pill.active').data('cat');
-        let search = $.trim($('#posProductSearch').val()).toLowerCase();
-        let visibleCount = 0;
+    function triggerProductSearch() {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            let cat    = $('.pos-cat-pill.active').data('cat') || '';
+            let search = $.trim($('#posProductSearch').val());
 
-        $('.pos-prod-card').each(function () {
-            let card   = $(this);
-            let itemCat= card.data('cat');
-            let itemSearch = card.data('search');
-
-            let matchCat = !cat || itemCat == cat;
-            let matchSearch = !search || itemSearch.indexOf(search) > -1;
-
-            if (matchCat && matchSearch) {
-                card.removeClass('d-none');
-                visibleCount++;
-            } else {
-                card.addClass('d-none');
+            if (!cat && !search) {
+                $('#posItemsGrid').html(initialCardsHtml).removeClass('d-none');
+                $('#noProductsNotice').addClass('d-none');
+                $('#productShowingCount').text('Showing {{ count($products) }} Products');
+                return;
             }
-        });
 
-        $('#productShowingCount').text('Showing ' + visibleCount + ' of ' + totalProductCards + ' Products');
+            $('#productShowingCount').html('<i class="fas fa-spinner fa-spin me-1"></i> Searching...');
+            $('#posItemsGrid').css('opacity', '0.5');
 
-        if (visibleCount === 0) {
-            $('#noProductsNotice').removeClass('d-none');
-            $('#posItemsGrid').addClass('d-none');
-        } else {
-            $('#noProductsNotice').addClass('d-none');
-            $('#posItemsGrid').removeClass('d-none');
-        }
+            $.ajax({
+                url: "{{ route('stock_adjustments.search_products') }}",
+                type: "GET",
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                dataType: "json",
+                data: { q: search, category_id: cat },
+                success: function(res) {
+                    $('#posItemsGrid').css('opacity', '1');
+                    let container = $('#posItemsGrid');
+                    container.empty();
+
+                    if (res && res.products && res.products.length > 0) {
+                        $('#noProductsNotice').addClass('d-none');
+                        container.removeClass('d-none');
+
+                        $.each(res.products, function(i, p) {
+                            let variantTag = p.has_variants 
+                                ? `<div class="pos-prod-variant-tag"><i class="fas fa-tags"></i> <span>${p.variant_count} Variants</span></div>`
+                                : `<div class="pos-prod-standard-tag"><i class="fas fa-box me-1"></i> Standard Product</div>`;
+
+                            let cardHtml = `
+                            <div class="pos-prod-card product-card" 
+                                 data-id="${p.id}"
+                                 data-name="${p.item_name}"
+                                 data-code="${p.item_code}"
+                                 data-cat="${p.category_id}"
+                                 data-has-variants="${p.has_variants}"
+                                 data-search="${(p.item_name + ' ' + p.item_code).toLowerCase()}">
+                                <div>
+                                    <div class="pos-prod-card-top">
+                                        <span class="pos-prod-code">${p.item_code}</span>
+                                    </div>
+                                    <div class="pos-prod-title" title="${p.item_name}">${p.item_name}</div>
+                                    ${variantTag}
+                                </div>
+                                <div class="pos-prod-action">
+                                    <div class="pos-prod-btn-action">
+                                        <i class="fas fa-hand-pointer"></i> <span>Click to Adjust</span>
+                                    </div>
+                                </div>
+                            </div>`;
+                            container.append(cardHtml);
+                        });
+
+                        $('#productShowingCount').text('Found ' + res.products.length + ' Products');
+                    } else {
+                        container.addClass('d-none');
+                        $('#noProductsNotice').removeClass('d-none');
+                        $('#productShowingCount').text('Found 0 Products');
+                    }
+                },
+                error: function() {
+                    $('#posItemsGrid').css('opacity', '1');
+                    $('#productShowingCount').text('Search failed');
+                }
+            });
+        }, 220);
     }
 
     // Filter variants inside modal
