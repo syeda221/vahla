@@ -1,316 +1,511 @@
 @extends('admin_panel.layout.app')
+
 @section('content')
-    <div class="card shadow-sm border-0">
-        <div class="card-header">
-            <h5>➕ New Stock Transfer</h5>
+<div class="container-fluid">
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-primary fw-bold">
+                <i class="fa fa-exchange-alt me-2"></i> New Stock Transfer
+            </h5>
+            <a href="{{ route('stock_transfers.index') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="fa fa-list me-1"></i> Transfer List
+            </a>
         </div>
-        <div class="card-body">
-            <form action="{{ route('stock_transfers.store') }}" method="POST">
-                @csrf
-                @if (session('success'))
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        {{ session('success') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
-                @if (session('error'))
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        {{ session('error') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
+        <div class="card-body p-4">
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fa fa-check-circle me-1"></i> {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
 
-                <div class="mb-3">
-                    <label>From Warehouse</label>
-                    <select name="from_warehouse_id" id="from_warehouse_id" class="form-control" required>
-                        <option value="">Select Warehouse</option>
-                        @foreach ($warehouses as $warehouse)
-                            <option value="{{ $warehouse->id }}">{{ $warehouse->warehouse_name }}</option>
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fa fa-exclamation-triangle me-1"></i> {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
+            @if (isset($errors) && $errors->any())
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <ul class="mb-0 ps-3">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
                         @endforeach
-                    </select>
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
+            @endif
 
-                <div class="mb-3">
-                    <div class="row">
-                        <div class="col-lg-6">
-                            <label>To</label>
-                        </div>
-                        <div class="col-lg-6">
-                            <label class="form-check-label" for="toShop">Transfer to Shop</label>
+            <form action="{{ route('stock_transfers.store') }}" method="POST" id="stockTransferForm">
+                @csrf
 
-                        </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-5">
+                        <label class="form-label fw-bold">From Warehouse <span class="text-danger">*</span></label>
+                        <select name="from_warehouse_id" id="from_warehouse_id" class="form-select form-control" required>
+                            <option value="">-- Select Source Warehouse --</option>
+                            @foreach ($warehouses as $warehouse)
+                                <option value="{{ $warehouse->id }}" {{ old('from_warehouse_id') == $warehouse->id ? 'selected' : '' }}>
+                                    {{ $warehouse->warehouse_name }} {{ $warehouse->location ? '('.$warehouse->location.')' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                        <div class="col-6">
-                            <select name="to_warehouse_id" class="form-control">
-                                <option value="">Select Warehouse</option>
-                                @foreach ($warehouses as $warehouse)
-                                    <option value="{{ $warehouse->id }}">{{ $warehouse->warehouse_name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-6">
-                            <input class="form-check-input form-control" type="checkbox" name="to_shop" value="1"
-                                id="toShop">
+                    <div class="col-md-5">
+                        <label class="form-label fw-bold">To Destination <span class="text-danger" id="toWhRequired">*</span></label>
+                        <select name="to_warehouse_id" id="to_warehouse_id" class="form-select form-control" required>
+                            <option value="">-- Select Destination Warehouse --</option>
+                            @foreach ($warehouses as $warehouse)
+                                <option value="{{ $warehouse->id }}" {{ old('to_warehouse_id') == $warehouse->id ? 'selected' : '' }}>
+                                    {{ $warehouse->warehouse_name }} {{ $warehouse->location ? '('.$warehouse->location.')' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-
+                    <div class="col-md-2 d-flex flex-column justify-content-center">
+                        <label class="form-label fw-bold text-muted">Shop Transfer</label>
+                        <div class="form-check form-switch mt-1">
+                            <input class="form-check-input" type="checkbox" name="to_shop" value="1" id="toShop" {{ old('to_shop') ? 'checked' : '' }} style="cursor: pointer; width: 2.5em; height: 1.3em;">
+                            <label class="form-check-label ms-2 fw-semibold" for="toShop" style="cursor: pointer;">To Shop</label>
                         </div>
                     </div>
                 </div>
 
-                <table class="w-100 border text-center" id="product_table">
-                    <thead>
-                        <tr class="bg-light">
-                            <th>Product</th>
-                            <th>Stock</th>
-                            <th>Qty</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="product_body">
-                        <tr class="product_row">
-                            <td>
-                                <select name="product_id[]" class="form-control product-select" required>
-                                    <option value="">Select Warehouse First</option>
-                                </select>
-                                <div class="invalid-feedback product-error"
-                                    style="display:none; font-size: 0.85rem; text-align: left;">
-                                    Product already selected
-                                </div>
-                            </td>
-                            <td>
-                                <input type="number" name="available_stock[]" class="form-control stock" readonly>
-                            </td>
-                            <td>
-                                <input type="number" name="quantity[]" class="form-control quantity" required>
-                                <div class="invalid-feedback stock-error"
-                                    style="display:none; font-size: 0.85rem; text-align: left;">
-                                    Insufficient Stock
-                                </div>
-                            </td>
-                            <td>
-                                <button type="button" class="btn btn-danger remove-row">Remove</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div class="mb-3">
-                    <label>Remarks</label>
-                    <textarea name="remarks" class="form-control"></textarea>
+                <div class="card border mb-4">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                        <span class="fw-bold"><i class="fa fa-boxes me-1"></i> Products to Transfer</span>
+                        <button type="button" class="btn btn-sm btn-primary" id="add_row_btn">
+                            <i class="fa fa-plus me-1"></i> Add Item
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-bordered mb-0 align-middle text-center" id="product_table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 45%; text-align: left;" class="ps-3">Product / Variant</th>
+                                        <th style="width: 20%;">Available Stock</th>
+                                        <th style="width: 25%;">Transfer Qty</th>
+                                        <th style="width: 10%;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="product_body">
+                                    <tr class="product_row">
+                                        <td class="text-start ps-3">
+                                            <select name="product_id[]" class="form-select form-control product-select" required>
+                                                <option value="">-- Select Source Warehouse First --</option>
+                                            </select>
+                                            <input type="hidden" name="variant_key[]" class="variant-key-input" value="">
+                                            <input type="hidden" name="variant_name[]" class="variant-name-input" value="">
+                                            <div class="invalid-feedback product-error" style="display:none; font-size: 0.82rem;">
+                                                This item is already selected in another row.
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="available_stock[]" class="form-control text-center stock" readonly placeholder="0">
+                                            <small class="stock-unit-label text-muted d-block mt-1" style="font-size: 0.75rem;"></small>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="quantity[]" class="form-control text-center quantity" required min="1" placeholder="Enter Qty">
+                                            <div class="invalid-feedback stock-error text-start" style="display:none; font-size: 0.82rem;">
+                                                Insufficient stock!
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-row" title="Remove Row">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
-                <button type="submit" class="btn btn-success">Transfer Stock</button>
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Remarks / Notes</label>
+                    <textarea name="remarks" class="form-control" rows="2" placeholder="Optional transfer notes...">{{ old('remarks') }}</textarea>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{{ route('stock_transfers.index') }}" class="btn btn-secondary px-4">Cancel</a>
+                    <button type="submit" class="btn btn-success px-4" id="submitBtn">
+                        <i class="fa fa-check me-1"></i> Transfer Stock
+                    </button>
+                </div>
             </form>
         </div>
     </div>
+</div>
 @endsection
-<script src="{{ asset('assets/js/jquery.min.js') }}"></script>
 
+@section('scripts')
 <script>
-    $(document).ready(function() {
-        let availableProducts = [];
+$(document).ready(function() {
+    // availableProducts: array of items (one per variant) returned by AJAX
+    let availableProducts = [];
 
-        // 1. Fetch Products when Warehouse Changes
-        $('#from_warehouse_id').change(function() {
-            var warehouseId = $(this).val();
-            var productTableBody = $('#product_body');
+    // ─── Helper: unique key to detect duplicates (product_id + variant_key) ───
+    function itemUniqueKey(p) {
+        return p.id + '||' + (p.variant_key || '');
+    }
 
-            // Allow changing warehouse, keeping rows but resetting products? 
-            // Better: warn user or reset table. For now, we reset products dropdowns.
+    // ─── Helper: build <option> HTML for one product/variant entry ───────────
+    function buildOption(p, selectedKey) {
+        let uKey    = itemUniqueKey(p);
+        let selAttr = (uKey === selectedKey) ? 'selected' : '';
+        let code    = p.item_code ? ' [' + p.item_code + ']' : '';
+        // Use display_stock (formatted "8.1") if available, else fall back to available_qty
+        let stockVal = (p.display_stock !== undefined) ? p.display_stock : p.available_qty;
+        let stock   = (stockVal !== undefined && stockVal !== '') ? ' (Stock: ' + stockVal + ')' : '';
+        let label   = p.display_name || p.item_name;
+        // Encode full item as data attribute so we can retrieve it on change
+        let dataAttr = 'data-item=\'' + JSON.stringify(p).replace(/'/g, '&#39;') + '\'';
+        return `<option value="${uKey}" ${selAttr} ${dataAttr}>${label}${code}${stock}</option>`;
+    }
 
-            if (!warehouseId) {
-                availableProducts = [];
+    // ─── Sync destination warehouse options (disable same as source) ─────────
+    function syncWarehouseOptions() {
+        let fromWh = $('#from_warehouse_id').val();
+        let toWh   = $('#to_warehouse_id').val();
+
+        $('#to_warehouse_id option').each(function() {
+            let val = $(this).val();
+            $(this).prop('disabled', val && val === fromWh);
+        });
+
+        if (toWh && toWh === fromWh) {
+            $('#to_warehouse_id').val('');
+        }
+    }
+
+    // ─── Toggle To-Shop mode ──────────────────────────────────────────────────
+    function syncToShopState() {
+        let isShop = $('#toShop').is(':checked');
+        if (isShop) {
+            $('#to_warehouse_id').val('').prop('disabled', true).prop('required', false);
+            $('#toWhRequired').hide();
+        } else {
+            $('#to_warehouse_id').prop('disabled', false).prop('required', true);
+            $('#toWhRequired').show();
+            syncWarehouseOptions();
+        }
+        validateForm();
+    }
+
+    $('#toShop').on('change', syncToShopState);
+    syncToShopState();
+
+    // ─── Source warehouse change → fetch products/variants ───────────────────
+    $('#from_warehouse_id').on('change', function() {
+        let warehouseId = $(this).val();
+        syncWarehouseOptions();
+
+        if (!warehouseId) {
+            availableProducts = [];
+            updateAllProductDropdowns();
+            return;
+        }
+
+        $('.product-select').html('<option value="">Loading products...</option>').prop('disabled', true);
+
+        $.ajax({
+            url: "{{ route('get.products.by.warehouse') }}",
+            type: 'GET',
+            data: { warehouse_id: warehouseId },
+            success: function(data) {
+                availableProducts = data || [];
+                $('.product-select').prop('disabled', false);
                 updateAllProductDropdowns();
-                return;
+            },
+            error: function() {
+                $('.product-select').prop('disabled', false);
+                alert('Error fetching products for this warehouse. Please try again.');
+            }
+        });
+    });
+
+    // ─── Rebuild all dropdowns keeping selected value where possible ──────────
+    function updateAllProductDropdowns() {
+        $('.product-select').each(function() {
+            let currentVal = $(this).val();  // unique key = "productId||variantKey"
+            let options = '<option value="">-- Select Product --</option>';
+
+            if (availableProducts.length === 0) {
+                options = '<option value="">No stock available in this warehouse</option>';
+            } else {
+                availableProducts.forEach(function(p) {
+                    options += buildOption(p, currentVal);
+                });
             }
 
+            $(this).html(options);
+
+            // If previously-selected item no longer available, clear the row
+            let stillAvailable = availableProducts.find(p => itemUniqueKey(p) === currentVal);
+            if (!stillAvailable) {
+                clearRowData($(this).closest('tr'));
+            }
+        });
+
+        validateForm();
+    }
+
+    // ─── Clear stock/qty/hidden fields in a row ───────────────────────────────
+    function clearRowData($row) {
+        $row.find('.stock').val('');
+        $row.find('.stock-unit-label').text('');
+        $row.find('.quantity').val('').removeAttr('max');
+        $row.find('.variant-key-input').val('');
+        $row.find('.variant-name-input').val('');
+    }
+
+    // ─── Product/variant selected in a row ───────────────────────────────────
+    $(document).on('change', '.product-select', function() {
+        let $row     = $(this).closest('tr');
+        let uKey     = $(this).val();   // "productId||variantKey"
+        let fromWh   = $('#from_warehouse_id').val();
+
+        if (!uKey || !fromWh) {
+            clearRowData($row);
+            validateForm();
+            return;
+        }
+
+        // Retrieve the item object from the selected option's data attribute
+        let selectedOption = $(this).find('option:selected');
+        let itemData = null;
+        try {
+            itemData = JSON.parse(selectedOption.attr('data-item') || 'null');
+        } catch(e) {}
+
+        if (itemData) {
+            // Populate hidden variant fields
+            $row.find('.variant-key-input').val(itemData.variant_key || '');
+            $row.find('.variant-name-input').val(itemData.variant_name || '');
+
+            // Populate stock display — use display_stock ("8.1") for the visible input
+            let displayStock = (itemData.display_stock !== undefined) ? itemData.display_stock : itemData.available_qty;
+            let maxQty       = parseInt(itemData.available_qty) || 0;
+
+            $row.find('.stock').val(displayStock);
+            $row.find('.quantity').attr('max', maxQty);
+
+            let ppb = parseFloat(itemData.pieces_per_box) || 1;
+            if (ppb > 1 && ['by_cartons', 'by_bandal'].includes(itemData.size_mode)) {
+                $row.find('.stock-unit-label').text('Boxes (' + ppb + ' pcs/box)');
+            } else {
+                $row.find('.stock-unit-label').text('Units / Pieces');
+            }
+
+            if (maxQty <= 0) {
+                $row.find('.stock').addClass('text-danger fw-bold');
+            } else {
+                $row.find('.stock').removeClass('text-danger fw-bold');
+            }
+        } else {
+            // Fallback: fetch from server (shouldn't normally happen)
+            let parts    = uKey.split('||');
+            let productId = parts[0];
             $.ajax({
-                url: "{{ route('get.products.by.warehouse') }}",
-                data: {
-                    warehouse_id: warehouseId
-                },
-                success: function(products) {
-                    availableProducts = products;
-                    updateAllProductDropdowns();
+                url: "{{ route('warehouse.stock.quantity') }}",
+                method: 'GET',
+                data: { warehouse_id: fromWh, product_id: productId },
+                success: function(response) {
+                    let available = parseInt(response.quantity) || 0;
+                    if (available <= 0 && response.total_pieces > 0) {
+                        available = parseInt(response.total_pieces) || 0;
+                    }
+                    $row.find('.stock').val(available);
+                    $row.find('.quantity').attr('max', available);
+                    if (response.ppb && response.ppb > 1) {
+                        $row.find('.stock-unit-label').text('Boxes (' + response.ppb + ' pcs/box)');
+                    } else {
+                        $row.find('.stock-unit-label').text('Units / Pieces');
+                    }
+                    if (available <= 0) {
+                        $row.find('.stock').addClass('text-danger fw-bold');
+                    } else {
+                        $row.find('.stock').removeClass('text-danger fw-bold');
+                    }
+                    validateForm();
                 },
                 error: function() {
-                    alert('Error fetching products for this warehouse');
+                    $row.find('.stock').val('0');
+                    $row.find('.quantity').removeAttr('max');
+                    validateForm();
                 }
             });
-        });
-
-        // Update all dropdowns with available products
-        function updateAllProductDropdowns() {
-            $('.product-select').each(function() {
-                var currentVal = $(this).val(); // preserve selection if still valid (unlikely but safe)
-                var options = '<option value="">Select Product</option>';
-
-                if (availableProducts.length === 0) {
-                    options = '<option value="">No stock in this warehouse</option>';
-                } else {
-                    availableProducts.forEach(function(p) {
-                        var selected = (p.id == currentVal) ? 'selected' : '';
-                        options +=
-                            `<option value="${p.id}" ${selected}>${p.item_name}</option>`;
-                    });
-                }
-                $(this).html(options);
-
-                // If previous selection is no longer valid, clear stock/qty
-                if (!availableProducts.find(p => p.id == currentVal)) {
-                    $(this).closest('tr').find('.stock').val('');
-                    $(this).closest('tr').find('.quantity').val('').removeAttr('max');
-                }
-            });
+            return; // validateForm called inside ajax
         }
 
-        // 2. Fetch Stock Quantity when Product Selected
-        $(document).on('change', '.product-select', function() {
-            var currentRow = $(this).closest('tr');
-            var selectedProduct = $(this).val();
-            var fromWarehouse = $('#from_warehouse_id').val();
-
-            if (selectedProduct && fromWarehouse) {
-                $.ajax({
-                    url: "{{ route('warehouse.stock.quantity') }}",
-                    method: 'GET',
-                    data: {
-                        warehouse_id: fromWarehouse,
-                        product_id: selectedProduct
-                    },
-                    success: function(response) {
-                        currentRow.find('.stock').val(response.quantity);
-                        currentRow.find('.quantity').attr('max', response.quantity);
-
-                        // Show visual feedback if 0
-                        if (response.quantity <= 0) {
-                            // Optional: Could add a red border to the stock field or standard visual cue
-                            currentRow.find('.stock').addClass('text-danger fw-bold');
-                        } else {
-                            currentRow.find('.stock').removeClass('text-danger fw-bold');
-                        }
-
-                        validateForm(); // Re-validate in case user already typed a number
-                    }
-                });
-            } else {
-                currentRow.find('.stock').val('');
-                currentRow.find('.quantity').removeAttr('max');
-            }
-
-            // Auto-add new row if it's the last one
-            if ($('#product_body tr:last').is(currentRow) && selectedProduct) {
-                addNewRow();
-            }
-        });
-
-        // 3. Validate Quantity & Duplicates
-        function validateForm() {
-            let isValid = true;
-            let productCounts = {};
-
-            // Count occurrences of each product
-            $('.product-select').each(function() {
-                let val = $(this).val();
-                if (val) {
-                    productCounts[val] = (productCounts[val] || 0) + 1;
-                }
-            });
-
-            // Validate Products (Duplicates)
-            $('.product-select').each(function() {
-                let val = $(this).val();
-                let errorDiv = $(this).next('.product-error');
-
-                if (val && productCounts[val] > 1) {
-                    $(this).addClass('is-invalid');
-                    errorDiv.show();
-                    isValid = false;
-                } else {
-                    $(this).removeClass('is-invalid');
-                    errorDiv.hide();
-                }
-            });
-
-            $('.quantity').each(function() {
-                var entered = parseInt($(this).val()) || 0;
-                var max = parseInt($(this).attr('max')) || 0;
-
-                // If entered > max, it's invalid.
-                var errorDiv = $(this).next('.stock-error');
-
-                if (entered > max) {
-                    $(this).addClass('is-invalid');
-                    errorDiv.text('Insufficient Stock! Available: ' + max).show();
-                    isValid = false;
-                } else {
-                    $(this).removeClass('is-invalid');
-                    errorDiv.hide();
-                }
-            });
-
-            // Disable/Enable submit button
-            $('button[type="submit"]').prop('disabled', !isValid);
-        }
-
-        $(document).on('input', '.quantity', function() {
-            validateForm();
-        });
-
-        $(document).on('change', '.product-select', function() {
-            validateForm();
-        });
-
-        // 4. Remove Row
-        $(document).on('click', '.remove-row', function() {
-            if ($('#product_body tr').length > 1) {
-                $(this).closest('tr').remove();
-            } else {
-                // Clear the last remaining row instead of removing it
-                var row = $(this).closest('tr');
-                row.find('select').val('');
-                row.find('input').val('');
-                row.find('.stock').val('');
-                row.find('.quantity').removeClass('is-invalid');
-            }
-            validateForm();
-        });
-
-        // 5. Add New Row Function
-        function addNewRow() {
-            var options = '<option value="">Select Product</option>';
-            if (availableProducts.length > 0) {
-                availableProducts.forEach(function(p) {
-                    options += `<option value="${p.id}">${p.item_name}</option>`;
-                });
-            } else {
-                options = '<option value="">Select Warehouse First</option>';
-            }
-
-            var row = `
-                <tr class="product_row">
-                    <td>
-                        <select name="product_id[]" class="form-control product-select" required>
-                            ${options}
-                        </select>
-                        <div class="invalid-feedback product-error" style="display:none; font-size: 0.85rem; text-align: left;">
-                            Product already selected
-                        </div>
-                    </td>
-                    <td>
-                        <input type="number" name="available_stock[]" class="form-control stock" readonly>
-                    </td>
-                    <td>
-                        <input type="number" name="quantity[]" class="form-control quantity" required min="1">
-                        <div class="invalid-feedback stock-error" style="display:none; font-size: 0.85rem; text-align: left;">
-                            Insufficient Stock
-                        </div>
-                    </td>
-                    <td>
-                        <button type="button" class="btn btn-danger remove-row">Remove</button>
-                    </td>
-                </tr>
-            `;
-            $('#product_body').append(row);
-        }
+        validateForm();
     });
+
+    // ─── Form Validation ──────────────────────────────────────────────────────
+    function validateForm() {
+        let isValid = true;
+        let itemCounts = {};   // key = uniqueKey, count duplicates
+        let fromWh   = $('#from_warehouse_id').val();
+        let toWh     = $('#to_warehouse_id').val();
+        let isShop   = $('#toShop').is(':checked');
+
+        if (!fromWh) isValid = false;
+        if (!isShop && (!toWh || toWh === fromWh)) isValid = false;
+
+        // Count occurrences per unique item key
+        $('.product-select').each(function() {
+            let val = $(this).val();
+            if (val) {
+                itemCounts[val] = (itemCounts[val] || 0) + 1;
+            } else {
+                isValid = false;
+            }
+        });
+
+        // Mark duplicates
+        $('.product-select').each(function() {
+            let val      = $(this).val();
+            let $errDiv  = $(this).siblings('.product-error');
+            if (val && itemCounts[val] > 1) {
+                $(this).addClass('is-invalid');
+                $errDiv.show();
+                isValid = false;
+            } else {
+                $(this).removeClass('is-invalid');
+                $errDiv.hide();
+            }
+        });
+
+        // Quantity validation
+        let hasAtLeastOne = false;
+        $('.quantity').each(function() {
+            let entered  = parseInt($(this).val()) || 0;
+            let max      = parseInt($(this).attr('max')) || 0;
+            let $errDiv  = $(this).siblings('.stock-error');
+
+            if (entered > 0) hasAtLeastOne = true;
+            else isValid = false;
+
+            if (entered > max && max > 0) {
+                $(this).addClass('is-invalid');
+                $errDiv.text('Max available is ' + max).show();
+                isValid = false;
+            } else if (entered <= 0 && $(this).val() !== '') {
+                $(this).addClass('is-invalid');
+                $errDiv.text('Quantity must be at least 1').show();
+                isValid = false;
+            } else {
+                $(this).removeClass('is-invalid');
+                $errDiv.hide();
+            }
+        });
+
+        if (!hasAtLeastOne) isValid = false;
+
+        $('#submitBtn').prop('disabled', !isValid);
+        return isValid;
+    }
+
+    $(document).on('input', '.quantity', validateForm);
+    $('#from_warehouse_id, #to_warehouse_id').on('change', validateForm);
+
+    // ─── Build a new empty row HTML ───────────────────────────────────────────
+    function buildRowOptions() {
+        if (availableProducts.length === 0) {
+            return '<option value="">-- Select Source Warehouse First --</option>';
+        }
+        let opts = '<option value="">-- Select Product --</option>';
+        availableProducts.forEach(function(p) {
+            opts += buildOption(p, '');
+        });
+        return opts;
+    }
+
+    // ─── Add Row ──────────────────────────────────────────────────────────────
+    $('#add_row_btn').on('click', function() {
+        let row = `
+            <tr class="product_row">
+                <td class="text-start ps-3">
+                    <select name="product_id[]" class="form-select form-control product-select" required>
+                        ${buildRowOptions()}
+                    </select>
+                    <input type="hidden" name="variant_key[]" class="variant-key-input" value="">
+                    <input type="hidden" name="variant_name[]" class="variant-name-input" value="">
+                    <div class="invalid-feedback product-error" style="display:none; font-size: 0.82rem;">
+                        This item is already selected in another row.
+                    </div>
+                </td>
+                <td>
+                    <input type="number" name="available_stock[]" class="form-control text-center stock" readonly placeholder="0">
+                    <small class="stock-unit-label text-muted d-block mt-1" style="font-size: 0.75rem;"></small>
+                </td>
+                <td>
+                    <input type="number" name="quantity[]" class="form-control text-center quantity" required min="1" placeholder="Enter Qty">
+                    <div class="invalid-feedback stock-error text-start" style="display:none; font-size: 0.82rem;">
+                        Insufficient stock!
+                    </div>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-row" title="Remove Row">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        $('#product_body').append(row);
+        validateForm();
+    });
+
+    // ─── Remove Row ───────────────────────────────────────────────────────────
+    $(document).on('click', '.remove-row', function() {
+        if ($('#product_body tr').length > 1) {
+            $(this).closest('tr').remove();
+        } else {
+            let $row = $(this).closest('tr');
+            $row.find('select').val('');
+            clearRowData($row);
+            $row.find('.product-select').removeClass('is-invalid');
+            $row.find('.product-error, .stock-error').hide();
+        }
+        validateForm();
+    });
+
+    // ─── Form submit guard ────────────────────────────────────────────────────
+    $('#stockTransferForm').on('submit', function(e) {
+        // Run validation first (uses uniqueKey values)
+        if (!validateForm()) {
+            e.preventDefault();
+            alert('Please check all fields, ensure valid products and quantities are selected.');
+            return false;
+        }
+
+        // Before submitting, inject hidden product_id[] inputs (integer only)
+        // and disable the selects so their "productId||variantKey" values don't get sent
+        $('.product-select').each(function() {
+            let uKey = $(this).val();  // "productId||variantKey"
+            if (uKey) {
+                let productId = uKey.split('||')[0];
+                // Create (or update) a hidden input for product_id[]
+                let $pid = $(this).siblings('.pid-hidden');
+                if ($pid.length === 0) {
+                    $pid = $('<input type="hidden" class="pid-hidden">').insertAfter(this);
+                }
+                $pid.attr('name', 'product_id[]').val(productId);
+            }
+            // Rename the select so it won't submit its composite value
+            $(this).attr('name', '_product_select_ignore[]');
+        });
+    });
+
+    // ─── Pre-fill if warehouse was already chosen (old input on back) ─────────
+    if ($('#from_warehouse_id').val()) {
+        $('#from_warehouse_id').trigger('change');
+    }
+});
 </script>
+@endsection

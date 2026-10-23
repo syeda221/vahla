@@ -236,6 +236,21 @@ class ProductController extends Controller
                     ->select('pri.qty', 'pri.color')
                     ->get();
 
+                // Fetch stock transfers for this product in/out of the selected warehouse
+                $transfersOut = collect();
+                $transfersIn  = collect();
+                if (!empty($warehouseId)) {
+                    $transfersOut = DB::table('stock_transfers')
+                        ->where('product_id', $p->id)
+                        ->where('from_warehouse_id', $warehouseId)
+                        ->get(['quantity', 'variant_key', 'variant_name']);
+                    $transfersIn = DB::table('stock_transfers')
+                        ->where('product_id', $p->id)
+                        ->where('to_warehouse_id', $warehouseId)
+                        ->where('to_shop', false)
+                        ->get(['quantity', 'variant_key', 'variant_name']);
+                }
+
                 $expanded = [];
                 foreach ($variants as $v) {
                     $size = (isset($v['size']) && $v['size'] !== '-') ? " {$v['size']}" : '';
@@ -377,6 +392,25 @@ class ProductController extends Controller
                             if ($ws) {
                                 $vBalance = (float) $ws->total_pieces;
                             }
+                        }
+
+                        // Apply stock transfer adjustments for this variant
+                        if (!empty($warehouseId) && count($variants) > 1) {
+                            $vKey = ($v['name'] ?? '') . '|' . ($v['size'] ?? '-') . '|' . ($v['color'] ?? '-');
+                            $vNameOnly = $v['name'] ?? '';
+                            $tOutPieces = 0;
+                            $tInPieces  = 0;
+                            foreach ($transfersOut as $t) {
+                                if (empty($t->variant_key) || $t->variant_key === $vKey || $t->variant_name === $vNameOnly) {
+                                    $tOutPieces += ($t->quantity * $vPpb);
+                                }
+                            }
+                            foreach ($transfersIn as $t) {
+                                if (empty($t->variant_key) || $t->variant_key === $vKey || $t->variant_name === $vNameOnly) {
+                                    $tInPieces += ($t->quantity * $vPpb);
+                                }
+                            }
+                            $vBalance = max(0, $vBalance - $tOutPieces + $tInPieces);
                         }
                     }
 

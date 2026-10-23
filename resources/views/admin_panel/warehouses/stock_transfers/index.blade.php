@@ -14,7 +14,7 @@
         @if (session('success'))
             <div class="alert alert-success">{{ session('success') }}</div>
         @endif
-        @if ($errors->any())
+        @if (isset($errors) && $errors->any())
             <div class="alert alert-danger">
                 <ul class="mb-0">
                     @foreach ($errors->all() as $error)
@@ -40,15 +40,15 @@
                     @foreach ($transfers as $transfer)
                         <tr>
                             <td>{{ $loop->iteration }}</td>
-                            <td>{{ $transfer->fromWarehouse->warehouse_name }}</td>
+                            <td>{{ $transfer->fromWarehouse?->warehouse_name ?? '-' }}</td>
                             <td>
                                 @if ($transfer->to_shop)
-                                    Shop
+                                    <span class="badge badge-info bg-info text-white">Shop</span>
                                 @else
-                                    {{ $transfer->toWarehouse ? $transfer->toWarehouse->warehouse_name : '-' }}
+                                    {{ $transfer->toWarehouse?->warehouse_name ?? '-' }}
                                 @endif
                             </td>
-                            <td>{{ $transfer->product->item_name }}</td>
+                            <td>{{ $transfer->product?->item_name ?? '-' }}</td>
                             <td>{{ $transfer->quantity }}</td>
                             <td>{{ $transfer->remarks }}</td>
                         </tr>

@@ -152,6 +152,18 @@ class WarehouseStockController extends Controller
             )
             ->get();
 
+        $transfersOut = DB::table('stock_transfers')
+            ->select('product_id', 'from_warehouse_id as warehouse_id', 'variant_key', 'variant_name', DB::raw('SUM(quantity) as total_qty'))
+            ->groupBy('product_id', 'from_warehouse_id', 'variant_key', 'variant_name')
+            ->get();
+
+        $transfersIn = DB::table('stock_transfers')
+            ->where('to_shop', false)
+            ->whereNotNull('to_warehouse_id')
+            ->select('product_id', 'to_warehouse_id as warehouse_id', 'variant_key', 'variant_name', DB::raw('SUM(quantity) as total_qty'))
+            ->groupBy('product_id', 'to_warehouse_id', 'variant_key', 'variant_name')
+            ->get();
+
         $variantMatches = function ($rawColor, $targetVariantName) {
             if (!$targetVariantName) return true;
             if (empty($rawColor)) return false;
@@ -188,31 +200,22 @@ class WarehouseStockController extends Controller
                 $ppb = (float)($p->pieces_per_box > 0 ? $p->pieces_per_box : 1);
                 $decodedVariants = json_decode($p->color, true) ?: [];
 
-                if ($pOps->count() > 0) {
-                    foreach ($pOps as $op) {
-                        $vName = $op->variant_name;
-                        if (!$vName) {
-                            if (isset($decodedVariants[0]['name'])) {
-                                $vName = $decodedVariants[0]['name'];
-                            } else {
-                                $vName = 'Standard';
-                            }
-                        }
+                if (count($decodedVariants) > 1) {
+                    $variantsAdded = 0;
+                    foreach ($decodedVariants as $dv) {
+                        $vName = $dv['name'] ?? $p->item_name;
+                        $vSize = $dv['size'] ?? '-';
+                        $vColor = $dv['color'] ?? '-';
+                        $vKey = $vName . '|' . $vSize . '|' . $vColor;
 
-                        $vUnit = null;
-                        $vPpb = $ppb;
-                        foreach ($decodedVariants as $dv) {
-                            if (($dv['name'] ?? '') === $vName) {
-                                if (!empty($dv['unit'])) {
-                                    $vUnit = $dv['unit'];
-                                }
-                                if (!empty($dv['conv_factor']) && (float)$dv['conv_factor'] > 0) {
-                                    $vPpb = (float)$dv['conv_factor'];
-                                }
-                                break;
-                            }
-                        }
+                        $vUnit = $dv['unit'] ?? null;
+                        $vPpb = (!empty($dv['conv_factor']) && (float)$dv['conv_factor'] > 0) ? (float)$dv['conv_factor'] : $ppb;
                         $isPieceOnly = ($p->size_mode === 'by_pieces' || $vPpb <= 1 || strtolower($vUnit ?? '') === 'pcs');
+
+                        $op = $pOps->first(function($o) use ($vKey, $vName) {
+                            return ($o->variant_key === $vKey) || ($o->variant_name === $vName);
+                        });
+                        $opPieces = $op ? (float)$op->total_pieces : 0;
 
                         $vSales = 0;
                         foreach ($saleItems->where('warehouse_id', $w->id)->where('product_id', $p->id) as $si) {
@@ -239,40 +242,38 @@ class WarehouseStockController extends Controller
                             }
                         }
 
-                        $livePieces = max(0, (float)$op->total_pieces + $vPurchases - $vSales + $vReturns);
+                        $vTransfersOutQty = (float) ($transfersOut->where('warehouse_id', $w->id)->where('product_id', $p->id)->filter(function($t) use ($vKey, $vName) {
+                            return empty($t->variant_key) || $t->variant_key === $vKey || $t->variant_name === $vName;
+                        })->sum('total_qty'));
+                        $vTransfersOutPieces = $vTransfersOutQty * $vPpb;
 
-                        // Resolve variant sale price & cost price
-                        $price = 0;
-                        $costPrice = 0;
-                        if (!empty($op->sale_price) && (float)$op->sale_price > 0) {
-                            $price = (float)$op->sale_price;
-                        } else {
-                            foreach ($decodedVariants as $dv) {
-                                if (($dv['name'] ?? '') === $vName && !empty($dv['sale_price'])) {
-                                    $price = (float)$dv['sale_price'];
-                                    break;
-                                }
-                            }
-                        }
-                        if ($price <= 0) {
-                            $price = (float)($p->sale_price_per_piece ?? 0);
-                        }
+                        $vTransfersInQty = (float) ($transfersIn->where('warehouse_id', $w->id)->where('product_id', $p->id)->filter(function($t) use ($vKey, $vName) {
+                            return empty($t->variant_key) || $t->variant_key === $vKey || $t->variant_name === $vName;
+                        })->sum('total_qty'));
+                        $vTransfersInPieces = $vTransfersInQty * $vPpb;
 
-                        if (!empty($op->cost_price) && (float)$op->cost_price > 0) {
-                            $costPrice = (float)$op->cost_price;
-                        } else {
-                            foreach ($decodedVariants as $dv) {
-                                if (($dv['name'] ?? '') === $vName && !empty($dv['purchase_price'])) {
-                                    $costPrice = (float)$dv['purchase_price'];
-                                    break;
-                                }
-                            }
-                        }
-                        if ($costPrice <= 0) {
-                            $costPrice = (float)($p->purchase_price_per_piece ?? 0);
-                        }
+                        $livePieces = max(0, $opPieces + $vPurchases - $vSales + $vReturns + $vTransfersInPieces - $vTransfersOutPieces);
 
                         if ($livePieces > 0) {
+                            $variantsAdded++;
+                            $price = 0;
+                            $costPrice = 0;
+                            if ($op && !empty($op->sale_price) && (float)$op->sale_price > 0) {
+                                $price = (float)$op->sale_price;
+                            } elseif (!empty($dv['sale_price'])) {
+                                $price = (float)$dv['sale_price'];
+                            } else {
+                                $price = (float)($p->sale_price_per_piece ?? 0);
+                            }
+
+                            if ($op && !empty($op->cost_price) && (float)$op->cost_price > 0) {
+                                $costPrice = (float)$op->cost_price;
+                            } elseif (!empty($dv['purchase_price'])) {
+                                $costPrice = (float)$dv['purchase_price'];
+                            } else {
+                                $costPrice = (float)($p->purchase_price_per_piece ?? 0);
+                            }
+
                             $liveBoxes = $vPpb > 1 ? round($livePieces / $vPpb, 2) : $livePieces;
                             $whFmt = $this->formatPackagingQuantity($livePieces, $p, $vPpb, $vUnit);
                             $row = [
@@ -303,75 +304,78 @@ class WarehouseStockController extends Controller
                             $assignedProductIds->push($p->id);
                         }
                     }
-                } else {
-                    $vName = 'Standard';
-                    if (isset($decodedVariants[0]['name'])) {
-                        $vName = $decodedVariants[0]['name'];
-                    }
 
-                    $vUnit = null;
-                    $vPpb = $ppb;
-                    foreach ($decodedVariants as $dv) {
-                        if (($dv['name'] ?? '') === $vName) {
-                            if (!empty($dv['unit'])) {
-                                $vUnit = $dv['unit'];
-                            }
-                            if (!empty($dv['conv_factor']) && (float)$dv['conv_factor'] > 0) {
-                                $vPpb = (float)$dv['conv_factor'];
-                            }
-                            break;
-                        }
+                    // Fallback if no specific variant had positive balance but warehouse has stock
+                    if ($variantsAdded === 0 && (float)$ws->total_pieces > 0) {
+                        $vName = $decodedVariants[0]['name'] ?? 'Standard';
+                        $vUnit = $decodedVariants[0]['unit'] ?? null;
+                        $vPpb = (!empty($decodedVariants[0]['conv_factor']) && (float)$decodedVariants[0]['conv_factor'] > 0) ? (float)$decodedVariants[0]['conv_factor'] : $ppb;
+                        $isPieceOnly = ($p->size_mode === 'by_pieces' || $vPpb <= 1 || strtolower($vUnit ?? '') === 'pcs');
+                        $livePieces = (float)$ws->total_pieces;
+                        $liveBoxes = (float)$ws->quantity > 0 ? (float)$ws->quantity : ($vPpb > 1 ? round($livePieces / $vPpb, 2) : $livePieces);
+                        $whFmt = $this->formatPackagingQuantity($livePieces, $p, $vPpb, $vUnit);
+                        $row = [
+                            'product_id'    => $p->id,
+                            'product_name'  => $p->item_name,
+                            'item_code'     => $p->item_code,
+                            'product_image' => $p->image ? asset('uploads/products/' . $p->image) : null,
+                            'category_name' => $p->category?->name ?? '',
+                            'brand_name'    => $p->brand?->name ?? '',
+                            'variant_name'  => $vName,
+                            'pieces'        => $livePieces,
+                            'boxes'         => $liveBoxes,
+                            'warehouse_id'  => $w->id,
+                            'warehouse_name'=> $w->warehouse_name,
+                            'location'      => $w->location ?: ($w->branch?->name ?? 'Main'),
+                            'branch_name'   => $w->branch?->name ?? '',
+                            'price'         => (float)($decodedVariants[0]['sale_price'] ?? $p->sale_price_per_piece ?? 0),
+                            'cost_price'    => (float)($decodedVariants[0]['purchase_price'] ?? $p->purchase_price_per_piece ?? 0),
+                            'is_piece_only' => $isPieceOnly,
+                            'unit'          => $vUnit ?: ($p->unit->name ?? 'Pcs'),
+                            'formatted'     => $whFmt,
+                            'ppb'           => $vPpb,
+                            'size_mode'     => $p->size_mode,
+                            'product_obj'   => $p,
+                        ];
+                        $items->push($row);
+                        $allFlatItems->push($row);
+                        $assignedProductIds->push($p->id);
                     }
+                } else {
+                    // Single variant or no variant
+                    $vName = $pOps->first()?->variant_name ?? ($decodedVariants[0]['name'] ?? 'Standard');
+                    $vUnit = $decodedVariants[0]['unit'] ?? null;
+                    $vPpb = (!empty($decodedVariants[0]['conv_factor']) && (float)$decodedVariants[0]['conv_factor'] > 0) ? (float)$decodedVariants[0]['conv_factor'] : $ppb;
                     $isPieceOnly = ($p->size_mode === 'by_pieces' || $vPpb <= 1 || strtolower($vUnit ?? '') === 'pcs');
 
-                    $vSales = 0;
-                    foreach ($saleItems->where('warehouse_id', $w->id)->where('product_id', $p->id) as $si) {
-                        if ($variantMatches($si->color, $vName)) {
-                            $vSales += (float)$si->total_pieces;
-                        }
-                    }
+                    $opPieces = (float)($pOps->sum('total_pieces'));
 
+                    $vSales = (float)$saleItems->where('warehouse_id', $w->id)->where('product_id', $p->id)->sum('total_pieces');
                     $vReturns = 0;
                     foreach ($saleReturnItems->where('warehouse_id', $w->id)->where('product_id', $p->id) as $ri) {
-                        if ($variantMatches($ri->color, $vName)) {
-                            $rPieces = (float)($ri->qty > 0 ? $ri->qty : ((float)$ri->boxes * $vPpb));
-                            $vReturns += $rPieces;
-                        }
+                        $vReturns += (float)($ri->qty > 0 ? $ri->qty : ((float)$ri->boxes * $vPpb));
                     }
-
                     $vPurchases = 0;
                     foreach ($purchaseItems->where('warehouse_id', $w->id)->where('product_id', $p->id) as $pi) {
-                        if ($variantMatches($pi->color, $vName)) {
-                            $ppbItem = (float)($pi->pieces_per_box > 0 ? $pi->pieces_per_box : $vPpb);
-                            $pPieces = ((float)$pi->boxes_qty * $ppbItem) + (float)$pi->loose_qty;
-                            if ($pPieces <= 0) $pPieces = (float)$pi->qty;
-                            $vPurchases += $pPieces;
-                        }
+                        $ppbItem = (float)($pi->pieces_per_box > 0 ? $pi->pieces_per_box : $vPpb);
+                        $pPieces = ((float)$pi->boxes_qty * $ppbItem) + (float)$pi->loose_qty;
+                        if ($pPieces <= 0) $pPieces = (float)$pi->qty;
+                        $vPurchases += $pPieces;
                     }
+                    $vTransfersOutQty = (float)($transfersOut->where('warehouse_id', $w->id)->where('product_id', $p->id)->sum('total_qty'));
+                    $vTransfersOutPieces = $vTransfersOutQty * $vPpb;
+                    $vTransfersInQty = (float)($transfersIn->where('warehouse_id', $w->id)->where('product_id', $p->id)->sum('total_qty'));
+                    $vTransfersInPieces = $vTransfersInQty * $vPpb;
 
-                    $hasMovements = ($vPurchases > 0 || $vSales > 0 || $vReturns > 0);
-                    $livePieces = $hasMovements 
-                        ? max(0, 0 + $vPurchases - $vSales + $vReturns) 
+                    $hasMovements = ($vPurchases > 0 || $vSales > 0 || $vReturns > 0 || $vTransfersInPieces > 0 || $vTransfersOutPieces > 0);
+                    $livePieces = ($opPieces > 0 || $hasMovements)
+                        ? max(0, $opPieces + $vPurchases - $vSales + $vReturns + $vTransfersInPieces - $vTransfersOutPieces)
                         : (float)$ws->total_pieces;
+
                     if ($livePieces > 0) {
-
-                        $price = 0;
-                        $costPrice = 0;
-                        foreach ($decodedVariants as $dv) {
-                            if (($dv['name'] ?? '') === $vName) {
-                                if (!empty($dv['sale_price'])) $price = (float)$dv['sale_price'];
-                                if (!empty($dv['purchase_price'])) $costPrice = (float)$dv['purchase_price'];
-                                break;
-                            }
-                        }
-                        if ($price <= 0) {
-                            $price = (float)($p->sale_price_per_piece ?? 0);
-                        }
-                        if ($costPrice <= 0) {
-                            $costPrice = (float)($p->purchase_price_per_piece ?? 0);
-                        }
-
-                        $liveBoxes = $ws->quantity > 0 ? (float)$ws->quantity : ($vPpb > 1 ? round($livePieces / $vPpb, 2) : $livePieces);
+                        $price = (float)($pOps->first()?->sale_price ?? $decodedVariants[0]['sale_price'] ?? $p->sale_price_per_piece ?? 0);
+                        $costPrice = (float)($pOps->first()?->cost_price ?? $decodedVariants[0]['purchase_price'] ?? $p->purchase_price_per_piece ?? 0);
+                        $liveBoxes = (float)$ws->quantity > 0 ? (float)$ws->quantity : ($vPpb > 1 ? round($livePieces / $vPpb, 2) : $livePieces);
                         $whFmt = $this->formatPackagingQuantity($livePieces, $p, $vPpb, $vUnit);
                         $row = [
                             'product_id'    => $p->id,

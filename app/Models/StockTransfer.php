@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -8,25 +9,29 @@ class StockTransfer extends Model
 {
     use HasFactory;
 
-  protected $fillable = [
-    'from_warehouse_id',
-    'to_warehouse_id',
-    'to_shop',
-    'product_id',
-    'quantity',
-    'remarks',
-];
+    protected $fillable = [
+        'from_warehouse_id',
+        'to_warehouse_id',
+        'to_shop',
+        'product_id',
+        'variant_key',
+        'variant_name',
+        'quantity',
+        'remarks',
+    ];
 
-
-    public function fromWarehouse() {
+    public function fromWarehouse()
+    {
         return $this->belongsTo(Warehouse::class, 'from_warehouse_id');
     }
 
-    public function toWarehouse() {
+    public function toWarehouse()
+    {
         return $this->belongsTo(Warehouse::class, 'to_warehouse_id');
     }
 
-    public function product() {
+    public function product()
+    {
         return $this->belongsTo(Product::class);
     }
 }

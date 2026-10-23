@@ -257,6 +257,20 @@ class OpeningStockController extends Controller
             )
             ->get();
 
+        // Fetch stock transfers for accurate live stock calculation
+        $stockTransfersOut = DB::table('stock_transfers')
+            ->whereIn('product_id', $pageProductIds)
+            ->whereIn('from_warehouse_id', $permittedWarehouseIds)
+            ->select('product_id', 'from_warehouse_id as warehouse_id', 'quantity', 'variant_key', 'variant_name')
+            ->get();
+
+        $stockTransfersIn = DB::table('stock_transfers')
+            ->whereIn('product_id', $pageProductIds)
+            ->whereIn('to_warehouse_id', $permittedWarehouseIds)
+            ->where('to_shop', false)
+            ->select('product_id', 'to_warehouse_id as warehouse_id', 'quantity', 'variant_key', 'variant_name')
+            ->get();
+
         $variantMatches = function ($rawColor, $targetVariantName, $targetVariantKey) {
             if (!$targetVariantName && !$targetVariantKey) {
                 return true;
@@ -396,7 +410,13 @@ class OpeningStockController extends Controller
                     $hasPurchases = $purchaseItems->where('product_id', $pId)->where('warehouse_id', $pWhId)->contains(function($pi) use ($variantMatches, $vName, $vKey) {
                         return $variantMatches($pi->color, $vName, $vKey);
                     });
-                    if ($hasReturns || $hasPurchases) {
+                    $hasTransfersIn = $stockTransfersIn->where('product_id', $pId)->where('warehouse_id', $pWhId)->contains(function($st) use ($vName, $vKey) {
+                        return empty($st->variant_key) || $st->variant_key === $vKey || $st->variant_name === $vName;
+                    });
+                    $hasTransfersOut = $stockTransfersOut->where('product_id', $pId)->where('warehouse_id', $pWhId)->contains(function($st) use ($vName, $vKey) {
+                        return empty($st->variant_key) || $st->variant_key === $vKey || $st->variant_name === $vName;
+                    });
+                    if ($hasReturns || $hasPurchases || $hasTransfersIn || $hasTransfersOut) {
                         $allVariantWhIds->push($pWhId);
                     }
                 }
@@ -438,7 +458,21 @@ class OpeningStockController extends Controller
                     }
                 }
 
-                $entryLivePieces = max(0, $entryOpeningPieces + $whPurchases - $whSales + $whReturns);
+                // Transfer adjustments for this variant & warehouse
+                $whTransferOut = 0;
+                $whTransferIn  = 0;
+                foreach ($stockTransfersOut->where('product_id', $pId)->where('warehouse_id', $whId) as $st) {
+                    if (empty($st->variant_key) || $st->variant_key === $vKey || $st->variant_name === $vName) {
+                        $whTransferOut += ((float)$st->quantity * $ppb);
+                    }
+                }
+                foreach ($stockTransfersIn->where('product_id', $pId)->where('warehouse_id', $whId) as $st) {
+                    if (empty($st->variant_key) || $st->variant_key === $vKey || $st->variant_name === $vName) {
+                        $whTransferIn += ((float)$st->quantity * $ppb);
+                    }
+                }
+
+                $entryLivePieces = max(0, $entryOpeningPieces + $whPurchases - $whSales + $whReturns + $whTransferIn - $whTransferOut);
                 if ($entryLivePieces <= 0 && $entryOpeningPieces <= 0) {
                     continue;
                 }
