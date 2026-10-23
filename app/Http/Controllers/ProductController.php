@@ -101,15 +101,18 @@ class ProductController extends Controller
     {
         $term = $request->get('term') ?? $request->get('q') ?? '';
         $warehouseId = $request->get('warehouse_id');
+        $forPurchase = $request->get('context') === 'purchase' || $request->boolean('allow_zero_stock');
 
         $query = Product::query()
             ->select('id', 'item_name', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece')
             ->with(['unit']);
 
         if (!empty($warehouseId)) {
-            $query->whereHas('warehouseStocks', function ($q) use ($warehouseId) {
-                $q->where('warehouse_id', $warehouseId)->where('total_pieces', '>', 0);
-            });
+            if (!$forPurchase) {
+                $query->whereHas('warehouseStocks', function ($q) use ($warehouseId) {
+                    $q->where('warehouse_id', $warehouseId)->where('total_pieces', '>', 0);
+                });
+            }
             $query->withSum(['warehouseStocks as warehouse_stocks_sum_total_pieces' => function ($q) use ($warehouseId) {
                 $q->where('warehouse_id', $warehouseId);
             }], 'total_pieces');
@@ -126,7 +129,7 @@ class ProductController extends Controller
 
         $products = $query->paginate(10); // Lazy loading (10 per request)
 
-        $results = $products->getCollection()->flatMap(function ($p) use ($warehouseId) {
+        $results = $products->getCollection()->flatMap(function ($p) use ($warehouseId, $forPurchase) {
             $stockPieces = (float) ($p->warehouse_stocks_sum_total_pieces ?? 0);
             $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
 
@@ -142,7 +145,7 @@ class ProductController extends Controller
             };
 
             $stockDisplay = $stockPieces;
-            if ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') && $ppb > 1) {
+            if ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size' || strtolower($unitName) === 'carton') && $ppb > 1) {
                 $boxes = floor($stockPieces / $ppb);
                 $loose = $stockPieces % $ppb;
                 $stockDisplay = $loose > 0 ? "$boxes.$loose" : $boxes;
@@ -414,7 +417,7 @@ class ProductController extends Controller
                         }
                     }
 
-                    if (!empty($warehouseId) && $vBalance <= 0) {
+                    if (!$forPurchase && !empty($warehouseId) && $vBalance <= 0) {
                         continue;
                     }
 
@@ -439,7 +442,7 @@ class ProductController extends Controller
                             $pcsCount = (int) floor($vBalance);
                             $vStockDisplay = "{$pcsCount}";
                         }
-                    } elseif ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') && $vPpb > 1) {
+                    } elseif (($isCartonMode || $p->size_mode === 'by_size') && $vPpb > 1) {
                         $vBoxes = (int) floor($vBalance / $vPpb);
                         $vLoose = (int) round($vBalance - ($vBoxes * $vPpb));
                         $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes;
@@ -474,7 +477,7 @@ class ProductController extends Controller
                 return $expanded;
             }
 
-            if (!empty($warehouseId) && $stockPieces <= 0) {
+            if (!$forPurchase && !empty($warehouseId) && $stockPieces <= 0) {
                 return [];
             }
 

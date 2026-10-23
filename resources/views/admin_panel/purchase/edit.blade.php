@@ -1675,7 +1675,8 @@
                             return {
                                 term: params.term,
                                 page: params.page || 1,
-                                warehouse_id: $('#warehouseSelect').val()
+                                warehouse_id: $('#warehouseSelect').val(),
+                                context: 'purchase'
                             };
                         },
                         processResults: function(data, params) {
