@@ -5,53 +5,75 @@
     .warehouse-header-card {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         color: #ffffff;
-        border-radius: 12px;
-        padding: 16px 22px;
+        border-radius: 14px;
+        padding: 18px 24px;
         cursor: pointer;
         transition: all 0.2s ease-in-out;
         user-select: none;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.15);
     }
     .warehouse-header-card:hover {
         background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
     }
     .wh-avatar {
-        width: 44px;
-        height: 44px;
-        border-radius: 10px;
-        background: rgba(255, 255, 255, 0.12);
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.14);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.25rem;
-        color: #f59e0b;
+        font-size: 1.35rem;
+        color: #fbbf24;
         flex-shrink: 0;
+        border: 1.5px solid rgba(255, 255, 255, 0.2);
     }
     .prod-letter-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 8px;
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
         background: #e0f2fe;
-        color: #0284c7;
-        font-weight: 700;
-        font-size: 0.95rem;
+        color: #0369a1;
+        font-weight: 800;
+        font-size: 1.1rem;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        border: 1.5px solid #bae6fd;
+        box-shadow: 0 2px 6px rgba(2, 132, 199, 0.08);
     }
     .stock-badge-qty {
-        font-size: 0.92rem;
-        font-weight: 700;
-        padding: 5px 14px;
-        border-radius: 8px;
+        font-size: 1.02rem;
+        font-weight: 800;
+        padding: 6px 18px;
+        border-radius: 10px;
         letter-spacing: 0.3px;
+        display: inline-flex;
+        align-items: center;
+        border-width: 1.5px !important;
     }
     .nav-pill-tab {
         border-radius: 50rem;
-        font-weight: 600;
-        font-size: 0.88rem;
-        padding: 7px 18px;
+        font-weight: 700;
+        font-size: 0.92rem;
+        padding: 8px 22px;
         transition: all 0.2s;
+    }
+    .table-custom-row td {
+        padding: 16px 14px;
+        border-bottom: 1.5px solid #e2e8f0;
+        vertical-align: middle;
+    }
+    .code-badge {
+        font-size: 0.88rem;
+        font-weight: 700;
+        border: 1.5px solid #cbd5e1 !important;
+        background: #f8fafc;
+        color: #1e293b;
+        padding: 5px 12px;
+        border-radius: 8px;
+        font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
 </style>
 
@@ -336,11 +358,11 @@
                                                 $qtyVal = (float)$stock->total_pieces;
                                                 $fmtQty = rtrim(rtrim(number_format($qtyVal, 2, '.', ','), '0'), '.');
                                                 if ($fmtQty === '' || $fmtQty === '-0') $fmtQty = '0';
-                                                $unit = $stock->product->unit->name ?? 'Pcs';
+                                                $unit = $stock->product->unit_name ?? ($stock->product->unit->name ?? 'Kg');
                                                 $itemName = $stock->product->item_name ?? 'N/A';
                                                 $firstLetter = strtoupper(substr(trim($itemName), 0, 1)) ?: 'P';
                                             @endphp
-                                            <tr>
+                                            <tr class="table-custom-row">
                                                 <!-- Product (Image 1 Style with Letter Icon) -->
                                                 <td class="ps-4">
                                                     <div class="d-flex align-items-center">
@@ -348,7 +370,7 @@
                                                             {{ $firstLetter }}
                                                         </div>
                                                         <div>
-                                                            <div class="fw-bold text-dark fs-6">{{ $itemName }}</div>
+                                                            <div class="fw-bold text-dark" style="font-size: 1.02rem;">{{ $itemName }}</div>
                                                             @if($stock->remarks)
                                                                 <span class="small text-muted fst-italic">{{ $stock->remarks }}</span>
                                                             @endif
@@ -358,7 +380,7 @@
 
                                                 <!-- Code (Image 1 Style rounded badge) -->
                                                 <td>
-                                                    <span class="badge bg-light text-dark border font-monospace px-2.5 py-1.5" style="font-size: 0.8rem; border-color: #cbd5e1 !important;">
+                                                    <span class="code-badge">
                                                         {{ $stock->product->item_code ?? '--' }}
                                                     </span>
                                                 </td>
@@ -366,16 +388,16 @@
                                                 <!-- Quantity (Clean badge with decimals & real unit) -->
                                                 <td class="text-center">
                                                     @if($qtyVal > 0)
-                                                        <span class="badge bg-white text-success border border-success stock-badge-qty font-monospace">
-                                                            {{ $fmtQty }} <span class="fw-normal text-muted small ms-1">{{ $unit }}</span>
+                                                        <span class="stock-badge-qty font-monospace border-success text-success bg-white shadow-sm">
+                                                            {{ $fmtQty }} <span class="fw-bold text-dark small ms-1.5">{{ $unit }}</span>
                                                         </span>
                                                     @elseif($qtyVal < 0)
-                                                        <span class="badge bg-danger-subtle text-danger border border-danger stock-badge-qty font-monospace">
-                                                            {{ $fmtQty }} <span class="fw-normal text-muted small ms-1">{{ $unit }}</span>
+                                                        <span class="stock-badge-qty font-monospace border-danger text-danger bg-danger-subtle shadow-sm">
+                                                            {{ $fmtQty }} <span class="fw-bold text-danger small ms-1.5">{{ $unit }}</span>
                                                         </span>
                                                     @else
-                                                        <span class="badge bg-light text-secondary border stock-badge-qty font-monospace">
-                                                            0 <span class="fw-normal text-muted small ms-1">{{ $unit }}</span>
+                                                        <span class="stock-badge-qty font-monospace border-secondary text-secondary bg-light">
+                                                            0 <span class="fw-normal text-muted small ms-1.5">{{ $unit }}</span>
                                                         </span>
                                                     @endif
                                                 </td>
@@ -383,16 +405,16 @@
                                                 <!-- Action (Adjust / View Breakdown Button) -->
                                                 <td class="pe-4 text-end">
                                                     <a href="{{ route('warehouse_stocks.edit', $stock->id) }}" 
-                                                       class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold shadow-sm"
+                                                       class="btn btn-sm btn-dark rounded-pill px-3 py-1.5 fw-bold shadow-sm"
                                                        title="View Breakdown / Adjust Stock">
-                                                        <i class="fas fa-eye me-1"></i> View Breakdown
+                                                        <i class="fas fa-eye me-1.5"></i> View Breakdown
                                                     </a>
                                                     @can('warehouse.stock.delete')
                                                         <form action="{{ route('warehouse_stocks.destroy', $stock->id) }}" method="POST" 
-                                                              class="d-inline-block ms-1" onsubmit="return confirm('Delete this stock record?');">
+                                                              class="d-inline-block ms-1.5" onsubmit="return confirm('Delete this stock record?');">
                                                             @csrf @method('DELETE')
-                                                            <button type="submit" class="btn btn-sm btn-icon btn-outline-danger rounded-circle" title="Delete">
-                                                                <i class="fas fa-trash"></i>
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle p-1" style="width: 32px; height: 32px;" title="Delete">
+                                                                <i class="fas fa-trash fa-xs"></i>
                                                             </button>
                                                         </form>
                                                     @endcan
@@ -462,19 +484,19 @@
                                     $qtyVal = (float)$stock->total_pieces;
                                     $fmtQty = rtrim(rtrim(number_format($qtyVal, 2, '.', ','), '0'), '.');
                                     if ($fmtQty === '' || $fmtQty === '-0') $fmtQty = '0';
-                                    $unit = $stock->product->unit->name ?? 'Pcs';
+                                    $unit = $stock->product->unit_name ?? ($stock->product->unit->name ?? 'Kg');
                                     $itemName = $stock->product->item_name ?? 'N/A';
                                     $firstLetter = strtoupper(substr(trim($itemName), 0, 1)) ?: 'P';
                                 @endphp
-                                <tr>
-                                    <td class="ps-4 text-muted small">{{ $stocks->firstItem() + $loop->index }}</td>
+                                <tr class="table-custom-row">
+                                    <td class="ps-4 text-muted small fw-bold">{{ $stocks->firstItem() + $loop->index }}</td>
                                     <td>
                                         @if($stock->warehouse && $stock->warehouse->is_shop)
-                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1">
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5 fw-bold">
                                                 <i class="fas fa-store me-1"></i> {{ $stock->warehouse->warehouse_name }}
                                             </span>
                                         @else
-                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1">
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1.5 fw-bold">
                                                 <i class="fas fa-warehouse me-1"></i> {{ $stock->warehouse->warehouse_name ?? 'N/A' }}
                                             </span>
                                         @endif
@@ -484,32 +506,32 @@
                                             <div class="prod-letter-icon me-3">
                                                 {{ $firstLetter }}
                                             </div>
-                                            <div class="fw-bold text-dark">{{ $itemName }}</div>
+                                            <div class="fw-bold text-dark" style="font-size: 1.02rem;">{{ $itemName }}</div>
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-light text-dark border font-monospace px-2.5 py-1.5" style="border-color: #cbd5e1 !important;">
+                                        <span class="code-badge">
                                             {{ $stock->product->item_code ?? '--' }}
                                         </span>
                                     </td>
                                     <td class="text-center">
                                         @if($qtyVal > 0)
-                                            <span class="badge bg-white text-success border border-success stock-badge-qty font-monospace">
-                                                {{ $fmtQty }} <span class="fw-normal text-muted small ms-1">{{ $unit }}</span>
+                                            <span class="stock-badge-qty font-monospace border-success text-success bg-white shadow-sm">
+                                                {{ $fmtQty }} <span class="fw-bold text-dark small ms-1.5">{{ $unit }}</span>
                                             </span>
                                         @elseif($qtyVal < 0)
-                                            <span class="badge bg-danger-subtle text-danger border border-danger stock-badge-qty font-monospace">
-                                                {{ $fmtQty }} <span class="fw-normal text-muted small ms-1">{{ $unit }}</span>
+                                            <span class="stock-badge-qty font-monospace border-danger text-danger bg-danger-subtle shadow-sm">
+                                                {{ $fmtQty }} <span class="fw-bold text-danger small ms-1.5">{{ $unit }}</span>
                                             </span>
                                         @else
-                                            <span class="badge bg-light text-secondary border stock-badge-qty font-monospace">
-                                                0 <span class="fw-normal text-muted small ms-1">{{ $unit }}</span>
+                                            <span class="stock-badge-qty font-monospace border-secondary text-secondary bg-light">
+                                                0 <span class="fw-normal text-muted small ms-1.5">{{ $unit }}</span>
                                             </span>
                                         @endif
                                     </td>
                                     <td class="pe-4 text-end">
-                                        <a href="{{ route('warehouse_stocks.edit', $stock->id) }}" class="btn btn-sm btn-outline-dark rounded-pill px-3 fw-bold">
-                                            <i class="fas fa-eye me-1"></i> View Breakdown
+                                        <a href="{{ route('warehouse_stocks.edit', $stock->id) }}" class="btn btn-sm btn-dark rounded-pill px-3 py-1.5 fw-bold shadow-sm">
+                                            <i class="fas fa-eye me-1.5"></i> View Breakdown
                                         </a>
                                     </td>
                                 </tr>

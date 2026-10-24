@@ -681,15 +681,44 @@
                     .replace(/>/g, '&gt;');
             }
 
-            // Sync base variant name with product name
+            // Sync base variant name with product name in real time
+            let prevProductName = productNameInput ? (productNameInput.value || '') : '';
             if (productNameInput) {
                 productNameInput.addEventListener('input', function() {
-                    if (variantMode === 'weight') {
-                        const baseInput = document.querySelector('input.base-name-input');
-                        if (baseInput && !manualNames[baseInput.dataset.vid]) {
-                            baseInput.value = this.value;
-                        }
+                    const newName = this.value;
+                    const oldName = prevProductName;
+
+                    // 1. Always update the base variant name in real time
+                    const baseInput = document.querySelector('input.base-name-input');
+                    if (baseInput) {
+                        baseInput.value = newName;
                     }
+
+                    // 2. If other variants exist and had the product name as prefix, update their prefix too
+                    if (oldName && oldName.trim() !== '') {
+                        const otherVarInputs = document.querySelectorAll('input.var-name-input');
+                        otherVarInputs.forEach(inp => {
+                            if (inp.value === oldName) {
+                                inp.value = newName;
+                            } else if (inp.value.startsWith(oldName + ' - ')) {
+                                inp.value = newName + inp.value.substring(oldName.length);
+                            } else if (inp.value.startsWith(oldName + ' (')) {
+                                inp.value = newName + inp.value.substring(oldName.length);
+                            }
+                        });
+                    }
+
+                    // 3. Sync mobile cards if present
+                    if (typeof rebuildMobileCards === 'function' && typeof isMobile === 'function' && isMobile()) {
+                        rebuildMobileCards();
+                    } else {
+                        const mobBaseInput = document.querySelector('#mobileVariantsBody .mob-variant-card:first-child [data-field="variant_name[]"]');
+                        if (mobBaseInput) mobBaseInput.value = newName;
+                        const mobBaseLabel = document.querySelector('#mobileVariantsBody .mob-variant-card:first-child .mob-card-label');
+                        if (mobBaseLabel) mobBaseLabel.textContent = newName || 'Base Variant';
+                    }
+
+                    prevProductName = newName;
                 });
             }
 

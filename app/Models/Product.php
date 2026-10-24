@@ -57,6 +57,27 @@ class Product extends Model
         return $this->belongsTo(Unit::class, 'unit_id');
     }
 
+    public function getUnitNameAttribute()
+    {
+        if ($this->relationLoaded('unit') && $this->unit && $this->unit->name) {
+            return $this->unit->name;
+        }
+
+        if ($this->unit_id) {
+            $u = Unit::find($this->unit_id);
+            if ($u) return $u->name;
+        }
+
+        return match ($this->size_mode) {
+            'by_kg'      => 'Kg',
+            'by_meter'   => 'Mtr',
+            'by_feet'    => 'Ft',
+            'by_cartons' => 'Box',
+            'by_pieces'  => 'Pcs',
+            default      => 'Pcs',
+        };
+    }
+
     public function brand()
     {
         return $this->belongsTo(Brand::class, 'brand_id');

@@ -364,10 +364,10 @@ class WarehouseStockController extends Controller
             ->get();
 
         return response()->json($products->map(function ($p) {
-            $unitName = $p->unit ? $p->unit->name : 'Pcs';
+            $unitName = $p->unit_name;
             return [
                 'id'              => $p->id,
-                'text'            => "{$p->item_code} — {$p->item_name}",
+                'text'            => "{$p->item_code} — {$p->item_name} [{$unitName}]",
                 'item_name'       => $p->item_name,
                 'item_code'       => $p->item_code,
                 'unit_name'       => $unitName,
@@ -392,9 +392,7 @@ class WarehouseStockController extends Controller
             ->first();
 
         $product = Product::with('unit')->find($request->product_id);
-        $unitName = ($stock && $stock->product && $stock->product->unit)
-            ? $stock->product->unit->name
-            : ($product?->unit?->name ?? 'Pcs');
+        $unitName = $stock?->product?->unit_name ?? ($product?->unit_name ?? 'Kg');
 
         $rawQty = $stock ? (float)$stock->total_pieces : 0.0;
         $formatted = rtrim(rtrim(number_format($rawQty, 2, '.', ''), '0'), '.');

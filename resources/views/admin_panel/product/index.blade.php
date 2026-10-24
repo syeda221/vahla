@@ -2183,6 +2183,13 @@ $(document).ready(function () {
         updateStockDiffBadge();
     });
 
+    // ── Live item name sync in Quick Edit Modal ──
+    $(document).on('input', '#qe_item_name', function () {
+        let newName = $(this).val();
+        $('#qe_item_title').text(newName || 'Product');
+        $('.qe-var-row[data-isbase="1"] input[name$="[name]"]').val(newName);
+    });
+
     // ── Variant Stock input keyup/change (Sums all variant quantities) ──
     $(document).on('input change', '.qe-var-stock-input', function () {
         recalculateVariantStocks(this);
