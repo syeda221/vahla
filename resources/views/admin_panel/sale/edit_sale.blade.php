@@ -766,6 +766,18 @@
                             @endif
                         </div>
 
+                        <!-- Dispatch Location / Warehouse -->
+                        <div class="col-sm-6 col-md-2 col-lg-2">
+                            <label class="meta-label"><i class="fas fa-warehouse text-primary"></i> Dispatch Location</label>
+                            <select class="form-select fw-bold" id="warehouseSelect" name="warehouse_id">
+                                @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
+                                    <option value="{{ $wh->id }}" {{ (($sale->warehouse_id ?? 1) == $wh->id) ? 'selected' : '' }}>
+                                        {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <!-- Customer Type -->
                         <div class="col-sm-6 col-md-2 col-lg-2" id="customerTypeCol">
                             <label class="meta-label"><i class="fas fa-user-tag text-primary"></i> Customer Type</label>

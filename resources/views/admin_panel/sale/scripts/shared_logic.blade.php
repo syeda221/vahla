@@ -227,20 +227,36 @@
         }
         let stock = repo.stock !== undefined ? repo.stock : 0;
         let sku = repo.sku || 'N/A';
+        let unit = repo.unit_name ? ` | ${repo.unit_name}` : '';
         let stockVal = parseFloat(repo.stock_pieces !== undefined ? repo.stock_pieces : repo.stock) || 0;
         let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-danger';
 
+        let whBadges = '';
+        if (repo.warehouses && repo.warehouses.length > 0) {
+            whBadges = repo.warehouses.map(w => {
+                let hasStock = parseFloat(w.stock_pieces) > 0;
+                let badgeStyle = hasStock
+                    ? (w.is_shop ? 'background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc;' : 'background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;')
+                    : 'background:#f8fafc; color:#94a3b8; border:1px dashed #cbd5e1; opacity:0.85;';
+                let icon = w.is_shop 
+                    ? '<i class="fas fa-store me-1 text-primary"></i>' 
+                    : '<i class="fas fa-warehouse me-1 text-secondary"></i>';
+                return `<span class="badge me-1 py-1 px-2" style="font-size:0.68rem; font-weight:600; ${badgeStyle}">${icon}${w.name}: <strong>${w.stock}</strong></span>`;
+            }).join('');
+        }
+
         return $(`
-        <div class="clearfix">
+        <div class="clearfix py-1">
             <div class="float-start">
                 <div class="fw-bold">${repo.name || repo.text}</div>
-                <small class="text-muted">SKU: ${sku}</small>
+                <div class="small text-muted mb-1">SKU: ${sku}${unit}</div>
+                <div class="d-flex flex-wrap gap-1 align-items-center mt-1">${whBadges}</div>
             </div>
-            <div class="float-end">
-                <span class="badge ${badgeClass} rounded-pill">Stock: ${stock}</span>
+            <div class="float-end text-end">
+                <span class="badge ${badgeClass} rounded-pill px-2 py-1" style="font-size:0.75rem;">Total: ${stock}</span>
             </div>
         </div>
-    `);
+        `);
     }
 
     function formatSelection(repo) {
@@ -378,6 +394,10 @@
   </tr>`;
 
         const $row = $(rowHtml);
+        const currentWh = $('#warehouseSelect').val();
+        if (currentWh) {
+            $row.find('.warehouse').val(currentWh);
+        }
         $('#salesTableBody').append($row);
         initProductSelect2($row.find('.product'));
         updateRowIndexes();
@@ -539,7 +559,10 @@
 
     function loadWarehousesForProduct($row, productId, preSelectId = null) {
         var $whInput = $row.find('.warehouse');
-        if (!$whInput.val()) {
+        var currentHeaderWh = $('#warehouseSelect').val();
+        if (!$whInput.val() && currentHeaderWh) {
+            $whInput.val(currentHeaderWh);
+        } else if (!$whInput.val()) {
             $whInput.val("{{ auth()->user()->warehouse_id ?? 1 }}");
         }
 
@@ -553,7 +576,7 @@
                 product_id: productId
             })
             .done(function(warehouses) {
-                var targetWhId = preSelectId || $whInput.val() || "{{ auth()->user()->warehouse_id ?? 1 }}";
+                var targetWhId = preSelectId || currentHeaderWh || $whInput.val() || "{{ auth()->user()->warehouse_id ?? 1 }}";
                 var validWarehouses = Array.isArray(warehouses) ? warehouses : [];
                 var matched = validWarehouses.find(function(w) { return w.warehouse_id == targetWhId; });
                 if (!matched && validWarehouses.length > 0) {
@@ -596,15 +619,28 @@
                     } else {
                         disp = matched.stock;
                     }
-                    if (!$row.find('.stock').val()) {
-                        $row.find('.stock').val(disp);
-                    }
+                    $row.find('.stock').val(disp);
                 }
             })
             .fail(function(xhr) {
                 console.error('Warehouse fetch error:', xhr);
             });
     }
+
+    // Sync all rows when header Dispatch Location changes
+    $(document).on('change', '#warehouseSelect', function() {
+        var newWhId = $(this).val();
+        $('#salesTableBody tr').each(function() {
+            var $row = $(this);
+            $row.find('.warehouse').val(newWhId);
+            var pid = $row.find('.product').val();
+            if (pid) {
+                $row.find('.stock').val('');
+                $row.find('.variant-stock-value').val('');
+                loadWarehousesForProduct($row, pid, newWhId);
+            }
+        });
+    });
 
 
     // --- Calculation ---

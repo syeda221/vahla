@@ -36,8 +36,8 @@ class StockTransferController extends Controller
         ]);
 
         $fromWarehouse = $request->from_warehouse_id;
-        $toWarehouse = $request->to_warehouse_id;
         $toShop = $request->to_shop ? true : false;
+        $destWhId = $toShop ? (\App\Models\Warehouse::defaultShop()->id ?? 1) : $request->to_warehouse_id;
         $remarks = $request->remarks;
 
         // Aggregate quantities by product
@@ -52,51 +52,56 @@ class StockTransferController extends Controller
             }
         }
 
-        if ($fromWarehouse == $toWarehouse && ! $toShop) {
+        if ($fromWarehouse == $destWhId) {
             return back()->with('error', 'Source and Destination warehouses cannot be the same.');
         }
 
         try {
-            \Illuminate\Support\Facades\DB::transaction(function () use ($fromWarehouse, $toWarehouse, $toShop, $remarks, $groupped) {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($fromWarehouse, $destWhId, $toShop, $remarks, $groupped) {
 
                 foreach ($groupped as $productId => $totalQty) {
-                    // Check source stock for TOTAL quantity
+                    $product = Product::find($productId);
+                    $productName = $product->item_name ?? 'Product #'.$productId;
+                    $ppb = ($product && $product->pieces_per_box > 0) ? (float)$product->pieces_per_box : 1;
+
+                    // Check source stock
                     $sourceStock = WarehouseStock::where('warehouse_id', $fromWarehouse)
                         ->where('product_id', $productId)
                         ->lockForUpdate()
                         ->first();
 
-                    $productName = Product::find($productId)->item_name ?? 'Product #'.$productId;
+                    $availPieces = (float)($sourceStock ? ($sourceStock->total_pieces > 0 ? $sourceStock->total_pieces : ($sourceStock->quantity * $ppb)) : 0);
 
-                    if (! $sourceStock || $sourceStock->quantity < $totalQty) {
-                        throw new \Exception("Insufficient stock for {$productName}. Requested Total: {$totalQty}, Available: ".($sourceStock->quantity ?? 0));
+                    if (! $sourceStock || $availPieces < $totalQty) {
+                        throw new \Exception("Insufficient stock for {$productName}. Requested Total: {$totalQty}, Available: {$availPieces}");
                     }
 
                     // Reduce stock from source
-                    $sourceStock->quantity -= $totalQty;
+                    $sourceStock->total_pieces = max(0, $availPieces - $totalQty);
+                    $sourceStock->quantity = round($sourceStock->total_pieces / $ppb, 2);
                     $sourceStock->save();
 
-                    // Setup destination
-                    if (! $toShop && $toWarehouse) {
-                        $destStock = WarehouseStock::firstOrCreate(
-                            [
-                                'warehouse_id' => $toWarehouse,
-                                'product_id' => $productId,
-                            ],
-                            [
-                                'quantity' => 0,
-                                'price' => $sourceStock->price ?? 0,
-                            ]
-                        );
-                        $destStock->quantity += $totalQty;
-                        $destStock->save();
-                    }
+                    // Increase stock at destination
+                    $destStock = WarehouseStock::firstOrCreate(
+                        [
+                            'warehouse_id' => $destWhId,
+                            'product_id' => $productId,
+                        ],
+                        [
+                            'total_pieces' => 0,
+                            'quantity' => 0,
+                            'price' => $sourceStock->price ?? 0,
+                        ]
+                    );
+                    $destAvail = (float)($destStock->total_pieces > 0 ? $destStock->total_pieces : ($destStock->quantity * $ppb));
+                    $destStock->total_pieces = $destAvail + $totalQty;
+                    $destStock->quantity = round($destStock->total_pieces / $ppb, 2);
+                    $destStock->save();
 
-                    // Record Transfer (One record per aggregated product, or one per line? Plan implies logical transfer.
-                    // Aggregating into one transfer record per product type is cleaner for stock history)
+                    // Record Transfer
                     $transfer = StockTransfer::create([
                         'from_warehouse_id' => $fromWarehouse,
-                        'to_warehouse_id' => $toShop ? null : $toWarehouse,
+                        'to_warehouse_id' => $destWhId,
                         'to_shop' => $toShop,
                         'product_id' => $productId,
                         'quantity' => $totalQty,
@@ -110,24 +115,22 @@ class StockTransferController extends Controller
                         'qty' => -1 * abs($totalQty),
                         'ref_type' => 'TRANSFER_OUT',
                         'ref_id' => $transfer->id,
-                        'note' => 'Transfer to '.($toShop ? 'Shop' : "Warehouse $toWarehouse"),
+                        'note' => 'Transfer to '.($toShop ? 'Main Shop' : "Warehouse #{$destWhId}"),
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
 
                     // Log Movement (IN)
-                    if (! $toShop && $toWarehouse) {
-                        \Illuminate\Support\Facades\DB::table('stock_movements')->insert([
-                            'product_id' => $productId,
-                            'type' => 'in',
-                            'qty' => abs($totalQty),
-                            'ref_type' => 'TRANSFER_IN',
-                            'ref_id' => $transfer->id,
-                            'note' => "Transfer from Warehouse $fromWarehouse",
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
+                    \Illuminate\Support\Facades\DB::table('stock_movements')->insert([
+                        'product_id' => $productId,
+                        'type' => 'in',
+                        'qty' => abs($totalQty),
+                        'ref_type' => 'TRANSFER_IN',
+                        'ref_id' => $transfer->id,
+                        'note' => "Transfer from Warehouse #{$fromWarehouse}",
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
                 }
             });
 
@@ -150,8 +153,10 @@ class StockTransferController extends Controller
             ->where('product_id', $request->product_id)
             ->first();
 
+        $qty = $stock ? ($stock->total_pieces > 0 ? $stock->total_pieces : $stock->quantity) : 0;
+
         return response()->json([
-            'quantity' => $stock ? $stock->quantity : 0,
+            'quantity' => $qty,
         ]);
     }
 
@@ -164,8 +169,12 @@ class StockTransferController extends Controller
 
         $products = Product::join('warehouse_stocks', 'products.id', '=', 'warehouse_stocks.product_id')
             ->where('warehouse_stocks.warehouse_id', $warehouseId)
-            ->where('warehouse_stocks.quantity', '>', 0)
+            ->where(function($q) {
+                $q->where('warehouse_stocks.total_pieces', '>', 0)
+                  ->orWhere('warehouse_stocks.quantity', '>', 0);
+            })
             ->select('products.id', 'products.item_name')
+            ->distinct()
             ->get();
 
         return response()->json($products);

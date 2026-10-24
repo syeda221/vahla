@@ -1405,6 +1405,9 @@ class SaleController extends Controller
             $sale->customer_id = $request->customer;
             $sale->walkin_name = $isWalkin ? $request->walkin_name : null;
             $sale->reference = $request->reference;
+            $rawWh = $request->input('warehouse_id');
+            $headerWhId = is_array($rawWh) ? ($rawWh[0] ?? 1) : ($rawWh ?: 1);
+            $sale->warehouse_id = $headerWhId;
             $sale->total_amount_Words = $request->total_amount_Words; // Consider auto-generating this too?
             $sale->sale_status = $status;
             $sale->sale_type = $saleType;
@@ -1494,7 +1497,7 @@ class SaleController extends Controller
             // Looking at invoice blade: $item['qty'] is boxes.
             // Let's assume input 'qty' is BOXES.
 
-            $defaultWhId = auth()->user()->warehouse_id ?? 1;
+            $defaultWhId = $sale->warehouse_id ?: (auth()->user()->warehouse_id ?? 1);
             $warehouses = $request->warehouse_id ?? [];
             $discounts = $request->item_disc ?? [];
 
@@ -1731,7 +1734,8 @@ class SaleController extends Controller
                 $saleItem->product_id = ($isManual || $isSet) ? null : $pid;
                 $saleItem->product_set_id = $isSet ? $actualProductSetId : null;
                 $saleItem->color = $colorVal;
-                $saleItem->warehouse_id = !empty($warehouses[$index]) ? $warehouses[$index] : $defaultWhId;
+                $itemWh = is_array($warehouses) ? ($warehouses[$index] ?? null) : $warehouses;
+                $saleItem->warehouse_id = $itemWh ?: $defaultWhId;
                 $saleItem->product_name = $productName; // Store name snapshot
                 $saleItem->description = $request->description[$index] ?? ($isSet && $productSet && $productSet->code ? "[{$productSet->code}]" : null);
 
@@ -2459,7 +2463,7 @@ class SaleController extends Controller
                 $set = $item->productSet ?: \App\Models\ProductSet::with('items.product')->find($item->product_set_id);
                 if ($set && $set->items) {
                     $setCount = (float)($item->total_pieces > 0 ? $item->total_pieces : ($item->qty > 0 ? $item->qty : 1));
-                    $targetWhId = $item->warehouse_id ?: (auth()->user()->warehouse_id ?? 1);
+                    $targetWhId = $item->warehouse_id ?: ($sale->warehouse_id ?: (auth()->user()->warehouse_id ?? 1));
 
                     foreach ($set->items as $setItem) {
                         $p = $setItem->product;
@@ -2470,9 +2474,6 @@ class SaleController extends Controller
                             ->lockForUpdate()
                             ->first();
 
-                        if (! $stock) {
-                            $stock = WarehouseStock::where('product_id', $p->id)->lockForUpdate()->first();
-                        }
                         if (! $stock) {
                             $stock = WarehouseStock::create([
                                 'warehouse_id' => $targetWhId,
@@ -2545,15 +2546,11 @@ class SaleController extends Controller
                 continue;
             }
 
-            $targetWhId = $item->warehouse_id ?: (auth()->user()->warehouse_id ?? 1);
+            $targetWhId = $item->warehouse_id ?: ($sale->warehouse_id ?: (auth()->user()->warehouse_id ?? 1));
             $stock = WarehouseStock::where('product_id', $item->product_id)
                 ->where('warehouse_id', $targetWhId)
                 ->lockForUpdate() // LOCK ROW
                 ->first();
-
-            if (! $stock) {
-                $stock = WarehouseStock::where('product_id', $item->product_id)->lockForUpdate()->first();
-            }
 
             if (! $stock) {
                 $stock = WarehouseStock::create([

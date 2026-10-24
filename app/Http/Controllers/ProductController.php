@@ -132,9 +132,11 @@ class ProductController extends Controller
         $term = trim($request->get('term') ?? $request->get('q') ?? '');
         $words = array_filter(explode(' ', $term));
 
+        $allWarehouses = \App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get(['id', 'warehouse_name', 'is_shop']);
+
         $query = Product::query()
             ->select('id', 'item_name', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece')
-            ->with(['unit'])
+            ->with(['unit', 'warehouseStocks.warehouse'])
             ->withSum('warehouseStocks', 'total_pieces') /* Sum PIECES, not boxes */
             ->where('is_active', true); /* Only active products */
 
@@ -212,7 +214,7 @@ class ProductController extends Controller
             });
         }
 
-        $results = $products->getCollection()->flatMap(function ($p) use ($words) {
+        $results = $products->getCollection()->flatMap(function ($p) use ($words, $allWarehouses) {
             $stockPieces = (float) ($p->warehouse_stocks_sum_total_pieces ?? 0);
             $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
 
@@ -233,6 +235,29 @@ class ProductController extends Controller
                 $loose = $stockPieces % $ppb;
                 $stockDisplay = $loose > 0 ? "$boxes.$loose" : $boxes;
             }
+
+            // Real-time stock breakdown per warehouse
+            $whList = $allWarehouses->map(function ($w) use ($p, $ppb) {
+                $ws = $p->warehouseStocks ? $p->warehouseStocks->firstWhere('warehouse_id', $w->id) : null;
+                $qty = (float) ($ws->total_pieces ?? 0);
+                $whDisplay = $qty;
+                if (($p->size_mode === 'by_cartons' || $p->size_mode === 'by_size') && $ppb > 1) {
+                    $boxes = floor($qty / $ppb);
+                    $loose = $qty % $ppb;
+                    $whDisplay = $loose > 0 ? "$boxes.$loose" : $boxes;
+                } elseif (in_array($p->size_mode, ['by_kg', 'by_gm', 'by_meter', 'by_feet', 'by_ton'])) {
+                    $whDisplay = round($qty, 2);
+                } else {
+                    $whDisplay = round($qty, 2) == (int)$qty ? (int)$qty : round($qty, 2);
+                }
+                return [
+                    'warehouse_id' => $w->id,
+                    'name'         => $w->warehouse_name,
+                    'is_shop'      => (int) ($w->is_shop ?? 0),
+                    'stock'        => $whDisplay,
+                    'stock_pieces' => $qty,
+                ];
+            })->values()->toArray();
 
             $variants = [];
             if ($p->color) {
@@ -515,7 +540,8 @@ class ProductController extends Controller
                         'purchase_price_per_box' => ($v['purch_price'] ?? $p->purchase_price_per_piece ?? 0) * $vPpb,
                         'purchase_price_per_m2' => $p->purchase_price_per_m2 ?? 0,
                         'sale_discount_percent' => $p->sale_discount_percent ?? 0,
-                        'variant_data' => base64_encode($variantJson)
+                        'variant_data' => base64_encode($variantJson),
+                        'warehouses' => $whList,
                     ];
                 }
                 return $expanded;
@@ -541,7 +567,8 @@ class ProductController extends Controller
                 'purchase_price_per_box' => $p->purchase_price_per_box ?? (($p->purchase_price_per_piece ?? 0) * $ppb),
                 'purchase_price_per_m2' => $p->purchase_price_per_m2 ?? 0,
                 'sale_discount_percent' => $p->sale_discount_percent ?? 0,
-                'variant_data' => ''
+                'variant_data' => '',
+                'warehouses' => $whList,
             ]];
         });
 

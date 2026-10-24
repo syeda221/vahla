@@ -62,7 +62,16 @@
                                 <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;">Order No / Ref</label>
                                 <input type="text" name="reference_no" class="form-control" placeholder="Order No (Optional)">
                             </div>
-                            <input type="hidden" name="warehouse_id" value="{{ auth()->user()->warehouse_id ?? 1 }}">
+                            <div class="col-md-3 form-group mb-2">
+                                <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;"><i class="fas fa-warehouse text-primary me-1"></i> Dispatch Warehouse</label>
+                                <select class="form-select fw-semibold" name="warehouse_id">
+                                    @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
+                                        <option value="{{ $wh->id }}" {{ ($wh->is_shop || $loop->first) ? 'selected' : '' }}>
+                                            {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
                             <div class="col-md-12 form-group mb-2">
                                 <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;">Remarks</label>
                                 <input type="text" name="remarks" class="form-control" placeholder="Any additional notes or instructions...">
@@ -146,14 +155,29 @@ $(document).ready(function() {
         let stockVal = parseFloat(repo.stock_pieces !== undefined ? repo.stock_pieces : repo.stock) || 0;
         let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-danger';
 
+        let whBadges = '';
+        if (repo.warehouses && repo.warehouses.length > 0) {
+            whBadges = repo.warehouses.map(w => {
+                let hasStock = parseFloat(w.stock_pieces) > 0;
+                let badgeStyle = hasStock
+                    ? (w.is_shop ? 'background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc;' : 'background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;')
+                    : 'background:#f8fafc; color:#94a3b8; border:1px dashed #cbd5e1; opacity:0.85;';
+                let icon = w.is_shop 
+                    ? '<i class="fas fa-store me-1 text-primary"></i>' 
+                    : '<i class="fas fa-warehouse me-1 text-secondary"></i>';
+                return `<span class="badge me-1 py-1 px-2" style="font-size:0.68rem; font-weight:600; ${badgeStyle}">${icon}${w.name}: <strong>${w.stock}</strong></span>`;
+            }).join('');
+        }
+
         return $(`
-        <div class="clearfix">
+        <div class="clearfix py-1">
             <div class="float-start">
                 <div class="fw-bold">${repo.name || repo.text}</div>
                 <small class="text-muted">SKU: ${sku}</small>
+                <div class="d-flex flex-wrap gap-1 align-items-center mt-1">${whBadges}</div>
             </div>
-            <div class="float-end">
-                <span class="badge ${badgeClass} rounded-pill">Stock: ${stock}</span>
+            <div class="float-end text-end">
+                <span class="badge ${badgeClass} rounded-pill px-2 py-1" style="font-size:0.75rem;">Total: ${stock}</span>
             </div>
         </div>
         `);
