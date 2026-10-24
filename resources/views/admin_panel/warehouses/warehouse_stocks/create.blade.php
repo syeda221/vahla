@@ -1,22 +1,99 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+<style>
+    .opening-manager-card {
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    }
+    .erp-tag {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        background: #fef3c7;
+        color: #d97706;
+        border: 1px solid #fde68a;
+    }
+    .table-manager-header {
+        background: #0f172a !important;
+        color: #ffffff !important;
+    }
+    .table-manager-header th {
+        color: #f8fafc !important;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        padding: 13px 14px;
+        border: none !important;
+        vertical-align: middle;
+    }
+    .grid-table td {
+        vertical-align: top;
+        padding: 12px 10px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .location-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin-bottom: 6px;
+    }
+    .qty-addon-label {
+        background: #f1f5f9;
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: #475569;
+    }
+    .total-qty-badge {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #0284c7;
+        background: #e0f2fe;
+        border: 1px solid #bae6fd;
+        padding: 6px 12px;
+        border-radius: 8px;
+        display: inline-block;
+        min-width: 75px;
+    }
+    .select2-container--default .select2-selection--single {
+        height: 38px;
+        border-color: #cbd5e1;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px;
+    }
+</style>
+
 <div class="container-fluid px-3 px-md-4 py-3">
-    <!-- Breadcrumb & Header -->
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
-        <div>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-1 small">
-                    <li class="breadcrumb-item"><a href="{{ route('warehouse_stocks.index') }}" class="text-decoration-none text-muted">Stock Inventory</a></li>
-                    <li class="breadcrumb-item active fw-bold text-dark" aria-current="page">Opening Stock Entry</li>
-                </ol>
-            </nav>
-            <h4 class="mb-0 fw-bold text-dark"><i class="fas fa-boxes-stacked me-2 text-primary"></i> Add Opening / Inward Stock</h4>
-            <p class="text-muted small mb-0">Record initial opening inventory or increment stock for your Main Shop or Storage Godowns</p>
+    <!-- Header (Image 1 Style) -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-3 p-2 d-flex align-items-center justify-content-center shadow-sm" style="background: #e0f2fe; width: 48px; height: 48px; color: #0284c7;">
+                <i class="fas fa-database fa-lg"></i>
+            </div>
+            <div>
+                <div class="d-flex align-items-center gap-2">
+                    <h4 class="mb-0 fw-bold text-dark">Opening Stock Manager</h4>
+                    <span class="erp-tag">ERP STANDARD</span>
+                </div>
+                <p class="text-muted small mb-0 mt-0.5">Add opening stock &mdash; products are global, stock is allocated per branch/warehouse.</p>
+            </div>
         </div>
-        <div>
-            <a href="{{ route('warehouse_stocks.index') }}" class="btn btn-outline-secondary rounded-pill px-4 fw-bold">
-                <i class="fas fa-arrow-left me-1"></i> Back to Inventory
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('warehouse_stocks.index') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold shadow-sm" style="height: 38px; display: inline-flex; align-items: center;">
+                <i class="fas fa-arrow-left me-1.5"></i> Back to Opening Stocks List
+            </a>
+            <a href="{{ route('product') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold shadow-sm" style="height: 38px; display: inline-flex; align-items: center;">
+                <i class="fas fa-box me-1.5"></i> Products Catalog
             </a>
         </div>
     </div>
@@ -41,219 +118,78 @@
         </div>
     @endif
 
-    @if (isset($errors) && $errors->any())
-        <div class="alert alert-danger rounded-4 shadow-sm border-0 mb-4">
-            <div class="fw-bold mb-1"><i class="fas fa-exclamation-circle me-1"></i> Please correct the following errors:</div>
-            <ul class="mb-0 small ps-3">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
+    <form action="{{ route('warehouse_stocks.store') }}" method="POST" id="bulkOpeningForm">
+        @csrf
 
-    <div class="row g-4">
-        <!-- Main Form Column -->
-        <div class="col-12 col-xl-7">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
-                    <span class="fw-bold text-dark"><i class="fas fa-edit me-2 text-primary"></i> Stock Entry Form</span>
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1">Decimal & Multi-Unit Ready</span>
-                </div>
-                <div class="card-body p-4">
-                    <form action="{{ route('warehouse_stocks.store') }}" method="POST" id="openingStockForm">
-                        @csrf
-
-                        <!-- Location / Warehouse -->
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-dark small text-uppercase">
-                                <i class="fas fa-warehouse text-primary me-1"></i> Select Location / Warehouse <span class="text-danger">*</span>
-                            </label>
-                            <select name="warehouse_id" id="warehouse_id" class="form-select form-select-lg rounded-3" required>
-                                <option value="">-- Choose Shop or Godown --</option>
-                                @foreach($warehouses as $w)
-                                    <option value="{{ $w->id }}" {{ (old('warehouse_id', session('last_warehouse_id')) == $w->id || ($w->is_shop && !old('warehouse_id') && !session('last_warehouse_id'))) ? 'selected' : '' }}>
-                                        {{ $w->is_shop ? '🏪 [Main Shop] ' : '🏢 [Storage Godown] ' }}{{ $w->warehouse_name }}
-                                        @if($w->location) ({{ $w->location }}) @endif
-                                    </option>
-                                @endforeach
-                            </select>
-                            <div class="form-text small">Select whether this opening stock is at your <strong>Main Shop</strong> counter or a <strong>Godown</strong>.</div>
-                        </div>
-
-                        <!-- Product Selector -->
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-dark small text-uppercase">
-                                <i class="fas fa-box text-primary me-1"></i> Select Product <span class="text-danger">*</span>
-                            </label>
-                            <select name="product_id" id="product_id" class="form-control form-control-lg" required>
-                                <option value="">Search product by name or code...</option>
-                            </select>
-                            <div class="form-text small">Type product name or item code to search.</div>
-                        </div>
-
-                        <!-- Live Product Details Banner (Appears on Product Select) -->
-                        <div id="productDetailsCard" class="card bg-light border rounded-3 p-3 mb-4 d-none">
-                            <div class="d-flex align-items-center">
-                                <div class="rounded-3 bg-white p-2 border me-3 d-flex align-items-center justify-content-center" style="width: 55px; height: 55px;">
-                                    <img id="prodImage" src="" alt="Product" class="rounded" style="width: 100%; height: 100%; object-fit: cover; display: none;">
-                                    <i id="prodDefaultIcon" class="fas fa-cube fa-2x text-primary"></i>
-                                </div>
-                                <div class="flex-grow-1">
-                                    <h6 class="fw-bold mb-1 text-dark" id="prodName">--</h6>
-                                    <div class="d-flex flex-wrap gap-3 small text-muted">
-                                        <span>Code: <strong class="text-dark font-monospace" id="prodCode">--</strong></span>
-                                        <span>Unit: <strong class="badge bg-secondary-subtle text-dark" id="prodUnit">Pcs</strong></span>
-                                        <span>Current Stock in Selected Location: <strong class="badge bg-info text-white" id="currentStockBadge">0 Pcs</strong></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Quantity Input (Supports Decimals e.g. 0.2, 1.5, 100) -->
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-dark small text-uppercase">
-                                <i class="fas fa-calculator text-primary me-1"></i> Quantity to Enter <span class="text-danger">*</span>
-                            </label>
-                            <div class="input-group input-group-lg">
-                                <input type="number" step="any" min="0" name="quantity" id="quantity" 
-                                       class="form-control form-control-lg fw-bold text-primary font-monospace" 
-                                       placeholder="e.g. 0.2, 5, 25.5" 
-                                       value="{{ old('quantity') }}" required>
-                                <span class="input-group-text fw-bold bg-white text-muted" id="qtyUnitLabel">Units</span>
-                            </div>
-                            <div class="form-text small text-muted">Supports decimal values (e.g. <code>0.2</code>, <code>1.5</code>, <code>25.75</code>) for KG, MTR, FT, or whole numbers for PCS.</div>
-                        </div>
-
-                        <!-- Entry Mode: Increment vs Set Exact -->
-                        <div class="mb-4 p-3 bg-light rounded-3 border">
-                            <label class="form-label fw-bold text-dark small text-uppercase mb-2">
-                                <i class="fas fa-cog text-primary me-1"></i> Stock Update Mode:
-                            </label>
-                            <div class="d-flex flex-wrap gap-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="entry_mode" id="mode_increment" value="increment" checked>
-                                    <label class="form-check-label fw-bold text-dark" for="mode_increment">
-                                        <i class="fas fa-plus text-success me-1"></i> Increment / Add to Existing Stock <span class="badge bg-success-subtle text-success small ms-1">Recommended</span>
-                                        <div class="small fw-normal text-muted">Adds this quantity on top of whatever stock is already recorded.</div>
-                                    </label>
-                                </div>
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="radio" name="entry_mode" id="mode_set" value="set">
-                                    <label class="form-check-label fw-bold text-dark" for="mode_set">
-                                        <i class="fas fa-equals text-primary me-1"></i> Set Exact Stock Balance
-                                        <div class="small fw-normal text-muted">Replaces the stock count in this warehouse with this exact quantity.</div>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Live Stock Calculation Preview -->
-                        <div id="calcPreviewCard" class="alert alert-info py-2 px-3 small rounded-3 mb-4 d-none">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-info-circle me-2 fs-5"></i>
-                                <div id="calcPreviewText">
-                                    Stock Calculation: <strong>0</strong> + <strong>0</strong> = <strong>0</strong>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Remarks / Notes -->
-                        <div class="mb-4">
-                            <label class="form-label fw-bold text-dark small text-uppercase">
-                                <i class="fas fa-sticky-note text-primary me-1"></i> Remarks / Reason (Optional)
-                            </label>
-                            <textarea name="remarks" id="remarks" class="form-control rounded-3" rows="2" 
-                                      placeholder="e.g. Initial Opening Inventory, manual count verification...">{{ old('remarks') }}</textarea>
-                        </div>
-
-                        <!-- Submit Buttons -->
-                        <div class="d-flex align-items-center gap-3 pt-2">
-                            <button type="submit" name="action" value="save_and_add_another" class="btn btn-success btn-lg px-4 fw-bold rounded-pill shadow-sm">
-                                <i class="fas fa-plus-circle me-1"></i> Save & Add Another
-                            </button>
-                            <button type="submit" name="action" value="save_and_return" class="btn btn-primary btn-lg px-4 fw-bold rounded-pill shadow-sm">
-                                <i class="fas fa-check me-1"></i> Save & View Stock List
-                            </button>
-                            <a href="{{ route('warehouse_stocks.index') }}" class="btn btn-outline-secondary btn-lg px-4 rounded-pill ms-auto">
-                                Cancel
-                            </a>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Column: Instructions & Recent Activity -->
-        <div class="col-12 col-xl-5">
-            <!-- Guidelines Card -->
-            <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white;">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3 d-flex align-items-center">
-                        <i class="fas fa-lightbulb text-warning me-2"></i> Opening Stock Guidelines
-                    </h5>
-                    <ul class="mb-0 small ps-3" style="line-height: 1.8; opacity: 0.9;">
-                        <li><strong>Decimals Supported:</strong> If an item is measured in KG, Mtr, Ft (e.g. <code>0.2</code>, <code>1.5</code>, <code>10.75</code>), you can type decimals directly.</li>
-                        <li><strong>Automatic Identification:</strong> If stock already exists in this warehouse, it will identify it automatically and increment/add smoothly.</li>
-                        <li><strong>Separation:</strong> Keep your <strong>🏪 Main Shop</strong> stock separate from <strong>🏢 Storage Godowns</strong> so transfers and sales stay 100% accurate.</li>
-                        <li><strong>Audit Trail:</strong> Every addition is automatically recorded with an audit movement log.</li>
-                    </ul>
-                </div>
-            </div>
-
-            <!-- Recent Opening Stock Entries Table -->
-            <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
-                    <span class="fw-bold text-dark"><i class="fas fa-history me-2 text-primary"></i> Recent Opening Stock Entries</span>
-                    <span class="badge bg-light text-muted border">Last 10 Records</span>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
-                            <thead class="bg-light text-muted">
-                                <tr>
-                                    <th>Item</th>
-                                    <th>Location</th>
-                                    <th class="text-end">Added Qty</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($recentMovements as $rm)
-                                    <tr>
-                                        <td>
-                                            <div class="fw-bold text-dark">{{ $rm->item_name }}</div>
-                                            <span class="font-monospace text-muted small">{{ $rm->item_code }}</span>
-                                        </td>
-                                        <td>
-                                            @if($rm->is_shop)
-                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">
-                                                    <i class="fas fa-store me-1"></i> {{ $rm->warehouse_name }}
-                                                </span>
-                                            @else
-                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">
-                                                    <i class="fas fa-warehouse me-1"></i> {{ $rm->warehouse_name }}
-                                                </span>
-                                            @endif
-                                        </td>
-                                        <td class="text-end font-monospace fw-bold text-success">
-                                            +{{ rtrim(rtrim(number_format((float)$rm->qty, 2, '.', ''), '0'), '.') }} 
-                                            <span class="text-muted fw-normal small">{{ $rm->unit_name ?: 'Pcs' }}</span>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="3" class="text-center py-4 text-muted">
-                                            No recent opening stock records found.
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
+        <!-- Target Branch Card (Image 1 Style) -->
+        <div class="card opening-manager-card border-0 shadow-sm rounded-4 p-3 mb-4">
+            <div class="d-flex align-items-center flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-2" style="min-width: 320px;">
+                    <label class="fw-bold text-dark text-nowrap mb-0 small text-uppercase">
+                        Target Branch <span class="text-danger">*</span>
+                    </label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-warehouse text-primary"></i></span>
+                        <select name="target_warehouse_id" id="target_warehouse_id" class="form-select form-select-sm fw-bold text-dark border-start-0" onchange="updateDefaultBranch(this.value)">
+                            @foreach($warehouses as $w)
+                                <option value="{{ $w->id }}" {{ $w->is_shop ? 'selected' : '' }}>
+                                    {{ $w->is_shop ? '🏪 ' : '🏢 ' }}{{ $w->warehouse_name }}
+                                    @if($w->is_shop) (Main Shop) @else (Storage Godown) @endif
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
+
+                <div class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-2 small fw-normal d-flex align-items-center gap-1.5 ms-lg-2">
+                    <i class="fas fa-info-circle text-primary"></i>
+                    <span>Stock allocations will be recorded for the selected branch.</span>
+                </div>
             </div>
         </div>
-    </div>
+
+        <!-- Product Allocations Grid Table (Exact Match to Image 1) -->
+        <div class="card opening-manager-card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+            <div class="table-responsive">
+                <table class="table grid-table align-middle mb-0" id="openingGridTable">
+                    <thead class="table-manager-header">
+                        <tr>
+                            <th style="width: 3%;" class="text-center">#</th>
+                            <th style="width: 28%;">Product Name / SKU</th>
+                            <th style="width: 27%;">Location & Allocated Qty</th>
+                            <th style="width: 11%;">Wholesale Rs</th>
+                            <th style="width: 11%;">Retail Rs</th>
+                            <th style="width: 8%;">Alert Qty</th>
+                            <th style="width: 9%;" class="text-center">Total Opening Qty</th>
+                            <th style="width: 3%;" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gridTableBody">
+                        <!-- Rows rendered via JavaScript or Initial Row 1 -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Table Footer Controls (Image 1 Style) -->
+            <div class="card-footer bg-white p-3 border-top d-flex align-items-center justify-content-between flex-wrap gap-3">
+                <button type="button" class="btn btn-outline-primary rounded-pill px-4 fw-bold shadow-sm" onclick="addProductRow()">
+                    <i class="fas fa-plus me-1.5"></i> Add Product Row
+                </button>
+
+                <div class="d-flex align-items-center gap-3 ms-auto">
+                    <div class="p-2 px-3 bg-light rounded-pill border d-flex align-items-center gap-2 shadow-sm">
+                        <span class="small text-muted fw-bold text-uppercase">Total Opening Quantity:</span>
+                        <span class="fw-bold font-monospace text-primary fs-6" id="grandTotalQtyBadge">0.00</span>
+                        <span class="badge bg-secondary-subtle text-dark border small rounded-pill">Mixed Units</span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow" id="btnSaveAll">
+                        <i class="fas fa-save me-1.5"></i> Save All Opening Stocks
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
 </div>
 @endsection
 
@@ -263,13 +199,111 @@
 <script src="{{ asset('assets/vendors/select2/js/select2.min.js') }}"></script>
 
 <script>
-    let currentStockVal = 0.0;
-    let selectedUnit = 'Pcs';
+    const warehousesData = @json($warehouses);
+    let currentRowIndex = 0;
 
     $(document).ready(function() {
-        // Initialize Select2 for product AJAX search
-        $('#product_id').select2({
-            placeholder: "Search product name or code...",
+        // Add initial first row
+        addProductRow();
+    });
+
+    function getWarehouseOptionsHtml(selectedId = null) {
+        let defaultId = selectedId || $('#target_warehouse_id').val();
+        let html = '';
+        warehousesData.forEach(w => {
+            let isSelected = String(w.id) === String(defaultId) ? 'selected' : '';
+            let icon = w.is_shop ? '🏪 ' : '🏢 ';
+            let label = w.is_shop ? ' (Shop)' : ' (Godown)';
+            html += `<option value="${w.id}" ${isSelected}>${icon}${w.warehouse_name}${label}</option>`;
+        });
+        return html;
+    }
+
+    function addProductRow() {
+        currentRowIndex++;
+        const rIndex = currentRowIndex;
+
+        const rowHtml = `
+            <tr class="product-row" id="row_${rIndex}" data-index="${rIndex}">
+                <td class="text-center fw-bold text-muted row-number pt-3" style="font-size: 0.9rem;">
+                    ${rIndex}
+                </td>
+
+                <!-- Product Name / SKU Search (Image 1 Style) -->
+                <td>
+                    <select name="rows[${rIndex}][product_id]" class="form-control product-select" id="prod_select_${rIndex}" required style="width: 100%;">
+                        <option value="">Search product or SKU...</option>
+                    </select>
+                    <input type="hidden" name="rows[${rIndex}][unit_name]" id="unit_hidden_${rIndex}" value="Pcs">
+                </td>
+
+                <!-- Location & Allocated Qty (Image 1 Style) -->
+                <td>
+                    <div class="locations-wrapper" id="locations_${rIndex}" data-index="${rIndex}">
+                        <div class="location-box d-flex align-items-center gap-2 mb-1.5" data-loc-index="0">
+                            <select name="rows[${rIndex}][locations][0][warehouse_id]" class="form-select form-select-sm border-secondary border-opacity-25 wh-dropdown" style="font-size: 0.85rem;">
+                                ${getWarehouseOptionsHtml()}
+                            </select>
+                            <div class="input-group input-group-sm" style="max-width: 190px;">
+                                <span class="input-group-text qty-addon-label px-2">QTY</span>
+                                <input type="number" step="any" min="0" name="rows[${rIndex}][locations][0][quantity]" 
+                                       class="form-control form-control-sm font-monospace fw-bold qty-input text-end" 
+                                       value="0" placeholder="0" oninput="calculateRowTotal(${rIndex})">
+                                <span class="input-group-text qty-addon-label px-2 unit-label-${rIndex}">Pcs</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-link btn-sm p-0 text-primary text-decoration-none fw-bold" style="font-size: 0.78rem;" onclick="addLocationSlot(${rIndex})">
+                        <i class="fas fa-plus-circle me-1"></i> Add Location
+                    </button>
+                </td>
+
+                <!-- Wholesale Rs Input -->
+                <td>
+                    <div class="input-group input-group-sm">
+                        <input type="number" step="any" min="0" name="rows[${rIndex}][wholesale_price]" id="wholesale_${rIndex}" 
+                               class="form-control form-control-sm font-monospace text-end" value="0" placeholder="0">
+                        <span class="input-group-text text-muted small px-1.5">Rs</span>
+                    </div>
+                </td>
+
+                <!-- Retail Rs Input -->
+                <td>
+                    <div class="input-group input-group-sm">
+                        <input type="number" step="any" min="0" name="rows[${rIndex}][retail_price]" id="retail_${rIndex}" 
+                               class="form-control form-control-sm font-monospace text-end" value="0" placeholder="0">
+                        <span class="input-group-text text-muted small px-1.5">Rs</span>
+                    </div>
+                </td>
+
+                <!-- Alert Qty Input -->
+                <td>
+                    <input type="number" step="any" min="0" name="rows[${rIndex}][alert_quantity]" id="alert_${rIndex}" 
+                           class="form-control form-control-sm font-monospace text-end" value="0" placeholder="0">
+                </td>
+
+                <!-- Total Opening Qty Display (Calculated Live) -->
+                <td class="text-center pt-2.5">
+                    <span class="total-qty-badge font-monospace" id="row_total_${rIndex}">0.00</span>
+                </td>
+
+                <!-- Remove Row Action -->
+                <td class="text-center pt-2.5">
+                    <button type="button" class="btn btn-sm btn-outline-danger rounded-circle p-1" style="width: 30px; height: 30px;" onclick="removeProductRow(${rIndex})" title="Remove Row">
+                        <i class="fas fa-trash fa-xs"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+
+        $('#gridTableBody').append(rowHtml);
+        reNumberRows();
+        initProductSelect2(rIndex);
+    }
+
+    function initProductSelect2(rIndex) {
+        $(`#prod_select_${rIndex}`).select2({
+            placeholder: "Search product or SKU...",
             allowClear: true,
             ajax: {
                 url: "{{ route('warehouse_stock.search-products') }}",
@@ -282,82 +316,103 @@
                     return { results: data };
                 }
             }
-        });
+        }).on('select2:select', function(e) {
+            let item = e.params.data;
+            let unit = item.unit_name || 'Pcs';
+            $(`#unit_hidden_${rIndex}`).val(unit);
+            $(`.unit-label-${rIndex}`).text(unit);
 
-        // When product selected
-        $('#product_id').on('select2:select', function(e) {
-            let data = e.params.data;
-            $('#productDetailsCard').removeClass('d-none');
-            $('#prodName').text(data.item_name);
-            $('#prodCode').text(data.item_code);
-            selectedUnit = data.unit_name || 'Pcs';
-            $('#prodUnit').text(selectedUnit);
-            $('#qtyUnitLabel').text(selectedUnit);
-
-            if (data.image) {
-                $('#prodImage').attr('src', data.image).show();
-                $('#prodDefaultIcon').hide();
-            } else {
-                $('#prodImage').hide();
-                $('#prodDefaultIcon').show();
-            }
-
-            fetchCurrentStock();
-        });
-
-        // When warehouse changed
-        $('#warehouse_id').on('change', function() {
-            if ($('#product_id').val()) {
-                fetchCurrentStock();
-            }
-        });
-
-        // When quantity or mode changed
-        $('#quantity, input[name="entry_mode"]').on('input change', function() {
-            updateCalculationPreview();
-        });
-    });
-
-    function fetchCurrentStock() {
-        let whId = $('#warehouse_id').val();
-        let prodId = $('#product_id').val();
-
-        if (!whId || !prodId) return;
-
-        $.get("{{ route('warehouse_stock.get-stock') }}", {
-            warehouse_id: whId,
-            product_id: prodId
-        }, function(res) {
-            currentStockVal = parseFloat(res.total_pieces) || 0.0;
-            let formatted = res.formatted_stock || '0';
-            selectedUnit = res.unit_name || selectedUnit;
-            $('#prodUnit').text(selectedUnit);
-            $('#qtyUnitLabel').text(selectedUnit);
-            $('#currentStockBadge').text(formatted + ' ' + selectedUnit);
-
-            updateCalculationPreview();
+            // Pre-fill prices and alert qty
+            $(`#wholesale_${rIndex}`).val(item.wholesale_price || 0);
+            $(`#retail_${rIndex}`).val(item.retail_price || 0);
+            $(`#alert_${rIndex}`).val(item.alert_quantity || 0);
         });
     }
 
-    function updateCalculationPreview() {
-        let enterQty = parseFloat($('#quantity').val()) || 0.0;
-        let mode = $('input[name="entry_mode"]:checked').val();
+    function addLocationSlot(rIndex) {
+        const wrapper = $(`#locations_${rIndex}`);
+        const locIndex = wrapper.find('.location-box').length;
+        const currentUnit = $(`#unit_hidden_${rIndex}`).val() || 'Pcs';
 
-        if (enterQty > 0 || currentStockVal > 0) {
-            $('#calcPreviewCard').removeClass('d-none');
-            let newTotal = mode === 'set' ? enterQty : (currentStockVal + enterQty);
-            let formattedCurrent = currentStockVal.toFixed(2).replace(/\.?0+$/, '');
-            let formattedEnter   = enterQty.toFixed(2).replace(/\.?0+$/, '');
-            let formattedNew     = newTotal.toFixed(2).replace(/\.?0+$/, '');
+        const slotHtml = `
+            <div class="location-box d-flex align-items-center gap-2 mb-1.5" data-loc-index="${locIndex}">
+                <select name="rows[rIndex][locations][${locIndex}][warehouse_id]" class="form-select form-select-sm border-secondary border-opacity-25 wh-dropdown" style="font-size: 0.85rem;">
+                    ${getWarehouseOptionsHtml()}
+                </select>
+                <div class="input-group input-group-sm" style="max-width: 190px;">
+                    <span class="input-group-text qty-addon-label px-2">QTY</span>
+                    <input type="number" step="any" min="0" name="rows[${rIndex}][locations][${locIndex}][quantity]" 
+                           class="form-control form-control-sm font-monospace fw-bold qty-input text-end" 
+                           value="0" placeholder="0" oninput="calculateRowTotal(${rIndex})">
+                    <span class="input-group-text qty-addon-label px-2 unit-label-${rIndex}">${currentUnit}</span>
+                </div>
+                <button type="button" class="btn btn-sm text-danger p-0 border-0 bg-transparent ms-1" onclick="$(this).closest('.location-box').remove(); calculateRowTotal(${rIndex});" title="Remove Location">
+                    <i class="fas fa-times-circle"></i>
+                </button>
+            </div>
+        `;
 
-            if (mode === 'increment') {
-                $('#calcPreviewText').html(`Stock Increment: Current <strong>${formattedCurrent} ${selectedUnit}</strong> + Entering <strong>${formattedEnter} ${selectedUnit}</strong> = <span class="badge bg-success fs-6">New Total: ${formattedNew} ${selectedUnit}</span>`);
-            } else {
-                $('#calcPreviewText').html(`Exact Stock Set: Current was <strong>${formattedCurrent} ${selectedUnit}</strong> &rarr; <span class="badge bg-primary fs-6">Setting Exact Total: ${formattedEnter} ${selectedUnit}</span>`);
-            }
-        } else {
-            $('#calcPreviewCard').addClass('d-none');
+        wrapper.append(slotHtml);
+    }
+
+    function calculateRowTotal(rIndex) {
+        let rowSum = 0;
+        $(`#locations_${rIndex} .qty-input`).each(function() {
+            let val = parseFloat($(this).val()) || 0;
+            rowSum += val;
+        });
+
+        let formatted = rowSum.toFixed(2).replace(/\.?0+$/, '');
+        if (formatted === '' || formatted === '0') formatted = '0.00';
+        $(`#row_total_${rIndex}`).text(formatted);
+
+        calculateGrandTotal();
+    }
+
+    function calculateGrandTotal() {
+        let grandTotal = 0;
+        $('.qty-input').each(function() {
+            let val = parseFloat($(this).val()) || 0;
+            grandTotal += val;
+        });
+        let formatted = grandTotal.toFixed(2).replace(/\.?0+$/, '');
+        if (formatted === '' || formatted === '0') formatted = '0.00';
+        $('#grandTotalQtyBadge').text(formatted);
+    }
+
+    function removeProductRow(rIndex) {
+        if ($('.product-row').length <= 1) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Notice',
+                text: 'At least one product row must remain.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            return;
         }
+        $(`#row_${rIndex}`).remove();
+        reNumberRows();
+        calculateGrandTotal();
     }
+
+    function reNumberRows() {
+        $('.product-row').each(function(index) {
+            $(this).find('.row-number').text(index + 1);
+        });
+    }
+
+    function updateDefaultBranch(whId) {
+        // If user changes top Target Branch, update any untouched location dropdowns
+        $('.wh-dropdown').each(function() {
+            if (!$(this).data('user-touched')) {
+                $(this).val(whId);
+            }
+        });
+    }
+
+    $(document).on('change', '.wh-dropdown', function() {
+        $(this).data('user-touched', true);
+    });
 </script>
 @endsection

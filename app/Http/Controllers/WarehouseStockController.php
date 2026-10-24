@@ -157,80 +157,112 @@ class WarehouseStockController extends Controller
 
     public function store(Request $request)
     {
-        // Support both quantity and total_pieces names
-        $quantityVal = $request->input('quantity', $request->input('total_pieces'));
+        // Check if bulk rows submitted (Image 1 ERP Standard style)
+        $rows = $request->input('rows', []);
+        $targetWarehouseId = $request->input('target_warehouse_id', 1);
 
-        $request->merge(['quantity_clean' => $quantityVal]);
+        // If single product format was submitted (backward compatibility)
+        if ($request->filled('product_id') && empty($rows)) {
+            $qtyVal = (float)$request->input('quantity', $request->input('total_pieces', 0));
+            $rows = [
+                [
+                    'product_id'      => $request->input('product_id'),
+                    'wholesale_price' => $request->input('wholesale_price'),
+                    'retail_price'    => $request->input('retail_price'),
+                    'alert_quantity'  => $request->input('alert_quantity'),
+                    'locations'       => [
+                        [
+                            'warehouse_id' => $request->input('warehouse_id', $targetWarehouseId),
+                            'quantity'     => $qtyVal,
+                        ]
+                    ]
+                ]
+            ];
+        }
 
-        $validated = $request->validate([
-            'warehouse_id'   => 'required|exists:warehouses,id',
-            'product_id'     => 'required|exists:products,id',
-            'quantity_clean' => 'required|numeric|min:0',
-            'entry_mode'     => 'nullable|in:increment,set',
-            'remarks'        => 'nullable|string|max:255',
-        ]);
-
-        $qty = (float) $validated['quantity_clean'];
-        $entryMode = $request->input('entry_mode', 'increment');
+        if (empty($rows)) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'No products selected.'], 422);
+            }
+            return back()->with('error', 'Please add at least one product row with quantity.');
+        }
 
         try {
-            if ($entryMode === 'set') {
-                $stock = WarehouseStock::firstOrNew([
-                    'warehouse_id' => $validated['warehouse_id'],
-                    'product_id'   => $validated['product_id'],
-                ]);
+            $savedCount = 0;
 
-                $oldQty = (float) ($stock->total_pieces ?? 0);
-                $diff = $qty - $oldQty;
+            DB::transaction(function () use ($rows, $targetWarehouseId, &$savedCount, $request) {
+                foreach ($rows as $row) {
+                    $productId = $row['product_id'] ?? null;
+                    if (!$productId) {
+                        continue;
+                    }
 
-                $stock->total_pieces = $qty;
-                $stock->quantity = $qty;
-                if ($request->filled('remarks')) {
-                    $stock->remarks = $request->input('remarks');
+                    // 1. Update Product Pricing & Alert Qty if provided
+                    $product = Product::find($productId);
+                    if ($product) {
+                        if (isset($row['wholesale_price']) && is_numeric($row['wholesale_price']) && $row['wholesale_price'] > 0) {
+                            $product->wholesale_price = (float)$row['wholesale_price'];
+                        }
+                        if (isset($row['retail_price']) && is_numeric($row['retail_price']) && $row['retail_price'] > 0) {
+                            $product->sale_price_per_piece = (float)$row['retail_price'];
+                        }
+                        if (isset($row['alert_quantity']) && is_numeric($row['alert_quantity'])) {
+                            $product->alert_quantity = (float)$row['alert_quantity'];
+                        }
+                        $product->save();
+                    }
+
+                    // 2. Allocate Stock per Location
+                    $locations = $row['locations'] ?? [];
+                    if (empty($locations)) {
+                        $locations = [
+                            [
+                                'warehouse_id' => $targetWarehouseId,
+                                'quantity'     => (float)($row['quantity'] ?? 0),
+                            ]
+                        ];
+                    }
+
+                    foreach ($locations as $loc) {
+                        $whId = !empty($loc['warehouse_id']) ? (int)$loc['warehouse_id'] : (int)$targetWarehouseId;
+                        $qty  = (float)($loc['quantity'] ?? 0);
+
+                        if ($qty > 0 && $whId) {
+                            $this->stockService->addStock(
+                                $whId,
+                                (int)$productId,
+                                $qty,
+                                $qty,
+                                $request->input('remarks') ?: "Opening Stock Manager Entry"
+                            );
+                            $savedCount++;
+                        }
+                    }
                 }
-                $stock->save();
+            });
 
-                DB::table('stock_movements')->insert([
-                    'product_id'   => $validated['product_id'],
-                    'type'         => $diff >= 0 ? 'in' : 'out',
-                    'qty'          => abs($diff),
-                    'ref_type'     => 'OPENING_STOCK',
-                    'ref_id'       => $stock->id,
-                    'note'         => $request->input('remarks') ?: "Opening Stock Set to {$qty}",
-                    'created_at'   => now(),
-                    'updated_at'   => now(),
-                ]);
-            } else {
-                // Increment mode (adds to existing stock)
-                $this->stockService->addStock(
-                    $validated['warehouse_id'],
-                    $validated['product_id'],
-                    $qty,
-                    $qty,
-                    $request->input('remarks')
-                );
+            if ($savedCount === 0) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => 'Please enter a quantity greater than 0.'], 422);
+                }
+                return back()->with('error', 'Please enter a quantity greater than 0 for your products.');
             }
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Stock saved successfully!',
+                    'message' => "Successfully saved opening stock for {$savedCount} allocation(s)!",
                 ]);
             }
 
-            if ($request->input('action') === 'save_and_add_another') {
-                return redirect()->route('warehouse_stocks.create')
-                    ->with('success', 'Stock added successfully! You can add another item now.')
-                    ->with('last_warehouse_id', $validated['warehouse_id']);
-            }
-
-            return redirect()->route('warehouse_stocks.index')->with('success', 'Opening stock recorded successfully!');
+            return redirect()->route('warehouse_stocks.index')
+                ->with('success', "Successfully recorded opening stock for {$savedCount} allocation(s)!");
 
         } catch (\Exception $e) {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Error adding stock: ' . $e->getMessage(),
+                    'message' => 'Error adding opening stock: ' . $e->getMessage(),
                 ], 500);
             }
 
@@ -323,23 +355,26 @@ class WarehouseStockController extends Controller
         $term = $request->get('q', '');
 
         $products = Product::with('unit')
-            ->select('id', 'item_name', 'item_code', 'unit_id', 'pieces_per_box', 'image')
+            ->select('id', 'item_name', 'item_code', 'unit_id', 'wholesale_price', 'sale_price_per_piece', 'purchase_price_per_piece', 'alert_quantity', 'pieces_per_box', 'image')
             ->when($term, function ($query) use ($term) {
                 $query->where('item_name', 'like', "%{$term}%")
                     ->orWhere('item_code', 'like', "%{$term}%");
             })
-            ->limit(25)
+            ->limit(30)
             ->get();
 
         return response()->json($products->map(function ($p) {
             $unitName = $p->unit ? $p->unit->name : 'Pcs';
             return [
-                'id'        => $p->id,
-                'text'      => "{$p->item_code} - {$p->item_name} ({$unitName})",
-                'item_name' => $p->item_name,
-                'item_code' => $p->item_code,
-                'unit_name' => $unitName,
-                'image'     => $p->image ? asset('uploads/products/'.$p->image) : null,
+                'id'              => $p->id,
+                'text'            => "{$p->item_code} — {$p->item_name}",
+                'item_name'       => $p->item_name,
+                'item_code'       => $p->item_code,
+                'unit_name'       => $unitName,
+                'wholesale_price' => (float)($p->wholesale_price ?? ($p->purchase_price_per_piece ?? 0)),
+                'retail_price'    => (float)($p->sale_price_per_piece ?? 0),
+                'alert_quantity'  => (float)($p->alert_quantity ?? 0),
+                'image'           => $p->image ? asset('uploads/products/'.$p->image) : null,
             ];
         }));
     }

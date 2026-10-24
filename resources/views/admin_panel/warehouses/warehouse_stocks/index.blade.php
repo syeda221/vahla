@@ -291,17 +291,17 @@
                             </div>
                         </div>
 
-                        <!-- Right Stats (Image 1 Style) -->
-                        <div class="d-flex align-items-center gap-4 ms-auto">
-                            <div class="text-end">
+                        <!-- Right Stats (Image 1 Style with clean separation) -->
+                        <div class="d-flex align-items-center gap-2 gap-md-3 ms-auto flex-nowrap">
+                            <div class="text-end px-3 border-end border-secondary border-opacity-50">
                                 <div class="fs-4 fw-bold font-monospace text-white">{{ $whTotalUnits }}</div>
-                                <div class="small text-white-50 text-uppercase fw-semibold" style="font-size: 0.72rem; letter-spacing: 0.5px;">TOTAL UNITS</div>
+                                <div class="text-white-50 text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.6px; white-space: nowrap;">TOTAL UNITS</div>
                             </div>
-                            <div class="text-end pe-2">
+                            <div class="text-end px-3">
                                 <div class="fs-4 fw-bold font-monospace text-white">{{ $whProdCount }}</div>
-                                <div class="small text-white-50 text-uppercase fw-semibold" style="font-size: 0.72rem; letter-spacing: 0.5px;">PRODUCTS</div>
+                                <div class="text-white-50 text-uppercase fw-bold" style="font-size: 0.68rem; letter-spacing: 0.6px; white-space: nowrap;">PRODUCTS</div>
                             </div>
-                            <div class="text-white-50 fs-5 ps-2">
+                            <div class="text-white-50 fs-5 ps-1">
                                 <i class="fas fa-chevron-down"></i>
                             </div>
                         </div>
