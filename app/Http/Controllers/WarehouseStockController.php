@@ -18,7 +18,6 @@ class WarehouseStockController extends Controller
         $this->stockService = $stockService;
     }
 
-    // /////////
     public function getByWarehouse($warehouseId)
     {
         $products = WarehouseStock::with('product')
@@ -34,8 +33,6 @@ class WarehouseStockController extends Controller
 
         return response()->json($products);
     }
-
-    // ////////////////
 
     public function searchWarehouses(Request $request)
     {
@@ -61,41 +58,55 @@ class WarehouseStockController extends Controller
 
     public function index(Request $request)
     {
-        $itemType     = $request->get('item_type', 'all');
-        $locationType = $request->get('location_type', 'all');
+        $viewMode     = $request->get('view', 'warehouses'); // 'warehouses' or 'products'
+        $locationType = $request->get('location_type', 'all'); // 'all', 'shop', 'godown'
         $warehouseId  = $request->get('warehouse_id', 'all');
         $search       = $request->get('search');
 
-        $query = WarehouseStock::with(['warehouse', 'product.unit', 'product.category_relation']);
+        // All available warehouses for dropdowns
+        $warehouses = Warehouse::orderByRaw('is_shop DESC, warehouse_name ASC')->get();
 
-        // Filter by Item Nature (Finished Goods vs Raw Materials) using existing 'is_part' column
-        if ($itemType && $itemType !== 'all') {
-            if ($itemType === 'finish_goods') {
-                $query->whereHas('product', function ($q) {
-                    $q->where('is_part', 0);
-                });
-            } elseif ($itemType === 'raw_material') {
-                $query->whereHas('product', function ($q) {
-                    $q->where('is_part', 1);
-                });
-            }
-        }
+        // 1. Warehouses View with child stocks (Image 1 Style Accordions)
+        $warehousesQuery = Warehouse::query()
+            ->when($locationType === 'shop', fn($q) => $q->where('is_shop', 1))
+            ->when($locationType === 'godown', fn($q) => $q->where('is_shop', 0))
+            ->when($warehouseId && $warehouseId !== 'all', fn($q) => $q->where('id', $warehouseId))
+            ->withCount(['warehouseStocks as total_products_count' => function ($q) use ($search) {
+                if ($search) {
+                    $q->whereHas('product', fn($pq) => $pq->where('item_name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%"));
+                }
+            }])
+            ->withSum(['warehouseStocks as total_units_sum' => function ($q) use ($search) {
+                if ($search) {
+                    $q->whereHas('product', fn($pq) => $pq->where('item_name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%"));
+                }
+            }], 'total_pieces')
+            ->with(['warehouseStocks' => function ($q) use ($search) {
+                $q->with(['product.unit', 'product.category_relation']);
+                if ($search) {
+                    $q->whereHas('product', fn($pq) => $pq->where('item_name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%"));
+                }
+                $q->orderBy('total_pieces', 'DESC');
+            }])
+            ->orderByRaw('is_shop DESC, warehouse_name ASC');
 
-        // Filter by Location Type (Shop vs Godowns)
+        $warehousesWithStock = $warehousesQuery->get();
+
+        // 2. Flat Stocks Query (for products view or pagination)
+        $flatQuery = WarehouseStock::with(['warehouse', 'product.unit', 'product.category_relation']);
+
         if ($locationType === 'shop') {
-            $query->whereHas('warehouse', fn($q) => $q->where('is_shop', 1));
+            $flatQuery->whereHas('warehouse', fn($q) => $q->where('is_shop', 1));
         } elseif ($locationType === 'godown') {
-            $query->whereHas('warehouse', fn($q) => $q->where('is_shop', 0));
+            $flatQuery->whereHas('warehouse', fn($q) => $q->where('is_shop', 0));
         }
 
-        // Filter by Warehouse
         if ($warehouseId && $warehouseId !== 'all') {
-            $query->where('warehouse_id', $warehouseId);
+            $flatQuery->where('warehouse_id', $warehouseId);
         }
 
-        // Search by Product name, code or warehouse
         if ($search) {
-            $query->where(function ($q) use ($search) {
+            $flatQuery->where(function ($q) use ($search) {
                 $q->whereHas('product', function ($pq) use ($search) {
                     $pq->where('item_name', 'like', "%{$search}%")
                        ->orWhere('item_code', 'like', "%{$search}%");
@@ -105,31 +116,19 @@ class WarehouseStockController extends Controller
             });
         }
 
-        $stocks = $query->latest()->paginate(15)->appends($request->query());
-        $warehouses = Warehouse::orderByRaw('is_shop DESC, warehouse_name ASC')->get();
+        $stocks = $flatQuery->orderBy('total_pieces', 'DESC')->paginate(25)->appends($request->query());
 
-        // Counts for filter badges
-        $totalCount = WarehouseStock::count();
-        $fgCount = WarehouseStock::whereHas('product', function ($q) {
-            $q->where('is_part', 0);
-        })->count();
-
-        $rmCount = WarehouseStock::whereHas('product', function ($q) {
-            $q->where('is_part', 1);
-        })->count();
-
-        // Detailed stock totals per location category
-        $shopPieces = (float) WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 1))->sum('total_pieces');
-        $shopCount  = WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 1))->count();
-
-        $godownPieces = (float) WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 0))->sum('total_pieces');
-        $godownCount  = WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 0))->count();
-
+        // Overall Statistics
+        $totalCount         = WarehouseStock::count();
+        $shopPieces         = (float) WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 1))->sum('total_pieces');
+        $shopCount          = WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 1))->count();
+        $godownPieces       = (float) WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 0))->sum('total_pieces');
+        $godownCount        = WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 0))->count();
         $totalPiecesOverall = (float) WarehouseStock::sum('total_pieces');
 
         return view('admin_panel.warehouses.warehouse_stocks.index', compact(
-            'stocks', 'warehouses', 'itemType', 'locationType', 'warehouseId', 'search', 'totalCount', 'fgCount', 'rmCount',
-            'shopPieces', 'shopCount', 'godownPieces', 'godownCount', 'totalPiecesOverall'
+            'viewMode', 'warehouses', 'warehousesWithStock', 'stocks', 'locationType', 'warehouseId', 'search',
+            'totalCount', 'shopPieces', 'shopCount', 'godownPieces', 'godownCount', 'totalPiecesOverall'
         ));
     }
 
@@ -138,155 +137,209 @@ class WarehouseStockController extends Controller
         return redirect()->route('warehouse_stocks.index');
     }
 
-    // Removed create() and edit() pages as per request
+    public function create()
+    {
+        $warehouses = Warehouse::orderByRaw('is_shop DESC, warehouse_name ASC')->get();
+
+        $recentMovements = DB::table('stock_movements')
+            ->join('products', 'products.id', '=', 'stock_movements.product_id')
+            ->leftJoin('warehouse_stocks', 'warehouse_stocks.id', '=', 'stock_movements.ref_id')
+            ->leftJoin('warehouses', 'warehouses.id', '=', 'warehouse_stocks.warehouse_id')
+            ->leftJoin('units', 'units.id', '=', 'products.unit_id')
+            ->where('stock_movements.ref_type', 'OPENING_STOCK')
+            ->select('stock_movements.*', 'products.item_name', 'products.item_code', 'units.name as unit_name', 'warehouses.warehouse_name', 'warehouses.is_shop')
+            ->orderBy('stock_movements.id', 'DESC')
+            ->limit(10)
+            ->get();
+
+        return view('admin_panel.warehouses.warehouse_stocks.create', compact('warehouses', 'recentMovements'));
+    }
 
     public function store(Request $request)
     {
+        // Support both quantity and total_pieces names
+        $quantityVal = $request->input('quantity', $request->input('total_pieces'));
+
+        $request->merge(['quantity_clean' => $quantityVal]);
+
         $validated = $request->validate([
-            'warehouse_id' => 'required|exists:warehouses,id',
-            'product_id' => 'required|exists:products,id',
-            'total_pieces' => 'required|numeric|min:0',
-            'total_box' => 'nullable|numeric|min:0',
-            'remarks' => 'nullable|string|max:255',
+            'warehouse_id'   => 'required|exists:warehouses,id',
+            'product_id'     => 'required|exists:products,id',
+            'quantity_clean' => 'required|numeric|min:0',
+            'entry_mode'     => 'nullable|in:increment,set',
+            'remarks'        => 'nullable|string|max:255',
         ]);
 
-        try {
-            $this->stockService->addStock(
-                $validated['warehouse_id'],
-                $validated['product_id'],
-                $validated['total_pieces'],
-                $validated['total_box'],
-                $request->input('remarks')
-            );
+        $qty = (float) $validated['quantity_clean'];
+        $entryMode = $request->input('entry_mode', 'increment');
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Stock added successfully!',
-            ]);
+        try {
+            if ($entryMode === 'set') {
+                $stock = WarehouseStock::firstOrNew([
+                    'warehouse_id' => $validated['warehouse_id'],
+                    'product_id'   => $validated['product_id'],
+                ]);
+
+                $oldQty = (float) ($stock->total_pieces ?? 0);
+                $diff = $qty - $oldQty;
+
+                $stock->total_pieces = $qty;
+                $stock->quantity = $qty;
+                if ($request->filled('remarks')) {
+                    $stock->remarks = $request->input('remarks');
+                }
+                $stock->save();
+
+                DB::table('stock_movements')->insert([
+                    'product_id'   => $validated['product_id'],
+                    'type'         => $diff >= 0 ? 'in' : 'out',
+                    'qty'          => abs($diff),
+                    'ref_type'     => 'OPENING_STOCK',
+                    'ref_id'       => $stock->id,
+                    'note'         => $request->input('remarks') ?: "Opening Stock Set to {$qty}",
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+            } else {
+                // Increment mode (adds to existing stock)
+                $this->stockService->addStock(
+                    $validated['warehouse_id'],
+                    $validated['product_id'],
+                    $qty,
+                    $qty,
+                    $request->input('remarks')
+                );
+            }
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Stock saved successfully!',
+                ]);
+            }
+
+            if ($request->input('action') === 'save_and_add_another') {
+                return redirect()->route('warehouse_stocks.create')
+                    ->with('success', 'Stock added successfully! You can add another item now.')
+                    ->with('last_warehouse_id', $validated['warehouse_id']);
+            }
+
+            return redirect()->route('warehouse_stocks.index')->with('success', 'Opening stock recorded successfully!');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error adding stock: '.$e->getMessage(),
-            ], 500);
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error adding stock: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->withInput()->with('error', 'Error adding stock: ' . $e->getMessage());
         }
     }
 
-    /**
-     * Get data for editing a stock record via AJAX.
-     * This allows us to populate the same modal for editing.
-     */
+    public function edit($id)
+    {
+        $stock = WarehouseStock::with(['warehouse', 'product.unit'])->findOrFail($id);
+        return view('admin_panel.warehouses.warehouse_stocks.edit', compact('stock'));
+    }
+
     public function editData($id)
     {
-        $stock = WarehouseStock::with(['product', 'warehouse'])->findOrFail($id);
-
-        $piecesPerBox = $stock->product->pieces_per_box ?? 0;
-
-        // Calculate current boxes/loose for display if needed
-        $boxes = 0;
-        $loose = $stock->total_pieces;
-
-        if ($piecesPerBox > 0) {
-            $boxes = floor($stock->total_pieces / $piecesPerBox);
-            $loose = $stock->total_pieces % $piecesPerBox;
-        }
+        $stock = WarehouseStock::with(['product.unit', 'warehouse'])->findOrFail($id);
 
         return response()->json([
-            'id' => $stock->id,
-            'warehouse_id' => $stock->warehouse_id,
+            'id'             => $stock->id,
+            'warehouse_id'   => $stock->warehouse_id,
             'warehouse_name' => $stock->warehouse->warehouse_name ?? '',
-            'product_id' => $stock->product_id,
-            'product_name' => $stock->product->item_name,
-            'product_code' => $stock->product->item_code,
-            'pieces_per_box' => $piecesPerBox,
-            'total_pieces' => $stock->total_pieces,
-            'image' => $stock->product->image ? asset('uploads/products/'.$stock->product->image) : null,
-            'remarks' => $stock->remarks,
-            // For editing, we might want to let them adjust the total quantity directly or add to it.
-            // But usually "Edit" means setting the state.
-            // However, the prompt implies "Add Stock" modal style for both.
-            // If it is a true "Edit", we usually allow changing the absolute value.
-            // Given the context of "Add Stock" modal, we will pre-fill getting ready for an *update*.
-            // Since the user asked for "Edit" to open the "same model", we'll treat it as managing that record.
+            'is_shop'        => (int)($stock->warehouse->is_shop ?? 0),
+            'product_id'     => $stock->product_id,
+            'product_name'   => $stock->product->item_name,
+            'product_code'   => $stock->product->item_code,
+            'unit_name'      => $stock->product->unit->name ?? 'Pcs',
+            'total_pieces'   => (float)$stock->total_pieces,
+            'quantity'       => (float)$stock->quantity,
+            'image'          => $stock->product->image ? asset('uploads/products/'.$stock->product->image) : null,
+            'remarks'        => $stock->remarks,
         ]);
     }
 
     public function update(Request $request, $id)
     {
-        // For now, let's assume 'update' means adjusting the stock to a new value OR adding to it.
-        // If we reuse the "Add Stock" modal logic, it usually *adds* to stock.
-        // But "Edit" button implies changing the existing record.
-        // Let's implement a standard update that *sets* the value, but logs the difference.
-
         $warehouseStock = WarehouseStock::findOrFail($id);
 
+        $quantityVal = $request->input('quantity', $request->input('total_pieces'));
+        $request->merge(['quantity_clean' => $quantityVal]);
+
         $request->validate([
-            'total_pieces' => 'required|integer|min:0',
-            'remarks' => 'nullable|string',
+            'quantity_clean' => 'required|numeric',
+            'remarks'        => 'nullable|string|max:255',
         ]);
 
         DB::transaction(function () use ($request, $warehouseStock) {
-            $oldQty = $warehouseStock->total_pieces;
-            $newQty = $request->total_pieces;
-            $delta = $newQty - $oldQty;
+            $oldQty = (float) $warehouseStock->total_pieces;
+            $newQty = (float) $request->input('quantity_clean');
+            $delta  = $newQty - $oldQty;
+
+            $warehouseStock->total_pieces = $newQty;
+            $warehouseStock->quantity     = $newQty;
+            if ($request->filled('remarks')) {
+                $warehouseStock->remarks = $request->remarks;
+            }
+            $warehouseStock->save();
 
             if ($delta != 0) {
-                // Update
-                $warehouseStock->total_pieces = $newQty;
-                $warehouseStock->remarks = $request->remarks;
-                $warehouseStock->save();
-
-                // Log Movement
                 DB::table('stock_movements')->insert([
-                    'product_id' => $warehouseStock->product_id,
-                    'warehouse_id' => $warehouseStock->warehouse_id,
-                    'type' => 'adjustment', // 'adjustment' for edit
-                    'qty' => $delta, // Can be negative
-                    'ref_type' => 'MANUAL_EDIT_MODAL',
-                    'ref_id' => $warehouseStock->id,
-                    'note' => 'Manual Stock Edit via Modal',
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'product_id'   => $warehouseStock->product_id,
+                    'type'         => $delta > 0 ? 'in' : 'adjustment',
+                    'qty'          => $delta,
+                    'ref_type'     => 'STOCK_ADJUSTMENT',
+                    'ref_id'       => $warehouseStock->id,
+                    'note'         => $request->remarks ?: 'Manual Stock Adjustment',
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
                 ]);
             }
         });
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Stock updated successfully!',
-        ]);
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Stock updated successfully!',
+            ]);
+        }
+
+        return redirect()->route('warehouse_stocks.index')->with('success', 'Stock updated successfully!');
     }
 
     public function destroy(WarehouseStock $warehouseStock)
     {
         $warehouseStock->delete();
-
         return back()->with('success', 'Stock deleted successfully.');
     }
-
-    // --- AJAX Methods ---
 
     public function searchProducts(Request $request)
     {
         $term = $request->get('q', '');
 
-        $products = Product::query()
-            ->select('id', 'item_name', 'item_code', 'pieces_per_box', 'image')
+        $products = Product::with('unit')
+            ->select('id', 'item_name', 'item_code', 'unit_id', 'pieces_per_box', 'image')
             ->when($term, function ($query) use ($term) {
                 $query->where('item_name', 'like', "%{$term}%")
                     ->orWhere('item_code', 'like', "%{$term}%");
             })
-            ->limit(20)
+            ->limit(25)
             ->get();
 
         return response()->json($products->map(function ($p) {
+            $unitName = $p->unit ? $p->unit->name : 'Pcs';
             return [
-                'id' => $p->id,
-                'text' => "{$p->item_code} - {$p->item_name}",
+                'id'        => $p->id,
+                'text'      => "{$p->item_code} - {$p->item_name} ({$unitName})",
                 'item_name' => $p->item_name,
                 'item_code' => $p->item_code,
-                'pieces_per_box' => $p->pieces_per_box ?? 0,
-                'image' => $p->image ? asset('uploads/products/'.$p->image) : null,
+                'unit_name' => $unitName,
+                'image'     => $p->image ? asset('uploads/products/'.$p->image) : null,
             ];
         }));
     }
@@ -295,15 +348,30 @@ class WarehouseStockController extends Controller
     {
         $request->validate([
             'warehouse_id' => 'required|exists:warehouses,id',
-            'product_id' => 'required|exists:products,id',
+            'product_id'   => 'required|exists:products,id',
         ]);
 
-        $stock = WarehouseStock::where('warehouse_id', $request->warehouse_id)
+        $stock = WarehouseStock::with('product.unit')
+            ->where('warehouse_id', $request->warehouse_id)
             ->where('product_id', $request->product_id)
             ->first();
 
+        $product = Product::with('unit')->find($request->product_id);
+        $unitName = ($stock && $stock->product && $stock->product->unit)
+            ? $stock->product->unit->name
+            : ($product?->unit?->name ?? 'Pcs');
+
+        $rawQty = $stock ? (float)$stock->total_pieces : 0.0;
+        $formatted = rtrim(rtrim(number_format($rawQty, 2, '.', ''), '0'), '.');
+        if ($formatted === '' || $formatted === '-0') {
+            $formatted = '0';
+        }
+
         return response()->json([
-            'total_pieces' => $stock ? $stock->total_pieces : 0,
+            'exists'          => (bool)$stock,
+            'total_pieces'    => $rawQty,
+            'formatted_stock' => $formatted,
+            'unit_name'       => $unitName,
         ]);
     }
 }

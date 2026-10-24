@@ -14,7 +14,7 @@ class UnitSeeder extends Seeder
      */
     public function run(): void
     {
-         $units = ['Piece', 'Dozen', 'Meter', 'Kilogram'];
+        $units = ['Piece', 'Dozen', 'Meter', 'Kilogram', 'Pcs', 'Kg', 'Mtr', 'Ft', 'Box', 'Ltr'];
 
         foreach ($units as $unit) {
             Unit::firstOrCreate(['name' => $unit]);

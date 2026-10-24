@@ -642,7 +642,7 @@ class ProductController extends Controller
             return redirect()->route('product');
         }
 
-        $filterKeys = ['search', 'category_id', 'brand_id', 'status'];
+        $filterKeys = ['search', 'category_id', 'brand_id', 'status', 'sort'];
 
         if ($request->hasAny($filterKeys)) {
             $activeFilters = array_filter($request->only($filterKeys), function ($val) {
@@ -708,7 +708,27 @@ class ProductController extends Controller
             $perPage = 50;
         }
 
-        $products   = $query->orderBy('item_code', 'asc')->paginate($perPage)->withQueryString();
+        $sort = $request->input('sort', 'recent');
+        switch ($sort) {
+            case 'oldest':
+                $query->orderBy('id', 'asc');
+                break;
+            case 'name_asc':
+                $query->orderBy('item_name', 'asc');
+                break;
+            case 'name_desc':
+                $query->orderBy('item_name', 'desc');
+                break;
+            case 'code_asc':
+                $query->orderBy('item_code', 'asc');
+                break;
+            case 'recent':
+            default:
+                $query->orderBy('id', 'desc');
+                break;
+        }
+
+        $products   = $query->paginate($perPage)->withQueryString();
         $categories = Category::orderBy('name')->get();
         $brands     = Brand::orderBy('name')->get();
         $warehouses = Warehouse::orderBy('warehouse_name')->get();

@@ -59,7 +59,6 @@ class StockEntryService
             // 4. Log Movement for Opening/Manual Stock Entry
             DB::table('stock_movements')->insert([
                 'product_id' => $productId,
-                'warehouse_id' => $warehouseId,
                 'type' => 'in',
                 'qty' => $totalPieces,
                 'ref_type' => 'OPENING_STOCK',

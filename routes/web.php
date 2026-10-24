@@ -455,7 +455,8 @@ Route::middleware('auth')->group(function () {
 
     // narratiions
     Route::get('/get-customers-by-type', [CustomerController::class, 'getByType'])->middleware('permission:customers.view');
-    Route::resource('warehouse_stocks', WarehouseStockController::class)->except(['create', 'edit'])->middleware(['permission:warehouse.stock.view']);
+    Route::resource('warehouse_stocks', WarehouseStockController::class)->middleware(['permission:warehouse.stock.view']);
+    Route::get('/opening-stock', [WarehouseStockController::class, 'create'])->name('opening_stock.index')->middleware(['permission:warehouse.stock.view']);
 
     // Warehouse Stock AJAX Extensions
     Route::get('/warehouse-stock/search-products', [WarehouseStockController::class, 'searchProducts'])

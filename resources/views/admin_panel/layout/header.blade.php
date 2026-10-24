@@ -234,7 +234,11 @@
                                                                 </li>
                                                                 <li class="nav-item"><a class="nav-link"
                                                                         href="{{ route('warehouse_stocks.index') }}"><i
-                                                                            class="menu_icon ti-package"></i><span>Warehouse & Opening Stock</span></a>
+                                                                            class="menu_icon ti-package"></i><span>Warehouse Stock</span></a>
+                                                                </li>
+                                                                <li class="nav-item"><a class="nav-link"
+                                                                        href="{{ route('warehouse_stocks.create') }}"><i
+                                                                            class="menu_icon ti-plus"></i><span>Add Opening Stock</span></a>
                                                                 </li>
                                                                 <li class="nav-item"><a class="nav-link"
                                                                         href="{{ route('stock_transfers.index') }}"><i

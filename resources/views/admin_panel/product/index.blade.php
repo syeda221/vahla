@@ -554,7 +554,7 @@
                 <div class="stat-label">Filtered Results</div>
                 <div class="stat-value">{{ $products->total() }}</div>
                 <div class="stat-sub">
-                    @if(request()->hasAny(['search','category_id','brand_id','status']))
+                    @if(request()->hasAny(['search','category_id','brand_id','status']) || (request('sort') && request('sort') !== 'recent'))
                         <span style="color:#d97706; font-weight:700;">Filters active</span>
                     @else
                         all products
@@ -647,6 +647,18 @@
                         </select>
                     </div>
 
+                    {{-- Sort Order --}}
+                    <div class="erp-filter-field" style="min-width:150px;">
+                        <label class="erp-flabel">Sort By</label>
+                        <select name="sort" class="erp-finput" onchange="document.getElementById('filterForm').submit();">
+                            <option value="recent" {{ request('sort', 'recent') === 'recent' ? 'selected' : '' }}>⚡ Most Recent First</option>
+                            <option value="oldest" {{ request('sort') === 'oldest' ? 'selected' : '' }}>⏳ Oldest First</option>
+                            <option value="name_asc" {{ request('sort') === 'name_asc' ? 'selected' : '' }}>Name (A to Z)</option>
+                            <option value="name_desc" {{ request('sort') === 'name_desc' ? 'selected' : '' }}>Name (Z to A)</option>
+                            <option value="code_asc" {{ request('sort') === 'code_asc' ? 'selected' : '' }}>Item Code</option>
+                        </select>
+                    </div>
+
                     {{-- Rows per page --}}
                     <div class="erp-filter-field" style="min-width:115px;">
                         <label class="erp-flabel">Show Rows</label>
@@ -674,7 +686,7 @@
                 </div>
 
                 {{-- Active filter chips --}}
-                @if(request()->hasAny(['search','category_id','brand_id','status']))
+                @if(request()->hasAny(['search','category_id','brand_id','status']) || (request('sort') && request('sort') !== 'recent'))
                 <div class="active-filters" style="margin-top:10px;">
                     <span style="font-size:.72rem; font-weight:600; color:var(--erp-muted);">Active:</span>
                     @if(request('search'))
@@ -688,6 +700,9 @@
                     @endif
                     @if(request('status'))
                         <span class="filter-chip"><i class="fas fa-circle" style="font-size:.6rem;"></i> {{ ucfirst(request('status')) }}</span>
+                    @endif
+                    @if(request('sort') && request('sort') !== 'recent')
+                        <span class="filter-chip"><i class="fas fa-sort" style="font-size:.6rem;"></i> {{ match(request('sort')) { 'oldest' => 'Oldest First', 'name_asc' => 'Name A-Z', 'name_desc' => 'Name Z-A', 'code_asc' => 'Item Code', default => 'Sorted' } }}</span>
                     @endif
                     <span style="font-size:.72rem; color:var(--erp-muted);">— <strong>{{ $products->total() }}</strong> result(s)</span>
                 </div>
