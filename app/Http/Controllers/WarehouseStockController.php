@@ -42,58 +42,50 @@ class WarehouseStockController extends Controller
         $term = $request->get('q', '');
 
         $warehouses = Warehouse::query()
-            ->select('id', 'warehouse_name')
+            ->select('id', 'warehouse_name', 'is_shop')
             ->when($term, function ($query) use ($term) {
                 $query->where('warehouse_name', 'like', "%{$term}%");
             })
+            ->orderByRaw('is_shop DESC, warehouse_name ASC')
             ->limit(20)
             ->get();
 
         return response()->json($warehouses->map(function ($w) {
+            $prefix = $w->is_shop ? '🏪 [Shop] ' : '🏢 [Godown] ';
             return [
                 'id' => $w->id,
-                'text' => $w->warehouse_name,
+                'text' => $prefix . $w->warehouse_name,
             ];
         }));
     }
 
     public function index(Request $request)
     {
-        $itemType    = $request->get('item_type', 'all');
-        $warehouseId = $request->get('warehouse_id', 'all');
-        $search      = $request->get('search');
+        $itemType     = $request->get('item_type', 'all');
+        $locationType = $request->get('location_type', 'all');
+        $warehouseId  = $request->get('warehouse_id', 'all');
+        $search       = $request->get('search');
 
         $query = WarehouseStock::with(['warehouse', 'product.unit', 'product.category_relation']);
 
-        // Filter by Item Nature (Finished Goods vs Raw Materials)
+        // Filter by Item Nature (Finished Goods vs Raw Materials) using existing 'is_part' column
         if ($itemType && $itemType !== 'all') {
             if ($itemType === 'finish_goods') {
                 $query->whereHas('product', function ($q) {
-                    $q->where(function ($sub) {
-                        $sub->whereIn('item_type', ['finish_goods', 'both'])
-                            ->orWhere(function ($s) {
-                                $s->where(function ($n) {
-                                    $n->whereNull('item_type')->orWhere('item_type', '');
-                                })->where('is_part', 0);
-                            });
-                    });
+                    $q->where('is_part', 0);
                 });
             } elseif ($itemType === 'raw_material') {
                 $query->whereHas('product', function ($q) {
-                    $q->where(function ($sub) {
-                        $sub->whereIn('item_type', ['raw_material', 'both'])
-                            ->orWhere(function ($s) {
-                                $s->where(function ($n) {
-                                    $n->whereNull('item_type')->orWhere('item_type', '');
-                                })->where('is_assembled', 0);
-                            });
-                    });
-                });
-            } else {
-                $query->whereHas('product', function ($q) use ($itemType) {
-                    $q->where('item_type', $itemType);
+                    $q->where('is_part', 1);
                 });
             }
+        }
+
+        // Filter by Location Type (Shop vs Godowns)
+        if ($locationType === 'shop') {
+            $query->whereHas('warehouse', fn($q) => $q->where('is_shop', 1));
+        } elseif ($locationType === 'godown') {
+            $query->whereHas('warehouse', fn($q) => $q->where('is_shop', 0));
         }
 
         // Filter by Warehouse
@@ -114,34 +106,30 @@ class WarehouseStockController extends Controller
         }
 
         $stocks = $query->latest()->paginate(15)->appends($request->query());
-        $warehouses = Warehouse::orderBy('warehouse_name')->get();
+        $warehouses = Warehouse::orderByRaw('is_shop DESC, warehouse_name ASC')->get();
 
         // Counts for filter badges
         $totalCount = WarehouseStock::count();
         $fgCount = WarehouseStock::whereHas('product', function ($q) {
-            $q->where(function ($sub) {
-                $sub->whereIn('item_type', ['finish_goods', 'both'])
-                    ->orWhere(function ($s) {
-                        $s->where(function ($n) {
-                            $n->whereNull('item_type')->orWhere('item_type', '');
-                        })->where('is_part', 0);
-                    });
-            });
+            $q->where('is_part', 0);
         })->count();
 
         $rmCount = WarehouseStock::whereHas('product', function ($q) {
-            $q->where(function ($sub) {
-                $sub->whereIn('item_type', ['raw_material', 'both'])
-                    ->orWhere(function ($s) {
-                        $s->where(function ($n) {
-                            $n->whereNull('item_type')->orWhere('item_type', '');
-                        })->where('is_assembled', 0);
-                    });
-            });
+            $q->where('is_part', 1);
         })->count();
 
+        // Detailed stock totals per location category
+        $shopPieces = (float) WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 1))->sum('total_pieces');
+        $shopCount  = WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 1))->count();
+
+        $godownPieces = (float) WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 0))->sum('total_pieces');
+        $godownCount  = WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 0))->count();
+
+        $totalPiecesOverall = (float) WarehouseStock::sum('total_pieces');
+
         return view('admin_panel.warehouses.warehouse_stocks.index', compact(
-            'stocks', 'warehouses', 'itemType', 'warehouseId', 'search', 'totalCount', 'fgCount', 'rmCount'
+            'stocks', 'warehouses', 'itemType', 'locationType', 'warehouseId', 'search', 'totalCount', 'fgCount', 'rmCount',
+            'shopPieces', 'shopCount', 'godownPieces', 'godownCount', 'totalPiecesOverall'
         ));
     }
 
@@ -157,8 +145,8 @@ class WarehouseStockController extends Controller
         $validated = $request->validate([
             'warehouse_id' => 'required|exists:warehouses,id',
             'product_id' => 'required|exists:products,id',
-            'total_pieces' => 'required|integer|min:0',
-            'total_box' => 'required|integer|min:0',
+            'total_pieces' => 'required|numeric|min:0',
+            'total_box' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string|max:255',
         ]);
 

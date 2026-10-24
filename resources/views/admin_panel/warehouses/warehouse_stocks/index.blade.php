@@ -101,74 +101,185 @@
         <div class="card premium-card border-0 shadow-sm rounded-4">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div>
-                    <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-warehouse me-2 text-success"></i> Warehouse Stock</h5>
-                    <p class="text-muted mb-0 small">View and manage warehouse stock inventories</p>
+                    <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-boxes-stacked me-2 text-success"></i> Warehouse Stock & Opening Inventory</h5>
+                    <p class="text-muted mb-0 small">Separate visibility for <strong>Shop Stock</strong> vs <strong>Godowns Stock</strong>, with instant opening inventory entry</p>
                 </div>
                 @can('warehouse.stock.create')
                     <button onclick="openAddModal()" class="btn btn-success shadow-sm rounded-pill px-4 fw-bold">
-                        <i class="fas fa-plus me-1"></i> Add Stock
+                        <i class="fas fa-plus-circle me-1"></i> Add Opening / Inward Stock
                     </button>
                 @endcan
             </div>
             <div class="card-body">
-                <!-- Filter Bar (Finished Goods & Raw Materials + Warehouse & Search) -->
-                <div class="row align-items-center g-3 mb-4">
-                    <!-- Type Filter Pills -->
-                    <div class="col-12 col-xl-auto">
-                        <div class="btn-group p-1 bg-light rounded-pill border shadow-sm" role="group">
-                            <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'item_type'), ['item_type' => 'all'])) }}" 
-                               class="btn btn-sm rounded-pill px-3 fw-bold {{ ($itemType ?? 'all') === 'all' ? 'btn-primary shadow-sm' : 'btn-light text-muted' }}">
-                                <i class="fas fa-boxes me-1"></i> All Items 
-                                <span class="badge {{ ($itemType ?? 'all') === 'all' ? 'bg-white text-primary' : 'bg-secondary' }} ms-1">{{ number_format($totalCount ?? 0) }}</span>
-                            </a>
-                            <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'item_type'), ['item_type' => 'finish_goods'])) }}" 
-                               class="btn btn-sm rounded-pill px-3 fw-bold {{ ($itemType ?? '') === 'finish_goods' ? 'btn-primary shadow-sm' : 'btn-light text-muted' }}">
-                                <i class="fas fa-box me-1"></i> Finished Goods 
-                                <span class="badge {{ ($itemType ?? '') === 'finish_goods' ? 'bg-white text-primary' : 'bg-primary-subtle text-primary border border-primary-subtle' }} ms-1">{{ number_format($fgCount ?? 0) }}</span>
-                            </a>
-                            <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'item_type'), ['item_type' => 'raw_material'])) }}" 
-                               class="btn btn-sm rounded-pill px-3 fw-bold {{ ($itemType ?? '') === 'raw_material' ? 'btn-warning text-dark shadow-sm' : 'btn-light text-muted' }}">
-                                <i class="fas fa-cogs me-1"></i> Raw Materials 
-                                <span class="badge {{ ($itemType ?? '') === 'raw_material' ? 'bg-dark text-white' : 'bg-warning-subtle text-dark border border-warning-subtle' }} ms-1">{{ number_format($rmCount ?? 0) }}</span>
-                            </a>
-                        </div>
+                <!-- Location Stock Summary Cards -->
+                <div class="row g-3 mb-4">
+                    <!-- Shop Stock Card -->
+                    <div class="col-12 col-md-4">
+                        <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'location_type'), ['location_type' => 'shop'])) }}" 
+                           class="text-decoration-none">
+                            <div class="card border {{ ($locationType ?? '') === 'shop' ? 'border-success shadow' : 'border-0' }} rounded-4 h-100"
+                                 style="background: {{ ($locationType ?? '') === 'shop' ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)' : '#f8fafc' }}; transition: all 0.2s;">
+                                <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <span class="badge bg-success text-white rounded-pill px-2.5 py-1 small">
+                                                <i class="fas fa-store me-1"></i> Main Shop Stock
+                                            </span>
+                                            @if(($locationType ?? '') === 'shop')
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle small">Active</span>
+                                            @endif
+                                        </div>
+                                        <h3 class="fw-bold mb-0 text-success">{{ number_format($shopPieces ?? 0) }} <span class="fs-6 fw-normal text-muted">Pcs</span></h3>
+                                        <span class="text-muted small"><i class="fas fa-cubes me-1"></i> {{ number_format($shopCount ?? 0) }} Stock records</span>
+                                    </div>
+                                    <div class="rounded-circle p-3 bg-white shadow-sm text-success">
+                                        <i class="fas fa-cash-register fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
                     </div>
 
-                    <!-- Warehouse & Search Form -->
-                    <div class="col-12 col-xl ms-auto">
-                        <form method="GET" action="{{ route('warehouse_stocks.index') }}" class="row g-2 justify-content-xl-end">
-                            <input type="hidden" name="item_type" value="{{ $itemType ?? 'all' }}">
-
-                            <div class="col-12 col-sm-auto">
-                                <select name="warehouse_id" class="form-select form-select-sm" onchange="this.form.submit()" style="height: 38px; border-radius: 8px;">
-                                    <option value="all">-- All Warehouses --</option>
-                                    @if(isset($warehouses))
-                                        @foreach($warehouses as $w)
-                                            <option value="{{ $w->id }}" {{ (string)($warehouseId ?? '') === (string)$w->id ? 'selected' : '' }}>
-                                                {{ $w->warehouse_name }}
-                                            </option>
-                                        @endforeach
-                                    @endif
-                                </select>
-                            </div>
-
-                            <div class="col-12 col-sm-auto">
-                                <div class="input-group input-group-sm" style="min-width: 240px;">
-                                    <input type="text" name="search" value="{{ $search ?? '' }}" class="form-control form-control-sm" placeholder="Search product name, code..." style="height: 38px; border-radius: 8px 0 0 8px;">
-                                    <button class="btn btn-primary btn-sm" type="submit" style="height: 38px; border-radius: 0 8px 8px 0;">
-                                        <i class="fas fa-search"></i>
-                                    </button>
+                    <!-- Godowns Stock Card -->
+                    <div class="col-12 col-md-4">
+                        <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'location_type'), ['location_type' => 'godown'])) }}" 
+                           class="text-decoration-none">
+                            <div class="card border {{ ($locationType ?? '') === 'godown' ? 'border-primary shadow' : 'border-0' }} rounded-4 h-100"
+                                 style="background: {{ ($locationType ?? '') === 'godown' ? 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)' : '#f8fafc' }}; transition: all 0.2s;">
+                                <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <span class="badge bg-primary text-white rounded-pill px-2.5 py-1 small">
+                                                <i class="fas fa-warehouse me-1"></i> Storage Godowns Stock
+                                            </span>
+                                            @if(($locationType ?? '') === 'godown')
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle small">Active</span>
+                                            @endif
+                                        </div>
+                                        <h3 class="fw-bold mb-0 text-primary">{{ number_format($godownPieces ?? 0) }} <span class="fs-6 fw-normal text-muted">Pcs</span></h3>
+                                        <span class="text-muted small"><i class="fas fa-dolly me-1"></i> {{ number_format($godownCount ?? 0) }} Stock records</span>
+                                    </div>
+                                    <div class="rounded-circle p-3 bg-white shadow-sm text-primary">
+                                        <i class="fas fa-warehouse fa-2x"></i>
+                                    </div>
                                 </div>
                             </div>
+                        </a>
+                    </div>
 
-                            @if(($itemType ?? 'all') !== 'all' || (($warehouseId ?? 'all') && $warehouseId !== 'all') || !empty($search))
-                                <div class="col-12 col-sm-auto">
-                                    <a href="{{ route('warehouse_stocks.index') }}" class="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center" style="height: 38px; border-radius: 8px;" title="Reset All Filters">
-                                        <i class="fas fa-times me-1"></i> Reset
+                    <!-- Total Overall Stock Card -->
+                    <div class="col-12 col-md-4">
+                        <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'location_type'), ['location_type' => 'all'])) }}" 
+                           class="text-decoration-none">
+                            <div class="card border {{ ($locationType ?? 'all') === 'all' ? 'border-dark shadow-sm' : 'border-0' }} rounded-4 h-100"
+                                 style="background: {{ ($locationType ?? 'all') === 'all' ? 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)' : '#f8fafc' }}; transition: all 0.2s;">
+                                <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <span class="badge bg-dark text-white rounded-pill px-2.5 py-1 small">
+                                                <i class="fas fa-globe me-1"></i> Total Inventory (All)
+                                            </span>
+                                            @if(($locationType ?? 'all') === 'all')
+                                                <span class="badge bg-secondary-subtle text-dark border border-secondary-subtle small">All Locations</span>
+                                            @endif
+                                        </div>
+                                        <h3 class="fw-bold mb-0 text-dark">{{ number_format($totalPiecesOverall ?? 0) }} <span class="fs-6 fw-normal text-muted">Pcs</span></h3>
+                                        <span class="text-muted small"><i class="fas fa-layer-group me-1"></i> {{ number_format($totalCount ?? 0) }} Stock records</span>
+                                    </div>
+                                    <div class="rounded-circle p-3 bg-white shadow-sm text-dark">
+                                        <i class="fas fa-boxes-stacked fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Filter Bar (Location + Type + Warehouse + Search) -->
+                <div class="p-3 bg-light rounded-4 border mb-4">
+                    <div class="row align-items-center g-3">
+                        <!-- Location Filter Pills -->
+                        <div class="col-12 col-lg-auto">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="small fw-bold text-muted text-uppercase"><i class="fas fa-map-marker-alt text-danger me-1"></i> Location:</span>
+                                <div class="btn-group p-1 bg-white rounded-pill border shadow-sm" role="group">
+                                    <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'location_type'), ['location_type' => 'all'])) }}" 
+                                       class="btn btn-sm rounded-pill px-3 fw-bold {{ ($locationType ?? 'all') === 'all' ? 'btn-dark shadow-sm' : 'btn-light text-muted' }}">
+                                        All
+                                    </a>
+                                    <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'location_type'), ['location_type' => 'shop'])) }}" 
+                                       class="btn btn-sm rounded-pill px-3 fw-bold {{ ($locationType ?? '') === 'shop' ? 'btn-success shadow-sm' : 'btn-light text-muted' }}">
+                                        🏪 Main Shop
+                                    </a>
+                                    <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'location_type'), ['location_type' => 'godown'])) }}" 
+                                       class="btn btn-sm rounded-pill px-3 fw-bold {{ ($locationType ?? '') === 'godown' ? 'btn-primary shadow-sm' : 'btn-light text-muted' }}">
+                                        🏢 Godowns
                                     </a>
                                 </div>
-                            @endif
-                        </form>
+                            </div>
+                        </div>
+
+                        <!-- Item Type Filter Pills -->
+                        <div class="col-12 col-lg-auto">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="small fw-bold text-muted text-uppercase"><i class="fas fa-tags text-primary me-1"></i> Item Type:</span>
+                                <div class="btn-group p-1 bg-white rounded-pill border shadow-sm" role="group">
+                                    <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'item_type'), ['item_type' => 'all'])) }}" 
+                                       class="btn btn-sm rounded-pill px-3 fw-bold {{ ($itemType ?? 'all') === 'all' ? 'btn-primary shadow-sm' : 'btn-light text-muted' }}">
+                                        All ({{ number_format($totalCount ?? 0) }})
+                                    </a>
+                                    <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'item_type'), ['item_type' => 'finish_goods'])) }}" 
+                                       class="btn btn-sm rounded-pill px-3 fw-bold {{ ($itemType ?? '') === 'finish_goods' ? 'btn-primary shadow-sm' : 'btn-light text-muted' }}">
+                                        Finished ({{ number_format($fgCount ?? 0) }})
+                                    </a>
+                                    <a href="{{ route('warehouse_stocks.index', array_merge(request()->except('page', 'item_type'), ['item_type' => 'raw_material'])) }}" 
+                                       class="btn btn-sm rounded-pill px-3 fw-bold {{ ($itemType ?? '') === 'raw_material' ? 'btn-warning text-dark shadow-sm' : 'btn-light text-muted' }}">
+                                        Raw Material ({{ number_format($rmCount ?? 0) }})
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Warehouse & Search Form -->
+                        <div class="col-12">
+                            <form method="GET" action="{{ route('warehouse_stocks.index') }}" class="row g-2 align-items-center">
+                                <input type="hidden" name="location_type" value="{{ $locationType ?? 'all' }}">
+                                <input type="hidden" name="item_type" value="{{ $itemType ?? 'all' }}">
+
+                                <div class="col-12 col-md-4">
+                                    <select name="warehouse_id" class="form-select form-select-sm" onchange="this.form.submit()" style="height: 38px; border-radius: 8px;">
+                                        <option value="all">-- Filter By Specific Warehouse / Shop --</option>
+                                        @if(isset($warehouses))
+                                            @foreach($warehouses as $w)
+                                                <option value="{{ $w->id }}" {{ (string)($warehouseId ?? '') === (string)$w->id ? 'selected' : '' }}>
+                                                    {{ $w->is_shop ? '🏪 [Shop] ' : '🏢 [Godown] ' }}{{ $w->warehouse_name }}
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-md-5">
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" name="search" value="{{ $search ?? '' }}" class="form-control form-control-sm" placeholder="Search product name, code, model..." style="height: 38px; border-radius: 8px 0 0 8px;">
+                                        <button class="btn btn-primary btn-sm px-3" type="submit" style="height: 38px; border-radius: 0 8px 8px 0;">
+                                            <i class="fas fa-search me-1"></i> Search
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 col-md-3 d-flex gap-2 justify-content-md-end">
+                                    @if(($locationType ?? 'all') !== 'all' || ($itemType ?? 'all') !== 'all' || (($warehouseId ?? 'all') && $warehouseId !== 'all') || !empty($search))
+                                        <a href="{{ route('warehouse_stocks.index') }}" class="btn btn-sm btn-outline-danger d-flex align-items-center" style="height: 38px; border-radius: 8px;" title="Reset All Filters">
+                                            <i class="fas fa-times me-1"></i> Reset
+                                        </a>
+                                    @endif
+                                    <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-secondary d-flex align-items-center" style="height: 38px; border-radius: 8px;">
+                                        <i class="fas fa-print me-1"></i> Print
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
 
@@ -177,45 +288,50 @@
                         <thead class="bg-light text-muted">
                             <tr>
                                 <th class="text-uppercase small fw-bold">#</th>
-                                <th class="text-uppercase small fw-bold">Warehouse</th>
-                                <th class="text-uppercase small fw-bold">Product</th>
-                                <th class="text-uppercase small fw-bold text-center">Quantity</th>
+                                <th class="text-uppercase small fw-bold">Warehouse / Location</th>
+                                <th class="text-uppercase small fw-bold">Product Details</th>
+                                <th class="text-uppercase small fw-bold text-center">Boxes</th>
                                 <th class="text-uppercase small fw-bold text-center">Total Pieces</th>
-                                {{-- <th class="text-uppercase small fw-bold">Remarks</th> --}}
                                 <th class="text-uppercase small fw-bold text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ($stocks as $stock)
+                            @forelse ($stocks as $stock)
                                 <tr>
                                     <td>{{ $stocks->firstItem() + $loop->index }}</td>
-                                    <td>{{ $stock->warehouse->warehouse_name ?? 'N/A' }}</td>
+                                    <td>
+                                        @if($stock->warehouse && $stock->warehouse->is_shop)
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 font-monospace rounded-pill">
+                                                <i class="fas fa-store me-1"></i> {{ $stock->warehouse->warehouse_name }} <span class="badge bg-success text-white ms-1">Shop</span>
+                                            </span>
+                                        @else
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1.5 font-monospace rounded-pill">
+                                                <i class="fas fa-warehouse me-1"></i> {{ $stock->warehouse->warehouse_name ?? 'N/A' }} <span class="badge bg-secondary text-white ms-1">Godown</span>
+                                            </span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             @if ($stock->product && $stock->product->image)
                                                 <img src="{{ asset('uploads/products/' . $stock->product->image) }}"
-                                                    class="rounded me-2"
-                                                    style="width: 30px; height: 30px; object-fit: cover;">
+                                                    class="rounded me-2 border"
+                                                    style="width: 34px; height: 34px; object-fit: cover;">
                                             @else
                                                 <div class="rounded me-2 bg-secondary d-flex align-items-center justify-content-center text-white"
-                                                    style="width: 30px; height: 30px; font-size: 10px;">IMG</div>
+                                                    style="width: 34px; height: 34px; font-size: 10px;">IMG</div>
                                             @endif
                                             <div>
                                                 <div class="fw-bold text-dark">{{ $stock->product->item_name ?? 'N/A' }}</div>
                                                 <div class="d-flex align-items-center gap-2 mt-1">
                                                     <span class="small text-muted font-monospace">{{ $stock->product->item_code ?? '' }}</span>
                                                     @if($stock->product)
-                                                        @if($stock->product->item_type === 'raw_material')
+                                                        @if($stock->product->is_part)
                                                             <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0.5" style="font-size: 0.68rem;">
-                                                                <i class="fas fa-cog me-1"></i> Raw Material
+                                                                <i class="fas fa-cog me-1"></i> Raw Material / Part
                                                             </span>
-                                                        @elseif($stock->product->item_type === 'finish_goods')
+                                                        @else
                                                             <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-0.5" style="font-size: 0.68rem;">
                                                                 <i class="fas fa-box me-1"></i> Finished Good
-                                                            </span>
-                                                        @elseif($stock->product->item_type === 'both')
-                                                            <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-0.5" style="font-size: 0.68rem;">
-                                                                <i class="fas fa-layer-group me-1"></i> Both (FG/RM)
                                                             </span>
                                                         @endif
                                                     @endif
@@ -224,30 +340,44 @@
                                         </div>
                                     </td>
                                     <td class="text-center text-nowrap">
-                                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle font-monospace fw-bold px-2.5 py-1" style="font-size: 0.85rem;">{{ number_format($stock->quantity) }}</span>
+                                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle font-monospace fw-bold px-2.5 py-1" style="font-size: 0.85rem;">{{ number_format($stock->quantity) }} Box</span>
                                     </td>
-                                    <td class="text-center fw-bold text-primary font-monospace" style="font-size: 0.92rem;">
-                                        {{ number_format($stock->total_pieces) }} <span class="text-muted small fw-normal">{{ $stock->product->unit->name ?? "Pcs" }}</span></td>
+                                    <td class="text-center fw-bold text-primary font-monospace" style="font-size: 0.95rem;">
+                                        {{ number_format($stock->total_pieces) }} <span class="text-muted small fw-normal">{{ $stock->product->unit->name ?? "Pcs" }}</span>
+                                    </td>
                                     <td class="text-end">
                                         @can('warehouse.stock.edit')
                                             <button onclick="editStock({{ $stock->id }})"
-                                                class="btn btn-sm btn-icon btn-outline-primary rounded-circle">
+                                                class="btn btn-sm btn-icon btn-outline-primary rounded-circle" title="Edit Opening / Warehouse Stock">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                         @endcan
 
                                         <form action="{{ route('warehouse_stocks.destroy', $stock->id) }}" method="POST"
-                                            class="d-inline-block" onsubmit="return confirm('Are you sure?');">
+                                            class="d-inline-block" onsubmit="return confirm('Are you sure you want to remove this stock record?');">
                                             @csrf @method('DELETE')
                                             @can('warehouse.stock.delete')
                                                 <button type="submit"
-                                                    class="btn btn-sm btn-icon btn-outline-danger rounded-circle ms-1"><i
+                                                    class="btn btn-sm btn-icon btn-outline-danger rounded-circle ms-1" title="Delete Stock Record"><i
                                                         class="fas fa-trash"></i></button>
                                             @endcan
                                         </form>
                                     </td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="fas fa-boxes-stacked fa-3x mb-3 text-secondary opacity-50"></i>
+                                        <h6>No stock records found matching your criteria.</h6>
+                                        <p class="small text-muted mb-3">Add opening stock for your shop or warehouses using the button above.</p>
+                                        @can('warehouse.stock.create')
+                                            <button onclick="openAddModal()" class="btn btn-sm btn-success rounded-pill px-3 fw-bold">
+                                                <i class="fas fa-plus me-1"></i> Add Opening Stock
+                                            </button>
+                                        @endcan
+                                    </td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -263,12 +393,18 @@
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="modalTitle">Add Stock</h5>
+                    <h5 class="modal-title" id="modalTitle"><i class="fas fa-dolly me-2"></i> Add Opening / Warehouse Stock</h5>
                     <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="opacity: 0.9; font-size: 1.5rem; background: transparent; border: none;">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
+                    <div class="alert alert-primary py-2 px-3 small rounded-3 mb-3 d-flex align-items-center">
+                        <i class="fas fa-info-circle me-2 fs-5"></i>
+                        <div>
+                            <strong>Opening / Inward Stock Entry:</strong> Use this form to record opening inventory or adjust stock for your <strong>Main Shop</strong> or <strong>Storage Godowns</strong>.
+                        </div>
+                    </div>
                     <form id="stockForm">
                         @csrf
                         <input type="hidden" id="stock_id" name="stock_id">
@@ -277,16 +413,16 @@
                         <div class="row g-3">
                             <!-- Warehouse (Col 1) -->
                             <div class="col-md-6">
-                                <label class="info-label">Warehouse</label>
+                                <label class="info-label">Select Location / Warehouse <span class="text-danger">*</span></label>
                                 <select id="warehouse_id" name="warehouse_id" class="form-control" required>
-                                    <option value="">Select Warehouse</option>
+                                    <option value="">Select Warehouse or Shop</option>
                                     <!-- Populated via Ajax -->
                                 </select>
                             </div>
 
                             <!-- Product (Col 2) -->
                             <div class="col-md-6">
-                                <label class="info-label">Product</label>
+                                <label class="info-label">Product <span class="text-danger">*</span></label>
                                 <select id="product_id" name="product_id" class="form-control" disabled>
                                     <option value="">Select Warehouse First</option>
                                 </select>
@@ -315,15 +451,15 @@
                         <!-- Quantity Input -->
                         <div class="row mt-3 align-items-end">
                             <div class="col-md-6">
-                                <label class="info-label" id="qty-label">Quantity</label>
-                                <input type="number" name="quantity_input" id="quantity_input"
+                                <label class="info-label" id="qty-label">Total Pieces (Stock)</label>
+                                <input type="number" step="any" name="quantity_input" id="quantity_input"
                                     class="form-control big-input" placeholder="0" min="0" disabled>
-                                <small class="text-muted" id="qty-help">Enter amount.</small>
+                                <small class="text-muted" id="qty-help">Enter total opening stock in pieces.</small>
                             </div>
                             <div class="col-md-6 mt-3 mt-md-0">
                                 <div class="calc-box">
-                                    <div class="text-uppercase small text-muted fw-bold mb-1">Total Quantity</div>
-                                    <div class="calc-number" id="calc-result">0</div>
+                                    <div class="text-uppercase small text-muted fw-bold mb-1">Calculated Packaging</div>
+                                    <div class="calc-number" id="calc-result">0 Pcs</div>
                                     <input type="hidden" name="total_pieces" id="total_pieces" value="0">
                                     <input type="hidden" name="total_box" id="total_box" value="0">
                                 </div>
@@ -331,13 +467,13 @@
                         </div>
 
                         <div class="mt-3">
-                            <label class="info-label">Remarks</label>
-                            <textarea name="remarks" id="remarks" class="form-control" rows="2" placeholder="Optional notes..."></textarea>
+                            <label class="info-label">Remarks / Note</label>
+                            <textarea name="remarks" id="remarks" class="form-control" rows="2" placeholder="e.g. Initial opening stock, manual count verification..."></textarea>
                         </div>
 
                         <div class="mt-4 d-grid">
                             <button type="submit" class="btn btn-success py-3 fw-bold shadow-sm" id="btn-save">
-                                <span class="btn-text">Save Stock Entry</span>
+                                <span class="btn-text">Save Opening Stock</span>
                             </button>
                         </div>
                     </form>
@@ -438,9 +574,9 @@
 
         function openAddModal() {
             isEditMode = false;
-            $('#modalTitle').text('Add Stock');
+            $('#modalTitle').html('<i class="fas fa-dolly me-2"></i> Add Opening / Warehouse Stock');
             $('#method_field').val('POST');
-            $('#btn-save .btn-text').text('Add Stock');
+            $('#btn-save .btn-text').text('Save Opening Stock');
 
             // Reset state handled by hidden event, but ensure UI is ready
             var myModal = new bootstrap.Modal(document.getElementById('stockModal'));
@@ -449,9 +585,9 @@
 
         function editStock(id) {
             isEditMode = true;
-            $('#modalTitle').text('Update Stock');
+            $('#modalTitle').html('<i class="fas fa-edit me-2"></i> Update Stock Record');
             $('#method_field').val('PUT'); // Simulate PUT for update
-            $('#btn-save .btn-text').text('Update Stock');
+            $('#btn-save .btn-text').text('Update Stock Record');
             $('#stock_id').val(id);
 
             let url = "{{ route('warehouse_stock.edit-data', ':id') }}";
@@ -575,7 +711,7 @@
         }
 
         function calculateTotal() {
-            let inputQty = parseInt($('#quantity_input').val()) || 0;
+            let inputQty = parseFloat($('#quantity_input').val()) || 0;
             let total = inputQty;
 
             // Store total pieces (which is the input now)
@@ -584,8 +720,8 @@
             // Display Box Estimation
             if (piecesPerBox > 0 && total > 0) {
                 let boxes = Math.floor(total / piecesPerBox);
-                let loose = total % piecesPerBox;
-                $('#calc-result').html(`<span class="text-primary">${boxes}</span>` + (loose > 0 ?
+                let loose = Math.round((total % piecesPerBox) * 100) / 100;
+                $('#calc-result').html(`<span class="text-primary">${boxes} Box</span>` + (loose > 0 ?
                     ` <span class="text-muted text-small">+ ${loose} Loose</span>` : ''));
 
                 // Set hidden box input

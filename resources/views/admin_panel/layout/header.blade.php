@@ -230,7 +230,15 @@
                                                                             Category</span></a></li>
                                                                 <li class="nav-item"><a class="nav-link"
                                                                         href="{{ url('warehouse') }}"><i
-                                                                            class="menu_icon ti-alert"></i><span>warehouse</span></a>
+                                                                            class="menu_icon ti-home"></i><span>Warehouses & Shops</span></a>
+                                                                </li>
+                                                                <li class="nav-item"><a class="nav-link"
+                                                                        href="{{ route('warehouse_stocks.index') }}"><i
+                                                                            class="menu_icon ti-package"></i><span>Warehouse & Opening Stock</span></a>
+                                                                </li>
+                                                                <li class="nav-item"><a class="nav-link"
+                                                                        href="{{ route('stock_transfers.index') }}"><i
+                                                                            class="menu_icon ti-exchange-vertical"></i><span>Stock Transfers</span></a>
                                                                 </li>
                                                                 <li class="nav-item"><a class="nav-link"
                                                                         href="{{ url('vendor') }}"><i

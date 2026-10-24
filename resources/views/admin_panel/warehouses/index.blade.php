@@ -27,37 +27,66 @@
                             <thead>
                                 <tr>
                                     <th>#</th>
-                                    <th>Created By</th>
                                     <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Current Stock</th>
                                     <th>Location</th>
                                     <th>Remarks</th>
-                                    <th>Action</th>
+                                    <th>Created By</th>
+                                    <th class="text-end">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach ($warehouses as $key => $w)
                                     <tr>
                                         <td>{{ $key + 1 }}</td>
-                                        <td>{{ $w->user->name }}</td>
-                                        <td>{{ $w->warehouse_name }}</td>
-                                        <td>{{ $w->location }}</td>
-                                        <td>{{ $w->remarks }}</td>
                                         <td>
+                                            <div class="fw-bold text-dark">{{ $w->warehouse_name }}</div>
+                                            @if($w->id == 1)
+                                                <small class="badge bg-light text-primary border">Primary Store</small>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($w->is_shop)
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-bold">
+                                                    <i class="fas fa-store me-1"></i> Shop / Retail Counter
+                                                </span>
+                                            @else
+                                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1 fw-bold">
+                                                    <i class="fas fa-warehouse me-1"></i> Storage Godown
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <a href="{{ route('warehouse_stocks.index', ['warehouse_id' => $w->id]) }}" class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 text-decoration-none fw-bold" title="Click to view full inventory">
+                                                <i class="fas fa-boxes-stacked me-1"></i> {{ number_format($w->warehouse_stocks_sum_total_pieces ?? 0) }} Pcs ({{ $w->warehouse_stocks_count ?? 0 }} items)
+                                            </a>
+                                        </td>
+                                        <td>{{ $w->location ?: '—' }}</td>
+                                        <td>{{ $w->remarks ?: '—' }}</td>
+                                        <td>{{ optional($w->user)->name ?: 'System' }}</td>
+                                        <td class="text-end">
+                                            <a href="{{ route('warehouse_stocks.index', ['warehouse_id' => $w->id]) }}" class="btn btn-outline-info btn-sm me-1" title="View Inventory">
+                                                <i class="fas fa-eye me-1"></i> Stock
+                                            </a>
                                             @can('warehouse.edit')
                                                 <button class="btn btn-primary btn-sm edit-warehouse-btn"
                                                     data-id="{{ $w->id }}" data-name="{{ $w->warehouse_name }}"
                                                     data-location="{{ $w->location }}" data-remarks="{{ $w->remarks }}"
+                                                    data-is-shop="{{ $w->is_shop ? '1' : '0' }}"
                                                     data-bs-toggle="modal" data-bs-target="#warehouseModal">
                                                     Edit
                                                 </button>
                                             @endcan
                                             @can('warehouse.delete')
-                                                <button class="btn btn-danger btn-sm delete-btn"
-                                                    data-url="{{ url('warehouse/delete/' . $w->id) }}"
-                                                    data-msg="Are you sure you want to delete this warehouse?" data-method="get"
-                                                    onclick="logoutAndDeleteFunction(this)">
-                                                    Delete
-                                                </button>
+                                                @if($w->id != 1)
+                                                    <button class="btn btn-danger btn-sm delete-btn"
+                                                        data-url="{{ url('warehouse/delete/' . $w->id) }}"
+                                                        data-msg="Are you sure you want to delete this warehouse?" data-method="get"
+                                                        onclick="logoutAndDeleteFunction(this)">
+                                                        Delete
+                                                    </button>
+                                                @endif
                                             @endcan
                                         </td>
                                     </tr>
@@ -82,14 +111,27 @@
                         <h5 class="modal-title">Add/Edit Warehouse</h5>
                     </div>
                     <div class="modal-body">
-                        <div class="mb-2"><input class="form-control" name="warehouse_name" id="warehouse_name"
-                                placeholder="Name" required></div>
-                        <div class="mb-2 d-none"><input class="form-control" name="creater_id" id=""
-                                value="{{ Auth()->user()->id }}" placeholder="Name" required></div>
-                        <div class="mb-2"><input class="form-control" name="location" id="location"
-                                placeholder="Location"></div>
-                        <div class="mb-2">
-                            <textarea class="form-control" name="remarks" id="remarks" placeholder="Remarks"></textarea>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">Warehouse / Store Name <span class="text-danger">*</span></label>
+                            <input class="form-control fw-semibold" name="warehouse_name" id="warehouse_name"
+                                placeholder="e.g. Main Store, Godown A" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">Location Type</label>
+                            <select class="form-select fw-semibold" name="is_shop" id="is_shop">
+                                <option value="0">🏢 Storage Godown / Warehouse (Bulk Stock)</option>
+                                <option value="1">🏪 Shop / Retail Counter (Counter Sales)</option>
+                            </select>
+                            <small class="text-muted d-block mt-1">Shop type designates this location as your primary counter store for sales.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">Address / Location</label>
+                            <input class="form-control" name="location" id="location"
+                                placeholder="Physical Address or City">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-muted">Remarks</label>
+                            <textarea class="form-control" name="remarks" id="remarks" placeholder="Optional notes..."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -121,24 +163,16 @@
         function clearWarehouse() {
             $('#warehouse_id').val('');
             $('#warehouse_name').val('');
+            $('#is_shop').val('0');
             $('#location').val('');
             $('#remarks').val('');
         }
 
-        // function editWarehouse(id,name,location,remarks){
-        //     alert(id);
-        //     $('#warehouse_id').val(id);
-        //     $('#warehouse_name').val(name);
-        //     $('#location').val(location);
-        //     $('#remarks').val(remarks);
-        //  }
-
         // Handle Edit button click
         $(document).on('click', '.edit-warehouse-btn', function() {
-            // alert("Edit button clicked ✅"+ $(this).data('id'));
-
             $('#warehouse_id').val($(this).data('id'));
             $('#warehouse_name').val($(this).data('name'));
+            $('#is_shop').val($(this).data('is-shop') == '1' ? '1' : '0');
             $('#location').val($(this).data('location'));
             $('#remarks').val($(this).data('remarks'));
         });

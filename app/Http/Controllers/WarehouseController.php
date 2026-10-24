@@ -56,27 +56,46 @@ class WarehouseController extends Controller
         if (! auth()->user()->can('warehouse.view')) {
             abort(403, 'Unauthorized action.');
         }
-        $warehouses = Warehouse::with('user')->get(); // ya $warehouses = Warehouse::all();
+        $warehouses = Warehouse::with('user')
+            ->withCount('warehouseStocks')
+            ->withSum('warehouseStocks', 'total_pieces')
+            ->orderByRaw('is_shop DESC, warehouse_name ASC')
+            ->get();
 
-        return view('admin_panel.warehouses.index', compact('warehouses')); // ya warehouses.index
+        return view('admin_panel.warehouses.index', compact('warehouses'));
     }
 
     public function store(Request $request)
     {
+        $validated = $request->validate([
+            'warehouse_name' => 'required|string|max:255',
+            'location'       => 'nullable|string|max:255',
+            'remarks'        => 'nullable|string|max:500',
+            'is_shop'        => 'nullable',
+        ]);
+
+        $data = [
+            'warehouse_name' => $validated['warehouse_name'],
+            'location'       => $validated['location'] ?? null,
+            'remarks'        => $validated['remarks'] ?? null,
+            'is_shop'        => (int) ($request->input('is_shop', 0)),
+        ];
+
         if ($request->id) {
             if (! auth()->user()->can('warehouse.edit')) {
                 return back()->with('error', 'Unauthorized action.');
             }
-            Warehouse::findOrFail($request->id)->update($request->all());
+            Warehouse::findOrFail($request->id)->update($data);
 
-            return back()->with('success', 'Warehouse Updated Successfully');
+            return back()->with('success', 'Warehouse / Shop Updated Successfully');
         } else {
             if (! auth()->user()->can('warehouse.create')) {
                 return back()->with('error', 'Unauthorized action.');
             }
-            Warehouse::create($request->all());
+            $data['creater_id'] = auth()->id();
+            Warehouse::create($data);
 
-            return back()->with('success', 'Warehouse Created Successfully');
+            return back()->with('success', 'Warehouse / Shop Created Successfully');
         }
     }
 
@@ -85,7 +104,15 @@ class WarehouseController extends Controller
         if (! auth()->user()->can('warehouse.delete')) {
             return response()->json(['error' => 'Unauthorized action.'], 403);
         }
-        Warehouse::findOrFail($id)->delete();
+        $wh = Warehouse::findOrFail($id);
+        if ($wh->id == 1) {
+            return response()->json(['error' => 'Main Store / Shop cannot be deleted.'], 422);
+        }
+        $hasStock = $wh->warehouseStocks()->where('total_pieces', '!=', 0)->exists();
+        if ($hasStock) {
+            return response()->json(['error' => 'Cannot delete warehouse with existing active stock inventory.'], 422);
+        }
+        $wh->delete();
 
         return response()->json([
             'success' => 'Warehouse Deleted Successfully',

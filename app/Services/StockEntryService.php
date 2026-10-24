@@ -19,14 +19,14 @@ class StockEntryService
      *
      * @throws Exception
      */
-    public function addStock(int $warehouseId, int $productId, int $totalPieces, int $totalBox = 0, ?string $remarks = null)
+    public function addStock(int $warehouseId, int $productId, float $totalPieces, float $totalBox = 0, ?string $remarks = null)
     {
         return DB::transaction(function () use ($warehouseId, $productId, $totalPieces, $totalBox, $remarks) {
             // 1. Validation
             $warehouse = Warehouse::findOrFail($warehouseId);
             $product = Product::findOrFail($productId);
 
-            if ($totalPieces < 0) { // Changed <= 0 to < 0 to allow zero updates if needed, though usually add is > 0
+            if ($totalPieces < 0) {
                 throw new \InvalidArgumentException('Quantity must be non-negative.');
             }
 
@@ -38,23 +38,37 @@ class StockEntryService
 
             // Initialize if new
             if (! $stock->exists) {
-                $stock->quantity = 0; // Legacy field, treated as Box Quantity
+                $stock->quantity = 0;
                 $stock->total_pieces = 0;
             }
 
             // 3. Update Stock
-            $previousPieces = $stock->total_pieces ?? 0;
+            $previousPieces = (float)($stock->total_pieces ?? 0);
             $newPieces = $previousPieces + $totalPieces;
 
-            $previousBox = $stock->quantity ?? 0;
-            $newBox = $previousBox + $totalBox;
+            $ppb = ($product->pieces_per_box > 0) ? (float)$product->pieces_per_box : 1;
+            $newBox = round($newPieces / $ppb, 2);
 
             $stock->total_pieces = $newPieces;
             $stock->quantity = $newBox;
-
+            if ($remarks) {
+                $stock->remarks = $remarks;
+            }
             $stock->save();
 
-      
+            // 4. Log Movement for Opening/Manual Stock Entry
+            DB::table('stock_movements')->insert([
+                'product_id' => $productId,
+                'warehouse_id' => $warehouseId,
+                'type' => 'in',
+                'qty' => $totalPieces,
+                'ref_type' => 'OPENING_STOCK',
+                'ref_id' => $stock->id,
+                'note' => $remarks ?: "Opening / Manual Stock Addition ({$warehouse->warehouse_name})",
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
             return $stock;
         });
     }
