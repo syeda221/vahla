@@ -37,10 +37,14 @@ class WarehouseController extends Controller
                 }
             }
 
+            $cleanStock = (float) $stockVal;
+            $cleanStock = ($cleanStock == (int) $cleanStock) ? (int) $cleanStock : round($cleanStock, 4);
+
             return [
                 'warehouse_id' => $warehouse->id,
                 'warehouse_name' => $warehouse->warehouse_name,
-                'stock' => $stockVal, // Total pieces
+                'is_shop' => (int)($warehouse->is_shop ?? 0),
+                'stock' => $cleanStock, // Total pieces formatted cleanly
                 'boxes' => $ws ? ($stockVal / $ppb) : 0, // Dynamically calculated box quantity to prevent rounding errors
                 'ppb' => $ws && $ws->product ? $ws->product->pieces_per_box : 1,
                 'size_mode' => $ws && $ws->product ? $ws->product->size_mode : 'std',

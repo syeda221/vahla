@@ -83,6 +83,16 @@
     .sales-table tbody td.col-stock input.stock {
         font-size: 0.75rem !important;
         padding: 2px 4px !important;
+        cursor: pointer !important;
+        background-color: #f8fafc !important;
+        font-weight: 600 !important;
+        color: #0f172a !important;
+        transition: all 0.15s ease-in-out !important;
+    }
+    .sales-table tbody td.col-stock input.stock:hover {
+        background-color: #eef2ff !important;
+        border-color: #818cf8 !important;
+        color: #4338ca !important;
     }
     .sales-table thead th.col-description,
     .sales-table tbody td.col-description {
@@ -159,7 +169,7 @@
             ajax: {
                 url: '{{ route('products.ajax.search') }}',
                 dataType: 'json',
-                delay: 250,
+                delay: 300,
                 data: function(params) {
                     return {
                         term: params.term,
@@ -210,7 +220,7 @@
         if (repo.is_set || (repo.id && repo.id.toString().startsWith('set_'))) {
             let code = repo.sku || repo.item_code || 'SET';
             let price = parseFloat(repo.retail_price || 0);
-            return $(`
+            return `
                 <div class="clearfix py-1">
                     <div class="float-start">
                         <div class="fw-bold text-primary">
@@ -223,7 +233,7 @@
                         <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 fw-bold">Rs. ${price.toLocaleString()}</span>
                     </div>
                 </div>
-            `);
+            `;
         }
         let stock = repo.stock !== undefined ? repo.stock : 0;
         let sku = repo.sku || 'N/A';
@@ -231,32 +241,17 @@
         let stockVal = parseFloat(repo.stock_pieces !== undefined ? repo.stock_pieces : repo.stock) || 0;
         let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-danger';
 
-        let whBadges = '';
-        if (repo.warehouses && repo.warehouses.length > 0) {
-            whBadges = repo.warehouses.map(w => {
-                let hasStock = parseFloat(w.stock_pieces) > 0;
-                let badgeStyle = hasStock
-                    ? (w.is_shop ? 'background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc;' : 'background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;')
-                    : 'background:#f8fafc; color:#94a3b8; border:1px dashed #cbd5e1; opacity:0.85;';
-                let icon = w.is_shop 
-                    ? '<i class="fas fa-store me-1 text-primary"></i>' 
-                    : '<i class="fas fa-warehouse me-1 text-secondary"></i>';
-                return `<span class="badge me-1 py-1 px-2" style="font-size:0.68rem; font-weight:600; ${badgeStyle}">${icon}${w.name}: <strong>${w.stock}</strong></span>`;
-            }).join('');
-        }
-
-        return $(`
-        <div class="clearfix py-1">
-            <div class="float-start">
-                <div class="fw-bold">${repo.name || repo.text}</div>
-                <div class="small text-muted mb-1">SKU: ${sku}${unit}</div>
-                <div class="d-flex flex-wrap gap-1 align-items-center mt-1">${whBadges}</div>
+        return `
+        <div class="clearfix py-1 d-flex align-items-center justify-content-between">
+            <div class="text-truncate me-2">
+                <div class="fw-bold text-dark text-truncate">${repo.name || repo.text}</div>
+                <div class="small text-muted">SKU: ${sku}${unit}</div>
             </div>
-            <div class="float-end text-end">
+            <div class="text-end flex-shrink-0">
                 <span class="badge ${badgeClass} rounded-pill px-2 py-1" style="font-size:0.75rem;">Total: ${stock}</span>
             </div>
         </div>
-        `);
+        `;
     }
 
     function formatSelection(repo) {
@@ -306,7 +301,7 @@
 
     <!-- STOCK -->
     <td class="col-stock" style="width: 80px; min-width: 75px;">
-      <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1" style="font-size: 0.75rem;">
+      <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1" style="font-size: 0.75rem;" title="Click to view warehouse stock breakdown">
       <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ auth()->user()->warehouse_id ?? 1 }}">
       <input type="hidden" class="variant-stock-value">
     </td>
@@ -578,6 +573,7 @@
             .done(function(warehouses) {
                 var targetWhId = preSelectId || currentHeaderWh || $whInput.val() || "{{ auth()->user()->warehouse_id ?? 1 }}";
                 var validWarehouses = Array.isArray(warehouses) ? warehouses : [];
+                $row.data('product_warehouses', validWarehouses);
                 var matched = validWarehouses.find(function(w) { return w.warehouse_id == targetWhId; });
                 if (!matched && validWarehouses.length > 0) {
                     matched = validWarehouses[0];
@@ -640,6 +636,193 @@
                 loadWarehousesForProduct($row, pid, newWhId);
             }
         });
+    });
+
+    // Stock Breakdown Modal on clicking STOCK column
+    $(document).on('click', '.col-stock, .col-stock input.stock', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $row = $(this).closest('tr');
+        var pid = $row.find('.product-id-hidden').val() || $row.find('.product').val();
+
+        if (!pid) {
+            return;
+        }
+
+        var isSet = $row.find('.is-set-hidden').val() == '1';
+        var pName = ($row.find('.product option:selected').text() || $row.data('product_info')?.name || 'Product Stock').trim();
+        var pCode = $row.find('.item-code-display').val() || $row.data('product_info')?.sku || '';
+        var currentStock = $row.find('.stock').val() || '0';
+
+        // Ensure Modal exists in DOM
+        if ($('#stockBreakdownModal').length === 0) {
+            $('body').append(`
+                <div class="modal fade" id="stockBreakdownModal" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1060;">
+                    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+                        <div class="modal-content" style="border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(15,23,42,0.12); overflow: hidden;">
+                            <div class="modal-header py-2 px-3" style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div style="width: 28px; height: 28px; border-radius: 6px; background: #eef2ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 13px;">
+                                        <i class="fas fa-boxes"></i>
+                                    </div>
+                                    <h6 class="modal-title fw-bold text-dark mb-0" style="font-size: 14px;">Stock Location Breakdown</h6>
+                                </div>
+                                <button type="button" class="close btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="border: none; background: transparent; font-size: 22px; line-height: 1; color: #64748b; cursor: pointer; padding: 0 4px;">&times;</button>
+                            </div>
+                            <div class="modal-body p-3">
+                                <div class="mb-3 pb-2 border-bottom">
+                                    <div class="fw-bold text-dark" id="modalProductName" style="font-size: 13px; line-height: 1.4;">-</div>
+                                    <div class="text-muted small mt-1" id="modalProductCode" style="font-size: 11px;">SKU: -</div>
+                                </div>
+                                <div id="modalStockList" class="d-flex flex-column gap-2">
+                                    <div class="text-center text-muted py-3">
+                                        <i class="fas fa-spinner fa-spin me-1"></i> Loading stock details...
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer py-2 px-3 d-flex justify-content-between align-items-center" style="background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
+                                <div class="small fw-semibold text-dark">
+                                    Total Available: <span id="modalTotalStockBadge" class="badge rounded-pill px-2 py-1 ms-1" style="background: #0f172a; color: #ffffff; font-weight: 700; font-size: 12px;">0</span>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-secondary px-3" data-dismiss="modal" data-bs-dismiss="modal" style="font-size: 12px; border-radius: 6px;">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+        }
+
+        var cleanName = pName.replace(/\(SKU:.*?\)/gi, '').trim();
+        $('#modalProductName').text(cleanName || pName);
+        $('#modalProductCode').text(pCode ? 'SKU: ' + pCode : '');
+
+        var numCurrent = parseFloat(currentStock);
+        var dispCurrent = (!isNaN(numCurrent) && !currentStock.toString().includes('(') && !currentStock.toString().includes(' '))
+            ? Number(numCurrent.toFixed(4)).toString()
+            : currentStock;
+        $('#modalTotalStockBadge').text(dispCurrent);
+        $('#modalStockList').html('<div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-1"></i> Loading details...</div>');
+
+        // Show Modal safely for Bootstrap 4 / 5 and jQuery
+        var $modal = $('#stockBreakdownModal');
+        try {
+            if (typeof $modal.modal === 'function') {
+                $modal.modal('show');
+            } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                if (typeof bootstrap.Modal.getOrCreateInstance === 'function') {
+                    bootstrap.Modal.getOrCreateInstance($modal[0]).show();
+                } else if (typeof bootstrap.Modal === 'function') {
+                    new bootstrap.Modal($modal[0]).show();
+                }
+            } else {
+                $modal.show();
+            }
+        } catch (mErr) {
+            console.warn('Modal open fallback:', mErr);
+            $modal.show();
+        }
+
+        if (isSet) {
+            $('#modalStockList').html(`
+                <div class="p-3 rounded text-center" style="background: #eef2ff; border: 1px solid #c7d2fe;">
+                    <i class="fas fa-layer-group text-primary mb-2" style="font-size: 20px;"></i>
+                    <div class="fw-bold text-primary" style="font-size: 13px;">Set / Bundle Item</div>
+                    <div class="small text-muted mt-1">This is a packaged bundle set. Stock is dynamically linked to member items.</div>
+                </div>
+            `);
+            return;
+        }
+
+        function renderBreakdown(warehouses) {
+            if (!warehouses || warehouses.length === 0) {
+                $('#modalStockList').html('<div class="text-center text-muted py-3 small">No warehouse stock data available.</div>');
+                return;
+            }
+
+            var html = '';
+            var totalPieces = 0;
+
+            warehouses.forEach(function(w) {
+                var isShop = (w.is_shop == 1);
+                var whName = w.name || w.warehouse_name || 'Warehouse';
+                var rawPieces = parseFloat(w.stock_pieces !== undefined ? w.stock_pieces : w.stock) || 0;
+                totalPieces += rawPieces;
+
+                var stockDisplay = w.stock;
+                var numStock = parseFloat(stockDisplay);
+                if (!isNaN(numStock) && !stockDisplay.toString().includes('(') && !stockDisplay.toString().includes(' ')) {
+                    stockDisplay = Number(numStock.toFixed(4)).toString();
+                }
+                var hasStock = rawPieces > 0;
+
+                var icon = isShop 
+                    ? '<i class="fas fa-store text-primary" style="font-size:14px;"></i>' 
+                    : '<i class="fas fa-warehouse text-secondary" style="font-size:14px;"></i>';
+
+                var typeLabel = isShop 
+                    ? '<span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:10px; font-weight:600; padding:2px 6px;">Main Store / Shop</span>' 
+                    : '<span class="badge" style="background:#f1f5f9; color:#475569; font-size:10px; font-weight:600; padding:2px 6px;">Godown / Warehouse</span>';
+
+                // Black pill with bold white text as requested
+                var badgeStyle = hasStock
+                    ? 'background:#0f172a; color:#ffffff; font-weight:700; font-size:12px; padding:3px 10px; border-radius:999px; letter-spacing:0.2px;'
+                    : 'background:#f1f5f9; color:#94a3b8; font-weight:600; font-size:12px; padding:3px 10px; border-radius:999px; border:1px dashed #cbd5e1;';
+
+                html += `
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded" style="background: ${isShop ? '#faf5ff' : '#f8fafc'}; border: 1px solid ${isShop ? '#e9d5ff' : '#e2e8f0'};">
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width: 28px; height: 28px; border-radius: 6px; background: #fff; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0;">
+                                ${icon}
+                            </div>
+                            <div>
+                                <div class="fw-semibold text-dark" style="font-size: 12px; line-height: 1.2;">${whName}</div>
+                                <div class="mt-1">${typeLabel}</div>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge rounded-pill" style="${badgeStyle}">
+                                ${stockDisplay}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            $('#modalStockList').html(html);
+            var numTotal = parseFloat(totalPieces);
+            var dispTotal = (!isNaN(numTotal)) ? Number(numTotal.toFixed(4)).toString() : totalPieces;
+            if ($row.find('.stock').val()) {
+                $('#modalTotalStockBadge').text($row.find('.stock').val());
+            } else {
+                $('#modalTotalStockBadge').text(dispTotal);
+            }
+        }
+
+        var cached = $row.data('product_warehouses');
+        if (cached && cached.length > 0) {
+            renderBreakdown(cached);
+        } else {
+            $.get('{{ route('warehouses.get') }}', { product_id: pid })
+                .done(function(res) {
+                    var whs = Array.isArray(res) ? res : [];
+                    $row.data('product_warehouses', whs);
+                    renderBreakdown(whs);
+                })
+                .fail(function() {
+                    $('#modalStockList').html('<div class="text-center text-danger py-2 small">Failed to load stock breakdown.</div>');
+                });
+        }
+    });
+
+    // Close Stock Breakdown Modal safely
+    $(document).on('click', '#stockBreakdownModal [data-dismiss="modal"], #stockBreakdownModal [data-bs-dismiss="modal"], #stockBreakdownModal .close', function(e) {
+        e.preventDefault();
+        var $modal = $('#stockBreakdownModal');
+        if (typeof $modal.modal === 'function') {
+            $modal.modal('hide');
+        } else {
+            $modal.hide();
+        }
     });
 
 
@@ -1707,6 +1890,14 @@
             let pid = data.id.toString().split('|')[0];
             $row.find('.product-id-hidden').val(pid);
             $row.find('.variant-data-hidden').val(data.variant_data || '');
+            $row.data('product_info', {
+                name: data.name || data.text || '',
+                sku: data.sku || data.item_code || '',
+                unit: data.unit_name || ''
+            });
+            if (data.warehouses && data.warehouses.length > 0) {
+                $row.data('product_warehouses', data.warehouses);
+            }
             
             // Parse variant data for size/color display
             let variantSize = '-';

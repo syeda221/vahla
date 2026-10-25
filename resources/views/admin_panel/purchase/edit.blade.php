@@ -1415,28 +1415,13 @@
                 let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-secondary';
                 let buyPrice = parseFloat(repo.purchase_price_per_piece || repo.trade_price || 0);
 
-                let whBadges = '';
-                if (repo.warehouses && repo.warehouses.length > 0) {
-                    whBadges = repo.warehouses.map(w => {
-                        let hasStock = parseFloat(w.stock_pieces) > 0;
-                        let badgeStyle = hasStock
-                            ? (w.is_shop ? 'background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc;' : 'background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;')
-                            : 'background:#f8fafc; color:#94a3b8; border:1px dashed #cbd5e1; opacity:0.85;';
-                        let icon = w.is_shop 
-                            ? '<i class="bi bi-shop me-1 text-primary"></i>' 
-                            : '<i class="bi bi-building me-1 text-secondary"></i>';
-                        return `<span class="badge me-1 py-1 px-2" style="font-size:0.68rem; font-weight:600; ${badgeStyle}">${icon}${w.name}: <strong>${w.stock}</strong></span>`;
-                    }).join('');
-                }
-
                 return $(`
-                <div class="clearfix py-1">
-                    <div class="float-start">
-                        <div class="fw-bold text-dark">${repo.name || repo.text}</div>
+                <div class="clearfix py-1 d-flex align-items-center justify-content-between">
+                    <div class="text-truncate me-2">
+                        <div class="fw-bold text-dark text-truncate">${repo.name || repo.text}</div>
                         <small class="text-muted">SKU: ${sku} | Unit: ${unit} | Buy Price: Rs. ${buyPrice.toFixed(2)}</small>
-                        <div class="d-flex flex-wrap gap-1 align-items-center mt-1">${whBadges}</div>
                     </div>
-                    <div class="float-end text-end">
+                    <div class="text-end flex-shrink-0">
                         <span class="badge ${badgeClass} rounded-pill px-2 py-1" style="font-size:0.75rem;">Total: ${stock}</span>
                     </div>
                 </div>`);
