@@ -1,0 +1,797 @@
+/**
+ * ==========================================================================
+ * ERP DESIGN SYSTEM - MASTER STYLESHEET
+ * ==========================================================================
+ * Strict, modern, professional design system based on an Indigo primary palette,
+ * 8px spacing scale, Inter typography, 1px subtle borders, and accessible contrasts.
+ * ==========================================================================
+ */
+
+:root {
+    /* ----------------------------------------------------------------------
+       1. COLOR PALETTE
+       ---------------------------------------------------------------------- */
+    /* Primary (Indigo) */
+    --primary: #4F46E5;
+    --primary-hover: #4338CA;
+    --primary-soft: #EEF2FF;
+
+    /* Neutrals */
+    --bg-page: #F8FAFC;
+    --bg-card: #FFFFFF;
+    --border-color: #E2E8F0;
+    --border-hover: #CBD5E1;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #94A3B8;
+
+    /* Status Colors (Semantic meaning only) */
+    --success: #16A34A;
+    --success-soft: #DCFCE7;
+    --warning: #D97706;
+    --warning-soft: #FEF3C7;
+    --danger: #DC2626;
+    --danger-soft: #FEE2E2;
+    --info: #0284C7;
+    --info-soft: #E0F2FE;
+
+    /* ----------------------------------------------------------------------
+       2. TYPOGRAPHY
+       ---------------------------------------------------------------------- */
+    --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-size-base: 14px;
+    --line-height-base: 1.5;
+
+    --font-page-title: 24px;
+    --font-section-title: 18px;
+    --font-card-title: 16px;
+    --font-body: 14px;
+    --font-table-header: 12px;
+    --font-caption: 12px;
+
+    /* ----------------------------------------------------------------------
+       3. SPACING (8px Scale)
+       ---------------------------------------------------------------------- */
+    --space-8: 8px;
+    --space-12: 12px;
+    --space-16: 16px;
+    --space-20: 20px;
+    --space-24: 24px;
+    --space-32: 32px;
+
+    /* ----------------------------------------------------------------------
+       4. BORDERS & SHAPE
+       ---------------------------------------------------------------------- */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-pill: 999px;
+
+    --height-control: 40px;
+    --height-table-row: 52px;
+
+    /* ----------------------------------------------------------------------
+       5. SHADOWS & TRANSITIONS
+       ---------------------------------------------------------------------- */
+    --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+    --focus-ring: 0 0 0 3px var(--primary-soft);
+    --transition: 150ms ease-in-out;
+
+    /* Max Width - Fluid width to consume available screen space without horizontal scroll */
+    --page-max-width: 100%;
+}
+
+/* ==========================================================================
+   GLOBAL RESET & BASE TYPOGRAPHY
+   ========================================================================== */
+body {
+    font-family: var(--font-family) !important;
+    font-size: var(--font-size-base) !important;
+    line-height: var(--line-height-base) !important;
+    color: var(--text-primary) !important;
+    background-color: var(--bg-page) !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Page wrapper container (Fluid to utilize screen real estate while maintaining spacing) */
+.erp-container,
+.erp-container-fluid {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--space-20);
+    padding-right: var(--space-20);
+}
+
+@media (min-width: 768px) {
+    .erp-container,
+    .erp-container-fluid {
+        padding-left: var(--space-24);
+        padding-right: var(--space-24);
+    }
+}
+
+/* Typography Scale */
+h1, .h1, .erp-page-title {
+    font-size: var(--font-page-title) !important;
+    font-weight: 600 !important;
+    line-height: 1.3 !important;
+    color: var(--text-primary) !important;
+    letter-spacing: -0.01em;
+}
+
+h2, .h2, .erp-section-title {
+    font-size: var(--font-section-title) !important;
+    font-weight: 600 !important;
+    line-height: 1.35 !important;
+    color: var(--text-primary) !important;
+    letter-spacing: -0.01em;
+}
+
+h3, .h3, .erp-card-title {
+    font-size: var(--font-card-title) !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+    color: var(--text-primary) !important;
+}
+
+p, .erp-body-text {
+    font-size: var(--font-body);
+    font-weight: 400;
+    line-height: var(--line-height-base);
+    color: var(--text-secondary);
+}
+
+.erp-caption {
+    font-size: var(--font-caption) !important;
+    font-weight: 400;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+/* Tabular Numbers */
+.font-tabular,
+.tabular-nums,
+[data-tabular="true"] {
+    font-variant-numeric: tabular-nums !important;
+    font-feature-settings: "tnum" !important;
+    font-weight: 600 !important;
+}
+
+/* ==========================================================================
+   CARDS & CONTAINERS
+   ========================================================================== */
+.erp-card,
+.card {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-card) !important;
+    transition: border-color var(--transition);
+}
+
+.erp-card-padded,
+.erp-card .card-body {
+    padding: var(--space-20) !important;
+}
+
+/* ==========================================================================
+   BUTTON SYSTEM (Only 3 Variants, 40px height, 8px radius)
+   ========================================================================== */
+.erp-btn-primary,
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    height: var(--height-control) !important;
+    padding: 0 var(--space-16) !important;
+    border-radius: var(--radius-md) !important;
+    background-color: var(--primary) !important;
+    border: 1px solid var(--primary) !important;
+    color: #FFFFFF !important;
+    font-size: var(--font-body) !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+    box-shadow: var(--shadow-sm);
+    transition: background-color var(--transition), border-color var(--transition), box-shadow var(--transition);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.erp-btn-primary:hover,
+.btn-primary:hover {
+    background-color: var(--primary-hover) !important;
+    border-color: var(--primary-hover) !important;
+    color: #FFFFFF !important;
+}
+
+.erp-btn-primary:focus,
+.btn-primary:focus {
+    box-shadow: var(--focus-ring) !important;
+    outline: none !important;
+}
+
+/* Secondary Button */
+.erp-btn-secondary,
+.btn-secondary,
+.btn-outline-secondary,
+.btn-outline-dark,
+.btn-light {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    height: var(--height-control) !important;
+    padding: 0 var(--space-16) !important;
+    border-radius: var(--radius-md) !important;
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    font-size: var(--font-body) !important;
+    font-weight: 500 !important;
+    text-decoration: none !important;
+    box-shadow: var(--shadow-sm);
+    transition: background-color var(--transition), border-color var(--transition), color var(--transition);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.erp-btn-secondary:hover,
+.btn-secondary:hover,
+.btn-outline-secondary:hover,
+.btn-outline-dark:hover,
+.btn-light:hover {
+    background-color: var(--bg-page) !important;
+    border-color: var(--border-hover) !important;
+    color: var(--text-primary) !important;
+}
+
+.erp-btn-secondary:focus,
+.btn-secondary:focus,
+.btn-outline-secondary:focus,
+.btn-outline-dark:focus {
+    border-color: var(--primary) !important;
+    box-shadow: var(--focus-ring) !important;
+    outline: none !important;
+}
+
+/* Ghost / Danger Button */
+.erp-btn-ghost,
+.btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    height: var(--height-control) !important;
+    padding: 0 var(--space-12) !important;
+    border-radius: var(--radius-md) !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: var(--text-secondary) !important;
+    font-size: var(--font-body) !important;
+    font-weight: 500 !important;
+    transition: background-color var(--transition), color var(--transition);
+    cursor: pointer;
+}
+
+.erp-btn-ghost:hover,
+.btn-ghost:hover {
+    background-color: var(--bg-page) !important;
+    color: var(--text-primary) !important;
+}
+
+.erp-btn-danger,
+.btn-outline-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    height: var(--height-control) !important;
+    padding: 0 var(--space-16) !important;
+    border-radius: var(--radius-md) !important;
+    background-color: transparent !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--danger) !important;
+    font-size: var(--font-body) !important;
+    font-weight: 500 !important;
+    transition: background-color var(--transition), border-color var(--transition);
+    cursor: pointer;
+}
+
+.erp-btn-danger:hover,
+.btn-outline-danger:hover {
+    background-color: var(--danger-soft) !important;
+    border-color: var(--danger) !important;
+    color: var(--danger) !important;
+}
+
+/* Small variation for table actions (32px) */
+.erp-btn-sm {
+    height: 32px !important;
+    padding: 0 var(--space-12) !important;
+    font-size: 13px !important;
+}
+
+/* Square Icon Buttons for Table Actions (36x36, zero padding, centered icon) */
+.erp-btn-icon {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: var(--radius-md) !important;
+    transition: all var(--transition) !important;
+    cursor: pointer !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    text-decoration: none !important;
+}
+
+.erp-btn-icon-danger {
+    color: var(--danger) !important;
+    background-color: transparent !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+.erp-btn-icon-danger:hover {
+    background-color: var(--danger-soft) !important;
+    border-color: var(--danger) !important;
+    color: var(--danger) !important;
+}
+
+.erp-btn-icon-ghost {
+    color: var(--text-secondary) !important;
+    background-color: transparent !important;
+    border: 1px solid transparent !important;
+}
+
+.erp-btn-icon-ghost:hover {
+    background-color: var(--bg-page) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ==========================================================================
+   INPUTS & FORMS (40px height, 8px radius, 1px border)
+   ========================================================================== */
+.erp-input,
+.form-control {
+    height: var(--height-control) !important;
+    padding: 0 var(--space-12) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-md) !important;
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+    font-size: var(--font-body) !important;
+    line-height: normal !important;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.erp-input:focus,
+.form-control:focus {
+    border-color: var(--primary) !important;
+    box-shadow: var(--focus-ring) !important;
+    outline: none !important;
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+}
+
+.erp-input::placeholder,
+.form-control::placeholder {
+    color: var(--text-muted) !important;
+    font-weight: 400;
+}
+
+/* Custom Native Select */
+select.form-select,
+select.erp-input,
+select.form-control {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 12px center !important;
+    background-size: 12px 10px !important;
+    padding-right: 36px !important;
+    cursor: pointer;
+}
+
+/* Select2 Component Alignment */
+.select2-container--default .select2-selection--single {
+    height: var(--height-control) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-md) !important;
+    background-color: var(--bg-card) !important;
+    display: flex !important;
+    align-items: center !important;
+    padding-left: var(--space-12) !important;
+    padding-right: 32px !important;
+    font-size: var(--font-body) !important;
+    color: var(--text-primary) !important;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--single {
+    border-color: var(--primary) !important;
+    box-shadow: var(--focus-ring) !important;
+    outline: none !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: var(--height-control) !important;
+    padding-left: 0 !important;
+    color: var(--text-primary) !important;
+    font-size: var(--font-body) !important;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: var(--height-control) !important;
+    right: 8px !important;
+}
+
+/* ==========================================================================
+   INPUT GROUPS (Single horizontal row, no wrapping, seamless addons)
+   ========================================================================== */
+.input-group,
+.erp-input-group {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    position: relative;
+    width: 100%;
+}
+
+.input-group > .form-control,
+.input-group > .erp-input,
+.erp-input-group > .form-control,
+.erp-input-group > .erp-input {
+    flex: 1 1 auto !important;
+    width: 1% !important;
+    min-width: 0 !important;
+    margin-bottom: 0 !important;
+    position: relative !important;
+    z-index: 1 !important;
+}
+
+.input-group > .form-control:focus,
+.input-group > .erp-input:focus,
+.erp-input-group > .form-control:focus,
+.erp-input-group > .erp-input:focus {
+    z-index: 3 !important;
+}
+
+.input-group > .input-group-text,
+.input-group > .input-group-prepend > .input-group-text,
+.input-group > .input-group-append > .input-group-text {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 10px !important;
+    height: var(--height-control) !important;
+    background-color: var(--bg-page) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-secondary) !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+    user-select: none;
+}
+
+/* Unified borders & corner radii for input groups */
+.input-group > :first-child,
+.input-group > .input-group-prepend > :first-child {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+
+.input-group > :last-child,
+.input-group > .input-group-append > :last-child {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
+.input-group > :not(:first-child):not(:last-child),
+.input-group > .input-group-prepend:not(:first-child) > :first-child,
+.input-group > .input-group-append:not(:last-child) > :last-child {
+    border-radius: 0 !important;
+}
+
+.input-group > :not(:first-child) {
+    margin-left: -1px !important;
+}
+
+/* ==========================================================================
+   TABLES (52px row height, hover #F8FAFC, 12px header, no zebra stripes)
+   ========================================================================== */
+.erp-table,
+.table {
+    width: 100%;
+    margin-bottom: 0 !important;
+    background-color: var(--bg-card) !important;
+    border-collapse: collapse !important;
+}
+
+.erp-table thead th,
+.table thead th,
+table.dataTable thead th {
+    background-color: var(--bg-page) !important;
+    color: var(--text-secondary) !important;
+    font-size: var(--font-table-header) !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    padding: 12px 16px !important;
+    border-top: none !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    vertical-align: middle !important;
+}
+
+.erp-table tbody tr,
+.table tbody tr,
+table.dataTable tbody tr {
+    background-color: var(--bg-card) !important;
+    transition: background-color var(--transition);
+}
+
+.erp-table tbody tr:hover,
+.table tbody tr:hover,
+table.dataTable tbody tr:hover {
+    background-color: var(--bg-page) !important;
+}
+
+.erp-table tbody td,
+.table tbody td,
+table.dataTable tbody td {
+    height: var(--height-table-row) !important;
+    padding: 10px 16px !important;
+    border-top: none !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    font-size: var(--font-body) !important;
+    vertical-align: middle !important;
+}
+
+/* Disable default DataTables heavy styling */
+table.dataTable.no-footer {
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+/* ==========================================================================
+   BADGES & PILLS (radius 999px, 12px, soft bg + dark text, padding 2px 10px)
+   ========================================================================== */
+.erp-badge,
+.badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 2px 10px !important;
+    border-radius: var(--radius-pill) !important;
+    font-size: var(--font-caption) !important;
+    font-weight: 500 !important;
+    line-height: 1.4 !important;
+    letter-spacing: normal !important;
+    border: 1px solid transparent !important;
+}
+
+/* Semantic Badges */
+.erp-badge-primary,
+.badge-primary {
+    background-color: var(--primary-soft) !important;
+    color: var(--primary) !important;
+    border-color: #C7D2FE !important;
+}
+
+.erp-badge-success,
+.badge-success {
+    background-color: var(--success-soft) !important;
+    color: var(--success) !important;
+    border-color: #BBF7D0 !important;
+}
+
+.erp-badge-warning,
+.badge-warning {
+    background-color: var(--warning-soft) !important;
+    color: var(--warning) !important;
+    border-color: #FDE68A !important;
+}
+
+.erp-badge-danger,
+.badge-danger {
+    background-color: var(--danger-soft) !important;
+    color: var(--danger) !important;
+    border-color: #FECACA !important;
+}
+
+.erp-badge-info,
+.badge-info {
+    background-color: var(--info-soft) !important;
+    color: var(--info) !important;
+    border-color: #BAE6FD !important;
+}
+
+.erp-badge-neutral,
+.badge-secondary,
+.badge-light {
+    background-color: #F1F5F9 !important;
+    color: var(--text-secondary) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* ==========================================================================
+   SECTION HEADERS (WHITE / LIGHT BACKGROUND - NO DARK NAVY)
+   ========================================================================== */
+.erp-section-header,
+.warehouse-header-card {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-lg) !important;
+    padding: var(--space-16) var(--space-20) !important;
+    color: var(--text-primary) !important;
+    box-shadow: var(--shadow-card) !important;
+    transition: background-color var(--transition), border-color var(--transition);
+    cursor: pointer;
+    user-select: none;
+}
+
+.erp-section-header:hover,
+.warehouse-header-card:hover {
+    background-color: var(--bg-page) !important;
+    border-color: var(--border-hover) !important;
+}
+
+/* Toggle button inside section header */
+.erp-toggle-btn,
+.wh-toggle-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+    cursor: pointer;
+}
+
+.erp-section-header:hover .erp-toggle-btn,
+.warehouse-header-card:hover .wh-toggle-btn {
+    border-color: var(--primary);
+    color: var(--primary);
+    background-color: var(--primary-soft);
+}
+
+/* ==========================================================================
+   KPI SUMMARY CARDS
+   ========================================================================== */
+.erp-kpi-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--space-20);
+    box-shadow: var(--shadow-card);
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.erp-kpi-card:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05);
+}
+
+.erp-kpi-label {
+    font-size: var(--font-caption);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-8);
+}
+
+.erp-kpi-value {
+    font-size: var(--font-page-title);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.erp-kpi-subtext {
+    font-size: var(--font-caption);
+    color: var(--text-muted);
+    margin-top: var(--space-8);
+}
+
+/* KPI Icon Circle */
+.erp-kpi-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    background-color: var(--primary-soft);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   NAV PILLS & TAB CONTROLS
+   ========================================================================== */
+.erp-tab-group {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px;
+    background-color: #F1F5F9;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    gap: 2px;
+}
+
+.erp-tab-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all var(--transition);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.erp-tab-btn:hover {
+    color: var(--text-primary);
+}
+
+.erp-tab-btn.active {
+    background-color: var(--bg-card);
+    color: var(--primary);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+/* ==========================================================================
+   CODE & QUANTITY BADGES
+   ========================================================================== */
+.erp-code-badge {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background-color: var(--bg-page);
+    border: 1px solid var(--border-color);
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+}
+
+.erp-qty-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.erp-qty-unit {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}

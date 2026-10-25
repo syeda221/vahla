@@ -452,6 +452,7 @@ Route::middleware('auth')->group(function () {
     // web.php
     Route::get('/warehouse-stock-quantity', [StockTransferController::class, 'getStockQuantity'])->middleware('permission:stock.transfer.view')->name('warehouse.stock.quantity');
     Route::get('/get-products-by-warehouse', [StockTransferController::class, 'getProductsByWarehouse'])->middleware('permission:stock.transfer.view')->name('get.products.by.warehouse');
+    Route::get('/stock-transfers/product-sources/{productId}', [StockTransferController::class, 'getProductSources'])->middleware('permission:stock.transfer.view')->name('stock_transfers.product_sources');
 
     // narratiions
     Route::get('/get-customers-by-type', [CustomerController::class, 'getByType'])->middleware('permission:customers.view');
@@ -474,6 +475,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/warehouse-stock/{id}/edit-data', [WarehouseStockController::class, 'editData'])
         ->middleware('permission:warehouse.stock.view')
         ->name('warehouse_stock.edit-data');
+
+    Route::get('/warehouse-stock/product-details/{id}', [WarehouseStockController::class, 'getProductDetails'])
+        ->middleware('permission:warehouse.stock.view')
+        ->name('warehouse_stock.product-details');
 
     Route::resource('stock_transfers', StockTransferController::class)->middleware(['permission:stock.transfer.view']);
     

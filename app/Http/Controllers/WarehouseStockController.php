@@ -82,7 +82,14 @@ class WarehouseStockController extends Controller
                 }
             }], 'total_pieces')
             ->with(['warehouseStocks' => function ($q) use ($search) {
-                $q->with(['product.unit', 'product.category_relation']);
+                $q->select('id', 'warehouse_id', 'product_id', 'total_pieces', 'quantity', 'remarks', 'created_at')
+                  ->with([
+                      'product' => function ($pq) {
+                          $pq->select('id', 'item_name', 'item_code', 'unit_id', 'size_mode', 'category_id', 'image');
+                      },
+                      'product.unit:id,name',
+                      'product.category_relation:id,name'
+                  ]);
                 if ($search) {
                     $q->whereHas('product', fn($pq) => $pq->where('item_name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%"));
                 }
@@ -93,7 +100,13 @@ class WarehouseStockController extends Controller
         $warehousesWithStock = $warehousesQuery->get();
 
         // 2. Flat Stocks Query (for products view or pagination)
-        $flatQuery = WarehouseStock::with(['warehouse', 'product.unit', 'product.category_relation']);
+        $flatQuery = WarehouseStock::select('id', 'warehouse_id', 'product_id', 'total_pieces', 'quantity', 'remarks')
+            ->with([
+                'warehouse:id,warehouse_name,is_shop',
+                'product:id,item_name,item_code,unit_id,size_mode,category_id,image',
+                'product.unit:id,name',
+                'product.category_relation:id,name'
+            ]);
 
         if ($locationType === 'shop') {
             $flatQuery->whereHas('warehouse', fn($q) => $q->where('is_shop', 1));
@@ -116,15 +129,27 @@ class WarehouseStockController extends Controller
             });
         }
 
-        $stocks = $flatQuery->orderBy('total_pieces', 'DESC')->paginate(25)->appends($request->query());
+        $stocks = $flatQuery->orderBy('total_pieces', 'DESC')->paginate(50)->appends($request->query());
 
-        // Overall Statistics
-        $totalCount         = WarehouseStock::count();
-        $shopPieces         = (float) WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 1))->sum('total_pieces');
-        $shopCount          = WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 1))->count();
-        $godownPieces       = (float) WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 0))->sum('total_pieces');
-        $godownCount        = WarehouseStock::whereHas('warehouse', fn($q) => $q->where('is_shop', 0))->count();
-        $totalPiecesOverall = (float) WarehouseStock::sum('total_pieces');
+        // Overall Statistics (Optimized Single Combined Query)
+        $stockStats = DB::table('warehouse_stocks')
+            ->join('warehouses', 'warehouse_stocks.warehouse_id', '=', 'warehouses.id')
+            ->selectRaw("
+                COUNT(warehouse_stocks.id) as total_count,
+                COALESCE(SUM(warehouse_stocks.total_pieces), 0) as total_pieces,
+                COALESCE(SUM(CASE WHEN warehouses.is_shop = 1 THEN warehouse_stocks.total_pieces ELSE 0 END), 0) as shop_pieces,
+                COUNT(CASE WHEN warehouses.is_shop = 1 THEN warehouse_stocks.id ELSE NULL END) as shop_count,
+                COALESCE(SUM(CASE WHEN warehouses.is_shop = 0 THEN warehouse_stocks.total_pieces ELSE 0 END), 0) as godown_pieces,
+                COUNT(CASE WHEN warehouses.is_shop = 0 THEN warehouse_stocks.id ELSE NULL END) as godown_count
+            ")
+            ->first();
+
+        $totalCount         = (int)($stockStats->total_count ?? 0);
+        $totalPiecesOverall = (float)($stockStats->total_pieces ?? 0);
+        $shopPieces         = (float)($stockStats->shop_pieces ?? 0);
+        $shopCount          = (int)($stockStats->shop_count ?? 0);
+        $godownPieces       = (float)($stockStats->godown_pieces ?? 0);
+        $godownCount        = (int)($stockStats->godown_count ?? 0);
 
         return view('admin_panel.warehouses.warehouse_stocks.index', compact(
             'viewMode', 'warehouses', 'warehousesWithStock', 'stocks', 'locationType', 'warehouseId', 'search',
@@ -197,22 +222,7 @@ class WarehouseStockController extends Controller
                         continue;
                     }
 
-                    // 1. Update Product Pricing & Alert Qty if provided
-                    $product = Product::find($productId);
-                    if ($product) {
-                        if (isset($row['wholesale_price']) && is_numeric($row['wholesale_price']) && $row['wholesale_price'] > 0) {
-                            $product->wholesale_price = (float)$row['wholesale_price'];
-                        }
-                        if (isset($row['retail_price']) && is_numeric($row['retail_price']) && $row['retail_price'] > 0) {
-                            $product->sale_price_per_piece = (float)$row['retail_price'];
-                        }
-                        if (isset($row['alert_quantity']) && is_numeric($row['alert_quantity'])) {
-                            $product->alert_quantity = (float)$row['alert_quantity'];
-                        }
-                        $product->save();
-                    }
-
-                    // 2. Allocate Stock per Location
+                    // Allocate Stock per Location (Product pricing & alert details are unchangeable reference data)
                     $locations = $row['locations'] ?? [];
                     if (empty($locations)) {
                         $locations = [
@@ -355,7 +365,7 @@ class WarehouseStockController extends Controller
         $term = $request->get('q', '');
 
         $products = Product::with('unit')
-            ->select('id', 'item_name', 'item_code', 'unit_id', 'wholesale_price', 'sale_price_per_piece', 'purchase_price_per_piece', 'alert_quantity', 'pieces_per_box', 'image')
+            ->select('id', 'item_name', 'item_code', 'unit_id', 'size_mode', 'wholesale_price', 'sale_price_per_piece', 'purchase_price_per_piece', 'alert_quantity', 'pieces_per_box', 'image')
             ->when($term, function ($query) use ($term) {
                 $query->where('item_name', 'like', "%{$term}%")
                     ->orWhere('item_code', 'like', "%{$term}%");
@@ -365,15 +375,18 @@ class WarehouseStockController extends Controller
 
         return response()->json($products->map(function ($p) {
             $unitName = $p->unit_name;
+            $wholesale = (float)($p->wholesale_price > 0 ? $p->wholesale_price : ($p->purchase_price_per_piece ?? 0));
+            $retail = (float)($p->sale_price_per_piece > 0 ? $p->sale_price_per_piece : 0);
+            $alert = (float)($p->alert_quantity ?? 0);
             return [
                 'id'              => $p->id,
                 'text'            => "{$p->item_code} — {$p->item_name} [{$unitName}]",
                 'item_name'       => $p->item_name,
                 'item_code'       => $p->item_code,
                 'unit_name'       => $unitName,
-                'wholesale_price' => (float)($p->wholesale_price ?? ($p->purchase_price_per_piece ?? 0)),
-                'retail_price'    => (float)($p->sale_price_per_piece ?? 0),
-                'alert_quantity'  => (float)($p->alert_quantity ?? 0),
+                'wholesale_price' => $wholesale > 0 ? rtrim(rtrim(number_format($wholesale, 2, '.', ''), '0'), '.') : '',
+                'retail_price'    => $retail > 0 ? rtrim(rtrim(number_format($retail, 2, '.', ''), '0'), '.') : '',
+                'alert_quantity'  => $alert > 0 ? rtrim(rtrim(number_format($alert, 2, '.', ''), '0'), '.') : '',
                 'image'           => $p->image ? asset('uploads/products/'.$p->image) : null,
             ];
         }));
@@ -405,6 +418,25 @@ class WarehouseStockController extends Controller
             'total_pieces'    => $rawQty,
             'formatted_stock' => $formatted,
             'unit_name'       => $unitName,
+        ]);
+    }
+
+    public function getProductDetails($id)
+    {
+        $product = Product::with('unit')->findOrFail($id);
+        $unitName = $product->unit_name;
+        $wholesale = (float)($product->wholesale_price > 0 ? $product->wholesale_price : ($product->purchase_price_per_piece ?? 0));
+        $retail = (float)($product->sale_price_per_piece > 0 ? $product->sale_price_per_piece : 0);
+        $alert = (float)($product->alert_quantity ?? 0);
+
+        return response()->json([
+            'id'              => $product->id,
+            'item_name'       => $product->item_name,
+            'item_code'       => $product->item_code,
+            'unit_name'       => $unitName,
+            'wholesale_price' => $wholesale > 0 ? rtrim(rtrim(number_format($wholesale, 2, '.', ''), '0'), '.') : '',
+            'retail_price'    => $retail > 0 ? rtrim(rtrim(number_format($retail, 2, '.', ''), '0'), '.') : '',
+            'alert_quantity'  => $alert > 0 ? rtrim(rtrim(number_format($alert, 2, '.', ''), '0'), '.') : '',
         ]);
     }
 }
