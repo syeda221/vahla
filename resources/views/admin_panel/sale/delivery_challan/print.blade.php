@@ -9,8 +9,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @page {
-            size: A4 landscape;
-            margin: 0;
+            size: A5 landscape;
+            margin: 6mm;
         }
 
         :root {
@@ -338,95 +338,247 @@
             width: 65% !important;
         }
 
-        /* Print Media Rules */
+                /* Print Media Rules */
         @media print {
             @page {
-                size: A4 landscape;
-                margin: 0;
+                size: A5 landscape;
+                margin: 6mm;
             }
+
+            /* Hide everything except the DC */
+            nav,
+            .navbar,
+            .sidebar,
+            .action-bar,
+            .no-print,
+            header,
+            footer,
+            button,
+            .btn {
+                display: none !important;
+            }
+
             body { 
                 background: #ffffff !important; 
                 margin: 0 !important; 
                 padding: 0 !important; 
+                font-family: 'Segoe UI', Arial, sans-serif !important;
+                font-size: 8.5px !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
-            .action-bar, .no-print { 
-                display: none !important; 
-            }
+
             .challan-container {
                 margin: 0 !important;
                 padding: 0 !important;
-                max-width: 297mm !important;
-                width: 297mm !important;
+                max-width: 100% !important;
+                width: 100% !important;
             }
+
             .challan-sheet {
                 margin: 0 !important;
                 padding: 0 !important;
-                page-break-after: always !important;
-                break-after: page !important;
-                height: 210mm !important;
-                max-height: 210mm !important;
-                box-sizing: border-box !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: flex-start !important;
-            }
-            .challan-sheet:last-child {
                 page-break-after: auto !important;
                 break-after: auto !important;
+                height: auto !important;
+                max-height: none !important;
+                display: block !important;
+                width: 100% !important;
             }
+
             .invoice-page { 
                 margin: 0 auto !important; 
                 box-shadow: none !important; 
                 border: 1px solid var(--pad-border) !important;
-                padding: 3mm 7mm 2.5mm 7mm !important;
-                width: 285mm !important;
-                max-width: 285mm !important;
-                height: 100mm !important;
-                max-height: 102mm !important;
-                min-height: 100mm !important;
+                padding: 2.5mm 4mm !important;
+                width: 100% !important;
+                max-width: 198mm !important;
+                height: 134mm !important;
+                max-height: 134mm !important;
+                min-height: 130mm !important;
                 box-sizing: border-box !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
                 overflow: hidden !important;
+            }
+
+            .challan-sheet:last-child .invoice-page:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+
+            /* Proportional header scaling */
+            .pad-header {
+                margin-bottom: 2px !important;
+                padding-bottom: 2px !important;
+                border-bottom: 1.5px solid var(--pad-border) !important;
+            }
+
+            .logo-section {
+                width: 42% !important;
+                gap: 8px !important;
+            }
+
+            .logo-img {
+                max-width: 75px !important;
+                height: auto !important;
+                max-height: 28px !important;
+            }
+
+            .company-title {
+                font-size: 13px !important;
+                line-height: 1.1 !important;
+            }
+
+            .company-subtitle {
+                font-size: 7.5px !important;
+                margin-bottom: 1px !important;
+            }
+
+            .badge-wrapper {
+                gap: 4px !important;
+            }
+
+            .invoice-badge {
+                font-size: 8.5px !important;
+                padding: 1px 5px !important;
+                background-color: #3b82f6 !important;
+                color: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .copy-type-tag {
+                font-size: 7.5px !important;
+                padding: 1px 4px !important;
+                background: var(--pad-light-blue) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .company-details-section {
+                width: 56% !important;
+                font-size: 7.5px !important;
+                line-height: 1.25 !important;
+            }
+
+            .deals-in {
+                font-size: 7.5px !important;
+                margin-bottom: 1px !important;
+            }
+
+            .contact-line {
+                font-size: 7.5px !important;
+                margin-bottom: 1px !important;
+            }
+
+            .contact-line i {
+                font-size: 7.5px !important;
+                width: 10px !important;
+            }
+
+            /* Proportional meta section scaling */
+            .meta-section {
+                margin-bottom: 2px !important;
+                font-size: 8.5px !important;
+            }
+
+            .meta-label {
+                width: 40px !important;
+                font-size: 8.5px !important;
+            }
+
+            .meta-value {
+                font-size: 8.5px !important;
+                padding-left: 4px !important;
+            }
+
+            .meta-row {
+                margin-bottom: 1px !important;
+            }
+
+            /* Proportional table scaling & page-break rules */
+            .pad-table {
+                margin-bottom: 2px !important;
+                width: 100% !important;
+                border-collapse: collapse !important;
+            }
+
+            .pad-table thead {
+                display: table-header-group !important;
+            }
+
+            .pad-table tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            .pad-table thead th {
+                background-color: #374151 !important;
+                color: #ffffff !important;
+                padding: 2px 4px !important;
+                font-size: 8px !important;
+                line-height: 1.15 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .pad-table tbody td {
+                padding: 2px 4px !important;
+                height: auto !important;
+                font-size: 8px !important;
+                line-height: 1.15 !important;
+            }
+
+            .pad-table tbody tr:nth-child(even) {
+                background-color: rgba(224, 242, 254, 0.45) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* Footer, Stamp & Signature scaling */
+            .pad-footer {
+                margin-top: 2px !important;
+                font-size: 8px !important;
+            }
+
+            .footer-note {
+                font-size: 7.5px !important;
+                line-height: 1.2 !important;
+            }
+
+            .footer-sign {
+                font-size: 8px !important;
+            }
+
+            .footer-stamp {
+                width: 60px !important;
+                max-height: 40px !important;
+                right: 10px !important;
+                bottom: 5px !important;
             }
 
             /* Single copy mode */
             body:not(.two-copies-mode) .challan-sheet {
                 height: auto !important;
             }
-            body:not(.two-copies-mode) .invoice-page {
-                page-break-after: always !important;
-                break-after: page !important;
-            }
-            body:not(.two-copies-mode) .invoice-page:last-child {
-                page-break-after: auto !important;
-                break-after: auto !important;
-            }
 
             /* Two copies mode */
             body.two-copies-mode .invoice-page {
-                page-break-after: avoid !important;
-                break-after: avoid !important;
+                page-break-after: always !important;
+                break-after: page !important;
+            }
+            body.two-copies-mode .challan-sheet:last-child .invoice-page:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
             }
             body.two-copies-mode .cut-divider {
-                display: flex !important;
-                height: 5mm !important;
-            }
-
-            .pad-table tbody tr:nth-child(even) {
-                background-color: rgba(224, 242, 254, 0.45) !important;
-            }
-            .invoice-badge {
-                background-color: #3b82f6 !important;
-                color: #ffffff !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            .pad-table thead th {
-                background-color: #374151 !important;
-                color: #ffffff !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
+                display: none !important;
             }
         }
     </style>
@@ -439,7 +591,7 @@
                 Delivery Challan Preview
             </span>
             <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 ms-2" style="font-size: 11px;">
-                <i class="fa-solid fa-print me-1"></i> A4 Half Landscape
+                <i class="fa-solid fa-print me-1"></i> A5 Landscape (Half A4)
             </span>
         </div>
         <div class="d-flex align-items-center gap-2">
@@ -495,9 +647,13 @@
                             <!-- Header -->
                             <div class="pad-header">
                                 <div class="logo-section">
-                                    @if(\App\Models\Setting::get('company_logo'))
-                                        <img src="{{ asset(\App\Models\Setting::get('company_logo')) }}" alt="Company Logo" class="logo-img">
-                                    @endif
+                                    @php
+                                        $companyLogo = \App\Models\Setting::get('company_logo');
+                                        if (!$companyLogo || !file_exists(public_path($companyLogo))) {
+                                            $companyLogo = 'assets/images/dummy_logo.svg';
+                                        }
+                                    @endphp
+                                    <img src="{{ asset($companyLogo) }}" alt="Company Logo" class="logo-img">
                                     <div class="logo-text-box">
                                         <h2 class="company-title">{{ \App\Models\Setting::get('company_name', 'VAHLA') }}</h2>
                                         <div class="company-subtitle">INDUSTRIAL SOLUTIONS</div>
