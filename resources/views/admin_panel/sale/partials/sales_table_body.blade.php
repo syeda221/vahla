@@ -3,7 +3,22 @@
         $pNames = 'N/A';
         if ($sale->items && $sale->items->count() > 0) {
             $pNames = $sale->items
-                ->map(fn($item) => optional($item->product)->item_name ?? '?')
+                ->map(function($item) {
+                    if (!empty($item->product_name)) {
+                        return $item->product_set_id ? '[SET] ' . $item->product_name : $item->product_name;
+                    }
+                    if ($item->product) {
+                        return $item->product->item_name;
+                    }
+                    if ($item->productSet) {
+                        return '[SET] ' . $item->productSet->name;
+                    }
+                    if ($item->product_set_id) {
+                        $set = \App\Models\ProductSet::find($item->product_set_id);
+                        if ($set) return '[SET] ' . $set->name;
+                    }
+                    return '?';
+                })
                 ->implode(', ');
         } elseif ($sale->product) {
             $pNames = $sale->product;
@@ -353,6 +368,7 @@
                         @endif
                     @endif
 
+                    {{--
                     @if ($saleDue > 0.001 && $sale->customer_id && ($sale->sale_type === 'direct_sale' || empty($sale->sale_type) || ($sale->sale_type === 'sales_order' && $sale->sale_status === 'posted')))
                         <li>
                             <a class="dropdown-item text-success d-flex align-items-center gap-2 py-2 fw-bold" href="{{ route('vouchers.create') }}?tab=payment_in&customer_id={{ $sale->customer_id }}&invoice_id={{ $sale->id }}">
@@ -360,6 +376,7 @@
                             </a>
                         </li>
                     @endif
+                    --}}
 
                     <li><hr class="dropdown-divider"></li>
 

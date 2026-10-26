@@ -214,6 +214,7 @@ $(document).ready(function() {
                 cache: true
             },
             minimumInputLength: 0,
+            escapeMarkup: function(m) { return m; },
             templateResult: formatProduct,
             templateSelection: formatSelection
         });

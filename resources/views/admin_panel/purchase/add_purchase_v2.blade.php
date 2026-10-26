@@ -1052,6 +1052,7 @@
                         cache: true
                     },
                     minimumInputLength: 0,
+                    escapeMarkup: function(m) { return m; },
                     templateResult: formatProduct,
                     templateSelection: formatSelection
                 });
@@ -1216,13 +1217,30 @@
 
             function formatProduct(repo) {
                 if (repo.loading) return repo.text;
+                if (repo.is_set || (repo.id && repo.id.toString().startsWith('set_'))) {
+                    let code = repo.sku || repo.item_code || 'SET';
+                    return $(`
+                        <div class="py-1" style="line-height: 1.35;">
+                            <div style="font-weight: 600; font-size: 0.85rem; color: inherit; white-space: normal; word-break: break-word;">
+                                <i class="fas fa-layer-group me-1 text-primary"></i> ${repo.name || repo.text}
+                                <span class="badge bg-primary text-white ms-1" style="font-size: 10px; font-weight: 700;">SET</span>
+                            </div>
+                            <div style="font-size: 0.75rem; opacity: 0.85; color: inherit; margin-top: 2px;">
+                                SKU: ${code} | Set
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mt-1">
+                                <span class="badge rounded-pill" style="background: #00c853; color: #ffffff; font-size: 0.72rem; font-weight: 700; padding: 2px 8px;">Total: SET</span>
+                            </div>
+                        </div>
+                    `);
+                }
                 let stock = repo.stock !== undefined ? repo.stock : 0;
                 let sku = repo.sku || 'N/A';
                 let unit = repo.unit_name ? ` | ${repo.unit_name}` : '';
                 let stockVal = parseFloat(repo.stock_pieces !== undefined ? repo.stock_pieces : repo.stock) || 0;
                 let badgeBg = stockVal > 0 ? '#00c853' : '#dc2626';
 
-                return `
+                return $(`
                 <div class="py-1" style="line-height: 1.35;">
                     <div style="font-weight: 600; font-size: 0.85rem; color: inherit; white-space: normal; word-break: break-word;">
                         ${repo.name || repo.text}
@@ -1234,7 +1252,7 @@
                         <span class="badge rounded-pill" style="background: ${badgeBg}; color: #ffffff; font-size: 0.72rem; font-weight: 700; padding: 2px 8px;">Total: ${stock}</span>
                     </div>
                 </div>
-                `;
+                `);
             }
 
             function formatSelection(repo) {
