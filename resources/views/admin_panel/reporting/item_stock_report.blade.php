@@ -26,7 +26,7 @@
     .rpt-page { background: var(--rpt-bg); min-height: calc(100vh - 80px); padding: 20px 0; }
 
     /* Report Mode Selector Pills */
-    .mode-pills { display: flex; gap: 8px; margin-bottom: 16px; }
+    .mode-pills { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
     .mode-pill {
         padding: 8px 18px; border-radius: 20px; border: 1px solid var(--rpt-border);
         background: #fff; font-size: .82rem; font-weight: 700; color: var(--rpt-muted);
@@ -40,7 +40,7 @@
         box-shadow: var(--rpt-shadow); padding: 16px 20px; margin-bottom: 20px;
     }
     .rpt-flabel { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--rpt-muted); margin-bottom: 4px; display: block; }
-    .rpt-finput { width: 100%; height: 38px; border: 1px solid var(--rpt-border); border-radius: 8px; font-size: .84rem; padding: 0 10px; color: var(--rpt-text); outline: none; background: #fff; }
+    .rpt-finput { width: 100%; height: 38px; border: 1px solid var(--rpt-border); border-radius: 8px; font-size: .84rem; padding: 0 10px; color: var(--rpt-text); outline: none; background: #fff; box-sizing: border-box; }
 
     /* KPI Summary Cards */
     .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
@@ -55,9 +55,9 @@
     .badge-adj-plus  { background: var(--rpt-success-lt); color: var(--rpt-success); border: 1px solid #a7f3d0; border-radius: 12px; padding: 2px 8px; font-weight: 700; font-size: .74rem; }
     .badge-adj-minus { background: var(--rpt-danger-lt);  color: var(--rpt-danger);  border: 1px solid #fecaca; border-radius: 12px; padding: 2px 8px; font-weight: 700; font-size: .74rem; }
 
-    .status-healthy { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; border-radius: 12px; padding: 2px 8px; font-size: .7rem; font-weight: 700; }
-    .status-low     { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 12px; padding: 2px 8px; font-size: .7rem; font-weight: 700; }
-    .status-out     { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; border-radius: 12px; padding: 2px 8px; font-size: .7rem; font-weight: 700; }
+    .status-healthy { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; border-radius: 12px; padding: 2px 8px; font-size: .7rem; font-weight: 700; white-space: nowrap; }
+    .status-low     { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 12px; padding: 2px 8px; font-size: .7rem; font-weight: 700; white-space: nowrap; }
+    .status-out     { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; border-radius: 12px; padding: 2px 8px; font-size: .7rem; font-weight: 700; white-space: nowrap; }
 
     #stockTable th { background: #f8fafc !important; color: #475569 !important; font-size: .68rem; text-transform: uppercase; font-weight: 700; letter-spacing: .5px; padding: 10px 12px; }
     #stockTable td { font-size: .8rem; vertical-align: middle; padding: 9px 12px; }
@@ -87,29 +87,193 @@
         opacity: 0.8 !important;
     }
 
-    @media (max-width: 768px) {
-        .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
-        .mode-pills { flex-wrap: wrap; }
+    /* Mobile Card View Styling */
+    .stock-mcard {
+        background: #ffffff;
+        border: 1px solid var(--rpt-border);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+        word-break: break-word;
+    }
+    .stock-search-box {
+        position: relative;
+        margin-bottom: 12px;
+    }
+    .stock-search-box input {
+        border-radius: 8px;
+        padding-left: 36px;
+        font-size: 0.88rem;
+        height: 38px;
+        border: 1px solid #cbd5e1;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .stock-search-box i {
+        position: absolute;
+        left: 12px;
+        top: 11px;
+        color: #94a3b8;
+        pointer-events: none;
+    }
+
+    /* Desktop Specific (min-width: 992px) */
+    @media (min-width: 992px) {
+        #mobileCardsWrapper,
+        .mobile-view-toggle {
+            display: none !important;
+        }
+        #desktopTableWrapper {
+            display: block !important;
+        }
+    }
+
+    /* Tablet & Mobile (max-width: 991.98px) */
+    @media (max-width: 991.98px) {
+        html, body {
+            max-width: 100vw !important;
+            width: 100% !important;
+            overflow-x: hidden !important;
+            position: relative;
+        }
+        .rpt-page {
+            padding: 12px 0 !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+        }
+        .container-fluid {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
+        }
+
+        /* KPI Grid: prevent blowout */
+        .kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            margin-bottom: 14px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        .kpi-card {
+            padding: 12px 14px !important;
+            border-radius: 10px !important;
+            min-width: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+        .kpi-card > div:first-child {
+            min-width: 0 !important;
+            overflow: hidden !important;
+            flex: 1 1 auto !important;
+        }
+        .kpi-card .fs-4 {
+            font-size: 1.05rem !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+        .kpi-card > div:first-child > div:first-child {
+            font-size: 0.65rem !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+        .kpi-card > div:last-child {
+            font-size: 18px !important;
+            margin-left: 6px !important;
+            flex-shrink: 0 !important;
+        }
+
+        /* Filter Card */
+        .rpt-filter-card {
+            padding: 12px 10px !important;
+            border-radius: 12px !important;
+            margin-bottom: 14px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+
+        /* Mode Pills */
+        .mode-pills {
+            width: 100% !important;
+            gap: 6px !important;
+        }
+        .mode-pill {
+            flex: 1 1 calc(50% - 6px) !important;
+            justify-content: center !important;
+            padding: 7px 10px !important;
+            font-size: 0.75rem !important;
+            text-align: center !important;
+            white-space: nowrap !important;
+        }
+
+        /* Switcher & Wrappers */
+        #desktopTableWrapper.mobile-table-hidden {
+            display: none !important;
+        }
+        #desktopTableWrapper {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+        }
+        #desktopTableWrapper .table-responsive {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            margin-bottom: 10px !important;
+        }
+        #stockTable {
+            min-width: 750px !important;
+            white-space: nowrap !important;
+        }
+
+        /* Modal Dialog on Mobile */
+        .modal-dialog {
+            margin: 10px !important;
+            max-width: calc(100vw - 20px) !important;
+        }
+        .modal-body {
+            max-height: 60vh !important;
+            overflow-x: auto !important;
+        }
+        .select2-container {
+            width: 100% !important;
+        }
+        .select2-dropdown {
+            max-width: calc(100vw - 24px) !important;
+        }
     }
 </style>
 
 <div class="rpt-page">
-<div class="container-fluid px-3">
+<div class="container-fluid px-2 px-md-3">
 
     {{-- Page Header & Mode Switcher --}}
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <div>
-            <h4 class="fw-bold text-dark mb-0"><i class="fas fa-boxes-stacked text-primary me-2"></i>Item Stock &amp; Ledger Report</h4>
+            <h4 class="fw-bold text-dark mb-0" style="font-size: 20px;"><i class="fas fa-boxes-stacked text-primary me-2"></i>Item Stock &amp; Ledger Report</h4>
             <small class="text-muted">Detailed inventory movements, explicit Stock Adjustments (+/-), and Valuation Summary</small>
         </div>
 
         {{-- Mode Pills --}}
         <div class="mode-pills">
             <div class="mode-pill active" data-mode="summary">
-                <i class="fas fa-chart-pie"></i> Valuation &amp; Stock Summary
+                <i class="fas fa-chart-pie me-1"></i> Stock Summary
             </div>
             <div class="mode-pill" data-mode="ledger">
-                <i class="fas fa-file-invoice-dollar"></i> Detailed Movement Ledger
+                <i class="fas fa-file-invoice-dollar me-1"></i> Movement Ledger
             </div>
         </div>
     </div>
@@ -126,7 +290,7 @@
 
         <div class="kpi-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
             <div>
-                <div class="text-uppercase fw-bold text-muted" style="font-size: 0.75rem; letter-spacing: 0.5px;">Current Total Stock</div>
+                <div style="font-size:.7rem; font-weight:700; text-transform:uppercase; opacity:.85;">Current Total Stock</div>
                 <div class="fs-4 fw-bold mt-1" id="kpiTotalStock">0 Units</div>
             </div>
             <div style="font-size:24px; opacity:.8;"><i class="fas fa-cubes"></i></div>
@@ -134,7 +298,7 @@
 
         <div class="kpi-card" style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%);">
             <div>
-                <div class="text-uppercase fw-bold text-muted" style="font-size: 0.75rem; letter-spacing: 0.5px;">Net Adjustments</div>
+                <div style="font-size:.7rem; font-weight:700; text-transform:uppercase; opacity:.85;">Net Adjustments</div>
                 <div class="fs-4 fw-bold mt-1" id="kpiNetAdjustments">0 Units</div>
             </div>
             <div style="font-size:24px; opacity:.8;"><i class="fas fa-sliders-h"></i></div>
@@ -155,7 +319,7 @@
             <input type="hidden" name="report_mode" id="report_mode" value="summary">
 
             {{-- Category --}}
-            <div class="col-md-2">
+            <div class="col-12 col-md-2">
                 <label class="rpt-flabel">Category</label>
                 <select name="category_id" id="category_id" class="rpt-finput">
                     <option value="all">-- All Categories --</option>
@@ -166,7 +330,7 @@
             </div>
 
             {{-- Warehouse --}}
-            <div class="col-md-2">
+            <div class="col-12 col-md-2">
                 <label class="rpt-flabel">Warehouse</label>
                 <select name="warehouse_id" id="warehouse_id" class="rpt-finput">
                     @if(isset($warehouses) && count($warehouses) > 0)
@@ -181,7 +345,7 @@
             </div>
 
             {{-- Unit Mode Filter --}}
-            <div class="col-md-2">
+            <div class="col-12 col-md-2">
                 <label class="rpt-flabel">Unit / Size Type</label>
                 <select name="unit_type" id="unit_type" class="rpt-finput">
                     <option value="all">All Units (Pcs / Kg / M²)</option>
@@ -192,7 +356,7 @@
             </div>
 
             {{-- Product --}}
-            <div class="col-md-2">
+            <div class="col-12 col-md-2">
                 <label class="rpt-flabel">Search Product</label>
                 <select name="product_id" id="product_id" class="form-control select2">
                     <option value="all">-- All Products --</option>
@@ -200,7 +364,7 @@
             </div>
 
             {{-- Product Variant --}}
-            <div class="col-md-2">
+            <div class="col-12 col-md-2">
                 <label class="rpt-flabel">Product Variant</label>
                 <select name="variant_key" id="variant_key" class="form-control select2" disabled>
                     <option value="all">-- All Variants --</option>
@@ -208,9 +372,9 @@
             </div>
 
             {{-- Buttons --}}
-            <div class="col-md-2 text-end d-flex gap-2">
+            <div class="col-12 col-md-2 text-end d-flex gap-2 mt-2 mt-md-0">
                 <button type="button" id="btnSearch" class="btn btn-primary btn-sm flex-fill fw-bold" style="height:38px; border-radius:8px;">
-                    <i class="fas fa-search me-1"></i> Apply Filter
+                    <i class="fas fa-search me-1"></i> Apply
                 </button>
                 <button type="button" id="btnExportCsv" class="btn btn-outline-secondary btn-sm fw-bold" style="height:38px; border-radius:8px;">
                     <i class="fas fa-file-excel me-1"></i> Export
@@ -219,27 +383,63 @@
         </form>
     </div>
 
-    {{-- Data Table Card --}}
-    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
-        <div class="card-body p-0">
+    {{-- Main Container Card --}}
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4" style="background:#ffffff;">
+        <div class="card-body p-3 p-md-4">
             
+            {{-- Mobile View Switcher (Cards vs Table) --}}
+            <div class="d-flex justify-content-between align-items-center mobile-view-toggle pb-3 mb-3 border-bottom">
+                <span class="small text-muted font-weight-bold">
+                    <i class="fas fa-th-list me-1"></i> View Mode
+                </span>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-primary active" id="btnShowCards">
+                        <i class="fas fa-th-large me-1"></i> Cards
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" id="btnShowTable">
+                        <i class="fas fa-table me-1"></i> Table
+                    </button>
+                </div>
+            </div>
+
             <div id="loader" style="display:none; text-align:center; padding:30px;">
                 <div class="spinner-border text-primary" role="status"></div>
                 <p class="mt-2 text-muted small">Generating detailed stock report...</p>
             </div>
 
-            <div class="table-responsive">
-                <table id="stockTable" class="table table-hover align-middle mb-0 nowrap" style="width:100%;">
-                    <thead id="tableHeader">
-                        {{-- Rendered dynamically based on Summary vs Ledger mode --}}
-                    </thead>
-                    <tbody id="reportBody">
-                        {{-- Filled by AJAX --}}
-                    </tbody>
-                    <tfoot id="tableFooter">
-                        {{-- Grand Totals --}}
-                    </tfoot>
-                </table>
+            {{-- Mobile Cards View --}}
+            <div id="mobileCardsWrapper">
+                <div class="stock-search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="mobileStockSearch" class="form-control" placeholder="Search items in report...">
+                </div>
+
+                <div id="mobileStockCardsList">
+                    {{-- Dynamically populated --}}
+                </div>
+
+                {{-- Mobile Grand Total Card --}}
+                <div class="card bg-light border-0 rounded-3 p-3 mt-3 text-center" id="mobileGrandTotalCard">
+                    <div class="text-muted small text-uppercase fw-bold">Grand Stock Valuation Total</div>
+                    <div class="fs-5 fw-bold text-primary mt-1" id="mobileGrandTotalVal">Rs 0.00</div>
+                </div>
+            </div>
+
+            {{-- Desktop Table View --}}
+            <div id="desktopTableWrapper" class="mobile-table-hidden">
+                <div class="table-responsive">
+                    <table id="stockTable" class="table table-hover align-middle mb-0 nowrap" style="width:100%;">
+                        <thead id="tableHeader">
+                            {{-- Rendered dynamically based on Summary vs Ledger mode --}}
+                        </thead>
+                        <tbody id="reportBody">
+                            {{-- Filled by AJAX --}}
+                        </tbody>
+                        <tfoot id="tableFooter">
+                            {{-- Grand Totals --}}
+                        </tfoot>
+                    </table>
+                </div>
             </div>
 
         </div>
@@ -255,37 +455,39 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius:14px; overflow:hidden;">
             
-            <div class="modal-header border-bottom bg-white px-4 py-3">
-                <div>
-                    <h5 class="modal-title fw-bold text-dark mb-0" id="productHistoryModalLabel">
+            <div class="modal-header border-bottom bg-white px-3 px-md-4 py-3">
+                <div style="min-width: 0; max-width: 85%;">
+                    <h5 class="modal-title fw-bold text-dark mb-0 text-truncate" id="productHistoryModalLabel" style="font-size: 16px;">
                         <i class="fas fa-history text-primary me-2"></i>Product Movement Timeline
                     </h5>
-                    <small class="text-muted" id="historyModalSub">Chronological audit log of all inward, sales, returns &amp; stock adjustments</small>
+                    <small class="text-muted d-block text-truncate" id="historyModalSub">Chronological audit log of movements</small>
                 </div>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
 
             <div class="modal-body p-0" style="max-height:420px; overflow-y:auto; background:#f8fafc;">
-                <table class="table table-hover align-middle mb-0 text-nowrap" style="font-size:.82rem;">
-                    <thead class="bg-white sticky-top">
-                        <tr>
-                            <th class="ps-4">Date &amp; Time</th>
-                            <th>Movement Type</th>
-                            <th>Reference</th>
-                            <th class="text-center">Quantity (Units)</th>
-                            <th>Note / Reason</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyModalBody">
-                        {{-- Dynamically populated --}}
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 text-nowrap" style="font-size:.82rem;">
+                        <thead class="bg-white sticky-top">
+                            <tr>
+                                <th class="ps-3 ps-md-4">Date &amp; Time</th>
+                                <th>Movement Type</th>
+                                <th>Reference</th>
+                                <th class="text-center">Quantity</th>
+                                <th>Note / Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyModalBody">
+                            {{-- Dynamically populated --}}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            <div class="modal-footer bg-white py-2 px-4 border-top">
-                <button type="button" class="btn btn-secondary btn-sm px-4" data-dismiss="modal">Close</button>
+            <div class="modal-footer bg-white py-2 px-3 px-md-4 border-top">
+                <button type="button" class="btn btn-secondary btn-sm px-4" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
             </div>
 
         </div>
@@ -302,6 +504,12 @@
 $(document).ready(function() {
 
     let currentReportData = [];
+
+    // Helper number format
+    function numFmt(v, dec = 2) {
+        let n = parseFloat(v) || 0;
+        return n.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    }
 
     // Select2 Product Search
     $('#product_id').select2({
@@ -381,11 +589,35 @@ $(document).ready(function() {
     });
 
     // Report Mode Pill Toggle
-    $('.mode-pill').on('click', function () {
-        $('.mode-pill').removeClass('active');
+    $('.mode-pills .mode-pill').on('click', function () {
+        $('.mode-pills .mode-pill').removeClass('active');
         $(this).addClass('active');
         $('#report_mode').val($(this).data('mode'));
         fetchStockReport();
+    });
+
+    // Mobile View Switcher (Cards vs Table)
+    $('#btnShowCards').on('click', function() {
+        $(this).addClass('active');
+        $('#btnShowTable').removeClass('active');
+        $('#mobileCardsWrapper').show();
+        $('#desktopTableWrapper').addClass('mobile-table-hidden').hide();
+    });
+
+    $('#btnShowTable').on('click', function() {
+        $(this).addClass('active');
+        $('#btnShowCards').removeClass('active');
+        $('#mobileCardsWrapper').hide();
+        $('#desktopTableWrapper').removeClass('mobile-table-hidden').show();
+    });
+
+    // Mobile Search Filter
+    $('#mobileStockSearch').on('keyup input', function() {
+        let val = $(this).val().toLowerCase().trim();
+        $('#mobileStockCardsList .stock-mcard').each(function() {
+            let searchTxt = $(this).attr('data-search') || '';
+            $(this).toggle(searchTxt.indexOf(val) > -1);
+        });
     });
 
     // Search Click
@@ -399,6 +631,7 @@ $(document).ready(function() {
     function fetchStockReport() {
         $('#loader').show();
         $('#reportBody').empty();
+        $('#mobileStockCardsList').empty();
 
         let mode = $('#report_mode').val();
         renderTableHeader(mode);
@@ -432,6 +665,7 @@ $(document).ready(function() {
                 $('#kpiSoldAmount').text('Rs ' + (res.total_sold_amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2}));
 
                 renderTableBody(res.data, mode);
+                renderMobileCards(res.data, mode);
             },
             error: function () {
                 $('#loader').hide();
@@ -445,7 +679,6 @@ $(document).ready(function() {
         thead.empty();
 
         if (mode === 'summary') {
-            // Valuation & Stock Summary Columns
             thead.append(`
                 <tr>
                     <th style="width:40px;">#</th>
@@ -462,7 +695,6 @@ $(document).ready(function() {
                 </tr>
             `);
         } else {
-            // Detailed Movement Ledger Columns
             thead.append(`
                 <tr>
                     <th style="width:30px;">#</th>
@@ -521,15 +753,14 @@ $(document).ready(function() {
                     <td><span class="badge bg-light text-dark border">${row.unit_name}</span></td>
                     <td class="text-center fw-bold text-primary">${row.formatted_stock}</td>
                     <td class="text-center fw-semibold text-secondary">${row.carton_display || '—'}</td>
-                    <td class="text-end">Rs ${parseFloat(row.average_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                    <td class="text-end fw-bold text-dark">Rs ${parseFloat(row.stock_value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="text-end">Rs ${numFmt(row.average_price)}</td>
+                    <td class="text-end fw-bold text-dark">Rs ${numFmt(row.stock_value)}</td>
                     <td class="text-center">${statusBadge}</td>
                     <td class="text-center">${historyBtn}</td>
                 </tr>`;
                 tbody.append(rowHtml);
 
             } else {
-                // Detailed Movement Ledger Row
                 let adjVal = parseFloat(row.adjustments) || 0;
                 let adjBadge = '<span class="text-muted">—</span>';
                 if (adjVal > 0) {
@@ -550,7 +781,7 @@ $(document).ready(function() {
                     <td class="text-end text-danger">-${parseFloat(row.purch_returned_qty).toLocaleString()}</td>
                     <td class="text-center" style="background:#fffbeb !important;">${adjBadge}</td>
                     <td class="text-end fw-bold text-primary" style="background:#eef2ff !important;">${row.formatted_stock}</td>
-                    <td class="text-end fw-bold">Rs ${parseFloat(row.stock_value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="text-end fw-bold">Rs ${numFmt(row.stock_value)}</td>
                     <td class="text-center">${historyBtn}</td>
                 </tr>`;
                 tbody.append(rowHtml);
@@ -562,7 +793,7 @@ $(document).ready(function() {
             tfooter.append(`
                 <tr class="bg-light fw-bold">
                     <td colspan="8" class="text-end">Grand Stock Valuation Total:</td>
-                    <td class="text-end text-primary fs-6">Rs ${totalValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="text-end text-primary fs-6">Rs ${numFmt(totalValue)}</td>
                     <td colspan="2"></td>
                 </tr>
             `);
@@ -570,11 +801,146 @@ $(document).ready(function() {
             tfooter.append(`
                 <tr class="bg-light fw-bold">
                     <td colspan="10" class="text-end">Grand Stock Valuation Total:</td>
-                    <td class="text-end text-primary fs-6">Rs ${totalValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                    <td class="text-end text-primary fs-6">Rs ${numFmt(totalValue)}</td>
                     <td></td>
                 </tr>
             `);
         }
+    }
+
+    // Render Mobile Cards View
+    function renderMobileCards(data, mode) {
+        let $wrap = $('#mobileStockCardsList');
+        $wrap.empty();
+
+        if (!data || data.length === 0) {
+            $wrap.html('<div class="text-center text-muted py-4"><i class="fas fa-boxes fs-2 d-block mb-1"></i>No stock items found for selected filter.</div>');
+            $('#mobileGrandTotalCard').hide();
+            return;
+        }
+
+        let totalValue = 0;
+
+        $.each(data, function (i, row) {
+            totalValue += parseFloat(row.stock_value) || 0;
+
+            let historyBtn = `
+                <button type="button" class="btn btn-outline-primary btn-sm view-history-btn" data-id="${row.id}" data-name="${row.item_name}" style="padding:3px 8px; font-size:.75rem; border-radius:6px;">
+                    <i class="fas fa-history me-1"></i> Timeline
+                </button>
+            `;
+
+            let searchData = (row.item_code || '') + ' ' + (row.item_name || '') + ' ' + (row.category_name || '') + ' ' + (row.unit_name || '');
+
+            let cardContent = '';
+
+            if (mode === 'summary') {
+                let statusBadge = '<span class="status-healthy"><i class="fas fa-check-circle me-1"></i> Healthy</span>';
+                if (row.status === 'out_of_stock') {
+                    statusBadge = '<span class="status-out"><i class="fas fa-times-circle me-1"></i> Out of Stock</span>';
+                } else if (row.status === 'low_stock') {
+                    statusBadge = '<span class="status-low"><i class="fas fa-exclamation-triangle me-1"></i> Low Stock</span>';
+                }
+
+                cardContent = `
+                    <div class="stock-mcard" data-search="${searchData.toLowerCase()}">
+                        <div class="d-flex justify-content-between align-items-start pb-2 border-bottom border-dashed mb-2" style="gap: 8px;">
+                            <div style="min-width: 0; max-width: 70%;">
+                                <code style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; padding:1px 5px; font-size:.75rem;">${row.item_code || '-'}</code>
+                                <div class="fw-bold text-dark mt-1 text-truncate" style="font-size: 0.95rem;">${row.item_name}</div>
+                                <div class="small text-muted text-truncate">${row.category_name || ''} &bull; <span class="badge bg-light text-dark border">${row.unit_name}</span></div>
+                            </div>
+                            <div class="d-flex flex-column align-items-end gap-1 flex-shrink-0">
+                                ${statusBadge}
+                                ${historyBtn}
+                            </div>
+                        </div>
+
+                        <div class="pt-1">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted small">Stock Balance:</span>
+                                <span class="fw-bold text-primary">${row.formatted_stock}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted small">Cartons / Loose:</span>
+                                <span class="fw-semibold text-secondary small">${row.carton_display || '—'}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted small">Avg Cost:</span>
+                                <span class="text-dark small">Rs ${numFmt(row.average_price)}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center pt-2 mt-1 border-top">
+                                <span class="fw-bold text-dark small">Stock Value:</span>
+                                <span class="fw-bold text-success fs-6">Rs ${numFmt(row.stock_value)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                let adjVal = parseFloat(row.adjustments) || 0;
+                let adjBadge = '<span class="text-muted">—</span>';
+                if (adjVal > 0) {
+                    adjBadge = `<span class="badge-adj-plus">+${adjVal} ${row.unit_name}</span>`;
+                } else if (adjVal < 0) {
+                    adjBadge = `<span class="badge-adj-minus">${adjVal} ${row.unit_name}</span>`;
+                }
+
+                cardContent = `
+                    <div class="stock-mcard" data-search="${searchData.toLowerCase()}">
+                        <div class="d-flex justify-content-between align-items-start pb-2 border-bottom border-dashed mb-2" style="gap: 8px;">
+                            <div style="min-width: 0; max-width: 70%;">
+                                <code style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; padding:1px 5px; font-size:.75rem;">${row.item_code || '-'}</code>
+                                <div class="fw-bold text-dark mt-1 text-truncate" style="font-size: 0.95rem;">${row.item_name}</div>
+                                <div class="small text-muted text-truncate">${row.category_name || ''}</div>
+                            </div>
+                            <div class="flex-shrink-0">
+                                ${historyBtn}
+                            </div>
+                        </div>
+
+                        <div class="pt-1">
+                            <div class="row g-1 mb-1 text-center" style="background:#f8fafc; border-radius:8px; padding:6px 2px;">
+                                <div class="col-3">
+                                    <small class="text-muted d-block" style="font-size:10px;">Opening</small>
+                                    <span class="fw-semibold small text-dark">${parseFloat(row.initial_stock).toLocaleString()}</span>
+                                </div>
+                                <div class="col-3">
+                                    <small class="text-muted d-block" style="font-size:10px;">Purchased</small>
+                                    <span class="fw-semibold small text-success">+${parseFloat(row.purchased).toLocaleString()}</span>
+                                </div>
+                                <div class="col-3">
+                                    <small class="text-muted d-block" style="font-size:10px;">Sold</small>
+                                    <span class="fw-semibold small text-danger">-${parseFloat(row.sold).toLocaleString()}</span>
+                                </div>
+                                <div class="col-3">
+                                    <small class="text-muted d-block" style="font-size:10px;">Returns</small>
+                                    <span class="fw-semibold small text-info">+${parseFloat(row.returned_qty).toLocaleString()}</span>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mb-1 mt-2">
+                                <span class="text-muted small">Adjustments:</span>
+                                <span>${adjBadge}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted small">Closing Stock:</span>
+                                <span class="fw-bold text-primary">${row.formatted_stock}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center pt-2 mt-1 border-top">
+                                <span class="fw-bold text-dark small">Stock Value:</span>
+                                <span class="fw-bold text-success fs-6">Rs ${numFmt(row.stock_value)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            $wrap.append(cardContent);
+        });
+
+        // Update mobile grand total
+        $('#mobileGrandTotalCard').show();
+        $('#mobileGrandTotalVal').text('Rs ' + numFmt(totalValue));
     }
 
     // View Product History Timeline Modal
@@ -596,7 +962,7 @@ $(document).ready(function() {
                     $.each(res.history, function (i, m) {
                         let row = `
                         <tr>
-                            <td class="ps-4 text-muted" style="font-size:.78rem;">${m.date}</td>
+                            <td class="ps-3 ps-md-4 text-muted" style="font-size:.78rem;">${m.date}</td>
                             <td><span class="badge bg-${m.type_badge} px-2 py-1">${m.type}</span></td>
                             <td><code class="text-dark">${m.ref_type}</code></td>
                             <td class="text-center fw-bold fs-6">${m.qty > 0 ? '+' : ''}${m.qty}</td>

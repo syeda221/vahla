@@ -97,7 +97,7 @@
         box-shadow: 0 0 0 3px rgba(52, 82, 217, 0.12);
     }
 
-    /* KPI Stat Cards (Enterprise style with clean left accents) */
+    /* KPI Stat Cards */
     .idr-stats-row {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -227,6 +227,7 @@
         padding: 3px 8px;
         border-radius: 4px;
         font-size: 12px;
+        white-space: nowrap;
     }
     .badge-zero-pill {
         background: #fffbeb;
@@ -236,6 +237,7 @@
         padding: 3px 8px;
         border-radius: 4px;
         font-size: 12px;
+        white-space: nowrap;
     }
     .badge-demand-pill {
         background: #eff6ff;
@@ -245,6 +247,7 @@
         padding: 3px 10px;
         border-radius: 4px;
         font-size: 12.5px;
+        white-space: nowrap;
     }
     .tag-neutral {
         background: #f1f5f9;
@@ -253,6 +256,7 @@
         padding: 2px 8px;
         border-radius: 4px;
         font-weight: 500;
+        display: inline-block;
     }
 
     /* Buttons */
@@ -320,7 +324,7 @@
         color: #ffffff;
     }
 
-    /* Premium Segmented Filter Chips / Toggle Pills */
+    /* Segmented Filter Chips / Toggle Pills */
     .idr-toggles-bar {
         display: flex;
         align-items: center;
@@ -422,12 +426,160 @@
         right: 10px !important;
     }
 
-    @media (max-width: 992px) {
-        .idr-stats-row { grid-template-columns: repeat(2, 1fr); }
+    /* Mobile Card Styling */
+    .demand-mcard {
+        background: #ffffff;
+        border: 1px solid var(--idr-border);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+        word-break: break-word;
     }
-    @media (max-width: 576px) {
-        .idr-stats-row { grid-template-columns: 1fr; }
-        .idr-page-wrap { padding: 16px; }
+    .demand-search-box {
+        position: relative;
+        margin-bottom: 12px;
+    }
+    .demand-search-box input {
+        border-radius: 8px;
+        padding-left: 36px;
+        font-size: 0.88rem;
+        height: 38px;
+        border: 1px solid #cbd5e1;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .demand-search-box i {
+        position: absolute;
+        left: 12px;
+        top: 11px;
+        color: #94a3b8;
+        pointer-events: none;
+    }
+
+    /* Desktop View (min-width: 992px) */
+    @media (min-width: 992px) {
+        #mobileDemandCardsWrapper,
+        .mobile-view-toggle {
+            display: none !important;
+        }
+        #desktopTableWrapper {
+            display: block !important;
+        }
+    }
+
+    /* Tablet & Mobile (max-width: 991.98px) */
+    @media (max-width: 991.98px) {
+        html, body {
+            max-width: 100vw !important;
+            width: 100% !important;
+            overflow-x: hidden !important;
+            position: relative;
+        }
+        .idr-page-wrap {
+            padding: 12px 8px !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
+        }
+        .idr-top-nav {
+            margin-bottom: 12px !important;
+        }
+        .idr-breadcrumb-list {
+            flex-wrap: wrap !important;
+            gap: 4px !important;
+            font-size: 11px !important;
+        }
+        .idr-filter-box {
+            padding: 12px 10px !important;
+            border-radius: 10px !important;
+            margin-bottom: 14px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+        .idr-stats-row {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            margin-bottom: 14px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        .idr-stat-card {
+            padding: 10px 12px !important;
+            border-radius: 8px !important;
+            min-width: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+        .idr-stat-label {
+            font-size: 10px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            margin-bottom: 4px !important;
+        }
+        .idr-stat-number {
+            font-size: 16px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+        .idr-table-header-bar {
+            padding: 12px !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+        }
+        .idr-table-header-bar .d-flex {
+            width: 100% !important;
+        }
+        .idr-table-header-bar .btn-header-tool {
+            flex: 1 !important;
+            justify-content: center !important;
+        }
+        .idr-toggles-bar {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+            margin-top: 12px !important;
+            padding-top: 12px !important;
+        }
+        .idr-toggles-bar > div {
+            width: 100% !important;
+        }
+        .idr-chip-toggle {
+            width: 100% !important;
+        }
+        .idr-chip-pill {
+            width: 100% !important;
+            justify-content: center !important;
+            box-sizing: border-box !important;
+        }
+        #desktopTableWrapper.mobile-table-hidden {
+            display: none !important;
+        }
+        #desktopTableWrapper {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+        }
+        #desktopTableWrapper .table-responsive {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+        }
+        .idr-data-table {
+            min-width: 700px !important;
+            white-space: nowrap !important;
+        }
     }
 
     /* Print Styles */
@@ -463,12 +615,12 @@
         </ul>
     </div>
 
-    {{-- Filter Panel (Warehouse Removed, Clean 3-Column Grid) --}}
+    {{-- Filter Panel --}}
     <div class="idr-filter-box no-print">
         <form id="idrFilterForm">
             <div class="row g-3 align-items-end">
                 {{-- Company / Brand --}}
-                <div class="col-md-4">
+                <div class="col-12 col-md-4">
                     <label class="idr-field-label">
                         <i class="fas fa-building text-primary"></i> Company / Brand Name:
                     </label>
@@ -481,7 +633,7 @@
                 </div>
 
                 {{-- Category --}}
-                <div class="col-md-4">
+                <div class="col-12 col-md-4">
                     <label class="idr-field-label">
                         <i class="fas fa-layer-group text-primary"></i> Category:
                     </label>
@@ -494,7 +646,7 @@
                 </div>
 
                 {{-- Search Box & Action Buttons --}}
-                <div class="col-md-4">
+                <div class="col-12 col-md-4">
                     <label class="idr-field-label">
                         <i class="fas fa-search text-primary"></i> Search Item:
                     </label>
@@ -510,7 +662,7 @@
                 </div>
             </div>
 
-            {{-- Column & Demand Toggles (Premium Segmented Chips) --}}
+            {{-- Column & Demand Toggles --}}
             <div class="idr-toggles-bar">
                 <div class="d-flex align-items-center flex-wrap gap-2">
                     <span class="idr-toggle-label"><i class="fas fa-columns text-primary me-1"></i> Optional Columns:</span>
@@ -534,7 +686,7 @@
 
                 <div class="ms-auto">
                     <label class="idr-chip-toggle">
-                        <input type="checkbox" id="chkDemandOnly">
+                        <input type="checkbox" id="chkDemandOnly" checked>
                         <span class="idr-chip-pill idr-chip-pill-primary">
                             <i class="fas fa-filter" style="font-size: 11px;"></i> Demand Items Only (Req Qty > 0)
                         </span>
@@ -585,45 +737,97 @@
             </div>
         </div>
 
-        {{-- Table --}}
-        <div class="table-responsive">
-            <table class="idr-data-table" id="demandTable">
-                <thead>
-                    <tr>
-                        <th style="width: 55px;" class="text-center">SR#</th>
-                        <th style="width: 85px;" class="text-center">CODE</th>
-                        <th>ITEM</th>
-                        <th class="col-category d-none">CATEGORY</th>
-                        <th class="col-company d-none">COMPANY</th>
-                        <th style="width: 95px;" class="text-end">STOCK</th>
-                        <th style="width: 105px;" class="text-end">P.PRICE</th>
-                        <th style="width: 95px;" class="text-end">MIN/QTY</th>
-                        <th style="width: 100px;" class="text-end">REQ/QTY</th>
-                        <th style="width: 130px;" class="text-end">COST AMOUNT</th>
-                    </tr>
-                </thead>
-                <tbody id="demandTableBody">
-                    <tr>
-                        <td colspan="10" class="text-center py-5 text-muted">
-                            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-                            Loading Inventory Demand Report...
-                        </td>
-                    </tr>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <th colspan="3" class="text-end fw-bold">Grand Total:</th>
-                        <th class="col-category d-none"></th>
-                        <th class="col-company d-none"></th>
-                        <th class="text-end fw-bold" id="totalStockCell">0</th>
-                        <th class="text-end">-</th>
-                        <th class="text-end fw-bold" id="totalMinQtyCell">0</th>
-                        <th class="text-end fw-bold text-primary" id="totalReqQtyCell">0</th>
-                        <th class="text-end fw-bold text-success" id="totalCostAmountCell">Rs. 0.00</th>
-                    </tr>
-                </tfoot>
-            </table>
+        {{-- Mobile View Switcher (Cards vs Table) --}}
+        <div class="p-3 border-bottom mobile-view-toggle no-print">
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="small text-muted font-weight-bold">
+                    <i class="fas fa-th-list me-1"></i> View Mode
+                </span>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-primary active" id="btnShowCards">
+                        <i class="fas fa-th-large me-1"></i> Cards
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" id="btnShowTable">
+                        <i class="fas fa-table me-1"></i> Table
+                    </button>
+                </div>
+            </div>
         </div>
+
+        {{-- Mobile Cards Container --}}
+        <div id="mobileDemandCardsWrapper" class="p-3 no-print">
+            <div class="demand-search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="mobileDemandSearch" class="form-control" placeholder="Search demand items...">
+            </div>
+
+            <div id="mobileDemandCardsList">
+                <div class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div> Loading...
+                </div>
+            </div>
+
+            {{-- Mobile Grand Total Card --}}
+            <div class="card bg-light border-0 rounded-3 p-3 mt-3 text-center" id="mobileGrandTotalCard" style="display:none;">
+                <div class="row g-2">
+                    <div class="col-4">
+                        <small class="text-muted d-block" style="font-size:10px;">TOTAL STOCK</small>
+                        <span class="fw-bold text-dark" id="mGrandStock">0</span>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted d-block" style="font-size:10px;">TOTAL REQ QTY</small>
+                        <span class="fw-bold text-primary font-monospace" id="mGrandReq">0</span>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-muted d-block" style="font-size:10px;">TOTAL COST</small>
+                        <span class="fw-bold text-success font-monospace" id="mGrandCost" style="font-size:12px;">Rs. 0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Desktop Table Container --}}
+        <div id="desktopTableWrapper" class="mobile-table-hidden">
+            <div class="table-responsive">
+                <table class="idr-data-table" id="demandTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 55px;" class="text-center">SR#</th>
+                            <th style="width: 85px;" class="text-center">CODE</th>
+                            <th>ITEM</th>
+                            <th class="col-category d-none">CATEGORY</th>
+                            <th class="col-company d-none">COMPANY</th>
+                            <th style="width: 95px;" class="text-end">STOCK</th>
+                            <th style="width: 105px;" class="text-end">P.PRICE</th>
+                            <th style="width: 95px;" class="text-end">MIN/QTY</th>
+                            <th style="width: 100px;" class="text-end">REQ/QTY</th>
+                            <th style="width: 130px;" class="text-end">COST AMOUNT</th>
+                        </tr>
+                    </thead>
+                    <tbody id="demandTableBody">
+                        <tr>
+                            <td colspan="10" class="text-center py-5 text-muted">
+                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                Loading Inventory Demand Report...
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan="3" class="text-end fw-bold">Grand Total:</th>
+                            <th class="col-category d-none"></th>
+                            <th class="col-company d-none"></th>
+                            <th class="text-end fw-bold" id="totalStockCell">0</th>
+                            <th class="text-end">-</th>
+                            <th class="text-end fw-bold" id="totalMinQtyCell">0</th>
+                            <th class="text-end fw-bold text-primary" id="totalReqQtyCell">0</th>
+                            <th class="text-end fw-bold text-success" id="totalCostAmountCell">Rs. 0.00</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
     </div>
 </div>
 @endsection
@@ -648,6 +852,14 @@
                 </tr>
             `);
 
+            var $mWrap = $('#mobileDemandCardsList');
+            $mWrap.html(`
+                <div class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                    Fetching demand records...
+                </div>
+            `);
+
             var params = {
                 company_id:   $('#filterCompany').val(),
                 category_id:  $('#filterCategory').val(),
@@ -661,12 +873,15 @@
                     reportData = res.rows || [];
                     $('#reportGenDate').text(res.generated_on || '{{ date("d-m-Y H:i") }}');
                     renderTable(reportData);
+                    renderMobileCards(reportData);
                     updateKPIs(res.summary);
                 } else {
                     $tbody.html(`<tr><td colspan="10" class="text-center py-4 text-danger">Failed to load report.</td></tr>`);
+                    $mWrap.html(`<div class="text-center py-4 text-danger">Failed to load report.</div>`);
                 }
             }).fail(function(xhr) {
                 $tbody.html(`<tr><td colspan="10" class="text-center py-4 text-danger">Error loading report data.</td></tr>`);
+                $mWrap.html(`<div class="text-center py-4 text-danger">Error loading report data.</div>`);
             });
         }
 
@@ -746,6 +961,92 @@
             $('#totalCostAmountCell').text('Rs. ' + grandCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         }
 
+        // Render Mobile Cards View
+        function renderMobileCards(rows) {
+            var $wrap = $('#mobileDemandCardsList');
+            $wrap.empty();
+
+            var showCategory = $('#chkShowCategory').is(':checked');
+            var showCompany  = $('#chkShowCompany').is(':checked');
+
+            if (!rows || rows.length === 0) {
+                $wrap.html('<div class="text-center text-muted py-4"><i class="fas fa-check-circle text-success fs-3 d-block mb-2"></i>No items found matching the demand criteria.</div>');
+                $('#mobileGrandTotalCard').hide();
+                return;
+            }
+
+            var grandStock = 0;
+            var grandMin   = 0;
+            var grandReq   = 0;
+            var grandCost  = 0;
+
+            rows.forEach(function(row, idx) {
+                grandStock += parseFloat(row.stock) || 0;
+                grandMin   += parseFloat(row.min_qty) || 0;
+                grandReq   += parseFloat(row.req_qty) || 0;
+                grandCost  += parseFloat(row.cost_amount) || 0;
+
+                var stockDisplay = '';
+                if (row.stock < 0) {
+                    stockDisplay = `<span class="badge-deficit-pill">${row.formatted_stock || row.stock}</span>`;
+                } else if (row.stock === 0) {
+                    stockDisplay = `<span class="badge-zero-pill">${row.formatted_stock || 0}</span>`;
+                } else {
+                    stockDisplay = `<span class="fw-bold text-dark">${row.formatted_stock || row.stock}</span>`;
+                }
+
+                var reqDisplay = (row.req_qty > 0) 
+                    ? `<span class="badge-demand-pill">${row.formatted_req_qty || row.req_qty}</span>` 
+                    : `<span class="text-muted">0</span>`;
+
+                var searchTxt = (row.code || '') + ' ' + (row.item_name || '') + ' ' + (row.category || '') + ' ' + (row.company || '');
+
+                var cardHtml = `
+                    <div class="demand-mcard" data-search="${searchTxt.toLowerCase()}">
+                        <div class="d-flex justify-content-between align-items-start pb-2 border-bottom border-dashed mb-2" style="gap: 8px;">
+                            <div style="min-width: 0; max-width: 75%;">
+                                <span class="badge bg-light text-dark border font-monospace mb-1">${row.code || '-'}</span>
+                                <div class="fw-bold text-dark text-truncate" style="font-size: 0.95rem;">${row.item_name}</div>
+                                <div class="small text-muted mt-1">
+                                    ${showCategory && row.category ? `<span class="tag-neutral me-1">${row.category}</span>` : ''}
+                                    ${showCompany && row.company ? `<span class="tag-neutral">${row.company}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="text-end flex-shrink-0">
+                                <small class="text-muted d-block" style="font-size: 10px;">SR# ${idx + 1}</small>
+                                <div class="mt-1">${reqDisplay}</div>
+                            </div>
+                        </div>
+
+                        <div class="pt-1">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted small">Current Stock:</span>
+                                <div>${stockDisplay}</div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted small">Min / Threshold Qty:</span>
+                                <span class="font-monospace fw-semibold text-dark small">${row.formatted_min_qty || row.min_qty}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted small">Purchase Price:</span>
+                                <span class="font-monospace text-dark small">Rs. ${Number(row.p_price).toFixed(2)}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center pt-2 mt-1 border-top">
+                                <span class="fw-bold text-dark small">Cost Amount:</span>
+                                <span class="fw-bold text-success fs-6 font-monospace">Rs. ${Number(row.cost_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                $wrap.append(cardHtml);
+            });
+
+            $('#mobileGrandTotalCard').show();
+            $('#mGrandStock').text(grandStock.toLocaleString());
+            $('#mGrandReq').text(grandReq.toLocaleString());
+            $('#mGrandCost').text('Rs. ' + grandCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        }
+
         function updateKPIs(summary) {
             if (!summary) return;
             $('#kpiDemandItems').text(summary.demand_items_count ? summary.demand_items_count.toLocaleString() : 0);
@@ -753,6 +1054,30 @@
             $('#kpiDemandQty').text(summary.total_demand_qty ? summary.total_demand_qty.toLocaleString() : 0);
             $('#kpiCostAmount').text('Rs. ' + (summary.total_cost_amount ? Number(summary.total_cost_amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'));
         }
+
+        // Mobile View Switcher (Cards vs Table)
+        $('#btnShowCards').on('click', function() {
+            $(this).addClass('active');
+            $('#btnShowTable').removeClass('active');
+            $('#mobileDemandCardsWrapper').show();
+            $('#desktopTableWrapper').addClass('mobile-table-hidden').hide();
+        });
+
+        $('#btnShowTable').on('click', function() {
+            $(this).addClass('active');
+            $('#btnShowCards').removeClass('active');
+            $('#mobileDemandCardsWrapper').hide();
+            $('#desktopTableWrapper').removeClass('mobile-table-hidden').show();
+        });
+
+        // Mobile Live Search Filter
+        $('#mobileDemandSearch').on('keyup input', function() {
+            var val = $(this).val().toLowerCase().trim();
+            $('#mobileDemandCardsList .demand-mcard').each(function() {
+                var searchTxt = $(this).attr('data-search') || '';
+                $(this).toggle(searchTxt.indexOf(val) > -1);
+            });
+        });
 
         // Form Submit Filter
         $('#idrFilterForm').on('submit', function(e) {
@@ -768,12 +1093,14 @@
             $('#chkDemandOnly').prop('checked', true);
             $('#chkShowCategory').prop('checked', false);
             $('#chkShowCompany').prop('checked', false);
+            $('#mobileDemandSearch').val('');
             loadDemandReport();
         });
 
         // Column toggles
         $('#chkShowCategory, #chkShowCompany').on('change', function() {
             renderTable(reportData);
+            renderMobileCards(reportData);
         });
 
         $('#chkDemandOnly').on('change', function() {
