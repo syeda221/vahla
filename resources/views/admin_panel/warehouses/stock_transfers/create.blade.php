@@ -1,7 +1,86 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
-<div class="container-fluid">
+<style>
+    /* Zero horizontal scroll guarantee */
+    html, body {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+    .container-fluid {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 991.98px) {
+        .card-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+            padding: 14px 16px !important;
+        }
+        .card-header a.btn {
+            width: 100% !important;
+            justify-content: center !important;
+        }
+        .card-body.p-4 {
+            padding: 14px !important;
+        }
+        .table-responsive {
+            overflow-x: visible !important;
+            border: none !important;
+        }
+        #product_table,
+        #product_table thead,
+        #product_table tbody,
+        #product_table tr.product_row,
+        #product_table tr.product_row > td {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        #product_table thead {
+            display: none !important;
+        }
+        #product_table tr.product_row {
+            background: #ffffff !important;
+            border: 1.5px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            padding: 14px !important;
+            margin-bottom: 14px !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03) !important;
+        }
+        #product_table tr.product_row > td {
+            padding: 6px 0 !important;
+            border: none !important;
+            text-align: left !important;
+        }
+        #product_table tr.product_row > td.td-desktop-action {
+            display: none !important;
+        }
+        .bottom-actions-wrap {
+            flex-direction: column !important;
+            gap: 10px !important;
+        }
+        .action-btn-mobile {
+            width: 100% !important;
+            height: 42px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+    }
+
+    @media (min-width: 992px) {
+        .mobile-row-header {
+            display: none !important;
+        }
+    }
+</style>
+
+<div class="container-fluid px-2 px-md-4">
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
             <h5 class="mb-0 text-primary fw-bold">
@@ -11,7 +90,7 @@
                 <i class="fa fa-list me-1"></i> Transfer List
             </a>
         </div>
-        <div class="card-body p-4">
+        <div class="card-body p-3 p-md-4">
             @if (session('success'))
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
                     <i class="fa fa-check-circle me-1"></i> {{ session('success') }}
@@ -66,10 +145,12 @@
                     </div>
 
                     <div class="col-md-2 d-flex flex-column justify-content-center">
-                        <label class="form-label fw-bold text-muted">Shop Transfer</label>
-                        <div class="form-check form-switch mt-1">
-                            <input class="form-check-input" type="checkbox" name="to_shop" value="1" id="toShop" {{ old('to_shop') ? 'checked' : '' }} style="cursor: pointer; width: 2.5em; height: 1.3em;">
-                            <label class="form-check-label ms-2 fw-semibold" for="toShop" style="cursor: pointer;">To Shop</label>
+                        <div class="p-2 p-md-0 rounded bg-light border border-md-0 bg-md-transparent">
+                            <label class="form-label fw-bold text-muted mb-1" style="font-size: 0.85rem;">Shop Transfer</label>
+                            <div class="form-check form-switch mt-1 d-flex align-items-center">
+                                <input class="form-check-input" type="checkbox" name="to_shop" value="1" id="toShop" {{ old('to_shop') ? 'checked' : '' }} style="cursor: pointer; width: 2.5em; height: 1.3em;">
+                                <label class="form-check-label ms-2 fw-semibold" for="toShop" style="cursor: pointer;">To Shop</label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -94,7 +175,20 @@
                                 </thead>
                                 <tbody id="product_body">
                                     <tr class="product_row">
-                                        <td class="text-start ps-3">
+                                        <td class="text-start ps-md-3">
+                                            <!-- Mobile Card Top Bar -->
+                                            <div class="mobile-row-header d-flex d-lg-none align-items-center justify-content-between pb-2 mb-2 border-bottom">
+                                                <span class="badge bg-light text-dark border fw-bold px-2 py-1" style="font-size: 0.8rem;">
+                                                    <i class="fa fa-box text-primary me-1"></i> Item #<span class="row-index">1</span>
+                                                </span>
+                                                <button type="button" class="btn btn-sm btn-outline-danger remove-row" title="Remove Row">
+                                                    <i class="fa fa-trash"></i> Remove
+                                                </button>
+                                            </div>
+
+                                            <label class="d-lg-none form-label small fw-bold text-muted mb-1 text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.4px;">
+                                                <i class="fa fa-box me-1 text-primary"></i> Product / Variant
+                                            </label>
                                             <select name="product_id[]" class="form-select form-control product-select" required>
                                                 <option value="">-- Select Source Warehouse First --</option>
                                             </select>
@@ -105,16 +199,22 @@
                                             </div>
                                         </td>
                                         <td>
+                                            <label class="d-lg-none form-label small fw-bold text-muted mb-1 text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.4px;">
+                                                <i class="fa fa-layer-group me-1 text-secondary"></i> Available Stock
+                                            </label>
                                             <input type="number" name="available_stock[]" class="form-control text-center stock" readonly placeholder="0">
                                             <small class="stock-unit-label text-muted d-block mt-1" style="font-size: 0.75rem;"></small>
                                         </td>
                                         <td>
+                                            <label class="d-lg-none form-label small fw-bold text-muted mb-1 text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.4px;">
+                                                <i class="fa fa-hashtag me-1 text-primary"></i> Transfer Quantity
+                                            </label>
                                             <input type="number" name="quantity[]" class="form-control text-center quantity" required min="1" placeholder="Enter Qty">
                                             <div class="invalid-feedback stock-error text-start" style="display:none; font-size: 0.82rem;">
                                                 Insufficient stock!
                                             </div>
                                         </td>
-                                        <td>
+                                        <td class="td-desktop-action">
                                             <button type="button" class="btn btn-outline-danger btn-sm remove-row" title="Remove Row">
                                                 <i class="fa fa-trash"></i>
                                             </button>
@@ -131,9 +231,9 @@
                     <textarea name="remarks" class="form-control" rows="2" placeholder="Optional transfer notes...">{{ old('remarks') }}</textarea>
                 </div>
 
-                <div class="d-flex justify-content-end gap-2">
-                    <a href="{{ route('stock_transfers.index') }}" class="btn btn-secondary px-4">Cancel</a>
-                    <button type="submit" class="btn btn-success px-4" id="submitBtn">
+                <div class="d-flex justify-content-end gap-2 bottom-actions-wrap">
+                    <a href="{{ route('stock_transfers.index') }}" class="btn btn-secondary px-4 action-btn-mobile">Cancel</a>
+                    <button type="submit" class="btn btn-success px-4 action-btn-mobile" id="submitBtn">
                         <i class="fa fa-check me-1"></i> Transfer Stock
                     </button>
                 </div>
@@ -148,6 +248,12 @@
 $(document).ready(function() {
     // availableProducts: array of items (one per variant) returned by AJAX
     let availableProducts = [];
+
+    function updateRowIndices() {
+        $('#product_body tr.product_row').each(function(idx) {
+            $(this).find('.row-index').text(idx + 1);
+        });
+    }
 
     // ─── Helper: unique key to detect duplicates (product_id + variant_key) ───
     function itemUniqueKey(p) {
@@ -428,9 +534,23 @@ $(document).ready(function() {
 
     // ─── Add Row ──────────────────────────────────────────────────────────────
     $('#add_row_btn').on('click', function() {
+        let rowCount = $('#product_body tr.product_row').length + 1;
         let row = `
             <tr class="product_row">
-                <td class="text-start ps-3">
+                <td class="text-start ps-md-3">
+                    <!-- Mobile Card Top Bar -->
+                    <div class="mobile-row-header d-flex d-lg-none align-items-center justify-content-between pb-2 mb-2 border-bottom">
+                        <span class="badge bg-light text-dark border fw-bold px-2 py-1" style="font-size: 0.8rem;">
+                            <i class="fa fa-box text-primary me-1"></i> Item #<span class="row-index">${rowCount}</span>
+                        </span>
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-row" title="Remove Row">
+                            <i class="fa fa-trash"></i> Remove
+                        </button>
+                    </div>
+
+                    <label class="d-lg-none form-label small fw-bold text-muted mb-1 text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.4px;">
+                        <i class="fa fa-box me-1 text-primary"></i> Product / Variant
+                    </label>
                     <select name="product_id[]" class="form-select form-control product-select" required>
                         ${buildRowOptions()}
                     </select>
@@ -441,16 +561,22 @@ $(document).ready(function() {
                     </div>
                 </td>
                 <td>
+                    <label class="d-lg-none form-label small fw-bold text-muted mb-1 text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.4px;">
+                        <i class="fa fa-layer-group me-1 text-secondary"></i> Available Stock
+                    </label>
                     <input type="number" name="available_stock[]" class="form-control text-center stock" readonly placeholder="0">
                     <small class="stock-unit-label text-muted d-block mt-1" style="font-size: 0.75rem;"></small>
                 </td>
                 <td>
+                    <label class="d-lg-none form-label small fw-bold text-muted mb-1 text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.4px;">
+                        <i class="fa fa-hashtag me-1 text-primary"></i> Transfer Quantity
+                    </label>
                     <input type="number" name="quantity[]" class="form-control text-center quantity" required min="1" placeholder="Enter Qty">
                     <div class="invalid-feedback stock-error text-start" style="display:none; font-size: 0.82rem;">
                         Insufficient stock!
                     </div>
                 </td>
-                <td>
+                <td class="td-desktop-action">
                     <button type="button" class="btn btn-outline-danger btn-sm remove-row" title="Remove Row">
                         <i class="fa fa-trash"></i>
                     </button>
@@ -458,6 +584,7 @@ $(document).ready(function() {
             </tr>
         `;
         $('#product_body').append(row);
+        updateRowIndices();
         validateForm();
     });
 
@@ -465,6 +592,7 @@ $(document).ready(function() {
     $(document).on('click', '.remove-row', function() {
         if ($('#product_body tr').length > 1) {
             $(this).closest('tr').remove();
+            updateRowIndices();
         } else {
             let $row = $(this).closest('tr');
             $row.find('select').val('');

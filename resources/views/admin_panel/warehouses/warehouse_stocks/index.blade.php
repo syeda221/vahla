@@ -31,6 +31,8 @@
         padding: 16px 20px;
         background: var(--wh-bg);
         min-height: calc(100vh - 75px);
+        width: 100%;
+        box-sizing: border-box;
     }
 
     /* Modern ERP Header */
@@ -344,6 +346,167 @@
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 36px;
     }
+
+    /* Desktop View Constraints (min-width: 992px) */
+    @media (min-width: 992px) {
+        #mobileFlatProductsWrapper,
+        .mobile-view-toggle {
+            display: none !important;
+        }
+        #desktopFlatTableWrapper {
+            display: block !important;
+        }
+    }
+
+    /* Tablet & Mobile (max-width: 991.98px) */
+    @media (max-width: 991.98px) {
+        html, body {
+            max-width: 100vw !important;
+            width: 100% !important;
+            overflow-x: hidden !important;
+            position: relative;
+        }
+        .wh-page-container {
+            padding: 12px 8px !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
+        }
+        .wh-header-card {
+            padding: 10px 12px !important;
+            margin-bottom: 12px !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+        }
+        .wh-header-card .btn {
+            width: 100% !important;
+            justify-content: center !important;
+        }
+        .wh-stat-card {
+            padding: 10px 12px !important;
+            gap: 8px !important;
+            min-width: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+        }
+        .wh-stat-icon {
+            width: 32px !important;
+            height: 32px !important;
+            font-size: 0.95rem !important;
+        }
+        .wh-stat-value {
+            font-size: 1.05rem !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+        .wh-stat-label {
+            font-size: 0.62rem !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+        .wh-stat-sub {
+            font-size: 0.65rem !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
+        .filter-bar-card {
+            padding: 10px 12px !important;
+            margin-bottom: 12px !important;
+        }
+        .filter-bar-card > div {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+        }
+        .filter-bar-card .nav-tab-pill {
+            flex: 1 !important;
+            justify-content: center !important;
+            text-align: center !important;
+            padding: 8px 12px !important;
+        }
+        .filter-bar-card .position-relative {
+            width: 100% !important;
+        }
+
+        /* Warehouse Header on Mobile: Responsive Stacking */
+        .warehouse-header-btn {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            padding: 10px 12px !important;
+            gap: 8px !important;
+        }
+        .warehouse-header-btn > .d-flex:first-child {
+            padding-right: 0 !important;
+            width: 100% !important;
+        }
+        .warehouse-header-btn > div:last-child {
+            width: 100% !important;
+            border-top: 1px dashed #e2e8f0 !important;
+            padding-top: 6px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+        }
+        .warehouse-header-btn > div:last-child > div:first-child {
+            text-align: left !important;
+            padding-right: 8px !important;
+            margin-right: 8px !important;
+            min-width: auto !important;
+            border-right: 1px solid #e2e8f0 !important;
+            flex: 1 !important;
+        }
+        .warehouse-header-btn > div:last-child > div:nth-child(2) {
+            text-align: left !important;
+            padding-right: 8px !important;
+            margin-right: 8px !important;
+            min-width: auto !important;
+            flex: 1 !important;
+        }
+        .warehouse-content-body {
+            padding: 10px 8px !important;
+        }
+
+        /* Flat Products Mobile */
+        #desktopFlatTableWrapper.mobile-table-hidden {
+            display: none !important;
+        }
+        #desktopFlatTableWrapper {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+        }
+        #desktopFlatTableWrapper .table-responsive {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+        }
+        #flatProductsTable {
+            min-width: 650px !important;
+            white-space: nowrap !important;
+        }
+        .product-mcard {
+            word-break: break-word !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Modals */
+        .modal-dialog {
+            margin: 10px !important;
+            max-width: calc(100vw - 20px) !important;
+        }
+        .modal-body {
+            padding: 14px !important;
+            max-height: 75vh !important;
+            overflow-y: auto !important;
+        }
+    }
 </style>
 
 <div class="wh-page-container">
@@ -371,7 +534,7 @@
     <!-- 5 Summary KPI Cards (Responsive ERP Design) -->
     <div class="row g-2 mb-3">
         <!-- Card 1: TOTAL PRODUCTS -->
-        <div class="col-xl col-md-4 col-sm-6">
+        <div class="col-6 col-md-4 col-xl">
             <div class="wh-stat-card">
                 <div class="wh-stat-icon" style="background: var(--wh-primary-lt); color: var(--wh-primary);">
                     <i class="fas fa-boxes"></i>
@@ -385,7 +548,7 @@
         </div>
 
         <!-- Card 2: TOTAL LIVE STOCK -->
-        <div class="col-xl col-md-4 col-sm-6">
+        <div class="col-6 col-md-4 col-xl">
             <div class="wh-stat-card" style="border-left: 3px solid var(--wh-success);">
                 <div class="wh-stat-icon" style="background: var(--wh-success-lt); color: var(--wh-success);">
                     <i class="fas fa-layer-group"></i>
@@ -401,7 +564,7 @@
         </div>
 
         <!-- Card 3: CARTONS & BANDALS -->
-        <div class="col-xl col-md-4 col-sm-6">
+        <div class="col-6 col-md-4 col-xl">
             <div class="wh-stat-card" style="border-left: 3px solid var(--wh-warning);">
                 <div class="wh-stat-icon" style="background: var(--wh-warning-lt); color: var(--wh-warning);">
                     <i class="fas fa-box-open"></i>
@@ -412,14 +575,14 @@
                         {{ number_format($totalCartonBoxes) }} <span class="wh-unit">Boxes</span>
                     </div>
                     <div class="wh-stat-sub text-truncate" title="+ {{ number_format($totalCartonLoose) }} loose pcs ({{ number_format($totalCartonPieces) }} pcs total)">
-                        + {{ number_format($totalCartonLoose) }} loose ({{ number_format($totalCartonPieces) }} pcs)
+                        + {{ number_format($totalCartonLoose) }} loose
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Card 4: PIECES ONLY STOCK -->
-        <div class="col-xl col-md-4 col-sm-6">
+        <div class="col-6 col-md-4 col-xl">
             <div class="wh-stat-card" style="border-left: 3px solid var(--wh-info);">
                 <div class="wh-stat-icon" style="background: var(--wh-info-lt); color: var(--wh-info);">
                     <i class="fas fa-cube"></i>
@@ -435,7 +598,7 @@
         </div>
 
         <!-- Card 5: ACTIVE WAREHOUSES -->
-        <div class="col-xl col-md-4 col-sm-6">
+        <div class="col-12 col-md-4 col-xl">
             <div class="wh-stat-card" style="border-left: 3px solid var(--wh-purple);">
                 <div class="wh-stat-icon" style="background: var(--wh-purple-lt); color: var(--wh-purple);">
                     <i class="fas fa-warehouse"></i>
@@ -496,8 +659,8 @@
                         </div>
                         <div style="min-width: 0;">
                             <div class="fw-bold mb-0 text-truncate" style="font-size: 0.92rem; color: #1e293b;">{{ $displayName }}</div>
-                            <div class="small" style="color: #64748b; font-size: 0.76rem;">
-                                <i class="fas fa-map-marker-alt text-warning me-1"></i> {{ $locationText }}
+                            <div class="small text-truncate" style="color: #64748b; font-size: 0.76rem;">
+                                <i class="fas fa-map-marker-alt text-danger me-1"></i> {{ $locationText }}
                             </div>
                         </div>
                     </div>
@@ -557,22 +720,22 @@
                                                 <div class="d-flex align-items-center">
                                                     @if($item['product_image'])
                                                         <img src="{{ $item['product_image'] }}"
-                                                             class="rounded me-2 border"
+                                                             class="rounded me-2 border flex-shrink-0"
                                                              style="width: 36px; height: 36px; object-fit: cover;">
                                                     @else
-                                                        <div class="rounded me-2 bg-secondary d-flex align-items-center justify-content-center text-white fw-bold"
+                                                        <div class="rounded me-2 bg-secondary d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
                                                              style="width: 36px; height: 36px; font-size: 11px;">
                                                             IMG
                                                         </div>
                                                     @endif
-                                                    <div>
-                                                        <div class="fw-bold text-dark">{{ $item['product_name'] }}</div>
-                                                        <div class="small text-muted">{{ $item['item_code'] }}</div>
+                                                    <div style="min-width: 0;">
+                                                        <div class="fw-bold text-dark text-truncate">{{ $item['product_name'] }}</div>
+                                                        <div class="small text-muted text-truncate">{{ $item['item_code'] }}</div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td>
-                                                <span class="badge border" style="background: #f8fafc; color: #1e293b; font-size: 0.82rem; font-weight: 600; padding: 5px 10px; border-radius: 6px;">
+                                                <span class="badge border text-truncate" style="background: #f8fafc; color: #1e293b; font-size: 0.82rem; font-weight: 600; padding: 5px 10px; border-radius: 6px;">
                                                     <i class="fas fa-tag me-1 text-primary small"></i>{{ $item['variant_name'] }}
                                                 </span>
                                             </td>
@@ -633,106 +796,190 @@
         @endforelse
     </div>
 
-    <!-- MAIN VIEW 2: FLAT PRODUCTS VIEW (Optional Tab) -->
+    <!-- MAIN VIEW 2: FLAT PRODUCTS VIEW -->
     <div id="flatProductsContainer">
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden" style="border: 1px solid var(--wh-border) !important;">
             <div class="card-header bg-white py-2 px-3 d-flex justify-content-between align-items-center" style="border-bottom: 1px solid var(--wh-border);">
                 <div class="d-flex align-items-center gap-2">
                     <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--wh-primary); display: inline-block;"></span>
-                    <h6 class="mb-0 fw-bold" style="font-size: 0.92rem; color: var(--wh-text);">All Assigned Product Variants Across Warehouses</h6>
+                    <h6 class="mb-0 fw-bold" style="font-size: 0.92rem; color: var(--wh-text);">All Assigned Product Variants</h6>
                 </div>
                 <span class="badge" style="background: var(--wh-primary-lt); color: var(--wh-primary); font-size: 0.76rem; font-weight: 700; border: 1px solid #c7d2fe; padding: 4px 10px; border-radius: 6px;">
                     {{ count($groupedAssignedItems) }} Records
                 </span>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" id="flatProductsTable">
-                        <thead style="background: #f8fafc; border-bottom: 1.5px solid var(--wh-border);">
-                            <tr>
-                                <th class="text-uppercase fw-bold px-3 py-2" style="font-size: 0.72rem; color: #64748b; width: 45px;">#</th>
-                                <th class="text-uppercase fw-bold py-2" style="font-size: 0.72rem; color: #64748b; min-width: 190px;">Product</th>
-                                <th class="text-uppercase fw-bold py-2" style="font-size: 0.72rem; color: #64748b; min-width: 140px;">Variant</th>
-                                <th class="text-uppercase fw-bold py-2" style="font-size: 0.72rem; color: #64748b; min-width: 200px;">Locations / Warehouses</th>
-                                <th class="text-uppercase fw-bold py-2" style="font-size: 0.72rem; color: #64748b; min-width: 110px;">Price</th>
-                                <th class="text-uppercase fw-bold text-center py-2" style="font-size: 0.72rem; color: #64748b; min-width: 170px;">Total Quantity</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($groupedAssignedItems as $item)
-                                @php
-                                    $boxes = rtrim(rtrim(number_format((float) $item['total_boxes'], 2), '0'), '.');
-                                    $pieces = number_format((float) $item['total_pieces']);
-                                    $price = number_format((float) ($item['price'] ?? 0), 2);
-                                    $locCount = $item['locations_count'];
-                                @endphp
-                                <tr>
-                                    <td class="px-3">{{ $loop->iteration }}</td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            @if ($item['product_image'])
-                                                <img src="{{ $item['product_image'] }}"
-                                                     class="rounded me-2 border"
-                                                     style="width: 34px; height: 34px; object-fit: cover;">
-                                            @else
-                                                <div class="rounded me-2 bg-secondary d-flex align-items-center justify-content-center text-white"
-                                                     style="width: 34px; height: 34px; font-size: 10px;">IMG</div>
-                                            @endif
-                                            <div>
-                                                <div class="fw-bold text-dark">{{ $item['product_name'] }}</div>
-                                                <div class="small text-muted">{{ $item['item_code'] }}</div>
-                                            </div>
+            
+            <div class="card-body p-2 p-md-0">
+                {{-- Mobile View Switcher for Products View --}}
+                <div class="d-flex justify-content-between align-items-center mobile-view-toggle pb-2 mb-2 border-bottom">
+                    <span class="small text-muted font-weight-bold">
+                        <i class="fas fa-th-list me-1"></i> View Mode
+                    </span>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-primary active" id="btnShowProdCards">
+                            <i class="fas fa-th-large me-1"></i> Cards
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" id="btnShowProdTable">
+                            <i class="fas fa-table me-1"></i> Table
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Mobile Products Cards View --}}
+                <div id="mobileFlatProductsWrapper">
+                    <div class="mobile-products-list">
+                        @foreach ($groupedAssignedItems as $item)
+                            @php
+                                $boxes = rtrim(rtrim(number_format((float) $item['total_boxes'], 2), '0'), '.');
+                                $pieces = number_format((float) $item['total_pieces']);
+                                $price = number_format((float) ($item['price'] ?? 0), 2);
+                                $locCount = $item['locations_count'];
+                                $totFmt = $item['total_formatted'] ?? null;
+                            @endphp
+                            <div class="product-mcard mb-2 p-3 bg-white border rounded-3 shadow-sm" data-search="{{ strtolower($item['product_name'] . ' ' . $item['item_code'] . ' ' . $item['variant_name']) }}">
+                                <div class="d-flex align-items-center mb-2 pb-2 border-bottom">
+                                    @if ($item['product_image'])
+                                        <img src="{{ $item['product_image'] }}" class="rounded me-2 border flex-shrink-0" style="width: 40px; height: 40px; object-fit: cover;">
+                                    @else
+                                        <div class="rounded me-2 bg-secondary d-flex align-items-center justify-content-center text-white flex-shrink-0" style="width: 40px; height: 40px; font-size: 11px;">IMG</div>
+                                    @endif
+                                    <div style="min-width: 0; flex: 1;">
+                                        <div class="fw-bold text-dark text-truncate">{{ $item['product_name'] }}</div>
+                                        <div class="small text-muted d-flex align-items-center gap-1 flex-wrap">
+                                            <code>{{ $item['item_code'] }}</code>
+                                            <span>&bull;</span>
+                                            <span class="badge border bg-light text-dark">{{ $item['variant_name'] }}</span>
                                         </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge border" style="background: #f8fafc; color: #1e293b; font-size: 0.82rem; font-weight: 600; padding: 5px 10px; border-radius: 6px;">
-                                            <i class="fas fa-tag me-1 text-primary small"></i>{{ $item['variant_name'] }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button type="button" 
-                                                class="btn btn-sm shadow-sm d-inline-flex align-items-center gap-1"
-                                                data-toggle="modal"
-                                                data-target="#warehouseLocationsModal"
-                                                onclick="openWarehouseLocationsModal('{{ $item['row_key'] }}')"
-                                                style="background: #eef2ff; color: #4338ca; border: 1.5px solid #c7d2fe; font-size: 0.8rem; font-weight: 700; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s;"
-                                                onmouseover="this.style.background='#4338ca'; this.style.color='#fff';"
-                                                onmouseout="this.style.background='#eef2ff'; this.style.color='#4338ca';">
-                                            <i class="fas fa-map-marker-alt text-danger"></i>
-                                            <span>View Locations</span>
-                                            <span class="badge rounded-pill bg-primary text-white ms-1" style="font-size: 0.72rem; padding: 2px 7px;">{{ $locCount }}</span>
-                                        </button>
-                                    </td>
-                                    <td>
-                                        <span class="fw-bold text-dark" style="font-size: 0.92rem;">Rs. {{ $price }}</span>
-                                    </td>
-                                    <td class="text-center">
-                                        @php
-                                            $totFmt = $item['total_formatted'] ?? null;
-                                        @endphp
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted small">Sale Price:</span>
+                                    <span class="fw-bold text-dark">Rs. {{ $price }}</span>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="text-muted small">Total Quantity:</span>
+                                    <div>
                                         @if(!empty($item['is_piece_only']))
-                                            <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 800; padding: 7px 16px; border-radius: 8px; font-size: 0.88rem; border: 1px solid #bbf7d0;">
-                                                <i class="fas fa-layer-group me-1 text-success"></i> {{ $totFmt['main'] ?? ($pieces . ' Pcs') }}
-                                            </span>
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle fw-bold">{{ $totFmt['main'] ?? ($pieces . ' Pcs') }}</span>
                                         @elseif($totFmt)
-                                            <div class="fw-bold" style="color: #047857; font-size: 0.95rem; line-height: 1.2;">
-                                                {{ $totFmt['main'] }}
-                                            </div>
+                                            <span class="fw-bold text-success">{{ $totFmt['main'] }}</span>
                                             @if(!empty($totFmt['sub']))
-                                                <div class="text-muted" style="font-size: 0.75rem; line-height: 1.2; margin-top: 2px;">
-                                                    {{ $totFmt['sub'] }}
-                                                </div>
+                                                <small class="text-muted d-block text-end">{{ $totFmt['sub'] }}</small>
                                             @endif
                                         @else
-                                            <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 800; padding: 7px 16px; border-radius: 8px; font-size: 0.88rem; border: 1px solid #bbf7d0;">
-                                                {{ $pieces }} Pcs
-                                            </span>
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle fw-bold">{{ $pieces }} Pcs</span>
                                         @endif
-                                    </td>
+                                    </div>
+                                </div>
+
+                                <div class="pt-2 border-top d-flex justify-content-end">
+                                    <button type="button" 
+                                            class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                                            data-toggle="modal"
+                                            data-target="#warehouseLocationsModal"
+                                            onclick="openWarehouseLocationsModal('{{ $item['row_key'] }}')">
+                                        <i class="fas fa-map-marker-alt text-danger"></i>
+                                        <span>Locations</span>
+                                        <span class="badge rounded-pill bg-primary text-white ms-1">{{ $locCount }}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                {{-- Desktop Flat Table View --}}
+                <div id="desktopFlatTableWrapper" class="mobile-table-hidden">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="flatProductsTable">
+                            <thead style="background: #f8fafc; border-bottom: 1.5px solid var(--wh-border);">
+                                <tr>
+                                    <th class="text-uppercase fw-bold px-3 py-2" style="font-size: 0.72rem; color: #64748b; width: 45px;">#</th>
+                                    <th class="text-uppercase fw-bold py-2" style="font-size: 0.72rem; color: #64748b; min-width: 190px;">Product</th>
+                                    <th class="text-uppercase fw-bold py-2" style="font-size: 0.72rem; color: #64748b; min-width: 140px;">Variant</th>
+                                    <th class="text-uppercase fw-bold py-2" style="font-size: 0.72rem; color: #64748b; min-width: 200px;">Locations / Warehouses</th>
+                                    <th class="text-uppercase fw-bold py-2" style="font-size: 0.72rem; color: #64748b; min-width: 110px;">Price</th>
+                                    <th class="text-uppercase fw-bold text-center py-2" style="font-size: 0.72rem; color: #64748b; min-width: 170px;">Total Quantity</th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach ($groupedAssignedItems as $item)
+                                    @php
+                                        $boxes = rtrim(rtrim(number_format((float) $item['total_boxes'], 2), '0'), '.');
+                                        $pieces = number_format((float) $item['total_pieces']);
+                                        $price = number_format((float) ($item['price'] ?? 0), 2);
+                                        $locCount = $item['locations_count'];
+                                    @endphp
+                                    <tr>
+                                        <td class="px-3">{{ $loop->iteration }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                @if ($item['product_image'])
+                                                    <img src="{{ $item['product_image'] }}"
+                                                         class="rounded me-2 border flex-shrink-0"
+                                                         style="width: 34px; height: 34px; object-fit: cover;">
+                                                @else
+                                                    <div class="rounded me-2 bg-secondary d-flex align-items-center justify-content-center text-white flex-shrink-0"
+                                                         style="width: 34px; height: 34px; font-size: 10px;">IMG</div>
+                                                @endif
+                                                <div style="min-width: 0;">
+                                                    <div class="fw-bold text-dark text-truncate">{{ $item['product_name'] }}</div>
+                                                    <div class="small text-muted text-truncate">{{ $item['item_code'] }}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge border text-truncate" style="background: #f8fafc; color: #1e293b; font-size: 0.82rem; font-weight: 600; padding: 5px 10px; border-radius: 6px;">
+                                                <i class="fas fa-tag me-1 text-primary small"></i>{{ $item['variant_name'] }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <button type="button" 
+                                                    class="btn btn-sm shadow-sm d-inline-flex align-items-center gap-1"
+                                                    data-toggle="modal"
+                                                    data-target="#warehouseLocationsModal"
+                                                    onclick="openWarehouseLocationsModal('{{ $item['row_key'] }}')"
+                                                    style="background: #eef2ff; color: #4338ca; border: 1.5px solid #c7d2fe; font-size: 0.8rem; font-weight: 700; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s;"
+                                                    onmouseover="this.style.background='#4338ca'; this.style.color='#fff';"
+                                                    onmouseout="this.style.background='#eef2ff'; this.style.color='#4338ca';">
+                                                <i class="fas fa-map-marker-alt text-danger"></i>
+                                                <span>View Locations</span>
+                                                <span class="badge rounded-pill bg-primary text-white ms-1" style="font-size: 0.72rem; padding: 2px 7px;">{{ $locCount }}</span>
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <span class="fw-bold text-dark" style="font-size: 0.92rem;">Rs. {{ $price }}</span>
+                                        </td>
+                                        <td class="text-center">
+                                            @php
+                                                $totFmt = $item['total_formatted'] ?? null;
+                                            @endphp
+                                            @if(!empty($item['is_piece_only']))
+                                                <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 800; padding: 7px 16px; border-radius: 8px; font-size: 0.88rem; border: 1px solid #bbf7d0;">
+                                                    <i class="fas fa-layer-group me-1 text-success"></i> {{ $totFmt['main'] ?? ($pieces . ' Pcs') }}
+                                                </span>
+                                            @elseif($totFmt)
+                                                <div class="fw-bold" style="color: #047857; font-size: 0.95rem; line-height: 1.2;">
+                                                    {{ $totFmt['main'] }}
+                                                </div>
+                                                @if(!empty($totFmt['sub']))
+                                                    <div class="text-muted" style="font-size: 0.75rem; line-height: 1.2; margin-top: 2px;">
+                                                        {{ $totFmt['sub'] }}
+                                                    </div>
+                                                @endif
+                                            @else
+                                                <span class="badge" style="background: #dcfce7; color: #15803d; font-weight: 800; padding: 7px 16px; border-radius: 8px; font-size: 0.88rem; border: 1px solid #bbf7d0;">
+                                                    {{ $pieces }} Pcs
+                                                </span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -746,7 +993,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold" id="modalTitle">Add Stock</h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="opacity: 0.9; font-size: 1.5rem; background: transparent; border: none;">
+                <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="opacity: 0.9; font-size: 1.5rem; background: transparent; border: none;">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
@@ -831,20 +1078,20 @@
     <div class="modal-dialog modal-dialog-centered" style="max-width: 860px; width: 95%;">
         <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden; background: #ffffff;">
             <!-- Header (Deep Navy Blue) -->
-            <div class="modal-header py-3 px-4 border-0" style="background: #1c3554;">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 46px; height: 46px; background: #facc15; flex-shrink: 0;">
-                        <i class="fas fa-warehouse" style="color: #1e293b; font-size: 1.35rem;"></i>
+            <div class="modal-header py-3 px-3 px-md-4 border-0" style="background: #1c3554;">
+                <div class="d-flex align-items-center gap-3" style="min-width: 0; max-width: 85%;">
+                    <div class="rounded-3 d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 42px; height: 42px; background: #facc15;">
+                        <i class="fas fa-warehouse" style="color: #1e293b; font-size: 1.2rem;"></i>
                     </div>
-                    <div>
-                        <h5 class="modal-title text-white fw-bold text-uppercase mb-1" id="wh_loc_product_name" style="font-size: 1.15rem; letter-spacing: 0.3px;">
+                    <div style="min-width: 0;">
+                        <h5 class="modal-title text-white fw-bold text-uppercase mb-1 text-truncate" id="wh_loc_product_name" style="font-size: 1.05rem; letter-spacing: 0.3px;">
                             Product Name
                         </h5>
                         <div class="d-flex align-items-center gap-2 flex-wrap" id="wh_loc_subtitle_wrap">
                             <span class="badge" id="wh_loc_product_code" style="background: #284a75; color: #fff; font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: 4px;">
                                 ITEM-0000
                             </span>
-                            <span id="wh_loc_product_meta" style="color: #94b8e8; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">
+                            <span id="wh_loc_product_meta" class="text-truncate" style="color: #94b8e8; font-size: 0.78rem; font-weight: 600; text-transform: uppercase;">
                                 • PIECES
                             </span>
                         </div>
@@ -855,11 +1102,11 @@
                 </button>
             </div>
 
-            <div class="modal-body p-4" style="background: #ffffff;">
+            <div class="modal-body p-3 p-md-4" style="background: #ffffff;">
                 <!-- 3 Top Stat Cards -->
-                <div class="row g-3 mb-4">
+                <div class="row g-2 g-md-3 mb-3 mb-md-4">
                     <!-- Total Available Stock -->
-                    <div class="col-md-4 col-12">
+                    <div class="col-12 col-md-4">
                         <div class="p-3 rounded-3" style="background: #f0fdf4; border: 1.5px solid #bbf7d0;">
                             <div class="text-uppercase fw-bold mb-1" style="color: #16a34a; font-size: 0.72rem; letter-spacing: 0.5px;">
                                 Total Available Stock
@@ -870,23 +1117,23 @@
                         </div>
                     </div>
                     <!-- Sale Price -->
-                    <div class="col-md-4 col-6">
+                    <div class="col-6 col-md-4">
                         <div class="p-3 rounded-3" style="background: #eff6ff; border: 1.5px solid #bfdbfe;">
                             <div class="text-uppercase fw-bold mb-1" style="color: #2563eb; font-size: 0.72rem; letter-spacing: 0.5px;">
                                 Sale Price
                             </div>
-                            <div class="fw-bold" id="wh_loc_card_price" style="color: #1d4ed8; font-size: 1.25rem; line-height: 1.2;">
+                            <div class="fw-bold" id="wh_loc_card_price" style="color: #1d4ed8; font-size: 1.15rem; line-height: 1.2;">
                                 Rs 0.00
                             </div>
                         </div>
                     </div>
                     <!-- Total Stock Value -->
-                    <div class="col-md-4 col-6">
+                    <div class="col-6 col-md-4">
                         <div class="p-3 rounded-3" style="background: #ffffff; border: 1.5px solid #e2e8f0;">
                             <div class="text-uppercase fw-bold mb-1" style="color: #475569; font-size: 0.72rem; letter-spacing: 0.5px;">
                                 Total Stock Value
                             </div>
-                            <div class="fw-bold" id="wh_loc_card_value" style="color: #0f172a; font-size: 1.25rem; line-height: 1.2;">
+                            <div class="fw-bold" id="wh_loc_card_value" style="color: #0f172a; font-size: 1.15rem; line-height: 1.2;">
                                 Rs 0.00
                             </div>
                         </div>
@@ -896,25 +1143,25 @@
                 <!-- Section Header -->
                 <div class="d-flex align-items-center justify-content-between mb-2 px-1">
                     <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-map-marker-alt" style="color: #2563eb; font-size: 1rem;"></i>
-                        <span style="font-weight: 800; color: #1e3a8a; font-size: 0.92rem; letter-spacing: 0.5px;">
+                        <i class="fas fa-map-marker-alt text-primary" style="font-size: 0.95rem;"></i>
+                        <span style="font-weight: 800; color: #1e3a8a; font-size: 0.88rem; letter-spacing: 0.5px;">
                             STOCK BREAKDOWN BY WAREHOUSE
                         </span>
                     </div>
-                    <span class="badge rounded-pill text-white" id="wh_loc_pill_count" style="background-color: #2563eb; font-size: 0.8rem; padding: 6px 14px; font-weight: 700;">
+                    <span class="badge rounded-pill text-white" id="wh_loc_pill_count" style="background-color: #2563eb; font-size: 0.78rem; padding: 5px 12px; font-weight: 700;">
                         0 Locations
                     </span>
                 </div>
 
                 <!-- Warehouses Table -->
-                <div class="border rounded-3" style="overflow: hidden; border-color: #e2e8f0 !important;">
-                    <table class="table align-middle mb-0" style="font-size: 0.86rem;">
+                <div class="border rounded-3 table-responsive" style="overflow-x: auto; border-color: #e2e8f0 !important;">
+                    <table class="table align-middle mb-0" style="min-width: 480px; font-size: 0.86rem;">
                         <thead style="background: #f8fafc; border-bottom: 1.5px solid #e2e8f0;">
                             <tr>
-                                <th style="width: 50px; color: #64748b; font-size: 0.76rem; font-weight: 700; padding: 12px 16px;">#</th>
-                                <th style="color: #64748b; font-size: 0.76rem; font-weight: 700; padding: 12px 16px;">WAREHOUSE / LOCATION</th>
-                                <th class="text-center" style="color: #64748b; font-size: 0.76rem; font-weight: 700; padding: 12px 16px;">AVAILABLE STOCK</th>
-                                <th class="text-end" style="color: #64748b; font-size: 0.76rem; font-weight: 700; padding: 12px 16px;">STOCK VALUE</th>
+                                <th style="width: 50px; color: #64748b; font-size: 0.74rem; font-weight: 700; padding: 10px 14px;">#</th>
+                                <th style="color: #64748b; font-size: 0.74rem; font-weight: 700; padding: 10px 14px;">WAREHOUSE / LOCATION</th>
+                                <th class="text-center" style="color: #64748b; font-size: 0.74rem; font-weight: 700; padding: 10px 14px;">AVAILABLE STOCK</th>
+                                <th class="text-end" style="color: #64748b; font-size: 0.74rem; font-weight: 700; padding: 10px 14px;">STOCK VALUE</th>
                             </tr>
                         </thead>
                         <tbody id="wh_loc_table_body">
@@ -924,7 +1171,7 @@
                 </div>
             </div>
             
-            <div class="modal-footer py-2 px-4 border-top" style="background: #f8fafc;">
+            <div class="modal-footer py-2 px-3 px-md-4 border-top" style="background: #f8fafc;">
                 <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
@@ -969,8 +1216,23 @@
             });
 
             // Live Search Filter
-            $('#liveSearchInput').on('keyup', function() {
+            $('#liveSearchInput').on('keyup input', function() {
                 filterWarehouseCards();
+            });
+
+            // Mobile View Switcher (Cards vs Table for Flat Products)
+            $('#btnShowProdCards').on('click', function() {
+                $(this).addClass('active');
+                $('#btnShowProdTable').removeClass('active');
+                $('#mobileFlatProductsWrapper').show();
+                $('#desktopFlatTableWrapper').addClass('mobile-table-hidden').hide();
+            });
+
+            $('#btnShowProdTable').on('click', function() {
+                $(this).addClass('active');
+                $('#btnShowProdCards').removeClass('active');
+                $('#mobileFlatProductsWrapper').hide();
+                $('#desktopFlatTableWrapper').removeClass('mobile-table-hidden').show();
             });
 
             // Auto-expand first warehouse if exists
@@ -1027,17 +1289,24 @@
                 }
             });
 
-            // Also filter flat products table if active
-            if ($('#flatProductsContainer').is(':visible')) {
-                $('#flatProductsTable tbody tr').each(function() {
-                    let rowText = $(this).text().toLowerCase();
-                    if (!searchVal || rowText.indexOf(searchVal) !== -1) {
-                        $(this).show();
-                    } else {
-                        $(this).hide();
-                    }
-                });
-            }
+            // Filter Flat Products (Table & Cards)
+            $('#flatProductsTable tbody tr').each(function() {
+                let rowText = $(this).text().toLowerCase();
+                if (!searchVal || rowText.indexOf(searchVal) !== -1) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+
+            $('.mobile-products-list .product-mcard').each(function() {
+                let sTxt = $(this).attr('data-search') || '';
+                if (!searchVal || sTxt.indexOf(searchVal) !== -1) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
         }
 
         // Select2 Initialization
@@ -1314,22 +1583,22 @@
 
                     tbodyHtml += `
                         <tr>
-                            <td class="text-muted fw-bold" style="padding: 13px 16px; width: 50px;">${index + 1}</td>
-                            <td style="padding: 13px 16px;">
-                                <div class="fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 0.95rem;">
-                                    <span style="font-size:1.15rem;">🏪</span>
+                            <td class="text-muted fw-bold" style="padding: 11px 14px; width: 50px;">${index + 1}</td>
+                            <td style="padding: 11px 14px;">
+                                <div class="fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 0.92rem;">
+                                    <span>🏪</span>
                                     <span>${loc.warehouse_name || 'Warehouse'}</span>
                                     ${loc.branch_name ? `<span class="badge bg-light text-secondary border small">${loc.branch_name}</span>` : ''}
                                 </div>
                                 ${loc.location ? `<div class="small text-muted ps-4" style="font-size: 0.75rem;"><i class="fas fa-map-marker-alt text-danger me-1"></i>${loc.location}</div>` : ''}
                             </td>
-                            <td class="text-center" style="padding: 13px 16px;">
-                                <div class="fw-bold" style="color: #047857; font-size: 0.95rem; line-height: 1.2;">
+                            <td class="text-center" style="padding: 11px 14px;">
+                                <div class="fw-bold" style="color: #047857; font-size: 0.92rem; line-height: 1.2;">
                                     ${mainText}
                                 </div>
                                 ${subText}
                             </td>
-                            <td class="text-end fw-bold text-dark" style="padding: 13px 16px; font-size: 0.92rem;">
+                            <td class="text-end fw-bold text-dark" style="padding: 11px 14px; font-size: 0.9rem;">
                                 Rs. ${locVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                         </tr>

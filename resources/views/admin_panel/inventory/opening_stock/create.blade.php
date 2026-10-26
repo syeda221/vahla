@@ -2,10 +2,21 @@
 
 @section('content')
 <style>
+    /* Zero horizontal scroll guarantee */
+    html, body {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
     .os-create-page {
         background: #f8fafc;
         min-height: calc(100vh - 80px);
         padding: 24px 0 60px;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+    .os-create-page .container-fluid {
+        max-width: 100%;
+        overflow-x: hidden;
     }
     .os-card {
         background: #ffffff;
@@ -130,10 +141,82 @@
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 36px !important;
     }
+
+    /* Responsive Styling for Mobile */
+    @media (max-width: 991.98px) {
+        .os-create-page {
+            padding: 14px 0 40px;
+        }
+        .os-header-bar {
+            padding: 14px 16px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+        .os-header-bar a.btn {
+            width: 100%;
+            justify-content: center;
+        }
+        .table-responsive {
+            overflow-x: visible !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+        #unifiedStockTable,
+        #unifiedStockTable thead,
+        #unifiedStockTable tbody,
+        #unifiedStockTable tr.prod-entry-row,
+        #unifiedStockTable tr.prod-entry-row > td {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+        }
+        #unifiedStockTable thead {
+            display: none !important;
+        }
+        #unifiedStockTable tr.prod-entry-row {
+            background: #ffffff !important;
+            border: 1.5px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            padding: 14px !important;
+            margin-bottom: 16px !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+        }
+        #unifiedStockTable tr.prod-entry-row > td {
+            padding: 6px 0 !important;
+            border: none !important;
+            text-align: left !important;
+        }
+        #unifiedStockTable tr.prod-entry-row > td.td-desktop-action {
+            display: none !important;
+        }
+        .loc-card .input-group {
+            max-width: 100% !important;
+        }
+        .w-100-mobile {
+            width: 100% !important;
+        }
+        .footer-controls-wrap {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 12px !important;
+        }
+        .footer-controls-wrap > div {
+            width: 100% !important;
+        }
+        .footer-controls-wrap button, 
+        .footer-controls-wrap .btn {
+            width: 100% !important;
+            justify-content: center !important;
+        }
+    }
 </style>
 
 <div class="os-create-page">
-    <div class="container-fluid px-3 px-md-4">
+    <div class="container-fluid px-2 px-md-4">
         
         <!-- Main Card -->
         <div class="os-card mb-4">
@@ -155,7 +238,7 @@
             </div>
 
             <!-- Body Table -->
-            <div class="p-3 p-md-4">
+            <div class="p-2 p-md-4">
                 <div class="table-responsive bg-white rounded-3 border shadow-sm" style="overflow-x: auto;">
                     <table class="table mb-0 align-middle" id="unifiedStockTable">
                         <thead class="unified-table-header">
@@ -176,20 +259,20 @@
                     </table>
                 </div>
 
-                <!-- Footer Summary and Action Controls Matching Image 1 -->
-                <div class="mt-4 p-3 bg-white rounded-3 border d-flex justify-content-between align-items-center flex-wrap gap-3 shadow-sm">
-                    <div>
-                        <button type="button" class="btn btn-outline-primary fw-semibold px-3 py-2 d-flex align-items-center gap-2" onclick="addProductRow()" style="border-radius: 8px;">
+                <!-- Footer Summary and Action Controls -->
+                <div class="mt-4 p-3 bg-white rounded-3 border d-flex justify-content-between align-items-center flex-wrap gap-3 shadow-sm footer-controls-wrap">
+                    <div class="w-100-mobile">
+                        <button type="button" class="btn btn-outline-primary fw-semibold px-3 py-2 d-flex align-items-center gap-2 w-100-mobile" onclick="addProductRow()" style="border-radius: 8px;">
                             <i class="fas fa-plus"></i> Add Product Row
                         </button>
                     </div>
-                    <div class="d-flex align-items-center gap-3 flex-wrap">
-                        <div class="px-3 py-2 rounded-3 bg-light border fw-bold text-secondary d-flex align-items-center gap-2" style="font-size: 0.92rem;">
+                    <div class="d-flex align-items-center gap-3 flex-wrap w-100-mobile justify-content-between">
+                        <div class="px-3 py-2 rounded-3 bg-light border fw-bold text-secondary d-flex align-items-center justify-content-between gap-2 w-100-mobile" style="font-size: 0.92rem;">
                             <span>Total Opening Quantity:</span>
                             <span class="text-primary fw-bolder fs-6" id="grand_total_display">0.00</span>
                             <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.72rem; padding: 4px 8px;">Mixed Units</span>
                         </div>
-                        <button type="button" class="btn btn-primary px-4 py-2 fw-bold d-flex align-items-center gap-2 shadow-sm" id="btn_save_stocks" onclick="submitUnifiedForm()" style="background: #0284c7; border: none; border-radius: 8px; font-size: 0.95rem;">
+                        <button type="button" class="btn btn-primary px-4 py-2 fw-bold d-flex align-items-center gap-2 shadow-sm w-100-mobile" id="btn_save_stocks" onclick="submitUnifiedForm()" style="background: #0284c7; border: none; border-radius: 8px; font-size: 0.95rem; height: 42px;">
                             <i class="fas fa-save"></i> Save All Opening Stocks
                         </button>
                     </div>
@@ -245,10 +328,24 @@
 
         const rowHtml = `
             <tr id="prod_row_${rowId}" class="prod-entry-row" data-row-id="${rowId}">
-                <td class="text-center fw-bold text-muted row-number" style="vertical-align: middle;">
-                    ${$('#unified_tbody tr.prod-entry-row').length + 1}
+                <!-- Col 1: Row # (Desktop cell / Mobile Card Top Bar) -->
+                <td class="text-center fw-bold text-muted td-row-num" style="vertical-align: middle;">
+                    <span class="d-none d-lg-inline row-number">${$('#unified_tbody tr.prod-entry-row').length + 1}</span>
+                    <div class="d-flex d-lg-none align-items-center justify-content-between pb-2 mb-2 border-bottom">
+                        <span class="badge bg-light text-dark border fw-bold px-2.5 py-1.5" style="font-size:0.82rem;">
+                            <i class="fas fa-cube me-1 text-primary"></i> Product #<span class="row-number-mobile">${$('#unified_tbody tr.prod-entry-row').length + 1}</span>
+                        </span>
+                        <button type="button" class="del-product-row-btn" title="Remove Product Row" onclick="removeProductRow(${rowId})">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
                 </td>
+
+                <!-- Col 2: Product Name / SKU -->
                 <td style="vertical-align: top;">
+                    <label class="d-lg-none form-label small fw-bold text-muted mb-1 text-uppercase" style="font-size:0.72rem; letter-spacing:0.4px;">
+                        <i class="fas fa-box me-1 text-primary"></i> Product Name / SKU
+                    </label>
                     <div class="prod-select-wrapper">
                         <select class="form-control prod-select" id="prod_select_${rowId}">
                             ${prodOptions}
@@ -260,7 +357,12 @@
                         <select class="form-select form-control form-control-sm variant-select" id="variant_select_${rowId}" onchange="onRowVariantSelected(${rowId})"></select>
                     </div>
                 </td>
+
+                <!-- Col 3: Location & Allocated Qty -->
                 <td style="vertical-align: top; width: 280px;">
+                    <label class="d-lg-none form-label small fw-bold text-muted mb-1 text-uppercase" style="font-size:0.72rem; letter-spacing:0.4px;">
+                        <i class="fas fa-warehouse me-1 text-primary"></i> Warehouse Locations &amp; Allocated Qty
+                    </label>
                     <div class="locations-wrapper" id="locations_container_${rowId}"></div>
                     <div class="mt-1">
                         <a href="javascript:void(0)" class="btn-add-location" onclick="addLocationSubRow(${rowId})">
@@ -268,26 +370,48 @@
                         </a>
                     </div>
                 </td>
+
+                <!-- Col 4: Wholesale Rs -->
                 <td style="vertical-align: top; width: 175px;">
+                    <label class="d-lg-none form-label small fw-bold text-muted mb-1 text-uppercase" style="font-size:0.72rem; letter-spacing:0.4px;">
+                        <i class="fas fa-coins me-1 text-warning"></i> Wholesale Rate (Cost)
+                    </label>
                     <div class="input-group" style="min-width: 155px;">
                         <input type="number" step="0.01" min="0" class="form-control text-end fw-bold wholesale-input" id="wholesale_${rowId}" value="0" placeholder="0" style="height: 38px; font-size: 0.95rem;" oninput="calcRowTotals(${rowId})">
                         <span class="input-group-text bg-light text-muted fw-bold px-2" style="font-size:0.82rem;">Rs</span>
                     </div>
                 </td>
+
+                <!-- Col 5: Retail Rs -->
                 <td style="vertical-align: top; width: 175px;">
+                    <label class="d-lg-none form-label small fw-bold text-muted mb-1 text-uppercase" style="font-size:0.72rem; letter-spacing:0.4px;">
+                        <i class="fas fa-tag me-1 text-primary"></i> Retail Rate (Sale)
+                    </label>
                     <div class="input-group" style="min-width: 155px;">
                         <input type="number" step="0.01" min="0" class="form-control text-end fw-bold retail-input" id="retail_${rowId}" value="0" placeholder="0" style="height: 38px; font-size: 0.95rem;">
                         <span class="input-group-text bg-light text-muted fw-bold px-2" style="font-size:0.82rem;">Rs</span>
                     </div>
                 </td>
+
+                <!-- Col 6: Alert Qty -->
                 <td style="vertical-align: top; width: 130px;">
+                    <label class="d-lg-none form-label small fw-bold text-muted mb-1 text-uppercase" style="font-size:0.72rem; letter-spacing:0.4px;">
+                        <i class="fas fa-bell me-1 text-danger"></i> Alert / Low Stock Qty
+                    </label>
                     <input type="number" step="1" min="0" class="form-control text-center fw-bold alert-input" id="alert_${rowId}" value="0" placeholder="0" style="height: 38px; font-size: 0.95rem; min-width: 90px;">
                 </td>
+
+                <!-- Col 7: Total Opening Qty -->
                 <td class="text-center" style="vertical-align: top; width: 140px;">
+                    <label class="d-lg-none form-label small fw-bold text-muted mb-1 text-uppercase d-block text-start" style="font-size:0.72rem; letter-spacing:0.4px;">
+                        <i class="fas fa-calculator me-1 text-success"></i> Total Opening Qty
+                    </label>
                     <div class="total-qty-box row-total-qty" id="total_qty_${rowId}">0.00</div>
                     <div class="small text-muted mt-1 row-total-sub" id="total_qty_sub_${rowId}" style="font-size: 0.72rem;"></div>
                 </td>
-                <td class="text-center" style="vertical-align: top;">
+
+                <!-- Col 8: Action (Desktop only delete button) -->
+                <td class="text-center td-desktop-action" style="vertical-align: top;">
                     <button type="button" class="del-product-row-btn" title="Remove Product Row" onclick="removeProductRow(${rowId})">
                         <i class="fas fa-trash-alt"></i>
                     </button>
@@ -344,7 +468,7 @@
                 </div>
                 <div class="d-flex align-items-center gap-2 mt-1">
                     <span class="small fw-bold text-muted" style="font-size: 0.75rem; letter-spacing: 0.5px;">QTY</span>
-                    <div class="input-group input-group-sm flex-grow-1" style="max-width: 195px;">
+                    <div class="input-group input-group-sm flex-grow-1">
                         <input type="number" step="any" min="0" class="form-control text-center fw-bold loc-qty-input" id="qty_${rowId}_${locId}" value="0" style="height: 32px; font-size: 0.88rem; min-width: 65px;" oninput="calcRowTotals(${rowId})">
                         <span class="input-group-text loc-unit-badge" id="unit_badge_${rowId}_${locId}">Pcs</span>
                     </div>
@@ -404,6 +528,7 @@
     function updateRowNumbers() {
         $('#unified_tbody tr.prod-entry-row').each(function(index) {
             $(this).find('.row-number').text(index + 1);
+            $(this).find('.row-number-mobile').text(index + 1);
         });
     }
 

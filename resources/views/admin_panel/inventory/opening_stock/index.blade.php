@@ -24,12 +24,22 @@
         --os-shadow-md:  0 6px 20px rgba(0,0,0,.07);
     }
 
+    /* Zero horizontal scroll guarantee */
+    html, body {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
     .os-page {
         background: var(--os-bg);
         min-height: calc(100vh - 80px);
         padding: 20px 0;
+        max-width: 100%;
+        overflow-x: hidden;
     }
-    .os-page .container-fluid { max-width: 100%; }
+    .os-page .container-fluid {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
 
     /* ── Stats Grid ── */
     .stat-grid {
@@ -262,7 +272,10 @@
     .btn-os-clear:hover { background: #f1f5f9; color: var(--os-text); }
 
     /* ── Data Table ── */
-    .os-table-wrap { overflow-x: auto; }
+    .os-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
     .os-table {
         width: 100%;
         border-collapse: collapse;
@@ -386,6 +399,73 @@
         box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.25);
     }
 
+    /* View Mode Switcher (Mobile only) */
+    .view-mode-toggle {
+        display: none;
+    }
+
+    /* Mobile Cards View styling */
+    .os-mobile-cards {
+        display: none;
+    }
+    .os-mobile-card {
+        background: #ffffff;
+        border: 1px solid var(--os-border);
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        transition: border-color 0.15s ease;
+    }
+    .os-mobile-card:hover {
+        border-color: #cbd5e1;
+    }
+    .os-mobile-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .os-mobile-info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px;
+        margin: 10px 0;
+    }
+    .os-mobile-info-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .os-mobile-info-label {
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        color: #64748b;
+        margin-bottom: 2px;
+    }
+    .os-mobile-info-val {
+        font-size: 0.86rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+    .os-mobile-card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 10px;
+        border-top: 1px solid #f1f5f9;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
     /* Modal styling */
     .modal-os .modal-content {
         border-radius: 14px;
@@ -431,147 +511,150 @@
         height: 40px;
         right: 10px;
     }
-    .select2-container--default .select2-search--dropdown .select2-search__field {
-        border: 1px solid var(--os-border);
-        border-radius: 6px;
-        padding: 6px 12px;
-        outline: none;
-    }
-    .select2-results__option {
-        padding: 8px 12px;
-        font-size: .86rem;
+
+    /* Responsive Breakpoints */
+    @media (max-width: 991.98px) {
+        .stat-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .stat-card {
+            padding: 12px 14px;
+            gap: 10px;
+        }
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 17px;
+        }
+        .stat-card .stat-value {
+            font-size: 1.2rem;
+        }
+        .os-card-header {
+            padding: 14px 16px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+        .os-card-header .btn-hdr {
+            width: 100%;
+            justify-content: center;
+            height: 38px;
+        }
+        .filter-panel {
+            padding: 12px 14px;
+        }
+        .os-filter-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+        .os-filter-field, .os-filter-search {
+            max-width: 100% !important;
+            width: 100% !important;
+            min-width: 0 !important;
+        }
+        .os-filter-btns {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+        }
+        .btn-os-filter, .btn-os-clear {
+            flex: 1;
+            justify-content: center;
+        }
+
+        /* View Mode Switcher */
+        .view-mode-toggle {
+            display: flex;
+            background: #f1f5f9;
+            padding: 3px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .view-mode-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 6px 14px;
+            font-size: 0.80rem;
+            font-weight: 700;
+            color: #64748b;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .view-mode-btn.active {
+            background: #ffffff;
+            color: #4f46e5;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* Mobile cards visible by default, table hidden by default on mobile */
+        .os-mobile-cards {
+            display: block;
+        }
+        .os-table-wrap.mobile-hidden {
+            display: none !important;
+        }
+        .os-mobile-cards.mobile-hidden {
+            display: none !important;
+        }
+
+        /* Modal Dialog responsive */
+        #locationsModal .modal-dialog {
+            width: 95% !important;
+            margin: 10px auto !important;
+            max-width: 95% !important;
+        }
+        #locationsModal .modal-body {
+            padding: 12px !important;
+        }
+        #locationsModal .modal-header {
+            padding: 12px 14px !important;
+        }
+        #locationsModal .row.g-3 {
+            --bs-gutter-x: 0.5rem;
+            --bs-gutter-y: 0.5rem;
+        }
     }
 
-    /* Batch Table Modern ERP Select2 & Inputs Styling */
-    #batchTable .select2-container {
-        width: 100% !important;
-    }
-    #batchTable .select2-container--default .select2-selection--single {
-        height: 38px !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 8px !important;
-        padding: 4px 10px !important;
-        font-size: 0.83rem !important;
-        display: flex !important;
-        align-items: center !important;
-        background-color: #ffffff !important;
-        transition: all .15s ease-in-out !important;
-    }
-    #batchTable .select2-container--default.select2-container--focus .select2-selection--single,
-    #batchTable .select2-container--default.select2-container--open .select2-selection--single {
-        border-color: #4f46e5 !important;
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
-        outline: none !important;
-    }
-    #batchTable .select2-container--default .select2-selection--single .select2-selection__rendered {
-        padding-left: 0 !important;
-        padding-right: 20px !important;
-        line-height: 28px !important;
-        color: #1e293b !important;
-        font-weight: 500 !important;
-    }
-    #batchTable .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 36px !important;
-        right: 8px !important;
-        top: 0 !important;
-    }
-    #batchTable .select2-container--default.select2-container--disabled .select2-selection--single {
-        background-color: #f8fafc !important;
-        border-color: #e2e8f0 !important;
-        color: #94a3b8 !important;
-        cursor: not-allowed !important;
-        opacity: 0.8 !important;
-    }
-    #batchTable .select2-container--default .select2-selection--single .select2-selection__placeholder {
-        color: #94a3b8 !important;
-        font-weight: 400 !important;
-    }
-    #batchTable input.form-control-sm {
-        height: 38px !important;
-        border-radius: 8px !important;
-        border: 1px solid #cbd5e1 !important;
-        font-size: 0.85rem !important;
-        transition: all .15s ease-in-out !important;
-    }
-    #batchTable input.form-control-sm:focus {
-        border-color: #4f46e5 !important;
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
-    }
-    #batchTable .badge-qty {
-        display: inline-block;
-        padding: 6px 12px;
-        background: #eef2ff;
-        color: #4338ca;
-        border: 1px solid #c7d2fe;
-        border-radius: 8px;
-        font-weight: 700;
-        font-size: 0.88rem;
-    }
-    .nav-tabs-os {
-        border-bottom: 2px solid var(--os-border);
-        gap: 6px;
-    }
-    .nav-tabs-os .nav-link {
-        border: none;
-        border-bottom: 3px solid transparent;
-        color: var(--os-muted);
-        font-weight: 600;
-        font-size: .85rem;
-        padding: 8px 16px;
-        border-radius: 0;
-        background: transparent;
-    }
-    .nav-tabs-os .nav-link.active {
-        color: var(--os-primary);
-        border-bottom-color: var(--os-primary);
-        background: transparent;
+    @media (max-width: 480px) {
+        .stat-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .stat-card {
+            padding: 10px 10px;
+        }
+        .stat-card .stat-label {
+            font-size: 0.65rem;
+        }
+        .stat-card .stat-value {
+            font-size: 1rem;
+        }
+        .stat-card .stat-sub {
+            display: none;
+        }
     }
 
-    /* Multi-warehouse Matrix Table */
-    .wh-matrix-table th {
-        background: #f1f5f9;
-        font-size: .72rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: var(--os-muted);
-        padding: 8px 12px;
-    }
-    .wh-matrix-table td {
-        padding: 8px 12px;
-        vertical-align: middle;
-    }
-    .wh-matrix-card {
-        border: 1px solid var(--os-border);
-        border-radius: 10px;
-        padding: 12px;
-        background: #fff;
-        transition: border-color .15s;
-    }
-    .wh-matrix-card:hover {
-        border-color: var(--os-primary);
-    }
-
-    /* Product Preview Card */
-    .prod-preview-card {
-        background: #f8fafc;
-        border: 1px dashed #cbd5e1;
-        border-radius: 10px;
-        padding: 12px 16px;
-        margin-bottom: 16px;
-    }
-
-    @media (max-width: 992px) {
-        .stat-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 576px) {
-        .stat-grid { grid-template-columns: 1fr; }
-        .os-filter-row { flex-direction: column; }
-        .os-filter-field, .os-filter-search { max-width: 100%; width: 100%; }
+    @media (min-width: 992px) {
+        .os-mobile-cards {
+            display: none !important;
+        }
+        .os-table-wrap {
+            display: block !important;
+        }
     }
 </style>
 
 <div class="os-page">
-    <div class="container-fluid px-3 px-md-4">
+    <div class="container-fluid px-2 px-md-4">
         
         <!-- Top Stats Row -->
         <div class="stat-grid">
@@ -705,8 +788,145 @@
                 </form>
             </div>
 
-            <!-- Table of Past Opening Stock Entries -->
-            <div class="os-table-wrap">
+            <!-- View Mode Switcher for Mobile -->
+            <div class="d-flex align-items-center justify-content-between p-2 px-3 bg-light border-bottom d-lg-none">
+                <span class="small fw-bold text-muted text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">View Mode</span>
+                <div class="view-mode-toggle">
+                    <button type="button" class="view-mode-btn active" id="btnViewCards" onclick="switchOsView('cards')">
+                        <i class="fas fa-th-large"></i> Cards
+                    </button>
+                    <button type="button" class="view-mode-btn" id="btnViewTable" onclick="switchOsView('table')">
+                        <i class="fas fa-table"></i> Table
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Cards View (Default on mobile < 992px) -->
+            <div class="os-mobile-cards p-3">
+                @forelse($groupedProducts as $row)
+                    @php
+                        $opFmt = $row->opening_formatted ?? null;
+                        $liveFmt = $row->live_formatted ?? null;
+                    @endphp
+                    <div class="os-mobile-card">
+                        <div class="os-mobile-card-header">
+                            <div class="d-flex align-items-center gap-2">
+                                @if($row->product_image)
+                                    <img src="{{ $row->product_image }}" class="rounded" style="width:40px; height:40px; object-fit:cover; flex-shrink:0;">
+                                @else
+                                    <div class="rounded bg-light d-flex align-items-center justify-content-center text-muted" style="width:40px; height:40px; font-size:14px; border:1px solid #e2e8f0; flex-shrink:0;">
+                                        <i class="fas fa-box"></i>
+                                    </div>
+                                @endif
+                                <div>
+                                    <div class="fw-bold text-dark" style="font-size:0.92rem; line-height:1.2;">{{ $row->product_name }}</div>
+                                    <div class="d-flex align-items-center gap-1.5 flex-wrap mt-0.5">
+                                        <span class="small text-muted font-monospace">{{ $row->product_code ?? '-' }}</span>
+                                        @if(!empty($row->variant_display) && $row->variant_display !== '-')
+                                            <span class="badge bg-light text-dark border font-monospace" style="font-size:0.7rem; padding: 2px 6px;">
+                                                <i class="fas fa-tag text-primary me-0.5"></i>{{ $row->variant_display }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="action-btn-group">
+                                <a href="{{ route('opening_stock.edit', ['productId' => $row->product_id]) }}?variant_key={{ urlencode($row->variant_key ?? '') }}&variant_name={{ urlencode($row->variant_name ?? '') }}" class="btn-action-icon btn-action-edit text-decoration-none" title="Edit Opening Stock">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button type="button" class="btn-action-icon btn-action-delete" onclick="confirmDeleteProductStock('{{ $row->row_key }}', '{{ addslashes($row->product_name) }}', '{{ addslashes($row->variant_display) }}')" title="Revert & Delete Product Opening Stock">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Locations button -->
+                        <div class="mb-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 shadow-sm d-inline-flex align-items-center gap-1.5 fw-bold w-100 justify-content-center"
+                                    onclick="openLocationsModal('{{ $row->row_key }}')"
+                                    title="Click to view warehouse allocations">
+                                <i class="fas fa-map-marker-alt text-danger"></i>
+                                @if($row->warehouses_count == 1)
+                                    <span>{{ $row->first_warehouse_name }}</span>
+                                @else
+                                    <span>{{ $row->warehouses_count }} Warehouse Locations</span>
+                                @endif
+                                <span class="badge bg-primary text-white rounded-circle ms-1" style="font-size:0.65rem; width:18px; height:18px; display:inline-flex; align-items:center; justify-content:center;">
+                                    {{ $row->warehouses_count }}
+                                </span>
+                            </button>
+                        </div>
+
+                        <!-- 4-Stat Grid -->
+                        <div class="os-mobile-info-grid">
+                            <div class="os-mobile-info-item">
+                                <span class="os-mobile-info-label">Opening Qty</span>
+                                <span class="os-mobile-info-val" style="color: #4338ca;">
+                                    @if($opFmt)
+                                        {{ $opFmt['main'] }}
+                                        @if(!empty($opFmt['sub']))
+                                            <small class="text-muted d-block fw-normal" style="font-size:0.7rem;">{{ $opFmt['sub'] }}</small>
+                                        @endif
+                                    @else
+                                        {{ number_format($row->total_opening_pieces, 2) }} {{ $row->unit_name }}
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="os-mobile-info-item">
+                                <span class="os-mobile-info-label">Live Stock</span>
+                                <span class="os-mobile-info-val">
+                                    @if($row->total_live_pieces <= 0)
+                                        <span class="badge bg-danger text-white" style="font-size:0.72rem;">Out of Stock</span>
+                                    @elseif($liveFmt)
+                                        <span style="color: #047857;">{{ $liveFmt['main'] }}</span>
+                                        @if(!empty($liveFmt['sub']))
+                                            <small class="text-muted d-block fw-normal" style="font-size:0.7rem;">{{ $liveFmt['sub'] }}</small>
+                                        @endif
+                                    @else
+                                        <span style="color: #0d9488;">{{ number_format($row->total_live_pieces, 2) }} {{ $row->unit_name }}</span>
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="os-mobile-info-item">
+                                <span class="os-mobile-info-label">Cost / Wholesale</span>
+                                <span class="os-mobile-info-val">Rs. {{ number_format($row->cost_price ?? 0, 2) }}</span>
+                            </div>
+                            <div class="os-mobile-info-item">
+                                <span class="os-mobile-info-label">Retail / Sale</span>
+                                <span class="os-mobile-info-val text-primary">
+                                    @if($row->sale_price > 0)
+                                        Rs. {{ number_format($row->sale_price, 2) }}
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="os-mobile-card-footer">
+                            <div class="small text-muted">
+                                <i class="far fa-calendar-alt me-1"></i>
+                                {{ $row->latest_created_at ? $row->latest_created_at->format('d M, Y h:i A') : '-' }}
+                            </div>
+                            <div class="text-end">
+                                <span class="small text-muted fw-bold me-1">Total Value:</span>
+                                <span class="fw-bold text-success" style="font-size: 0.95rem;">Rs. {{ number_format($row->total_value ?? 0, 2) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-box-open fa-2x mb-2 text-secondary opacity-50"></i>
+                        <h6>No Opening Stock entries recorded</h6>
+                        <a href="{{ route('opening_stock.create') }}" class="btn btn-sm btn-primary mt-2">
+                            <i class="fas fa-plus-circle me-1"></i> Add Opening Stock
+                        </a>
+                    </div>
+                @endforelse
+            </div>
+
+            <!-- Table of Past Opening Stock Entries (Desktop view, and toggled on mobile) -->
+            <div class="os-table-wrap mobile-hidden">
                 <table class="os-table">
                     <thead>
                         <tr>
@@ -894,13 +1114,13 @@
                 </button>
             </div>
 
-            <div class="modal-body p-4" style="background: #ffffff;">
+            <div class="modal-body p-3 p-md-4" style="background: #ffffff;">
                 <!-- 4 Top Stat Cards matching Image 2 -->
-                <div class="row g-3 mb-4">
+                <div class="row g-2 g-md-3 mb-4">
                     <!-- Total Opening -->
                     <div class="col-md-3 col-6">
-                        <div class="p-3 rounded-3" style="background: #eff6ff; border: 1.5px solid #bfdbfe;">
-                            <div class="text-uppercase fw-bold mb-1" style="color: #2563eb; font-size: 0.72rem; letter-spacing: 0.5px;">
+                        <div class="p-2 p-md-3 rounded-3" style="background: #eff6ff; border: 1.5px solid #bfdbfe;">
+                            <div class="text-uppercase fw-bold mb-1" style="color: #2563eb; font-size: 0.70rem; letter-spacing: 0.5px;">
                                 Total Opening
                             </div>
                             <div class="d-flex align-items-baseline gap-1 flex-wrap" id="loc_card_opening" style="color: #1d4ed8; line-height: 1.2;">
@@ -910,8 +1130,8 @@
                     </div>
                     <!-- Live Stock -->
                     <div class="col-md-3 col-6">
-                        <div class="p-3 rounded-3" style="background: #ffffff; border: 1.5px solid #e2e8f0;">
-                            <div class="text-uppercase fw-bold mb-1" style="color: #475569; font-size: 0.72rem; letter-spacing: 0.5px;">
+                        <div class="p-2 p-md-3 rounded-3" style="background: #ffffff; border: 1.5px solid #e2e8f0;">
+                            <div class="text-uppercase fw-bold mb-1" style="color: #475569; font-size: 0.70rem; letter-spacing: 0.5px;">
                                 Live Stock
                             </div>
                             <div class="d-flex align-items-baseline gap-1 flex-wrap" id="loc_card_live" style="color: #16a34a; line-height: 1.2;">
@@ -921,22 +1141,22 @@
                     </div>
                     <!-- Wholesale Rate -->
                     <div class="col-md-3 col-6">
-                        <div class="p-3 rounded-3" style="background: #ffffff; border: 1.5px solid #e2e8f0;">
-                            <div class="text-uppercase fw-bold mb-1" style="color: #475569; font-size: 0.72rem; letter-spacing: 0.5px;">
+                        <div class="p-2 p-md-3 rounded-3" style="background: #ffffff; border: 1.5px solid #e2e8f0;">
+                            <div class="text-uppercase fw-bold mb-1" style="color: #475569; font-size: 0.70rem; letter-spacing: 0.5px;">
                                 Wholesale Rate
                             </div>
-                            <div class="fw-bold" id="loc_card_wholesale" style="color: #0f172a; font-size: 1.25rem; line-height: 1.2;">
+                            <div class="fw-bold" id="loc_card_wholesale" style="color: #0f172a; font-size: 1.15rem; line-height: 1.2;">
                                 Rs 0.00
                             </div>
                         </div>
                     </div>
                     <!-- Retail Rate -->
                     <div class="col-md-3 col-6">
-                        <div class="p-3 rounded-3" style="background: #ffffff; border: 1.5px solid #e2e8f0;">
-                            <div class="text-uppercase fw-bold mb-1" style="color: #475569; font-size: 0.72rem; letter-spacing: 0.5px;">
+                        <div class="p-2 p-md-3 rounded-3" style="background: #ffffff; border: 1.5px solid #e2e8f0;">
+                            <div class="text-uppercase fw-bold mb-1" style="color: #475569; font-size: 0.70rem; letter-spacing: 0.5px;">
                                 Retail Rate
                             </div>
-                            <div class="fw-bold" id="loc_card_retail" style="color: #0f172a; font-size: 1.25rem; line-height: 1.2;">
+                            <div class="fw-bold" id="loc_card_retail" style="color: #0f172a; font-size: 1.15rem; line-height: 1.2;">
                                 Rs 0.00
                             </div>
                         </div>
@@ -947,23 +1167,23 @@
                 <div class="d-flex align-items-center justify-content-between mb-2 px-1">
                     <div class="d-flex align-items-center gap-2">
                         <i class="fas fa-map-marker-alt" style="color: #2563eb; font-size: 1rem;"></i>
-                        <span style="font-weight: 800; color: #1e3a8a; font-size: 0.92rem; letter-spacing: 0.5px;">
+                        <span style="font-weight: 800; color: #1e3a8a; font-size: 0.88rem; letter-spacing: 0.5px;">
                             ALLOCATED LOCATIONS &amp; WAREHOUSES
                         </span>
                     </div>
-                    <span class="badge rounded-pill text-white" id="loc_pill_count" style="background-color: #2563eb; font-size: 0.8rem; padding: 6px 14px; font-weight: 700;">
+                    <span class="badge rounded-pill text-white" id="loc_pill_count" style="background-color: #2563eb; font-size: 0.78rem; padding: 5px 12px; font-weight: 700;">
                         0 Locations
                     </span>
                 </div>
 
                 <!-- Locations Table matching Image 2 -->
-                <div class="border rounded-3" style="overflow: hidden; border-color: #e2e8f0 !important;">
-                    <table class="table align-middle mb-0" style="font-size: 0.86rem;">
+                <div class="border rounded-3" style="overflow-x: auto; -webkit-overflow-scrolling: touch; border-color: #e2e8f0 !important;">
+                    <table class="table align-middle mb-0" style="font-size: 0.86rem; min-width: 320px;">
                         <thead style="background: #f8fafc; border-bottom: 1.5px solid #e2e8f0;">
                             <tr>
-                                <th style="width: 50px; color: #64748b; font-size: 0.76rem; font-weight: 700; padding: 12px 16px;">#</th>
-                                <th style="color: #64748b; font-size: 0.76rem; font-weight: 700; padding: 12px 16px;">LOCATION NAME</th>
-                                <th class="text-end" style="color: #64748b; font-size: 0.76rem; font-weight: 700; padding: 12px 16px;">QUANTITY</th>
+                                <th style="width: 45px; color: #64748b; font-size: 0.74rem; font-weight: 700; padding: 10px 14px;">#</th>
+                                <th style="color: #64748b; font-size: 0.74rem; font-weight: 700; padding: 10px 14px;">LOCATION NAME</th>
+                                <th class="text-end" style="color: #64748b; font-size: 0.74rem; font-weight: 700; padding: 10px 14px;">QUANTITY</th>
                             </tr>
                         </thead>
                         <tbody id="loc_table_body">
@@ -994,6 +1214,20 @@
     const allWarehouses = @json($warehouses);
     let currentEditPPB = 1;
     let currentEditHasBoxes = 0;
+
+    function switchOsView(mode) {
+        if (mode === 'cards') {
+            $('#btnViewCards').addClass('active');
+            $('#btnViewTable').removeClass('active');
+            $('.os-mobile-cards').removeClass('mobile-hidden');
+            $('.os-table-wrap').addClass('mobile-hidden');
+        } else {
+            $('#btnViewTable').addClass('active');
+            $('#btnViewCards').removeClass('active');
+            $('.os-table-wrap').removeClass('mobile-hidden');
+            $('.os-mobile-cards').addClass('mobile-hidden');
+        }
+    }
 
     function showModalSafely(modalId) {
         const $m = $('#' + modalId);
@@ -1053,17 +1287,17 @@
 
                 tbodyHtml += `
                     <tr>
-                        <td class="text-muted fw-bold" style="padding: 13px 16px; width: 50px;">${index + 1}</td>
-                        <td style="padding: 13px 16px;">
-                            <div class="fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 0.95rem;">
-                                <span style="font-size:1.15rem;">🏪</span>
+                        <td class="text-muted fw-bold" style="padding: 11px 14px; width: 45px;">${index + 1}</td>
+                        <td style="padding: 11px 14px;">
+                            <div class="fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 0.92rem;">
+                                <span style="font-size:1.1rem;">🏪</span>
                                 <span>${wh.warehouse_name || 'Warehouse'}</span>
                             </div>
-                            ${wh.location ? `<div class="small text-muted ps-4" style="font-size: 0.75rem;"><i class="fas fa-map-marker-alt text-danger me-1"></i>${wh.location}</div>` : ''}
+                            ${wh.location ? `<div class="small text-muted ps-4" style="font-size: 0.74rem;"><i class="fas fa-map-marker-alt text-danger me-1"></i>${wh.location}</div>` : ''}
                         </td>
-                        <td class="text-end" style="padding: 13px 16px;">
+                        <td class="text-end" style="padding: 11px 14px;">
                             <div class="d-inline-flex align-items-baseline justify-content-end gap-1 flex-wrap">
-                                <span class="fw-bold" style="color: #15803d; font-size: 1rem;">${mainText}</span>
+                                <span class="fw-bold" style="color: #15803d; font-size: 0.95rem;">${mainText}</span>
                                 ${subText}
                             </div>
                         </td>
