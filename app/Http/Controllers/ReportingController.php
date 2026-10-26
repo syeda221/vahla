@@ -1374,13 +1374,8 @@ class ReportingController extends Controller
                 }
 
                 $matchedSaleIndices = [];
-                $opStocksQuery = \DB::table('opening_stocks')->where('product_id', $product->id);
-        if ($warehouseId && $warehouseId !== 'all') {
-            $opStocksQuery->where('warehouse_id', $warehouseId);
-        }
-        $opStocksList = $opStocksQuery->get();
 
-        foreach ($parsedVariants as $v) {
+                foreach ($parsedVariants as $v) {
                     $vName = $v['name'] ?? $product->item_name;
                     $vSize = $v['size'] ?? '-';
                     $vColor = $v['color'] ?? '-';
