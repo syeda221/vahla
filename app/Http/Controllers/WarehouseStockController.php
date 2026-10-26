@@ -58,6 +58,10 @@ class WarehouseStockController extends Controller
 
     public function index(Request $request)
     {
+        if (! auth()->user()->can('warehouse.stock.view')) {
+            abort(403, 'Unauthorized action. You do not have permission to view Warehouse Stock.');
+        }
+
         $viewMode     = $request->get('view', 'warehouses'); // 'warehouses' or 'products'
         $locationType = $request->get('location_type', 'all'); // 'all', 'shop', 'godown'
         $warehouseId  = $request->get('warehouse_id', 'all');
@@ -164,6 +168,10 @@ class WarehouseStockController extends Controller
 
     public function create()
     {
+        if (! auth()->user()->can('opening.stock.view') && ! auth()->user()->can('opening.stock.create') && ! auth()->user()->can('warehouse.stock.create') && ! auth()->user()->can('warehouse.stock.view')) {
+            abort(403, 'Unauthorized action. You do not have permission to access Opening Stock.');
+        }
+
         $warehouses = Warehouse::orderByRaw('is_shop DESC, warehouse_name ASC')->get();
 
         $recentMovements = DB::table('stock_movements')
@@ -182,6 +190,10 @@ class WarehouseStockController extends Controller
 
     public function store(Request $request)
     {
+        if (! auth()->user()->can('opening.stock.create') && ! auth()->user()->can('warehouse.stock.create')) {
+            abort(403, 'Unauthorized action. You do not have permission to save Opening Stock.');
+        }
+
         // Check if bulk rows submitted (Image 1 ERP Standard style)
         $rows = $request->input('rows', []);
         $targetWarehouseId = $request->input('target_warehouse_id', 1);
@@ -282,12 +294,20 @@ class WarehouseStockController extends Controller
 
     public function edit($id)
     {
+        if (! auth()->user()->can('opening.stock.edit') && ! auth()->user()->can('warehouse.stock.edit')) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $stock = WarehouseStock::with(['warehouse', 'product.unit'])->findOrFail($id);
         return view('admin_panel.warehouses.warehouse_stocks.edit', compact('stock'));
     }
 
     public function editData($id)
     {
+        if (! auth()->user()->can('opening.stock.edit') && ! auth()->user()->can('warehouse.stock.edit') && ! auth()->user()->can('warehouse.stock.view')) {
+            return response()->json(['error' => 'Unauthorized action.'], 403);
+        }
+
         $stock = WarehouseStock::with(['product.unit', 'warehouse'])->findOrFail($id);
 
         return response()->json([
@@ -308,6 +328,10 @@ class WarehouseStockController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (! auth()->user()->can('opening.stock.edit') && ! auth()->user()->can('warehouse.stock.edit')) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $warehouseStock = WarehouseStock::findOrFail($id);
 
         $quantityVal = $request->input('quantity', $request->input('total_pieces'));
@@ -356,6 +380,10 @@ class WarehouseStockController extends Controller
 
     public function destroy(WarehouseStock $warehouseStock)
     {
+        if (! auth()->user()->can('opening.stock.delete') && ! auth()->user()->can('warehouse.stock.delete')) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $warehouseStock->delete();
         return back()->with('success', 'Stock deleted successfully.');
     }

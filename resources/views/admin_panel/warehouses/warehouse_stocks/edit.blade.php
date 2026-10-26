@@ -103,9 +103,11 @@
                         <!-- Submit Buttons -->
                         <div class="d-flex align-items-center gap-3">
                             <!-- Single Primary Button -->
+                            @canany(['warehouse.stock.edit', 'opening.stock.edit'])
                             <button type="submit" class="erp-btn-primary px-4">
                                 <i class="fas fa-save me-1"></i> Update Stock
                             </button>
+                            @endcanany
                             <a href="{{ route('warehouse_stocks.index') }}" class="erp-btn-secondary ms-auto">
                                 Cancel
                             </a>

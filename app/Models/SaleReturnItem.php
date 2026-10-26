@@ -12,6 +12,7 @@ class SaleReturnItem extends Model
     protected $fillable = [
         'sale_return_id',
         'product_id',
+        'product_set_id',
         'is_manual',
         'product_name',
         'vendor_id',
@@ -44,6 +45,11 @@ class SaleReturnItem extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function productSet()
+    {
+        return $this->belongsTo(ProductSet::class);
     }
 
     public function warehouse()

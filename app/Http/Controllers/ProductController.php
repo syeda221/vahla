@@ -621,7 +621,7 @@ class ProductController extends Controller
 
         if ($request->hasAny($filterKeys)) {
             $activeFilters = array_filter($request->only($filterKeys), function ($val) {
-                return $val !== null && trim($val) !== '';
+                return $val !== null && trim($val) !== '' && $val !== 'all';
             });
 
             if (!empty($activeFilters)) {
@@ -631,7 +631,7 @@ class ProductController extends Controller
             }
         } elseif ($request->session()->has('product_filters')) {
             $savedFilters = array_filter($request->session()->get('product_filters') ?: [], function ($val) {
-                return $val !== null && trim($val) !== '';
+                return $val !== null && trim($val) !== '' && $val !== 'all';
             });
 
             if (!empty($savedFilters)) {
@@ -659,22 +659,57 @@ class ProductController extends Controller
 
         // ── Filters ──
         if ($request->filled('search')) {
-            $s = $request->search;
-            $query->where(function ($q) use ($s) {
-                $q->where('item_name', 'like', "%$s%")
-                  ->orWhere('item_code', 'like', "%$s%");
+            $s = trim($request->search);
+            $cleanSearch = str_replace(['"', "'", '”', '“', '″', '′'], ' ', $s);
+            $allTokens = array_values(array_filter(preg_split('/\s+/', $cleanSearch), function($t) {
+                return strlen(trim($t)) > 0;
+            }));
+
+            // Filter out standalone 'x', 'X', '*' if we have other tokens (dimensions separator)
+            $meaningfulTokens = array_values(array_filter($allTokens, function($t) use ($allTokens) {
+                if (count($allTokens) > 1 && in_array(strtolower($t), ['x', '*'])) {
+                    return false;
+                }
+                return true;
+            }));
+
+            $tokens = !empty($meaningfulTokens) ? $meaningfulTokens : $allTokens;
+
+            $query->where(function ($q) use ($s, $tokens) {
+                // 1. Direct match with full search string
+                $q->where('item_name', 'like', "%{$s}%")
+                  ->orWhere('item_code', 'like', "%{$s}%")
+                  ->orWhere('barcode_path', 'like', "%{$s}%")
+                  ->orWhere('color', 'like', "%{$s}%");
+
+                // 2. Multi-token match: all tokens must exist across fields
+                if (count($tokens) > 1 || (count($tokens) === 1 && $tokens[0] !== $s)) {
+                    $q->orWhere(function ($allTokensQ) use ($tokens) {
+                        foreach ($tokens as $token) {
+                            $allTokensQ->where(function ($subQ) use ($token) {
+                                $subQ->where('item_name', 'like', "%{$token}%")
+                                     ->orWhere('item_code', 'like', "%{$token}%")
+                                     ->orWhere('barcode_path', 'like', "%{$token}%")
+                                     ->orWhere('model', 'like', "%{$token}%")
+                                     ->orWhere('color', 'like', "%{$token}%")
+                                     ->orWhereHas('category_relation', fn($cq) => $cq->where('name', 'like', "%{$token}%"))
+                                     ->orWhereHas('brand', fn($bq) => $bq->where('name', 'like', "%{$token}%"));
+                            });
+                        }
+                    });
+                }
             });
         }
 
-        if ($request->filled('category_id')) {
+        if ($request->filled('category_id') && $request->category_id !== 'all') {
             $query->where('category_id', $request->category_id);
         }
 
-        if ($request->filled('brand_id')) {
+        if ($request->filled('brand_id') && $request->brand_id !== 'all') {
             $query->where('brand_id', $request->brand_id);
         }
 
-        if ($request->filled('status')) {
+        if ($request->filled('status') && $request->status !== 'all') {
             $query->where('is_active', $request->status === 'active' ? 1 : 0);
         }
 
@@ -1348,7 +1383,7 @@ class ProductController extends Controller
         if ($request->has('select2')) {
             $results = [];
             if (empty($q) || stripos('All categories', $q) !== false || stripos('all', $q) !== false) {
-                $results[] = ['id' => 'all', 'text' => 'All categories'];
+                $results[] = ['id' => '', 'text' => 'All Categories'];
             }
             foreach ($categories as $cat) {
                 $results[] = [

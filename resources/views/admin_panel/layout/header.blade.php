@@ -228,22 +228,30 @@
                                                                         href="{{ route('subcategory.home') }}"><i
                                                                             class="menu_icon ti-id-badge"></i><span>Sub
                                                                             Category</span></a></li>
+                                                                @can('warehouse.view')
                                                                 <li class="nav-item"><a class="nav-link"
                                                                         href="{{ url('warehouse') }}"><i
                                                                             class="menu_icon ti-home"></i><span>Warehouses & Shops</span></a>
                                                                 </li>
+                                                                @endcan
+                                                                @can('warehouse.stock.view')
                                                                 <li class="nav-item"><a class="nav-link"
                                                                         href="{{ route('warehouse_stocks.index') }}"><i
                                                                             class="menu_icon ti-package"></i><span>Warehouse Stock</span></a>
                                                                 </li>
+                                                                @endcan
+                                                                @canany(['opening.stock.view', 'opening.stock.create', 'warehouse.stock.create'])
                                                                 <li class="nav-item"><a class="nav-link"
                                                                         href="{{ route('warehouse_stocks.create') }}"><i
-                                                                            class="menu_icon ti-plus"></i><span>Add Opening Stock</span></a>
+                                                                            class="menu_icon ti-plus"></i><span>Opening Stock</span></a>
                                                                 </li>
+                                                                @endcanany
+                                                                @can('stock.transfer.view')
                                                                 <li class="nav-item"><a class="nav-link"
                                                                         href="{{ route('stock_transfers.index') }}"><i
                                                                             class="menu_icon ti-exchange-vertical"></i><span>Stock Transfers</span></a>
                                                                 </li>
+                                                                @endcan
                                                                 <li class="nav-item"><a class="nav-link"
                                                                         href="{{ url('vendor') }}"><i
                                                                             class="menu_icon ti-alert"></i><span>vendor</span></a>

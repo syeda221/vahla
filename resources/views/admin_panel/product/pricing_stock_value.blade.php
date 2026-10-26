@@ -1271,10 +1271,23 @@ $(document).ready(function() {
                 const wholeP = parseFloat(v.wholesale_price) || 0;
                 const retP   = parseFloat(v.retail_price) || 0;
 
-                $(this).find('.var-purch-price').data('raw', purchP).attr('data-raw', purchP).text(`Rs. ${purchP.toFixed(2)}`);
-                $(this).find('.var-sale-price').data('raw', saleP).attr('data-raw', saleP).text(`Rs. ${saleP.toFixed(2)}`);
-                $(this).find('.var-wholesale-price').data('raw', wholeP).attr('data-raw', wholeP).text(`Rs. ${wholeP.toFixed(2)}`);
-                $(this).find('.var-retail-price').data('raw', retP).attr('data-raw', retP).text(`Rs. ${retP.toFixed(2)}`);
+                const $purch = $(this).find('.var-purch-price');
+                const $sale = $(this).find('.var-sale-price');
+                const $whole = $(this).find('.var-wholesale-price');
+                const $ret = $(this).find('.var-retail-price');
+
+                if (!$purch.hasClass('is-editing')) {
+                    $purch.data('raw', purchP).attr('data-raw', purchP).text(`Rs. ${purchP.toFixed(2)}`);
+                }
+                if (!$sale.hasClass('is-editing')) {
+                    $sale.data('raw', saleP).attr('data-raw', saleP).text(`Rs. ${saleP.toFixed(2)}`);
+                }
+                if (!$whole.hasClass('is-editing')) {
+                    $whole.data('raw', wholeP).attr('data-raw', wholeP).text(`Rs. ${wholeP.toFixed(2)}`);
+                }
+                if (!$ret.hasClass('is-editing')) {
+                    $ret.data('raw', retP).attr('data-raw', retP).text(`Rs. ${retP.toFixed(2)}`);
+                }
             }
         });
     }
@@ -1373,6 +1386,47 @@ $(document).ready(function() {
                     }
                     if (res.stock_value !== undefined) {
                         $(`#stock-value-${productId}`).text(`Rs. ${parseFloat(res.stock_value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+                    }
+                    if (res.margin_pct !== undefined) {
+                        updateMarginPill(productId, res.margin_pct);
+                    }
+
+                    // Update Top/Master Row Base Sale Rate
+                    if (res.base_sale_price !== undefined) {
+                        const $masterSaleCell = $(`#row-product-${productId}`).find('.editable-cell[data-field="sale_price"]');
+                        if ($masterSaleCell.length) {
+                            $masterSaleCell.data('raw', res.base_sale_price).attr('data-raw', res.base_sale_price);
+                            $masterSaleCell.find('.cell-val').text(`Rs. ${parseFloat(res.base_sale_price).toFixed(2)}`);
+                            $masterSaleCell.addClass('save-flash');
+                            setTimeout(() => $masterSaleCell.removeClass('save-flash'), 800);
+                        }
+                    }
+
+                    // Update Top/Master Row Base Purchase Rate
+                    if (res.base_purchase_price !== undefined) {
+                        const $masterPurchCell = $(`#row-product-${productId}`).find('.editable-cell[data-field="purchase_price"]');
+                        if ($masterPurchCell.length) {
+                            $masterPurchCell.data('raw', res.base_purchase_price).attr('data-raw', res.base_purchase_price);
+                            $masterPurchCell.find('.cell-val').text(`Rs. ${parseFloat(res.base_purchase_price).toFixed(2)}`);
+                            $masterPurchCell.addClass('save-flash');
+                            setTimeout(() => $masterPurchCell.removeClass('save-flash'), 800);
+                        }
+                    }
+
+                    // Update Top/Master Row Wholesale Rate
+                    if (res.wholesale_price !== undefined) {
+                        const $masterWholeCell = $(`#row-product-${productId}`).find('.editable-cell[data-field="wholesale_price"]');
+                        if ($masterWholeCell.length) {
+                            $masterWholeCell.data('raw', res.wholesale_price).attr('data-raw', res.wholesale_price);
+                            $masterWholeCell.find('.cell-val').text(`Rs. ${parseFloat(res.wholesale_price).toFixed(2)}`);
+                            $masterWholeCell.addClass('save-flash');
+                            setTimeout(() => $masterWholeCell.removeClass('save-flash'), 800);
+                        }
+                    }
+
+                    // Update other variant rows if variants array returned
+                    if (res.variants && res.variants.length) {
+                        updateVariantSubtable(productId, res.base_purchase_price, res.base_sale_price, res.variants);
                     }
 
                     showToast('success', res.message || 'Variant price updated successfully');

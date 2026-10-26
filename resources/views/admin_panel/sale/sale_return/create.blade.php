@@ -338,6 +338,8 @@
                                 @foreach ($sale->items as $index => $item)
                                     <tr>
                                         <input type="hidden" name="product_id[]" value="{{ $item['product_id'] }}">
+                                        <input type="hidden" name="product_set_id[]" value="{{ $item['product_set_id'] ?? '' }}">
+                                        <input type="hidden" name="is_set[]" value="{{ !empty($item['is_set']) ? '1' : '0' }}">
                                         <input type="hidden" name="color[]" value="{{ $item['color'] ?? '' }}">
                                         {{-- Hidden Discount to preserve refund math if needed --}}
                                         <input type="hidden" name="item_disc[]" class="item_disc"

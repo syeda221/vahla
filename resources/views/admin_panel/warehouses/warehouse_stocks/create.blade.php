@@ -175,12 +175,16 @@
             </div>
         </div>
         <div class="d-flex align-items-center gap-2">
+            @canany(['warehouse.stock.view', 'opening.stock.view'])
             <a href="{{ route('warehouse_stocks.index') }}" class="erp-btn-secondary">
                 <i class="fas fa-arrow-left"></i> Back to Opening Stocks
             </a>
+            @endcanany
+            @can('products.view')
             <a href="{{ route('product') }}" class="erp-btn-secondary">
                 <i class="fas fa-box"></i> Products Catalog
             </a>
+            @endcan
         </div>
     </div>
 

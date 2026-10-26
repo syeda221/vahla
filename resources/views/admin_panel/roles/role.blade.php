@@ -1121,6 +1121,11 @@
                     'grn': 'fa-dolly-flatbed',
                     'direct_grn': 'fa-boxes',
                     'purchase_pos': 'fa-cash-register',
+                    'warehouse': 'fa-warehouse',
+                    'warehouse.stock': 'fa-boxes',
+                    'opening.stock': 'fa-dolly-flatbed',
+                    'stock.transfer': 'fa-exchange-alt',
+                    'stock.adjust': 'fa-sliders-h',
                     'accounts': 'fa-calculator'
                 };
 

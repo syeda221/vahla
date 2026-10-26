@@ -520,8 +520,8 @@
                         <div class="card filter-panel mb-4" id="filterPanelContainer">
                             <div class="card-body p-0">
                                 <form id="filterForm" class="row g-2 g-md-3 align-items-end" autocomplete="off" onsubmit="return false;">
-                                    <div class="col-6 col-md-2">
-                                        <label class="form-label mb-1">Quick Filter</label>
+                                    <div class="col-6 col-md-4 col-lg-2">
+                                        <label class="form-label mb-1 fw-semibold">Quick Filter</label>
                                         <select id="quick_filter" class="form-select">
                                             <option value="custom">Custom Range</option>
                                             <option value="daily">Daily (Today)</option>
@@ -530,24 +530,24 @@
                                             <option value="yearly">Yearly (This Year)</option>
                                         </select>
                                     </div>
-                                    <div class="col-6 col-md-2">
-                                        <label class="form-label mb-1">From Date</label>
-                                        <input type="text" class="form-control datepicker-custom bg-white" name="from_date" id="filter_from_date" placeholder="dd/mm/yyyy">
+                                    <div class="col-6 col-md-4 col-lg-2">
+                                        <label class="form-label mb-1 fw-semibold">From Date</label>
+                                        <input type="text" class="form-control datepicker-custom bg-white" name="from_date" id="filter_from_date" value="{{ request('from_date') }}" placeholder="dd/mm/yyyy">
                                     </div>
-                                    <div class="col-6 col-md-2">
-                                        <label class="form-label mb-1">To Date</label>
-                                        <input type="text" class="form-control datepicker-custom bg-white" name="to_date" id="filter_to_date" placeholder="dd/mm/yyyy">
+                                    <div class="col-6 col-md-4 col-lg-2">
+                                        <label class="form-label mb-1 fw-semibold">To Date</label>
+                                        <input type="text" class="form-control datepicker-custom bg-white" name="to_date" id="filter_to_date" value="{{ request('to_date') }}" placeholder="dd/mm/yyyy">
                                     </div>
-                                    <div class="col-6 col-md-2">
-                                        <label class="form-label mb-1">Invoice / Bill#</label>
+                                    <div class="col-6 col-md-4 col-lg-2">
+                                        <label class="form-label mb-1 fw-semibold"><i class="fas fa-file-invoice me-1 text-primary"></i>Inv / Bill#</label>
                                         <input type="text" class="form-control" name="bill_no" id="filter_bill_no" value="{{ request('bill_no') ?? request('invoice_no') }}" placeholder="Inv / Bill#...">
                                     </div>
-                                    <div class="col-6 col-md-1">
-                                        <label class="form-label mb-1">Ref No</label>
-                                        <input type="text" class="form-control" name="reference" id="filter_reference" placeholder="Ref No...">
+                                    <div class="col-6 col-md-4 col-lg-2">
+                                        <label class="form-label mb-1 fw-semibold text-primary"><i class="fas fa-hashtag me-1"></i>Reference#</label>
+                                        <input type="text" class="form-control" name="reference" id="filter_reference" value="{{ request('reference') }}" placeholder="Ref / M.Bill#...">
                                     </div>
-                                    <div class="col-6 col-md-3">
-                                        <label class="form-label mb-1">Customer</label>
+                                    <div class="col-6 col-md-4 col-lg-2">
+                                        <label class="form-label mb-1 fw-semibold"><i class="fas fa-user me-1 text-success"></i>Customer</label>
                                         <select class="form-select select2-customer" name="customer_id" id="filter_customer_id" style="width: 100%;">
                                             <option value="">All Customers</option>
                                             @foreach ($customers as $c)
@@ -707,7 +707,7 @@
                 }
 
                 $.ajax({
-                    url: '{{ route("sale.index") }}',
+                    url: '{{ route($currentStatusRoute) }}',
                     method: 'GET',
                     data: formData,
                     headers: {
@@ -808,6 +808,15 @@
                     applySalesFilter();
                     return false;
                 }
+            });
+
+            // Live search on typing in Reference or Bill# inputs (debounced)
+            let searchDebounceTimer = null;
+            $(document).on('input', '#filter_reference, #filter_bill_no', function() {
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(function() {
+                    applySalesFilter();
+                }, 400);
             });
 
             // Reset form completely and fetch unfiltered list via AJAX

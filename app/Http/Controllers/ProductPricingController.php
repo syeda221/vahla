@@ -132,6 +132,20 @@ class ProductPricingController extends Controller
                 }
             }
 
+            // Sync with base variant if present
+            $baseVar = collect($variants)->first(fn($v) => !empty($v['is_base_variant']) || (isset($v['conv_factor']) && (float)$v['conv_factor'] == 1.0));
+            if (!$baseVar && count($variants) > 0) {
+                $baseVar = $variants[0];
+            }
+            if ($baseVar) {
+                if (isset($baseVar['sale_price']) && (float)$baseVar['sale_price'] > 0) {
+                    $baseSalePrice = (float)$baseVar['sale_price'];
+                }
+                if (isset($baseVar['purch_price']) && (float)$baseVar['purch_price'] > 0) {
+                    $basePurchPrice = (float)$baseVar['purch_price'];
+                }
+            }
+
             return (object) [
                 'id'                   => $product->id,
                 'item_code'            => $product->item_code,
@@ -316,6 +330,119 @@ class ProductPricingController extends Controller
                 ], 422);
             }
 
+            // Check if this variant is the base variant
+            $isBaseVariant = false;
+            if (!empty($variants[$vIdx]['is_base_variant']) && $variants[$vIdx]['is_base_variant'] != '0') {
+                $isBaseVariant = true;
+            } elseif (isset($variants[$vIdx]['conv_factor']) && (float)$variants[$vIdx]['conv_factor'] == 1.0) {
+                $isBaseVariant = true;
+            } elseif (isset($variants[$vIdx]['unit']) && $product->unit && strtolower(trim($variants[$vIdx]['unit'])) === strtolower(trim($product->unit->name))) {
+                $isBaseVariant = true;
+            } elseif ($vIdx === 0) {
+                $hasOtherBase = false;
+                foreach ($variants as $k => $vCheck) {
+                    if ($k !== 0 && (!empty($vCheck['is_base_variant']) || (isset($vCheck['conv_factor']) && (float)$vCheck['conv_factor'] == 1.0))) {
+                        $hasOtherBase = true;
+                        break;
+                    }
+                }
+                if (!$hasOtherBase) {
+                    $isBaseVariant = true;
+                }
+            }
+
+            if ($isBaseVariant) {
+                if ($field === 'sale_price' || $field === 'retail_price') {
+                    if ($product->size_mode === 'by_size') {
+                        $product->price_per_m2 = $val;
+                        $product->sale_price_per_piece = round($val * $ppm2, 2);
+                    } elseif ($product->size_mode === 'by_cartons') {
+                        $product->sale_price_per_box = $val;
+                        $product->sale_price_per_piece = round($val / $ppb, 2);
+                    } else {
+                        $product->sale_price_per_piece = $val;
+                        $product->sale_price_per_box = round($val * $ppb, 2);
+                    }
+
+                    // Recalculate other dependent variants that have conv_factor
+                    foreach ($variants as $k => &$v) {
+                        if ($k === $vIdx) continue;
+                        if (in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet'])) {
+                            $conv = (float) ($v['conv_factor'] ?? 0);
+                            if ($conv <= 0 && isset($v['weight_per_piece'])) {
+                                if ($product->size_mode === 'by_feet') {
+                                    $conv = (float) $v['weight_per_piece'] / 12.0;
+                                } else {
+                                    $conv = (float) $v['weight_per_piece'] / 1000.0;
+                                }
+                            }
+                            if ($conv > 0) {
+                                $v['sale_price']   = round($val * $conv, 2);
+                                $v['retail_price'] = round($val * $conv, 2);
+                            }
+                        } elseif ($product->size_mode === 'by_cartons' && $ppb > 0) {
+                            $v['sale_price']   = round($val / $ppb, 2);
+                            $v['retail_price'] = round($val / $ppb, 2);
+                        }
+                    }
+                    unset($v);
+                } elseif (in_array($field, ['purchase_price', 'purch_price'])) {
+                    if ($product->size_mode === 'by_size') {
+                        $product->purchase_price_per_m2 = $val;
+                        $product->purchase_price_per_piece = round($val * $ppm2, 2);
+                    } elseif ($product->size_mode === 'by_cartons') {
+                        $product->purchase_price_per_box = $val;
+                        $product->purchase_price_per_piece = round($val / $ppb, 2);
+                    } else {
+                        $product->purchase_price_per_piece = $val;
+                        $product->purchase_price_per_box = round($val * $ppb, 2);
+                    }
+
+                    // Recalculate other dependent variants that have conv_factor
+                    foreach ($variants as $k => &$v) {
+                        if ($k === $vIdx) continue;
+                        if (in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet'])) {
+                            $conv = (float) ($v['conv_factor'] ?? 0);
+                            if ($conv <= 0 && isset($v['weight_per_piece'])) {
+                                if ($product->size_mode === 'by_feet') {
+                                    $conv = (float) $v['weight_per_piece'] / 12.0;
+                                } else {
+                                    $conv = (float) $v['weight_per_piece'] / 1000.0;
+                                }
+                            }
+                            if ($conv > 0) {
+                                $v['purch_price']    = round($val * $conv, 2);
+                                $v['purchase_price'] = round($val * $conv, 2);
+                            }
+                        } elseif ($product->size_mode === 'by_cartons' && $ppb > 0) {
+                            $v['purch_price']    = round($val / $ppb, 2);
+                            $v['purchase_price'] = round($val / $ppb, 2);
+                        }
+                    }
+                    unset($v);
+                } elseif ($field === 'wholesale_price') {
+                    $product->wholesale_price = $val;
+
+                    foreach ($variants as $k => &$v) {
+                        if ($k === $vIdx) continue;
+                        if (in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet'])) {
+                            $conv = (float) ($v['conv_factor'] ?? 0);
+                            if ($conv <= 0 && isset($v['weight_per_piece'])) {
+                                if ($product->size_mode === 'by_feet') {
+                                    $conv = (float) $v['weight_per_piece'] / 12.0;
+                                } else {
+                                    $conv = (float) $v['weight_per_piece'] / 1000.0;
+                                }
+                            }
+                            if ($conv > 0) {
+                                $v['wholesale_price'] = round($val * $conv, 2);
+                            }
+                        }
+                    }
+                    unset($v);
+                }
+            }
+
             $product->color = json_encode(array_values($variants));
             $product->save();
 
@@ -324,17 +451,36 @@ class ProductPricingController extends Controller
             $avgPurch = $costData['avg_purchase_price'];
             $newStockValue = $costData['stock_value'];
 
+            // Get current base prices for UI
+            if ($product->size_mode === 'by_size') {
+                $basePurchPrice = (float) ($product->purchase_price_per_m2 ?? 0);
+                $baseSalePrice  = (float) ($product->price_per_m2 ?? 0);
+            } elseif ($product->size_mode === 'by_cartons') {
+                $basePurchPrice = (float) ($product->purchase_price_per_box ?? 0);
+                $baseSalePrice  = (float) ($product->sale_price_per_box ?? 0);
+            } else {
+                $basePurchPrice = (float) ($product->purchase_price_per_piece ?? 0);
+                $baseSalePrice  = (float) ($product->sale_price_per_piece ?: $product->sale_price_per_box ?: 0);
+            }
+            $wholesalePrice = (float) ($product->wholesale_price ?? 0);
+            $marginPct = $baseSalePrice > 0 ? ((($baseSalePrice - $avgPurch) / $baseSalePrice) * 100) : 0;
+
             return response()->json([
-                'success'            => true,
-                'message'            => 'Variant rate updated successfully.',
-                'product_id'         => $product->id,
-                'variant_index'      => $vIdx,
-                'field'              => $field,
-                'value'              => $val,
-                'variant'            => $variants[$vIdx],
-                'variants'           => $variants,
-                'avg_purchase_price' => $avgPurch,
-                'stock_value'        => $newStockValue,
+                'success'             => true,
+                'message'             => $isBaseVariant ? 'Base rate & variants updated successfully.' : 'Variant rate updated successfully.',
+                'product_id'          => $product->id,
+                'variant_index'       => $vIdx,
+                'is_base_variant'     => $isBaseVariant,
+                'field'               => $field,
+                'value'               => $val,
+                'variant'             => $variants[$vIdx],
+                'variants'            => $variants,
+                'base_purchase_price' => $basePurchPrice,
+                'base_sale_price'     => $baseSalePrice,
+                'wholesale_price'     => $wholesalePrice,
+                'avg_purchase_price'  => $avgPurch,
+                'stock_value'         => $newStockValue,
+                'margin_pct'          => round($marginPct, 1),
             ]);
         }
 

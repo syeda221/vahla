@@ -14,6 +14,10 @@ class StockTransferController extends Controller
 {
     public function index(Request $request)
     {
+        if (! auth()->user()->can('stock.transfer.view')) {
+            abort(403, 'Unauthorized action. You do not have permission to view Stock Transfers.');
+        }
+
         $search = $request->get('search');
         $fromWh = $request->get('from_warehouse_id');
         $toWh   = $request->get('to_warehouse_id');
@@ -46,6 +50,10 @@ class StockTransferController extends Controller
 
     public function create()
     {
+        if (! auth()->user()->can('stock.transfer.create') && ! auth()->user()->can('stock.transfer.view')) {
+            abort(403, 'Unauthorized action. You do not have permission to create Stock Transfers.');
+        }
+
         $warehouses = Warehouse::orderByRaw('is_shop DESC, warehouse_name ASC')->get();
         $shops      = Warehouse::where('is_shop', 1)->orderBy('warehouse_name')->get();
         $godowns    = Warehouse::where('is_shop', 0)->orderBy('warehouse_name')->get();
@@ -109,6 +117,10 @@ class StockTransferController extends Controller
 
     public function store(Request $request)
     {
+        if (! auth()->user()->can('stock.transfer.create')) {
+            abort(403, 'Unauthorized action. You do not have permission to execute Stock Transfers.');
+        }
+
         // 1. Destination Parsing
         $destType = $request->input('destination_type', 'warehouse');
         $toShop   = ($destType === 'shop' || $request->boolean('to_shop'));

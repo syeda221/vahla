@@ -32,7 +32,9 @@ class SaleReturnController extends Controller
         $returnedQtyMap = [];
         foreach ($pastReturns as $sr) {
             foreach ($sr->items as $srItem) {
-                if ($srItem->is_manual) {
+                if (!empty($srItem->product_set_id)) {
+                    $key = 'SET_' . $srItem->product_set_id;
+                } elseif ($srItem->is_manual) {
                     $key = 'MANUAL_' . strtolower(trim($srItem->product_name));
                 } else {
                     $key = $srItem->product_id . '_' . ($srItem->color ?? '');
@@ -47,12 +49,55 @@ class SaleReturnController extends Controller
         // Format sale items with complete product data
         $sale->items->each(function ($item) use ($returnedQtyMap) {
             $product = $item->product;
-            if ($item->is_manual) {
+
+            $isSet = !empty($item->product_set_id);
+            $set = null;
+            if ($isSet) {
+                $set = $item->productSet ?: \App\Models\ProductSet::find($item->product_set_id);
+            }
+            if (!$set && empty($item->product_id)) {
+                if (!empty($item->product_name)) {
+                    $set = \App\Models\ProductSet::where('name', $item->product_name)->first();
+                }
+                if (!$set && !empty($item->item_description) && preg_match('/\[(SET-[^\]]+)\]/', $item->item_description, $matches)) {
+                    $set = \App\Models\ProductSet::where('code', $matches[1])->first();
+                }
+                if ($set) {
+                    $isSet = true;
+                    $item->product_set_id = $set->id;
+                }
+            }
+
+            if ($isSet && $set) {
+                $key = 'SET_' . $set->id;
+            } elseif ($item->is_manual) {
                 $key = 'MANUAL_' . strtolower(trim($item->product_name));
             } else {
                 $key = $item->product_id . '_' . ($item->color ?? '');
             }
             $alreadyReturned = $returnedQtyMap[$key] ?? 0;
+
+            if ($isSet && $set) {
+                $item->is_set = true;
+                $item->product_set_id = $set->id;
+                $item->size_val = '-';
+                $item->color_val = '-';
+                $item->item_name = '[SET] ' . $set->name;
+                $item->item_code = $set->code;
+                $item->brand = 'SET';
+                $item->unit = 'Set';
+                $item->pieces_per_box = 1;
+                $item->size_mode = 'std';
+                $item->qty = (float)($item->total_pieces > 0 ? $item->total_pieces : ($item->qty > 0 ? $item->qty : 1));
+                $item->original_qty = $item->qty;
+                $item->returned_qty = $alreadyReturned;
+                $item->max_returnable = max(0, $item->qty - $alreadyReturned);
+                $item->price = (!empty($item->price_per_piece) && $item->price_per_piece > 0) 
+                    ? $item->price_per_piece 
+                    : ($item->price ?? $item->per_price ?? 0);
+                $item->discount = $item->discount_amount ?? $item->discount ?? $item->per_discount ?? 0;
+                return;
+            }
             
             // Extract variant information from sale item color field
             $variant = [];
@@ -79,15 +124,16 @@ class SaleReturnController extends Controller
             $item->color_val = $colorStr;
 
             // Add product details
-            $item->item_name = $product->product_name ?? $product->item_name ?? 'Unknown';
-            $item->item_code = $product->product_code ?? $product->item_code ?? '';
+            $item->item_name = $product ? ($product->product_name ?? $product->item_name ?? 'Unknown') : ($item->product_name ?? 'Unknown');
+            $item->item_code = $product ? ($product->product_code ?? $product->item_code ?? '') : '';
 
-            
-            // Fix brand - get name from relationship
-            if ($product->brand && is_object($product->brand)) {
+            // Fix brand - get name from relationship safely
+            if ($product && $product->brand && is_object($product->brand)) {
                 $item->brand = $product->brand->name ?? '';
-            } else {
+            } elseif ($product) {
                 $item->brand = $product->brand_name ?? '';
+            } else {
+                $item->brand = '';
             }
             
             // Resolve live variant and accurate pieces_per_box
@@ -232,7 +278,11 @@ class SaleReturnController extends Controller
             'warehouse_id' => 'required|exists:warehouses,id',
             'return_date' => 'required|date',
             'product_id' => 'required|array',
-            'product_id.*' => 'required|exists:products,id',
+            'product_id.*' => 'nullable',
+            'product_set_id' => 'nullable|array',
+            'product_set_id.*' => 'nullable',
+            'is_set' => 'nullable|array',
+            'is_set.*' => 'nullable',
             'color' => 'nullable|array',
             'qty' => 'required|array',
             'qty.*' => 'required|numeric|min:0',
@@ -273,8 +323,8 @@ class SaleReturnController extends Controller
 
             // Validate that at least one item has return quantity > 0
             $hasItems = false;
-            foreach ($request->product_id as $idx => $productId) {
-                $qty = (float) $request->qty[$idx];
+            foreach ($request->qty as $idx => $qVal) {
+                $qty = (float) $qVal;
                 if ($qty > 0) {
                     $hasItems = true;
                     break;
@@ -308,6 +358,103 @@ class SaleReturnController extends Controller
 
                 $price = (float) $request->price[$idx];
                 $itemDisc = (float) ($request->item_disc[$idx] ?? 0);
+
+                $isSet = (!empty($request->is_set[$idx]) && $request->is_set[$idx] == '1')
+                    || !empty($request->product_set_id[$idx])
+                    || (is_string($productId) && str_starts_with($productId, 'set_'));
+                $setId = !empty($request->product_set_id[$idx]) 
+                    ? $request->product_set_id[$idx] 
+                    : ((is_string($productId) && str_starts_with($productId, 'set_')) ? str_replace('set_', '', $productId) : null);
+
+                if ($isSet) {
+                    $set = \App\Models\ProductSet::with('items.product')->find($setId);
+                    $setName = $set ? $set->name : 'Product Set';
+                    $lineTotal = round(($qty * $price) - $itemDisc, 2);
+
+                    SaleReturnItem::create([
+                        'sale_return_id' => $return->id,
+                        'product_id' => null,
+                        'product_set_id' => $setId,
+                        'product_name' => $setName,
+                        'color' => null,
+                        'warehouse_id' => $validated['warehouse_id'],
+                        'qty' => $qty,
+                        'boxes' => $qty,
+                        'loose_pieces' => 0,
+                        'price' => $price,
+                        'item_discount' => $itemDisc,
+                        'unit' => 'Set',
+                        'line_total' => $lineTotal,
+                    ]);
+
+                    if ($set && $set->items) {
+                        foreach ($set->items as $setItem) {
+                            $p = $setItem->product;
+                            if (!$p) continue;
+
+                            $pMode = $p->size_mode ?? '';
+                            $itemSetQty = (float)$setItem->quantity * $qty;
+                            $qtyAdd = $itemSetQty;
+
+                            if ($pMode === 'by_kg' || $pMode === 'by_gm') {
+                                $conv = (float)($setItem->conv_factor > 0 ? $setItem->conv_factor : 0);
+                                $wpp = (float)($setItem->weight_per_piece > 0 ? $setItem->weight_per_piece : 0);
+                                $unit = strtolower(trim($setItem->variant_unit ?? ''));
+
+                                if ($unit === 'gm' || $unit === 'g') {
+                                    $qtyAdd = $itemSetQty / 1000.0;
+                                } elseif (in_array($unit, ['pcs', 'pc', 'piece', 'pieces']) || ($conv > 0 && $conv != 1) || $wpp > 0) {
+                                    if ($conv > 0 && $conv != 1) {
+                                        $qtyAdd = $itemSetQty * $conv;
+                                    } elseif ($wpp > 0) {
+                                        $qtyAdd = $itemSetQty * ($wpp / 1000.0);
+                                    }
+                                } else {
+                                    $qtyAdd = $itemSetQty;
+                                }
+                            } elseif ($pMode === 'by_meter' || $pMode === 'by_feet') {
+                                $conv = (float)($setItem->conv_factor > 0 ? $setItem->conv_factor : 1);
+                                $qtyAdd = $itemSetQty * ($conv > 0 ? $conv : 1);
+                            }
+
+                            $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
+                            $stock = WarehouseStock::where('warehouse_id', $validated['warehouse_id'])
+                                ->where('product_id', $p->id)
+                                ->lockForUpdate()
+                                ->first();
+
+                            if ($stock) {
+                                $stock->total_pieces += $qtyAdd;
+                                $stock->quantity = round($stock->total_pieces / $ppb, 2);
+                                $stock->save();
+                            } else {
+                                WarehouseStock::create([
+                                    'warehouse_id' => $validated['warehouse_id'],
+                                    'product_id' => $p->id,
+                                    'total_pieces' => $qtyAdd,
+                                    'quantity' => round($qtyAdd / $ppb, 2),
+                                    'price' => 0
+                                ]);
+                            }
+
+                            $movements[] = [
+                                'product_id' => $p->id,
+                                'type' => 'in',
+                                'qty' => $qtyAdd,
+                                'ref_type' => 'SALE_RETURN',
+                                'ref_id' => $return->id,
+                                'note' => "Return #{$nextInvoice} (Set: {$set->name} x{$qty})",
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
+                        }
+                    }
+
+                    $subtotal += $lineTotal;
+                    $totalItemDiscount += $itemDisc;
+                    continue;
+                }
+
                 // Get product for PPB and size_mode calculation
                 $product = Product::find($productId);
                 $sizeMode = $product->size_mode ?? 'by_pieces';
@@ -648,7 +795,11 @@ class SaleReturnController extends Controller
             'warehouse_id' => 'required|exists:warehouses,id',
             'return_date' => 'required|date',
             'product_id' => 'required|array',
-            'product_id.*' => 'required|exists:products,id',
+            'product_id.*' => 'nullable',
+            'product_set_id' => 'nullable|array',
+            'product_set_id.*' => 'nullable',
+            'is_set' => 'nullable|array',
+            'is_set.*' => 'nullable',
             'color' => 'nullable|array',
             'unit' => 'nullable|array',
             'qty' => 'required|array',
@@ -702,6 +853,102 @@ class SaleReturnController extends Controller
 
                 $price = (float) $request->price[$idx];
                 $itemDisc = (float) ($request->item_disc[$idx] ?? 0);
+
+                $isSet = (!empty($request->is_set[$idx]) && $request->is_set[$idx] == '1')
+                    || !empty($request->product_set_id[$idx])
+                    || (is_string($productId) && str_starts_with($productId, 'set_'));
+                $setId = !empty($request->product_set_id[$idx]) 
+                    ? $request->product_set_id[$idx] 
+                    : ((is_string($productId) && str_starts_with($productId, 'set_')) ? str_replace('set_', '', $productId) : null);
+
+                if ($isSet) {
+                    $set = \App\Models\ProductSet::with('items.product')->find($setId);
+                    $setName = $set ? $set->name : 'Product Set';
+                    $lineTotal = round(($qty * $price) - $itemDisc, 2);
+
+                    SaleReturnItem::create([
+                        'sale_return_id' => $return->id,
+                        'product_id' => null,
+                        'product_set_id' => $setId,
+                        'product_name' => $setName,
+                        'color' => null,
+                        'warehouse_id' => $validated['warehouse_id'],
+                        'qty' => $qty,
+                        'boxes' => $qty,
+                        'loose_pieces' => 0,
+                        'price' => $price,
+                        'item_discount' => $itemDisc,
+                        'unit' => 'Set',
+                        'line_total' => $lineTotal,
+                    ]);
+
+                    if ($set && $set->items) {
+                        foreach ($set->items as $setItem) {
+                            $p = $setItem->product;
+                            if (!$p) continue;
+
+                            $pMode = $p->size_mode ?? '';
+                            $itemSetQty = (float)$setItem->quantity * $qty;
+                            $qtyAdd = $itemSetQty;
+
+                            if ($pMode === 'by_kg' || $pMode === 'by_gm') {
+                                $conv = (float)($setItem->conv_factor > 0 ? $setItem->conv_factor : 0);
+                                $wpp = (float)($setItem->weight_per_piece > 0 ? $setItem->weight_per_piece : 0);
+                                $unit = strtolower(trim($setItem->variant_unit ?? ''));
+
+                                if ($unit === 'gm' || $unit === 'g') {
+                                    $qtyAdd = $itemSetQty / 1000.0;
+                                } elseif (in_array($unit, ['pcs', 'pc', 'piece', 'pieces']) || ($conv > 0 && $conv != 1) || $wpp > 0) {
+                                    if ($conv > 0 && $conv != 1) {
+                                        $qtyAdd = $itemSetQty * $conv;
+                                    } elseif ($wpp > 0) {
+                                        $qtyAdd = $itemSetQty * ($wpp / 1000.0);
+                                    }
+                                } else {
+                                    $qtyAdd = $itemSetQty;
+                                }
+                            } elseif ($pMode === 'by_meter' || $pMode === 'by_feet') {
+                                $conv = (float)($setItem->conv_factor > 0 ? $setItem->conv_factor : 1);
+                                $qtyAdd = $itemSetQty * ($conv > 0 ? $conv : 1);
+                            }
+
+                            $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
+                            $stock = WarehouseStock::where('warehouse_id', $validated['warehouse_id'])
+                                ->where('product_id', $p->id)
+                                ->lockForUpdate()
+                                ->first();
+
+                            if ($stock) {
+                                $stock->total_pieces += $qtyAdd;
+                                $stock->quantity = round($stock->total_pieces / $ppb, 2);
+                                $stock->save();
+                            } else {
+                                WarehouseStock::create([
+                                    'warehouse_id' => $validated['warehouse_id'],
+                                    'product_id' => $p->id,
+                                    'total_pieces' => $qtyAdd,
+                                    'quantity' => round($qtyAdd / $ppb, 2),
+                                    'price' => 0
+                                ]);
+                            }
+
+                            $movements[] = [
+                                'product_id' => $p->id,
+                                'type' => 'in',
+                                'qty' => $qtyAdd,
+                                'ref_type' => 'SALE_RETURN',
+                                'ref_id' => $return->id,
+                                'note' => "Return #{$nextInvoice} (Set: {$set->name} x{$qty})",
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
+                        }
+                    }
+
+                    $subtotal += $lineTotal;
+                    $totalItemDiscount += $itemDisc;
+                    continue;
+                }
 
                 $product = Product::find($productId);
                 $sizeMode = $product->size_mode ?? 'by_pieces';

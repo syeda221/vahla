@@ -11,7 +11,7 @@
                     </div>
                     <div class="page-btn d-flex justify-content-end col-lg-6">
                         @can('warehouse.create')
-                            <button class="btn btn-outline-primary mb-2" data-bs-toggle="modal" data-bs-target="#warehouseModal"
+                            <button class="btn btn-outline-primary mb-2" data-toggle="modal" data-target="#warehouseModal" data-bs-toggle="modal" data-bs-target="#warehouseModal"
                                 onclick="clearWarehouse()">Add Warehouse</button>
                         @endcan
                     </div>
@@ -70,10 +70,11 @@
                                                 <i class="fas fa-eye me-1"></i> Stock
                                             </a>
                                             @can('warehouse.edit')
-                                                <button class="btn btn-primary btn-sm edit-warehouse-btn"
+                                                <button type="button" class="btn btn-primary btn-sm edit-warehouse-btn"
                                                     data-id="{{ $w->id }}" data-name="{{ $w->warehouse_name }}"
                                                     data-location="{{ $w->location }}" data-remarks="{{ $w->remarks }}"
                                                     data-is-shop="{{ $w->is_shop ? '1' : '0' }}"
+                                                    data-toggle="modal" data-target="#warehouseModal"
                                                     data-bs-toggle="modal" data-bs-target="#warehouseModal">
                                                     Edit
                                                 </button>
@@ -101,14 +102,17 @@
         </div>
     </div>
 
-    <div class="modal fade" id="warehouseModal">
-        <div class="modal-dialog">
+    <div class="modal fade" id="warehouseModal" tabindex="-1" role="dialog" aria-labelledby="warehouseModalTitle" aria-hidden="true">
+        <div class="modal-dialog" role="document">
             <form action="{{ url('warehouse/store') }}" method="POST">
                 @csrf
                 <input type="hidden" name="id" id="warehouse_id">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Add/Edit Warehouse</h5>
+                        <h5 class="modal-title" id="warehouseModalTitle">Add/Edit Warehouse</h5>
+                        <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
@@ -135,8 +139,9 @@
                         </div>
                     </div>
                     <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
                         @canany(['warehouse.create', 'warehouse.edit'])
-                            <button class="btn btn-primary">Save</button>
+                            <button type="submit" class="btn btn-primary" id="warehouseSubmitBtn">Save</button>
                         @endcanany
                     </div>
                 </div>
@@ -145,9 +150,7 @@
     </div>
 @endsection
 
-{{-- @push('scripts') --}}
 @section('js')
-    
     @if (session('success'))
         <script>
             Swal.fire({
@@ -160,25 +163,51 @@
         </script>
     @endif
     <script>
+        function showWarehouseModal() {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                var el = document.getElementById('warehouseModal');
+                var modal = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
+                modal.show();
+            } else if ($.fn.modal) {
+                $('#warehouseModal').modal('show');
+            }
+        }
+
         function clearWarehouse() {
+            $('#warehouseModalTitle').text('Add New Warehouse');
+            $('#warehouseSubmitBtn').text('Save Warehouse');
             $('#warehouse_id').val('');
             $('#warehouse_name').val('');
             $('#is_shop').val('0');
             $('#location').val('');
             $('#remarks').val('');
+            showWarehouseModal();
         }
 
         // Handle Edit button click
-        $(document).on('click', '.edit-warehouse-btn', function() {
-            $('#warehouse_id').val($(this).data('id'));
-            $('#warehouse_name').val($(this).data('name'));
-            $('#is_shop').val($(this).data('is-shop') == '1' ? '1' : '0');
-            $('#location').val($(this).data('location'));
-            $('#remarks').val($(this).data('remarks'));
+        $(document).on('click', '.edit-warehouse-btn', function(e) {
+            e.preventDefault();
+            var id = $(this).attr('data-id');
+            var name = $(this).attr('data-name');
+            var isShop = $(this).attr('data-is-shop');
+            var location = $(this).attr('data-location') || '';
+            var remarks = $(this).attr('data-remarks') || '';
+
+            $('#warehouseModalTitle').text('Edit Warehouse: ' + name);
+            $('#warehouseSubmitBtn').text('Update Warehouse');
+            $('#warehouse_id').val(id);
+            $('#warehouse_name').val(name);
+            $('#is_shop').val(isShop == '1' ? '1' : '0');
+            $('#location').val(location);
+            $('#remarks').val(remarks);
+
+            showWarehouseModal();
         });
 
-
-        $('.datanew').DataTable();
+        $(document).ready(function() {
+            if ($.fn.DataTable && !$.fn.DataTable.isDataTable('.datanew')) {
+                $('.datanew').DataTable();
+            }
+        });
     </script>
-    {{-- @endpush --}}
 @endsection

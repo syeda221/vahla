@@ -29,6 +29,7 @@ class AllModulesPermissionsSeeder extends Seeder
             'units',
             'warehouse',
             'warehouse.stock',
+            'opening.stock',
             'stock.transfer',
             'stock.adjust',
             'stocks',

@@ -133,16 +133,18 @@
             <p class="erp-body-text mb-0">Live multi-warehouse stock allocations with decimal accuracy &amp; instant filters</p>
         </div>
         <div class="d-flex align-items-center gap-3">
-            @can('warehouse.stock.create')
+            @canany(['opening.stock.create', 'warehouse.stock.create'])
                 <!-- Sole Primary Button in this area -->
                 <a href="{{ route('warehouse_stocks.create') }}" class="erp-btn-primary">
                     <i class="fas fa-plus"></i> Add Opening Stock
                 </a>
-            @endcan
+            @endcanany
             <!-- Secondary Action -->
-            <a href="{{ route('stock_transfers.create') }}" class="erp-btn-secondary">
-                <i class="fas fa-exchange-alt"></i> Stock Transfer
-            </a>
+            @can('stock.transfer.create')
+                <a href="{{ route('stock_transfers.create') }}" class="erp-btn-secondary">
+                    <i class="fas fa-exchange-alt"></i> Stock Transfer
+                </a>
+            @endcan
         </div>
     </div>
 
@@ -279,11 +281,11 @@
                     {{-- <button type="button" onclick="window.print()" class="erp-btn-secondary">
                         <i class="fas fa-print"></i> Print
                     </button> --}}
-                    @can('warehouse.stock.create')
+                    @canany(['opening.stock.create', 'warehouse.stock.create'])
                         <a href="{{ route('warehouse_stocks.create') }}" class="erp-btn-secondary">
                             <i class="fas fa-plus"></i> Add Stock
                         </a>
-                    @endcan
+                    @endcanany
                 </div>
             </div>
 
@@ -483,21 +485,25 @@
 
                                                 <!-- Action Column -->
                                                 <td class="text-end">
+                                                    @canany(['warehouse.stock.edit', 'opening.stock.edit'])
                                                     <a href="{{ route('warehouse_stocks.edit', $stock->id) }}" 
                                                        class="erp-btn-secondary erp-btn-sm"
                                                        title="View Breakdown / Adjust Stock">
                                                         <i class="fas fa-layer-group text-muted me-1"></i>
                                                         <span>Breakdown</span>
                                                     </a>
+                                                    @endcanany
                                                 </td>
                                             </tr>
                                         @empty
                                             <tr>
                                                 <td colspan="4" class="text-center py-5 text-muted">
                                                     <div class="mb-2">No products currently recorded in this location.</div>
+                                                    @canany(['opening.stock.create', 'warehouse.stock.create'])
                                                     <a href="{{ route('warehouse_stocks.create') }}" class="erp-btn-primary erp-btn-sm">
                                                         <i class="fas fa-plus"></i> Add Opening Stock Now
                                                     </a>
+                                                    @endcanany
                                                 </td>
                                             </tr>
                                         @endforelse
@@ -511,11 +517,13 @@
                 <div class="erp-card p-5 text-center text-muted">
                     <h3 class="erp-card-title mb-2">No warehouses or matching stock records found.</h3>
                     <p class="erp-body-text mb-3">Add opening stock to populate your warehouses.</p>
+                    @canany(['opening.stock.create', 'warehouse.stock.create'])
                     <div>
                         <a href="{{ route('warehouse_stocks.create') }}" class="erp-btn-primary">
                             <i class="fas fa-plus"></i> Add Opening Stock
                         </a>
                     </div>
+                    @endcanany
                 </div>
             @endforelse
         </div>
@@ -601,9 +609,11 @@
                                     @endif
                                 </td>
                                 <td class="text-end">
+                                    @canany(['warehouse.stock.edit', 'opening.stock.edit'])
                                     <a href="{{ route('warehouse_stocks.edit', $stock->id) }}" class="erp-btn-secondary erp-btn-sm" title="View Breakdown / Adjust Stock">
                                         <i class="fas fa-layer-group text-muted me-1"></i> <span>Breakdown</span>
                                     </a>
+                                    @endcanany
                                 </td>
                             </tr>
                         @empty

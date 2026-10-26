@@ -829,7 +829,7 @@
                         <li class="nav-item mega-menu">
                             @canany(['products.view', 'discount.products.view', 'categories.view', 'subcategories.view',
                                 'brands.view', 'units.view', 'vendors.view', 'purchases.view', 'purchase_pos.create',
-                                'warehouse.view', 'warehouse.stock.view', 'stock.transfer.view', 'stock.adjust.view', 'stock.adjust.create',
+                                'warehouse.view', 'warehouse.stock.view', 'opening.stock.view', 'opening.stock.create', 'stock.transfer.view', 'stock.adjust.view', 'stock.adjust.create',
                                 'sales.view', 'sales.create', 'customers.view', 'zones.view', 'sales.officers.view', 'receipts.voucher.view'])
                                 <a href="#" class="nav-link">
                                      <i class="menu_icon fas fa-cogs"></i>
@@ -913,7 +913,7 @@
                                             </div>
                                         @endcanany
                                         <!-- Accounts / Inventory -->
-                                        @canany(['warehouse.view', 'warehouse.stock.view', 'stock.transfer.view', 'stock.adjust.view', 'stock.adjust.create'])
+                                        @canany(['warehouse.view', 'warehouse.stock.view', 'opening.stock.view', 'opening.stock.create', 'stock.transfer.view', 'stock.adjust.view', 'stock.adjust.create'])
                                             <div class="col-group col-md-3">
                                                 <p class="category-heading">Inventory Management</p>
                                                 <ul class="submenu-item">
@@ -925,6 +925,10 @@
                                                         <li><a href="{{ url('warehouse_stocks') }}"><i class="fas fa-boxes"></i>
                                                                 Warehouse Stock</a></li>
                                                     @endcan
+                                                    @canany(['opening.stock.view', 'opening.stock.create', 'warehouse.stock.create'])
+                                                        <li><a href="{{ route('warehouse_stocks.create') }}"><i class="fas fa-dolly-flatbed"></i>
+                                                                Opening Stock</a></li>
+                                                    @endcanany
                                                     @can('stock.transfer.view')
                                                         <li><a href="{{ url('stock_transfers') }}"><i
                                                                     class="fas fa-exchange-alt"></i> Stock Transfer</a></li>

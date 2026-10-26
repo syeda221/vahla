@@ -84,7 +84,10 @@ class SaleController extends Controller
             $query->where(function ($q) use ($billNo) {
                 $q->where('invoice_no', 'like', "%{$billNo}%")
                   ->orWhere('reference', 'like', "%{$billNo}%")
-                  ->orWhere('id', 'like', "%{$billNo}%");
+                  ->orWhere('id', 'like', "%{$billNo}%")
+                  ->orWhereHas('deliveryChallans', function($dq) use ($billNo) {
+                      $dq->where('reference_no', 'like', "%{$billNo}%");
+                  });
             });
         }
 
@@ -95,6 +98,15 @@ class SaleController extends Controller
                 $q->where('reference', 'like', "%{$ref}%")
                   ->orWhereHas('deliveryChallans', function($dq) use ($ref) {
                       $dq->where('reference_no', 'like', "%{$ref}%");
+                  })
+                  ->orWhereHas('quotation', function($qq) use ($ref) {
+                      $qq->where('reference', 'like', "%{$ref}%");
+                  })
+                  ->orWhereIn('id', function($sub) use ($ref) {
+                      $sub->select('invoice_id')
+                          ->from('delivery_challans')
+                          ->whereNotNull('invoice_id')
+                          ->where('reference_no', 'like', "%{$ref}%");
                   });
             });
         }

@@ -456,39 +456,39 @@ Route::middleware('auth')->group(function () {
 
     // narratiions
     Route::get('/get-customers-by-type', [CustomerController::class, 'getByType'])->middleware('permission:customers.view');
-    Route::resource('warehouse_stocks', WarehouseStockController::class)->middleware(['permission:warehouse.stock.view']);
-    Route::get('/opening-stock', [WarehouseStockController::class, 'create'])->name('opening_stock.index')->middleware(['permission:warehouse.stock.view']);
+    Route::resource('warehouse_stocks', WarehouseStockController::class)->middleware(['permission:warehouse.stock.view|opening.stock.view|opening.stock.create|warehouse.stock.create']);
+    Route::get('/opening-stock', [WarehouseStockController::class, 'create'])->name('opening_stock.index')->middleware(['permission:opening.stock.view|opening.stock.create|warehouse.stock.create|warehouse.stock.view']);
 
     // Warehouse Stock AJAX Extensions
     Route::get('/warehouse-stock/search-products', [WarehouseStockController::class, 'searchProducts'])
-        ->middleware('permission:warehouse.stock.view')
+        ->middleware('permission:warehouse.stock.view|opening.stock.view|opening.stock.create')
         ->name('warehouse_stock.search-products');
 
     Route::get('/warehouse-stock/search-warehouses', [WarehouseStockController::class, 'searchWarehouses'])
-        ->middleware('permission:warehouse.stock.view')
+        ->middleware('permission:warehouse.stock.view|opening.stock.view|opening.stock.create')
         ->name('warehouse_stock.search-warehouses');
 
     Route::get('/warehouse-stock/get-current', [WarehouseStockController::class, 'getWarehouseStock'])
-        ->middleware('permission:warehouse.stock.view')
+        ->middleware('permission:warehouse.stock.view|opening.stock.view|opening.stock.create')
         ->name('warehouse_stock.get-stock');
 
     Route::get('/warehouse-stock/{id}/edit-data', [WarehouseStockController::class, 'editData'])
-        ->middleware('permission:warehouse.stock.view')
+        ->middleware('permission:warehouse.stock.view|warehouse.stock.edit|opening.stock.edit')
         ->name('warehouse_stock.edit-data');
 
     Route::get('/warehouse-stock/product-details/{id}', [WarehouseStockController::class, 'getProductDetails'])
-        ->middleware('permission:warehouse.stock.view')
+        ->middleware('permission:warehouse.stock.view|opening.stock.view|opening.stock.create')
         ->name('warehouse_stock.product-details');
 
-    Route::resource('stock_transfers', StockTransferController::class)->middleware(['permission:stock.transfer.view']);
+    Route::resource('stock_transfers', StockTransferController::class)->middleware(['permission:stock.transfer.view|stock.transfer.create']);
     
     // Stock Adjustments
-    Route::get('/stock-adjustments', [StockAdjustmentController::class, 'index'])->name('stock_adjustments.index');
-    Route::get('/stock-adjustments/create', [StockAdjustmentController::class, 'create'])->name('stock_adjustments.create');
-    Route::get('/stock-adjustments/search-products', [StockAdjustmentController::class, 'searchProducts'])->name('stock_adjustments.search_products');
-    Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store'])->name('stock_adjustments.store');
-    Route::post('/stock-adjustments/store-batch', [StockAdjustmentController::class, 'storeBatch'])->name('stock_adjustments.store_batch');
-    Route::get('/stock-adjustments/product-variants/{productId}', [StockAdjustmentController::class, 'getProductVariants'])->name('stock_adjustments.product_variants');
+    Route::get('/stock-adjustments', [StockAdjustmentController::class, 'index'])->name('stock_adjustments.index')->middleware('permission:stock.adjust.view|stock.adjust.create');
+    Route::get('/stock-adjustments/create', [StockAdjustmentController::class, 'create'])->name('stock_adjustments.create')->middleware('permission:stock.adjust.create');
+    Route::get('/stock-adjustments/search-products', [StockAdjustmentController::class, 'searchProducts'])->name('stock_adjustments.search_products')->middleware('permission:stock.adjust.create|stock.adjust.view');
+    Route::post('/stock-adjustments', [StockAdjustmentController::class, 'store'])->name('stock_adjustments.store')->middleware('permission:stock.adjust.create');
+    Route::post('/stock-adjustments/store-batch', [StockAdjustmentController::class, 'storeBatch'])->name('stock_adjustments.store_batch')->middleware('permission:stock.adjust.create');
+    Route::get('/stock-adjustments/product-variants/{productId}', [StockAdjustmentController::class, 'getProductVariants'])->name('stock_adjustments.product_variants')->middleware('permission:stock.adjust.create|stock.adjust.view');
     // //////////
     Route::get('/get-stock/{product}', [StocksController::class, 'getStock'])
         ->name('get.stock');

@@ -104,7 +104,15 @@
                                         <tr>
                                             <td>{{ $index + 1 }}</td>
                                             <td>
-                                                <strong>{{ $item->product->item_name ?? $item->product->product_name ?? 'N/A' }}</strong>
+                                                <strong>
+                                                    @if(!empty($item->product_set_id))
+                                                        [SET] {{ $item->productSet ? $item->productSet->name : ($item->product_name ?: 'Product Set') }}
+                                                    @elseif(!empty($item->product_name))
+                                                        {{ $item->product_name }}
+                                                    @else
+                                                        {{ $item->product->item_name ?? $item->product->product_name ?? 'N/A' }}
+                                                    @endif
+                                                </strong>
                                                 @php
                                                     $variant = [];
                                                     if (!empty($item->color)) {
@@ -130,7 +138,7 @@
                                                     <span class="badge bg-light text-dark border ms-1">{{ $vName }} ({{ $vSize }} | {{ $vColor }})</span>
                                                 @endif
                                                 <br>
-                                                <small class="text-muted">{{ $item->product->item_code ?? $item->product->product_code ?? '' }}</small>
+                                                <small class="text-muted">{{ !empty($item->product_set_id) ? ($item->productSet->code ?? '') : ($item->product->item_code ?? $item->product->product_code ?? '') }}</small>
                                             </td>
                                             <td class="text-center">{{ number_format($item->boxes, 2) }}</td>
                                             <td class="text-center">{{ $item->loose_pieces }}</td>

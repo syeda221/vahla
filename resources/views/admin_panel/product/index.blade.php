@@ -381,6 +381,50 @@
         color: #ffffff !important;
     }
 
+    /* ── Filter Panel Select2 Custom Styling ── */
+    .filter-panel .select2-container {
+        width: 100% !important;
+    }
+    .filter-panel .select2-container--default .select2-selection--single {
+        height: 38px !important;
+        border: 1px solid var(--erp-border) !important;
+        border-radius: 8px !important;
+        background: #fff !important;
+        display: flex !important;
+        align-items: center !important;
+        padding: 0 8px 0 12px !important;
+        font-size: .83rem !important;
+        font-weight: 500 !important;
+        box-sizing: border-box !important;
+        transition: border-color .15s, box-shadow .15s;
+    }
+    .filter-panel .select2-container--default .select2-selection--single:focus,
+    .filter-panel .select2-container--default.select2-container--open .select2-selection--single {
+        border-color: var(--erp-primary) !important;
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.15) !important;
+        outline: none !important;
+    }
+    .filter-panel .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 36px !important;
+        padding-left: 0 !important;
+        padding-right: 20px !important;
+        color: var(--erp-text) !important;
+        font-weight: 500 !important;
+    }
+    .filter-panel .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        right: 8px !important;
+    }
+    .filter-panel .select2-container--default .select2-selection--single .select2-selection__clear {
+        margin-right: 18px !important;
+        font-size: 16px !important;
+        color: #94a3b8 !important;
+        cursor: pointer !important;
+    }
+    .filter-panel .select2-container--default .select2-selection--single .select2-selection__clear:hover {
+        color: #ef4444 !important;
+    }
+
     /* ── Pagination ── */
     .erp-pagination { padding: 14px 20px; border-top: 1px solid var(--erp-border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
     .erp-pagination .showing { font-size: .78rem; color: var(--erp-muted); }
@@ -612,14 +656,22 @@
                     </div>
 
                     {{-- Category --}}
-                    <div class="erp-filter-field">
+                    <div class="erp-filter-field" style="min-width: 220px;">
                         <label class="erp-flabel">Category</label>
-                        <select name="category_id" class="erp-finput">
+                        <select name="category_id" id="filter_category_id" class="erp-finput" style="width:100%;">
                             <option value="">All Categories</option>
+                            @if(request('category_id') && request('category_id') !== 'all')
+                                @php
+                                    $selectedCat = $categories->firstWhere('id', request('category_id'));
+                                @endphp
+                                @if($selectedCat)
+                                    <option value="{{ $selectedCat->id }}" selected>{{ $selectedCat->name }}</option>
+                                @endif
+                            @endif
                             @foreach ($categories as $cat)
-                                <option value="{{ $cat->id }}" {{ request('category_id') == $cat->id ? 'selected' : '' }}>
-                                    {{ $cat->name }}
-                                </option>
+                                @if(!request('category_id') || request('category_id') != $cat->id)
+                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                @endif
                             @endforeach
                         </select>
                     </div>
@@ -1451,8 +1503,6 @@
     </div>
 </div>
 
-@endsection
-
 <!-- ================= LINK PRODUCTS MODAL ================= -->
 <div class="modal fade" id="linkProductsModal" tabindex="-1" role="dialog" aria-labelledby="linkProductsModalLabel" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
@@ -1555,9 +1605,62 @@
     </div>
 </div>
 
+@endsection
+
 @section('js')
 <script>
 $(document).ready(function () {
+
+    // ── Filter Category Select2 with Live AJAX Search ──
+    if ($('#filter_category_id').length) {
+        $('#filter_category_id').select2({
+            placeholder: 'All Categories',
+            allowClear: true,
+            width: '100%',
+            ajax: {
+                url: "{{ route('get-categories') }}",
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        q: params.term || '',
+                        select2: 1
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: (data.results || []).map(function(item) {
+                            return {
+                                id: item.id === 'all' ? '' : item.id,
+                                text: item.text
+                            };
+                        })
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 0
+        });
+
+        // Focus search input on open & trigger query if empty
+        $('#filter_category_id').on('select2:open', function() {
+            setTimeout(function() {
+                let $searchField = $('.select2-container--open .select2-search__field');
+                if ($searchField.length) {
+                    $searchField[0].focus();
+                    let select2Instance = $('#filter_category_id').data('select2');
+                    if (select2Instance && !$('#filter_category_id').val()) {
+                        select2Instance.trigger('query', { term: '' });
+                    }
+                }
+            }, 50);
+        });
+
+        // Auto-submit filter form on category change
+        $('#filter_category_id').on('change', function() {
+            $('#filterForm').submit();
+        });
+    }
 
     // ── Open Import Modal ──
     $('#openImportModalBtn').on('click', function () {
