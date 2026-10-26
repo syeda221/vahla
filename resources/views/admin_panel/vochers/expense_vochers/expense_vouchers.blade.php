@@ -243,12 +243,39 @@
         .total-summary-card {
             background: #0f172a;
             color: #ffffff;
-            border-radius: 6px;
+            border-radius: 8px;
             padding: 10px 16px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            box-sizing: border-box;
             min-width: 280px;
+        }
+
+        .total-summary-label {
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #ffffff;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .total-summary-right {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex: 1;
+            min-width: 0;
+            padding-right: 2px;
+        }
+
+        .total-currency {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-right: 6px;
+            flex-shrink: 0;
         }
 
         .total-summary-value {
@@ -258,9 +285,13 @@
             background: transparent;
             border: none;
             text-align: right;
-            width: 160px;
+            width: 140px;
+            max-width: 140px;
             font-family: monospace;
+            padding: 0;
+            outline: none;
         }
+
         /* Gap helpers for Bootstrap 4 */
         .gap-1 { gap: 6px !important; }
         .gap-2 { gap: 10px !important; }
@@ -283,6 +314,7 @@
             -moz-appearance: textfield; 
             appearance: textfield;
         }
+
         /* Select2 Custom Styling for Expense Voucher */
         .excel-table .select2-container {
             width: 100% !important;
@@ -338,6 +370,215 @@
             padding: 4px 8px !important;
             font-size: 0.82rem !important;
         }
+
+        /* Desktop view */
+        @media (min-width: 992px) {
+            .mobile-row-label {
+                display: none !important;
+            }
+            .total-summary-card {
+                margin-right: 16px;
+            }
+        }
+
+        /* Mobile Responsive View (Zero Horizontal Scroll & No Overflow) */
+        @media (max-width: 991.98px) {
+            html, body {
+                max-width: 100% !important;
+                overflow-x: hidden !important;
+            }
+            .main-content,
+            .main-content-inner,
+            .container-fluid {
+                max-width: 100% !important;
+                overflow-x: hidden !important;
+                padding-left: 6px !important;
+                padding-right: 6px !important;
+            }
+            .voucher-sheet-card {
+                padding: 12px !important;
+                border-radius: 10px !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+                overflow-x: hidden !important;
+            }
+            .sheet-top-bar {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 10px !important;
+            }
+            .sheet-top-bar .action-btns {
+                display: flex !important;
+                width: 100% !important;
+                gap: 8px !important;
+            }
+            .sheet-top-bar .action-btns .btn {
+                flex: 1 1 0 !important;
+                justify-content: center !important;
+                height: 38px !important;
+                margin-right: 0 !important;
+            }
+            .select2-container {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            .select2-dropdown {
+                max-width: 92vw !important;
+            }
+
+            /* Responsive Table -> Clean Stacked Cards */
+            .excel-table-container {
+                border: none !important;
+                background: transparent !important;
+                margin-top: 10px;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            .excel-table-container .table-responsive {
+                overflow: visible !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            #voucherTable {
+                width: 100% !important;
+                max-width: 100% !important;
+                display: block !important;
+                border: none !important;
+            }
+            #voucherTable thead {
+                display: none !important;
+            }
+            #voucherTable tbody {
+                display: block !important;
+                width: 100% !important;
+            }
+            #voucherTable tbody tr {
+                display: block !important;
+                width: 100% !important;
+                background: #f8fafc;
+                border: 1px solid #cbd5e1 !important;
+                border-radius: 12px;
+                padding: 12px;
+                margin-bottom: 14px;
+                box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+                box-sizing: border-box !important;
+            }
+            #voucherTable tbody td {
+                display: block !important;
+                width: 100% !important;
+                padding: 5px 0 !important;
+                border: none !important;
+                box-sizing: border-box !important;
+            }
+            #voucherTable tbody td.row-number {
+                display: inline-block !important;
+                width: auto !important;
+                padding: 2px 8px !important;
+                border-radius: 4px;
+                font-size: 0.76rem;
+                margin-bottom: 6px;
+            }
+            .mobile-row-label {
+                display: block !important;
+                font-size: 0.74rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+                color: #475569;
+                margin-bottom: 3px;
+            }
+            .excel-table .cell-input {
+                height: 38px !important;
+                border: 1px solid #cbd5e1 !important;
+                background: #ffffff !important;
+                padding: 6px 10px !important;
+                font-size: 0.88rem !important;
+                border-radius: 6px !important;
+                box-sizing: border-box !important;
+                width: 100% !important;
+            }
+            .excel-table .select2-container--default .select2-selection--single {
+                height: 38px !important;
+                border-radius: 6px !important;
+            }
+            .excel-table .select2-container--default .select2-selection--single .select2-selection__rendered {
+                line-height: 36px !important;
+            }
+            .excel-table .select2-container--default .select2-selection--single .select2-selection__arrow {
+                height: 36px !important;
+            }
+            .btn-mini-add {
+                height: 38px !important;
+                width: 38px !important;
+                border-radius: 6px !important;
+            }
+            #voucherTable tbody td .btn-mini-del {
+                width: 100% !important;
+                height: 38px !important;
+                margin-top: 6px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                font-size: 0.88rem;
+                font-weight: 600;
+                border-radius: 6px !important;
+            }
+            .add-row-bar {
+                border-radius: 8px;
+                border: 1px solid var(--excel-border);
+                margin-bottom: 12px;
+            }
+            .add-row-bar #addNewRow {
+                width: 100%;
+                height: 36px !important;
+                justify-content: center;
+            }
+
+            /* Bottom Summary & Save on Mobile */
+            .bottom-summary-wrap {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 12px !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .bottom-summary-wrap .action-box {
+                flex-direction: column !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                gap: 10px !important;
+                box-sizing: border-box !important;
+            }
+            .total-summary-card {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                margin-right: 0 !important;
+                padding: 12px 14px !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+            }
+            .total-summary-value {
+                font-size: 1.15rem !important;
+                max-width: 110px !important;
+            }
+            .bottom-summary-wrap .btn-primary {
+                width: 100% !important;
+                justify-content: center !important;
+                height: 44px !important;
+            }
+            .modal-dialog {
+                max-width: calc(100% - 16px) !important;
+                margin: 10px auto !important;
+            }
+            .modal-content {
+                max-width: 100% !important;
+                overflow-x: hidden !important;
+                border-radius: 12px !important;
+            }
+        }
     </style>
 
     <div class="main-content">
@@ -364,11 +605,11 @@
                     <div class="voucher-sheet-card">
 
                         {{-- Action Top Bar --}}
-                        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2">
+                        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom flex-wrap gap-2 sheet-top-bar">
                             <div class="sheet-header-title">
                                 <i class="bi bi-wallet2 text-primary"></i> Expense Voucher Entry
                             </div>
-                            <div class="d-flex align-items-center">
+                            <div class="d-flex align-items-center action-btns">
                                 <a href="{{ route('all_expense_vochers') }}" class="btn btn-outline-secondary btn-sm fw-bold d-inline-flex align-items-center" style="height: 32px; font-size: 0.8rem; padding: 4px 12px; border-radius: 5px; margin-right: 12px;">
                                     <i class="bi bi-list-ul me-1" style="margin-right: 5px;"></i> All Expenses
                                 </a>
@@ -430,8 +671,8 @@
 
                         {{-- Section 2: Excel Expense Grid --}}
                         <div class="section-bar d-flex justify-content-between align-items-center">
-                            <span>2. Expense Allocation (Excel Grid)</span>
-                            <span class="text-muted text-lowercase font-normal" style="font-size: 0.72rem; font-weight: normal;">Press Enter in amount to add line</span>
+                            <span>2. Expense Allocation</span>
+                            <span class="text-muted text-lowercase font-normal d-none d-md-inline" style="font-size: 0.72rem; font-weight: normal;">Press Enter in amount to add line</span>
                         </div>
 
                         <div class="excel-table-container">
@@ -450,6 +691,7 @@
                                         <tr>
                                             <td class="row-number">1</td>
                                             <td>
+                                                <label class="mobile-row-label">Expense Category</label>
                                                 <div class="d-flex align-items-center gap-1">
                                                     <select name="row_account_id[]" class="cell-input rowAccountCategory" required>
                                                         <option value="" disabled selected>-- Select Category --</option>
@@ -463,15 +705,17 @@
                                                 </div>
                                             </td>
                                             <td>
+                                                <label class="mobile-row-label">Remarks / Description</label>
                                                 <input type="text" name="narration_text[]" class="cell-input" placeholder="e.g. Utility bill, stationery, repair...">
                                                 <input type="hidden" name="narration_id[]" value="">
                                             </td>
                                             <td>
+                                                <label class="mobile-row-label">Amount (PKR)</label>
                                                 <input type="number" name="amount[]" step="0.01" class="cell-input text-end fw-bold amount font-monospace" placeholder="0.00" required>
                                             </td>
                                             <td class="text-center">
                                                 <button type="button" class="btn-mini-del removeRow" title="Delete Row">
-                                                    <i class="bi bi-trash"></i>
+                                                    <i class="bi bi-trash"></i> <span class="d-md-none">Delete</span>
                                                 </button>
                                             </td>
                                         </tr>
@@ -483,20 +727,20 @@
                                 <button type="button" class="btn btn-outline-primary btn-sm fw-bold d-inline-flex align-items-center" id="addNewRow" style="height: 28px; font-size: 0.78rem; padding: 2px 10px; border-radius: 4px;">
                                     <i class="bi bi-plus-circle me-1"></i> Add Another Row (Enter)
                                 </button>
-                                <span class="text-muted small" style="font-size: 0.74rem;">Rows: <strong id="rowCountDisplay">1</strong></span>
+                                <span class="text-muted small d-none d-md-inline" style="font-size: 0.74rem;">Rows: <strong id="rowCountDisplay">1</strong></span>
                             </div>
                         </div>
 
                         {{-- Bottom Total & Summary Bar --}}
-                        <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top flex-wrap gap-2">
+                        <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top flex-wrap gap-2 bottom-summary-wrap">
                             <div class="text-muted small">
                                 <i class="bi bi-info-circle me-1" style="margin-right: 5px;"></i> Please verify amounts before saving the voucher.
                             </div>
-                            <div class="d-flex align-items-center">
-                                <div class="total-summary-card shadow-sm" style="margin-right: 16px;">
-                                    <span style="font-size: 0.82rem; font-weight: 700; text-transform: uppercase;">Total Expense</span>
-                                    <div class="d-flex align-items-center" style="margin-left: 12px;">
-                                        <span style="color: #94a3b8; font-size: 0.9rem; margin-right: 6px;">Rs.</span>
+                            <div class="d-flex align-items-center action-box">
+                                <div class="total-summary-card shadow-sm">
+                                    <span class="total-summary-label">Total Expense</span>
+                                    <div class="total-summary-right">
+                                        <span class="total-currency">Rs.</span>
                                         <input type="text" name="total_amount" class="total-summary-value" id="totalAmount" readonly value="0.00">
                                     </div>
                                 </div>
@@ -525,7 +769,7 @@
                     <h5 class="modal-title fw-bold text-white mb-0" id="newExpenseCategoryModalLabel">
                         <i class="bi bi-folder-plus me-1"></i> Create Expense Category
                     </h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="opacity: 0.9; font-size: 1.5rem;">
+                    <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="opacity: 0.9; font-size: 1.5rem; border: none; background: transparent;">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
@@ -677,6 +921,7 @@
                 <tr>
                     <td class="row-number">1</td>
                     <td>
+                        <label class="mobile-row-label">Expense Category</label>
                         <div class="d-flex align-items-center gap-1">
                             <select name="row_account_id[]" class="cell-input rowAccountCategory" required>
                                 ${optionsHtml}
@@ -687,14 +932,16 @@
                         </div>
                     </td>
                     <td>
+                        <label class="mobile-row-label">Remarks / Description</label>
                         <input type="text" name="narration_text[]" class="cell-input" placeholder="e.g. Utility bill, stationery, repair...">
                         <input type="hidden" name="narration_id[]" value="">
                     </td>
                     <td>
+                        <label class="mobile-row-label">Amount (PKR)</label>
                         <input type="number" name="amount[]" step="0.01" class="cell-input text-end fw-bold amount font-monospace" placeholder="0.00" required>
                     </td>
                     <td class="text-center">
-                        <button type="button" class="btn-mini-del removeRow" title="Delete Row"><i class="bi bi-trash"></i></button>
+                        <button type="button" class="btn-mini-del removeRow" title="Delete Row"><i class="bi bi-trash"></i> <span class="d-md-none">Delete</span></button>
                     </td>
                 </tr>
                 `);

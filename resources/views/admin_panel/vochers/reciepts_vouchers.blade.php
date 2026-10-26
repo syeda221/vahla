@@ -1,9 +1,8 @@
 @extends('admin_panel.layout.app')
 @section('content')
- <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="{{ asset('assets/vendors/bootstrap-icons/css/bootstrap-icons.min.css') }}">
 
-   
     <style>
         :root {
             --rv-primary: #4f46e5;
@@ -225,6 +224,137 @@
             -moz-appearance: textfield; 
             appearance: textfield;
         }
+
+        /* Desktop view: hide mobile labels */
+        @media (min-width: 992px) {
+            .mobile-row-label {
+                display: none !important;
+            }
+            .mobile-total-box {
+                display: none !important;
+            }
+        }
+
+        /* Mobile Responsive View (Zero Horizontal Scroll) */
+        @media (max-width: 991.98px) {
+            html, body {
+                max-width: 100% !important;
+                overflow-x: hidden !important;
+            }
+            .main-content,
+            .main-content-inner,
+            .container-fluid {
+                max-width: 100% !important;
+                overflow-x: hidden !important;
+                padding-left: 6px !important;
+                padding-right: 6px !important;
+            }
+            .rv-card {
+                padding: 14px !important;
+                border-radius: 12px !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .rv-header {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 12px !important;
+                margin-bottom: 14px !important;
+            }
+            .rv-header .btn {
+                width: 100% !important;
+                justify-content: center !important;
+            }
+            .select2-container {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            .select2-dropdown {
+                max-width: 92vw !important;
+            }
+
+            /* Responsive Table -> Clean Stacked Cards */
+            .rv-table {
+                border: none !important;
+                background: transparent !important;
+                overflow: visible !important;
+            }
+            #voucherTable {
+                width: 100% !important;
+                max-width: 100% !important;
+                display: block !important;
+                border: none !important;
+            }
+            #voucherTable thead {
+                display: none !important;
+            }
+            #voucherTable tbody {
+                display: block !important;
+                width: 100% !important;
+            }
+            #voucherTable tbody tr {
+                display: block !important;
+                width: 100% !important;
+                background: #f8fafc;
+                border: 1px solid #cbd5e1 !important;
+                border-radius: 12px;
+                padding: 12px;
+                margin-bottom: 14px;
+                box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+                box-sizing: border-box !important;
+            }
+            #voucherTable tbody td {
+                display: block !important;
+                width: 100% !important;
+                padding: 6px 0 !important;
+                border: none !important;
+                box-sizing: border-box !important;
+            }
+            .mobile-row-label {
+                display: block !important;
+                font-size: 0.76rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+                color: #475569;
+                margin-bottom: 3px;
+            }
+            #voucherTable tbody td .removeRow {
+                width: 100% !important;
+                margin-top: 6px;
+                height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+            }
+
+            /* Hide Desktop Table Footer on Mobile */
+            #voucherTable tfoot {
+                display: none !important;
+            }
+
+            /* Mobile Total & Save Card */
+            .mobile-total-box {
+                display: block !important;
+                background: #ffffff;
+                border: 1px solid #cbd5e1;
+                border-radius: 12px;
+                padding: 14px;
+                margin-top: 14px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            }
+            .mobile-total-box .btn-rv-primary {
+                width: 100% !important;
+                margin-top: 10px;
+                height: 42px;
+            }
+            .btn-rv-add {
+                width: 100% !important;
+                text-align: center;
+                padding: 10px;
+            }
+        }
     </style>
 
     <div class="main-content">
@@ -256,23 +386,23 @@
 
                         <!-- Row 1: Voucher Info -->
                         <div class="rv-section-label">Voucher Details</div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-2">
+                        <div class="row g-2 g-md-3 mb-3">
+                            <div class="col-6 col-md-2">
                                 <label class="rv-label">RVID</label>
                                 <input type="text" class="rv-input" style="background: #f1f5f9;" name="rvid"
                                     value="{{ $nextRvid }}" readonly>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-6 col-md-2">
                                 <label class="rv-label">Receipt Date</label>
                                 <input type="date" name="receipt_date" class="rv-input"
                                     value="{{ now()->toDateString() }}">
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-12 col-md-2">
                                 <label class="rv-label">Entry Date</label>
                                 <input type="date" name="entry_date" class="rv-input"
                                     value="{{ now()->toDateString() }}">
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-12 col-md-6">
                                 <label class="rv-label">Remarks <small class="text-muted fw-normal">(Optional)</small></label>
                                 <input type="text" name="remarks" class="rv-input" id="remarks" placeholder="Auto-generated if left blank">
                             </div>
@@ -280,33 +410,33 @@
 
                         <!-- Row 2: Party Selection -->
                         <div class="rv-section-label">Received From</div>
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-3">
+                        <div class="row g-2 g-md-3 mb-4">
+                            <div class="col-12 col-md-3">
                                 <label class="rv-label">Type</label>
                                 <select name="vendor_type" class="rv-input" id="partyType">
                                     <option value="customer" selected>Customer</option>
                                     <option value="walkin">Walk-in</option>
-                                    <option value="vendor">Vendor</option>/
+                                    <option value="vendor">Vendor</option>
                                     @foreach ($AccountHeads as $head)
                                         <option value="{{ $head->id }}">{{ $head->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-12 col-md-4">
                                 <label class="rv-label">Party / Account</label>
                                 <select name="vendor_id" class="rv-input" id="partyId">
                                     <option disabled selected>Select Party</option>
                                 </select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-6 col-md-2">
                                 <label class="rv-label">Mobile</label>
                                 <input type="text" name="tel" id="tel" class="rv-input" style="background: #f1f5f9;" readonly>
                             </div>
-                             <div class="col-2">
-        <label class="rv-label">Current Balance</label>
-        <div id="balanceDisplay" class="balance-badge balance-dr p-2 text-center" style="width:100%;">20000.00 Dr</div>
-        <input type="hidden" id="openingBal">
-    </div>
+                            <div class="col-6 col-md-3">
+                                <label class="rv-label">Current Balance</label>
+                                <div id="balanceDisplay" class="balance-badge balance-dr p-2 text-center" style="width:100%;">0.00 Dr</div>
+                                <input type="hidden" id="openingBal">
+                            </div>
                         </div>
 
                         <!-- Payment Rows -->
@@ -324,6 +454,7 @@
                                 <tbody>
                                     <tr>
                                         <td>
+                                            <label class="mobile-row-label">Account Head</label>
                                             <select name="row_account_head[]" class="rv-input rowAccountHead">
                                                 <option value="">Select Head</option>
                                                 @foreach ($AccountHeads as $head)
@@ -332,18 +463,20 @@
                                             </select>
                                         </td>
                                         <td>
+                                            <label class="mobile-row-label">Account</label>
                                             <select name="row_account_id[]" class="rv-input rowAccountSub">
                                                 <option disabled selected>Select Account</option>
                                             </select>
                                         </td>
                                         <td>
+                                            <label class="mobile-row-label">Amount</label>
                                             <input type="number" name="amount[]"
                                                 class="rv-input text-end fw-bold amount" placeholder="0.00"
                                                 style="font-size: 1rem;">
                                         </td>
                                         <td class="text-center">
                                             <button type="button" class="btn btn-outline-danger btn-sm removeRow" title="Remove">
-                                                <i class="bi bi-trash"></i>
+                                                <i class="bi bi-trash"></i> <span class="d-md-none">Remove</span>
                                             </button>
                                         </td>
                                     </tr>
@@ -353,11 +486,11 @@
                                         <td colspan="2" class="text-end fw-bold" style="font-size: 1rem; vertical-align: middle;">Total Amount:</td>
                                         <td style="vertical-align: middle;">
                                             <input type="text" name="total_amount"
-                                                class="rv-input text-end fw-bold" id="totalAmount" readonly
+                                                class="rv-input text-end fw-bold totalAmountInput" id="totalAmount" readonly
                                                 value="0.00" style="background: #f0fdf4; border-color: #86efac; font-size: 1.1rem; color: #16a34a;">
                                         </td>
                                         <td class="text-center p-1" style="vertical-align: middle;">
-                                            <button type="submit" class="btn btn-rv-primary w-100 py-2 px-2 fw-bold d-flex align-items-center justify-content-center" id="btnSavePrint" style="font-size: 0.88rem; white-space: nowrap; height: 38px; border-radius: 8px;">
+                                            <button type="submit" class="btn btn-rv-primary w-100 py-2 px-2 fw-bold d-flex align-items-center justify-content-center btnSavePrint" style="font-size: 0.88rem; white-space: nowrap; height: 38px; border-radius: 8px;">
                                                 <i class="bi bi-printer me-1"></i> Save (Print)
                                             </button>
                                         </td>
@@ -369,6 +502,17 @@
                         <button type="button" class="btn btn-rv-add mt-3" id="addNewRow">
                             <i class="bi bi-plus-circle me-1"></i> Add Another Account
                         </button>
+
+                        {{-- Mobile Total & Save Section --}}
+                        <div class="mobile-total-box">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-dark" style="font-size: 1rem;">Total Amount:</span>
+                                <input type="text" class="rv-input text-end fw-bold totalAmountInput" id="mobileTotalAmount" readonly value="0.00" style="width: 140px; background: #f0fdf4; border-color: #86efac; color: #16a34a; font-size: 1.1rem;">
+                            </div>
+                            <button type="submit" class="btn btn-rv-primary w-100 fw-bold d-flex align-items-center justify-content-center btnSavePrint">
+                                <i class="bi bi-printer me-1" style="margin-right: 6px;"></i> Save (Print)
+                            </button>
+                        </div>
 
                         {{-- Hidden fields for backward compatibility --}}
                         <input type="hidden" name="narration_id[]" value="">
@@ -524,7 +668,9 @@
                 $('.amount').each(function() {
                     total += parseFloat($(this).val()) || 0;
                 });
-                $('#totalAmount').val(total.toFixed(2));
+                let formattedTotal = total.toFixed(2);
+                $('#totalAmount').val(formattedTotal);
+                $('#mobileTotalAmount').val(formattedTotal);
             }
             $(document).on('input', '.amount', function() {
                 calculateTotal();
@@ -546,6 +692,7 @@
                 let newRow = `
                 <tr>
                     <td>
+                        <label class="mobile-row-label">Account Head</label>
                         <select name="row_account_head[]" class="rv-input rowAccountHead">
                             <option value="">Select Head</option>
                             @foreach ($AccountHeads as $head)
@@ -554,15 +701,19 @@
                         </select>
                     </td>
                     <td>
+                        <label class="mobile-row-label">Account</label>
                         <select name="row_account_id[]" class="rv-input rowAccountSub">
                             <option disabled selected>Select Account</option>
                         </select>
                     </td>
                     <td>
+                        <label class="mobile-row-label">Amount</label>
                         <input type="number" name="amount[]" class="rv-input text-end fw-bold amount" placeholder="0.00" style="font-size: 1rem;">
                     </td>
                     <td class="text-center">
-                        <button type="button" class="btn btn-outline-danger btn-sm removeRow"><i class="bi bi-trash"></i></button>
+                        <button type="button" class="btn btn-outline-danger btn-sm removeRow" title="Remove">
+                            <i class="bi bi-trash"></i> <span class="d-md-none">Remove</span>
+                        </button>
                     </td>
                 </tr>
             `;
@@ -602,8 +753,8 @@
                     return;
                 }
 
-                let $btn = $('#btnSavePrint');
-                $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving...');
+                let $btns = $('.btnSavePrint');
+                $btns.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving...');
 
                 $.ajax({
                     url: $(this).attr('action'),
@@ -615,15 +766,14 @@
                     },
                     success: function(res) {
                         if (res && res.success) {
-                            // Redirect directly to the thermal invoice print page
                             window.location.href = res.print_url;
                         } else {
-                            $btn.prop('disabled', false).html('<i class="bi bi-printer me-1"></i> Save (Print)');
+                            $btns.prop('disabled', false).html('<i class="bi bi-printer me-1"></i> Save (Print)');
                             Swal.fire('Error', res.message || 'Failed to save voucher.', 'error');
                         }
                     },
                     error: function(xhr) {
-                        $btn.prop('disabled', false).html('<i class="bi bi-printer me-1"></i> Save (Print)');
+                        $btns.prop('disabled', false).html('<i class="bi bi-printer me-1"></i> Save (Print)');
                         let msg = 'Failed to save voucher.';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             msg = xhr.responseJSON.message;

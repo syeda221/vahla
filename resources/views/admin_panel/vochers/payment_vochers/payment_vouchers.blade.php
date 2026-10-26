@@ -1,6 +1,6 @@
 @extends('admin_panel.layout.app')
 @section('content')
-      <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="{{ asset('assets/vendors/bootstrap-icons/css/bootstrap-icons.min.css') }}">
 
     <style>
@@ -186,6 +186,7 @@
             -moz-appearance: textfield; 
             appearance: textfield;
         }
+
         /* Select2 PV Custom Styling */
         .select2-container--default .select2-selection--single {
             background-color: #fff !important;
@@ -222,6 +223,137 @@
             padding: 6px 10px !important;
             font-size: 0.85rem !important;
         }
+
+        /* Desktop view: hide mobile labels */
+        @media (min-width: 992px) {
+            .mobile-row-label {
+                display: none !important;
+            }
+            .mobile-total-box {
+                display: none !important;
+            }
+        }
+
+        /* Mobile Responsive View (Zero Horizontal Scroll) */
+        @media (max-width: 991.98px) {
+            html, body {
+                max-width: 100% !important;
+                overflow-x: hidden !important;
+            }
+            .main-content,
+            .main-content-inner,
+            .container-fluid {
+                max-width: 100% !important;
+                overflow-x: hidden !important;
+                padding-left: 6px !important;
+                padding-right: 6px !important;
+            }
+            .pv-card {
+                padding: 14px !important;
+                border-radius: 12px !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .pv-header {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 12px !important;
+                margin-bottom: 14px !important;
+            }
+            .pv-header .btn {
+                width: 100% !important;
+                justify-content: center !important;
+            }
+            .select2-container {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            .select2-dropdown {
+                max-width: 92vw !important;
+            }
+
+            /* Responsive Table -> Clean Stacked Cards */
+            .pv-table {
+                border: none !important;
+                background: transparent !important;
+                overflow: visible !important;
+            }
+            #voucherTable {
+                width: 100% !important;
+                max-width: 100% !important;
+                display: block !important;
+                border: none !important;
+            }
+            #voucherTable thead {
+                display: none !important;
+            }
+            #voucherTable tbody {
+                display: block !important;
+                width: 100% !important;
+            }
+            #voucherTable tbody tr {
+                display: block !important;
+                width: 100% !important;
+                background: #f8fafc;
+                border: 1px solid #cbd5e1 !important;
+                border-radius: 12px;
+                padding: 12px;
+                margin-bottom: 14px;
+                box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+                box-sizing: border-box !important;
+            }
+            #voucherTable tbody td {
+                display: block !important;
+                width: 100% !important;
+                padding: 6px 0 !important;
+                border: none !important;
+                box-sizing: border-box !important;
+            }
+            .mobile-row-label {
+                display: block !important;
+                font-size: 0.76rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+                color: #475569;
+                margin-bottom: 3px;
+            }
+            #voucherTable tbody td .removeRow {
+                width: 100% !important;
+                margin-top: 6px;
+                height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+            }
+
+            /* Hide Desktop Table Footer on Mobile */
+            #voucherTable tfoot {
+                display: none !important;
+            }
+
+            /* Mobile Total & Save Card */
+            .mobile-total-box {
+                display: block !important;
+                background: #ffffff;
+                border: 1px solid #cbd5e1;
+                border-radius: 12px;
+                padding: 14px;
+                margin-top: 14px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            }
+            .mobile-total-box .btn-pv-primary {
+                width: 100% !important;
+                margin-top: 10px;
+                height: 42px;
+            }
+            .btn-pv-add {
+                width: 100% !important;
+                text-align: center;
+                padding: 10px;
+            }
+        }
     </style>
 
     <div class="main-content">
@@ -248,7 +380,7 @@
                                 <a href="{{ route('all_Payment_vochers') }}" class="btn btn-pv-secondary">
                                     <i class="bi bi-list-ul me-1"></i> All Vouchers
                                 </a>
-                                <button type="submit" class="btn btn-pv-primary">
+                                <button type="submit" class="btn btn-pv-primary d-none d-md-inline-flex align-items-center">
                                     <i class="bi bi-check-lg me-1"></i> Save Voucher
                                 </button>
                             </div>
@@ -256,23 +388,23 @@
 
                         <!-- Row 1: Voucher Info -->
                         <div class="pv-section-label">Voucher Details</div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-2">
+                        <div class="row g-2 g-md-3 mb-3">
+                            <div class="col-6 col-md-2">
                                 <label class="pv-label">PVID</label>
                                 <input type="text" class="pv-input" style="background: #f1f5f9;" name="pvid"
                                     value="{{ $nextPVID }}" readonly>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-6 col-md-2">
                                 <label class="pv-label">Receipt Date</label>
                                 <input type="date" name="receipt_date" class="pv-input"
                                     value="{{ now()->toDateString() }}">
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-12 col-md-2">
                                 <label class="pv-label">Entry Date</label>
                                 <input type="date" name="entry_date" class="pv-input"
                                     value="{{ now()->toDateString() }}">
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-12 col-md-6">
                                 <label class="pv-label">Remarks <small class="text-muted fw-normal">(Optional)</small></label>
                                 <input type="text" name="remarks" class="pv-input" id="remarks" placeholder="Auto-generated if left blank">
                             </div>
@@ -280,8 +412,8 @@
 
                         <!-- Row 2: Pay From (Source Account) -->
                         <div class="pv-section-label">Pay From (Source Account)</div>
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-3">
+                        <div class="row g-2 g-md-3 mb-4">
+                            <div class="col-12 col-md-3">
                                 <label class="pv-label">Account Head</label>
                                 <select name="header_account_head" class="pv-input" id="payFromHead">
                                     <option value="">Select Head</option>
@@ -290,17 +422,17 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-12 col-md-4">
                                 <label class="pv-label">Account (Cash / Bank)</label>
                                 <select name="header_account_id" class="pv-input" id="payFromAccount">
                                     <option value="" disabled selected>Select Account</option>
                                 </select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-6 col-md-2">
                                 <label class="pv-label">Account Code</label>
                                 <input type="text" id="accountCode" class="pv-input" style="background: #f1f5f9;" readonly>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-6 col-md-3">
                                 <label class="pv-label">Account Balance</label>
                                 <div id="sourceBalanceDisplay" class="balance-badge balance-cr p-2 text-center" style="width:100%;">0.00 <small>Cr</small></div>
                             </div>
@@ -321,6 +453,7 @@
                                 <tbody>
                                     <tr>
                                         <td>
+                                            <label class="mobile-row-label">Type</label>
                                             <select name="vendor_type[]" class="pv-input rowType">
                                                 <option value="" disabled selected>Select Type</option>
                                                 <option value="vendor">Vendor</option>
@@ -332,18 +465,20 @@
                                             </select>
                                         </td>
                                         <td>
+                                            <label class="mobile-row-label">Party / Account</label>
                                             <select name="vendor_id[]" class="pv-input rowParty">
                                                 <option value="" disabled selected>Select Party</option>
                                             </select>
                                         </td>
                                         <td>
+                                            <label class="mobile-row-label">Amount</label>
                                             <input type="number" name="amount[]"
                                                 class="pv-input text-end fw-bold amount" placeholder="0.00"
                                                 style="font-size: 1rem;">
                                         </td>
                                         <td class="text-center">
                                             <button type="button" class="btn btn-outline-danger btn-sm removeRow" title="Remove">
-                                                <i class="bi bi-trash"></i>
+                                                <i class="bi bi-trash"></i> <span class="d-md-none">Remove</span>
                                             </button>
                                         </td>
                                     </tr>
@@ -353,7 +488,7 @@
                                         <td colspan="2" class="text-end fw-bold" style="font-size: 1rem;">Total Amount:</td>
                                         <td>
                                             <input type="text" name="total_amount"
-                                                class="pv-input text-end fw-bold" id="totalAmount" readonly
+                                                class="pv-input text-end fw-bold totalAmountInput" id="totalAmount" readonly
                                                 value="0.00" style="background: #fef2f2; border-color: #fca5a5; font-size: 1.1rem; color: #dc2626;">
                                         </td>
                                         <td></td>
@@ -365,6 +500,17 @@
                         <button type="button" class="btn btn-pv-add mt-3" id="addNewRow">
                             <i class="bi bi-plus-circle me-1"></i> Add Another Row
                         </button>
+
+                        {{-- Mobile Total & Save Section --}}
+                        <div class="mobile-total-box">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-dark" style="font-size: 1rem;">Total Amount:</span>
+                                <input type="text" class="pv-input text-end fw-bold totalAmountInput" id="mobileTotalAmount" readonly value="0.00" style="width: 140px; background: #fef2f2; border-color: #fca5a5; color: #dc2626; font-size: 1.1rem;">
+                            </div>
+                            <button type="submit" class="btn btn-pv-primary w-100 fw-bold d-flex align-items-center justify-content-center">
+                                <i class="bi bi-check-lg me-1" style="margin-right: 6px;"></i> Save Voucher
+                            </button>
+                        </div>
 
                         {{-- Hidden fields for backward compatibility --}}
                         <input type="hidden" name="narration_id[]" value="">
@@ -489,7 +635,9 @@
                 $('.amount').each(function() {
                     total += parseFloat($(this).val()) || 0;
                 });
-                $('#totalAmount').val(total.toFixed(2));
+                let formattedTotal = total.toFixed(2);
+                $('#totalAmount').val(formattedTotal);
+                $('#mobileTotalAmount').val(formattedTotal);
             }
             $(document).on('input', '.amount', function() {
                 calculateTotal();
@@ -511,6 +659,7 @@
                 let $newRow = $(`
                     <tr>
                         <td>
+                            <label class="mobile-row-label">Type</label>
                             <select name="vendor_type[]" class="pv-input rowType">
                                 <option value="" disabled selected>Select Type</option>
                                 <option value="vendor">Vendor</option>
@@ -522,15 +671,17 @@
                             </select>
                         </td>
                         <td>
+                            <label class="mobile-row-label">Party / Account</label>
                             <select name="vendor_id[]" class="pv-input rowParty">
                                 <option value="" disabled selected>Select Party</option>
                             </select>
                         </td>
                         <td>
+                            <label class="mobile-row-label">Amount</label>
                             <input type="number" name="amount[]" class="pv-input text-end fw-bold amount" placeholder="0.00" style="font-size: 1rem;">
                         </td>
                         <td class="text-center">
-                            <button type="button" class="btn btn-outline-danger btn-sm removeRow"><i class="bi bi-trash"></i></button>
+                            <button type="button" class="btn btn-outline-danger btn-sm removeRow"><i class="bi bi-trash"></i> <span class="d-md-none">Remove</span></button>
                         </td>
                     </tr>
                 `);
