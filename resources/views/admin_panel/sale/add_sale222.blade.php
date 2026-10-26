@@ -820,7 +820,7 @@
                         </div>
 
                         <!-- Customer & Walk-in Toggle -->
-                        <div class="col-sm-6 col-md-2 col-lg-2">
+                        <div class="col-sm-6 col-md-3 col-lg-3">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="meta-label mb-0"><i class="fas fa-user text-primary"></i> Customer</label>
                                 <button type="button" id="btnOpenAddCustomerModal" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill fw-bold btn-open-customer-modal" data-toggle="modal" data-target="#addCustomerModal" data-bs-toggle="modal" data-bs-target="#addCustomerModal" title="Quick Add Customer (Alt+C or F2)" style="font-size: 0.7rem; height: 20px; line-height: 1;">
@@ -903,6 +903,8 @@
                                                     <option value=""></option>
                                                 </select>
                                                 <input type="hidden" class="product-id-hidden" name="product_id[]">
+                                                <input type="hidden" class="product-set-id-hidden" name="product_set_id[]" value="">
+                                                <input type="hidden" class="is-set-hidden" name="is_set[]" value="0">
                                                 <input type="hidden" class="variant-data-hidden" name="color[]">
                                                 <input type="hidden" class="size-h">
                                                 <input type="hidden" class="size-w">
@@ -1347,10 +1349,10 @@
                     if (item.loading) return item.text;
                     if (!item.customer) return item.text;
                     const c = item.customer;
-                    return $(`<div>
-                        <strong>${c.customer_name}</strong>
-                        <small class="text-muted ms-2">${c.customer_id || ''}</small>
-                        ${c.mobile ? '<br><small class="text-muted">' + c.mobile + '</small>' : ''}
+                    return $(`<div class="py-1" style="line-height: 1.35; white-space: normal; word-break: break-word;">
+                        <strong style="color: inherit; font-size: 13px;">${c.customer_name}</strong>
+                        <span style="opacity: 0.85; font-size: 11px; margin-left: 6px;">${c.customer_id || ''}</span>
+                        ${c.mobile ? '<br><small style="opacity: 0.75; font-size: 11px;">' + c.mobile + '</small>' : ''}
                     </div>`);
                 },
                 templateSelection: function(item) {

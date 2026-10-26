@@ -789,7 +789,7 @@
                         </div>
 
                         <!-- Customer & Walk-in Toggle -->
-                        <div class="col-sm-6 col-md-2 col-lg-2">
+                        <div class="col-sm-6 col-md-3 col-lg-3">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="meta-label mb-0"><i class="fas fa-user text-primary"></i> Customer</label>
                                 <button type="button" id="btnOpenAddCustomerModal" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill fw-bold btn-open-customer-modal" data-toggle="modal" data-target="#addCustomerModal" data-bs-toggle="modal" data-bs-target="#addCustomerModal" title="Quick Add Customer (Alt+C or F2)" style="font-size: 0.7rem; height: 20px; line-height: 1;">
@@ -883,6 +883,17 @@
                                                 @php
                                                     $isSet = !empty($item->product_set_id);
                                                     $set = $isSet ? ($item->productSet ?: \App\Models\ProductSet::find($item->product_set_id)) : null;
+                                                    if (!$set && empty($item->product_id)) {
+                                                        if (!empty($item->product_name)) {
+                                                            $set = \App\Models\ProductSet::where('name', $item->product_name)->first();
+                                                        }
+                                                        if (!$set && !empty($item->item_description) && preg_match('/\[(SET-[^\]]+)\]/', $item->item_description, $matches)) {
+                                                            $set = \App\Models\ProductSet::where('code', $matches[1])->first();
+                                                        }
+                                                        if ($set) {
+                                                            $isSet = true;
+                                                        }
+                                                    }
                                                     $prod = $item->product;
                                                     $sizeMode = $isSet ? 'std' : ($item->size_mode ?? ($prod->size_mode ?? 'std'));
 
@@ -1149,7 +1160,13 @@
                                                     }
 
                                                     $selStockDisp = '';
-                                                    if (!empty($variantData['current_stock'])) {
+                                                    if ($isSet) {
+                                                        $selStockDisp = 'SET';
+                                                        if ($set) {
+                                                            $pieceRetailPrice = (float) $set->sale_price;
+                                                            $pieceWholesalePrice = (float) $set->sale_price;
+                                                        }
+                                                    } elseif (!empty($variantData['current_stock'])) {
                                                         $selStockDisp = $variantData['current_stock'];
                                                     } elseif (isset($variantData['stock']) && $variantData['stock'] !== '') {
                                                         $selStockDisp = $variantData['stock'];
@@ -1226,8 +1243,8 @@
                                                             @endif
                                                         </select>
                                                         <input type="hidden" class="product-id-hidden" name="product_id[]" value="{{ $isSet && $set ? ('set_'.$set->id) : $item->product_id }}">
-                                                        <input type="hidden" class="product-set-id-hidden" name="product_set_id[]" value="{{ $item->product_set_id ?? '' }}">
-                                                        <input type="hidden" class="is-set-hidden" name="is_set[]" value="{{ $isSet ? '1' : '' }}">
+                                                        <input type="hidden" class="product-set-id-hidden" name="product_set_id[]" value="{{ $isSet && $set ? $set->id : ($item->product_set_id ?? '') }}">
+                                                        <input type="hidden" class="is-set-hidden" name="is_set[]" value="{{ $isSet ? '1' : '0' }}">
                                                         <input type="hidden" class="variant-data-hidden" name="color[]" value="{{ $item->color ?? '' }}">
                                                         <input type="hidden" class="size-h" value="{{ $prod->height ?? '-' }}">
                                                         <input type="hidden" class="size-w" value="{{ $prod->width ?? '-' }}">
@@ -1760,10 +1777,10 @@
                     if (item.loading) return item.text;
                     if (!item.customer) return item.text;
                     const c = item.customer;
-                    return $(`<div>
-                        <strong>${c.customer_name}</strong>
-                        <small class="text-muted ms-2">${c.customer_id || ''}</small>
-                        ${c.mobile ? '<br><small class="text-muted">' + c.mobile + '</small>' : ''}
+                    return $(`<div class="py-1" style="line-height: 1.35; white-space: normal; word-break: break-word;">
+                        <strong style="color: inherit; font-size: 13px;">${c.customer_name}</strong>
+                        <span style="opacity: 0.85; font-size: 11px; margin-left: 6px;">${c.customer_id || ''}</span>
+                        ${c.mobile ? '<br><small style="opacity: 0.75; font-size: 11px;">' + c.mobile + '</small>' : ''}
                     </div>`);
                 },
                 templateSelection: function(item) {

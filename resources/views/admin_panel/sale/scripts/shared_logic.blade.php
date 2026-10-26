@@ -41,9 +41,8 @@
     }
     .sales-table thead th.col-product,
     .sales-table tbody td.col-product {
-        width: 220px !important;
-        min-width: 180px !important;
-        max-width: 250px !important;
+        width: 250px !important;
+        min-width: 220px !important;
     }
     .sales-table tbody td.col-product .select2-container {
         width: 100% !important;
@@ -54,7 +53,26 @@
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         display: block !important;
-        max-width: 220px !important;
+    }
+    /* Expand Select2 dropdown results popup so full names show cleanly without ellipsis */
+    .select2-container--open .select2-dropdown {
+        min-width: 360px !important;
+        max-width: 520px !important;
+        box-shadow: 0 10px 25px -5px rgba(15,23,42,0.18) !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        z-index: 1060 !important;
+    }
+    .select2-container--open .select2-dropdown .select2-results__option {
+        padding: 6px 12px !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+    .select2-container--open .select2-dropdown .select2-results__option:last-child {
+        border-bottom: none !important;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: #2563eb !important;
+        color: #ffffff !important;
     }
     .sales-table thead th.col-code,
     .sales-table tbody td.col-code {
@@ -221,34 +239,36 @@
             let code = repo.sku || repo.item_code || 'SET';
             let price = parseFloat(repo.retail_price || 0);
             return `
-                <div class="clearfix py-1">
-                    <div class="float-start">
-                        <div class="fw-bold text-primary">
-                            <i class="fas fa-layer-group me-1"></i> ${repo.name || repo.text} 
-                            <span class="badge bg-primary text-white ms-1" style="font-size:10px; font-weight:700;">SET / PAIR</span>
-                        </div>
-                        <small class="text-muted font-monospace">CODE: <b>${code}</b></small>
+                <div class="py-1" style="line-height: 1.35;">
+                    <div style="font-weight: 600; font-size: 0.85rem; color: inherit; white-space: normal; word-break: break-word;">
+                        <i class="fas fa-layer-group me-1 text-primary"></i> ${repo.name || repo.text}
+                        <span class="badge bg-primary text-white ms-1" style="font-size: 10px; font-weight: 700;">SET</span>
                     </div>
-                    <div class="float-end text-end">
-                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 fw-bold">Rs. ${price.toLocaleString()}</span>
+                    <div style="font-size: 0.75rem; opacity: 0.85; color: inherit; margin-top: 2px;">
+                        SKU: ${code}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <span class="badge rounded-pill" style="background: #00c853; color: #ffffff; font-size: 0.72rem; font-weight: 700; padding: 2px 8px;">Total: SET</span>
+                        <span class="badge bg-light text-dark border rounded-pill px-2 py-0" style="font-size: 0.72rem; font-weight: 600;">Rs. ${price.toLocaleString()}</span>
                     </div>
                 </div>
             `;
         }
         let stock = repo.stock !== undefined ? repo.stock : 0;
-        let sku = repo.sku || 'N/A';
-        let unit = repo.unit_name ? ` | ${repo.unit_name}` : '';
+        let sku = repo.sku || repo.item_code || 'N/A';
         let stockVal = parseFloat(repo.stock_pieces !== undefined ? repo.stock_pieces : repo.stock) || 0;
-        let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-danger';
+        let badgeBg = stockVal > 0 ? '#00c853' : '#dc2626';
 
         return `
-        <div class="clearfix py-1 d-flex align-items-center justify-content-between">
-            <div class="text-truncate me-2">
-                <div class="fw-bold text-dark text-truncate">${repo.name || repo.text}</div>
-                <div class="small text-muted">SKU: ${sku}${unit}</div>
+        <div class="py-1" style="line-height: 1.35;">
+            <div style="font-weight: 600; font-size: 0.85rem; color: inherit; white-space: normal; word-break: break-word;">
+                ${repo.name || repo.text}
             </div>
-            <div class="text-end flex-shrink-0">
-                <span class="badge ${badgeClass} rounded-pill px-2 py-1" style="font-size:0.75rem;">Total: ${stock}</span>
+            <div style="font-size: 0.75rem; opacity: 0.85; color: inherit; margin-top: 2px;">
+                SKU: ${sku}
+            </div>
+            <div class="mt-1">
+                <span class="badge rounded-pill" style="background: ${badgeBg}; color: #ffffff; font-size: 0.72rem; font-weight: 700; padding: 2px 8px;">Total: ${stock}</span>
             </div>
         </div>
         `;

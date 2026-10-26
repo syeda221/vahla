@@ -1218,21 +1218,23 @@
                 if (repo.loading) return repo.text;
                 let stock = repo.stock !== undefined ? repo.stock : 0;
                 let sku = repo.sku || 'N/A';
-                let unit = repo.unit_name || 'Pcs';
+                let unit = repo.unit_name ? ` | ${repo.unit_name}` : '';
                 let stockVal = parseFloat(repo.stock_pieces !== undefined ? repo.stock_pieces : repo.stock) || 0;
-                let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-danger';
+                let badgeBg = stockVal > 0 ? '#00c853' : '#dc2626';
 
-                return $(`
-                <div class="clearfix py-1 d-flex align-items-center justify-content-between">
-                    <div class="text-truncate me-2">
-                        <div class="fw-bold text-dark text-truncate">${repo.name || repo.text}</div>
-                        <small class="text-muted">SKU: ${sku} | Unit: ${unit}</small>
+                return `
+                <div class="py-1" style="line-height: 1.35;">
+                    <div style="font-weight: 600; font-size: 0.85rem; color: inherit; white-space: normal; word-break: break-word;">
+                        ${repo.name || repo.text}
                     </div>
-                    <div class="text-end flex-shrink-0">
-                        <span class="badge ${badgeClass} rounded-pill px-2 py-1" style="font-size:0.75rem;">Total: ${stock}</span>
+                    <div style="font-size: 0.75rem; opacity: 0.85; color: inherit; margin-top: 2px;">
+                        SKU: ${sku}${unit}
+                    </div>
+                    <div class="mt-1">
+                        <span class="badge rounded-pill" style="background: ${badgeBg}; color: #ffffff; font-size: 0.72rem; font-weight: 700; padding: 2px 8px;">Total: ${stock}</span>
                     </div>
                 </div>
-                `);
+                `;
             }
 
             function formatSelection(repo) {
