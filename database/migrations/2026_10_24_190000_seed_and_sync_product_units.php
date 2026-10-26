@@ -2,7 +2,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use App\Models\Unit;
 
 return new class extends Migration
 {
@@ -14,7 +13,13 @@ return new class extends Migration
         ];
 
         foreach ($defaultUnits as $name) {
-            Unit::firstOrCreate(['name' => $name]);
+            if (! DB::table('units')->where('name', $name)->exists()) {
+                DB::table('units')->insert([
+                    'name'       => $name,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
 
         $units = DB::table('units')->pluck('id', 'name');
