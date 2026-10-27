@@ -218,6 +218,7 @@ public function getProductVariants(Request $request, $productId)
 
         $ppb = (float) ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
         $sizeMode = $product->size_mode;
+        $isCartonMode = ($sizeMode === 'by_cartons' || $sizeMode === 'by_box');
 
         // Default base unit
         $defaultUnit = $product->unit->name ?? match($sizeMode) {
@@ -225,6 +226,7 @@ public function getProductVariants(Request $request, $productId)
             'by_meter'   => 'Meter',
             'by_feet'    => 'Ft',
             'by_cartons' => 'Carton',
+            'by_box'     => 'Box',
             default      => 'Pcs'
         };
 
@@ -240,9 +242,32 @@ public function getProductVariants(Request $request, $productId)
                         $vSize  = $v['size'] ?? $v['variant_size'] ?? '-';
                         $vColor = $v['color'] ?? $v['variant_color'] ?? '-';
 
-                        // 1. Calculate Conversion Factor
+                        // 1. Determine variant unit label
+                        if (!empty($v['unit'])) {
+                            $vUnit = trim($v['unit']);
+                        } elseif ($sizeMode === 'by_kg') {
+                            $vUnit = !empty($v['is_base_variant']) ? 'Kg' : 'Pcs';
+                        } elseif ($sizeMode === 'by_meter') {
+                            $vUnit = !empty($v['is_base_variant']) ? 'Meter' : 'Pcs';
+                        } elseif ($sizeMode === 'by_feet') {
+                            $vUnit = !empty($v['is_base_variant']) ? 'Ft' : 'Pcs';
+                        } elseif ($isCartonMode) {
+                            $vUnit = !empty($v['is_base_variant']) ? ($sizeMode === 'by_box' ? 'Box' : 'Carton') : 'Pcs';
+                        } else {
+                            $vUnit = $defaultUnit;
+                        }
+
+                        $isPcsUnit = in_array(strtolower($vUnit), ['pcs', 'pc', 'piece', 'pieces']);
+                        $isCartonUnit = in_array(strtolower($vUnit), ['carton', 'ctn', 'box']);
+
+                        // 2. Calculate Conversion Factor (Units of base stock per 1 unit of this variant)
                         $convFactor = 1.0;
-                        if (isset($v['conv_factor']) && (float)$v['conv_factor'] > 0) {
+                        if ($isCartonMode) {
+                            // In carton/box mode, base stock in WarehouseStock is total pieces.
+                            // 1 Piece = 1 Piece (convFactor = 1.0).
+                            // 1 Carton / Box = ppb Pieces (convFactor = ppb).
+                            $convFactor = $isPcsUnit ? 1.0 : $ppb;
+                        } elseif (isset($v['conv_factor']) && (float)$v['conv_factor'] > 0) {
                             $convFactor = (float) $v['conv_factor'];
                         } elseif (isset($v['weight_per_piece']) && (float)$v['weight_per_piece'] > 0) {
                             if ($sizeMode === 'by_feet') {
@@ -250,42 +275,25 @@ public function getProductVariants(Request $request, $productId)
                             } elseif ($sizeMode === 'by_kg' || $sizeMode === 'by_meter') {
                                 $convFactor = (float) $v['weight_per_piece'] / 1000.0;
                             }
-                        } elseif ($sizeMode === 'by_cartons') {
-                            $convFactor = $ppb;
                         }
 
-                        // 2. Identify if base variant
-                        $isBase = !empty($v['is_base_variant']) || (in_array($sizeMode, ['by_kg', 'by_meter', 'by_feet']) && $convFactor == 1.0);
-
-                        // 3. Determine variant unit label
-                        if (!empty($v['unit'])) {
-                            $vUnit = trim($v['unit']);
-                        } elseif ($sizeMode === 'by_kg') {
-                            $vUnit = $isBase ? 'Kg' : 'Pcs';
-                        } elseif ($sizeMode === 'by_meter') {
-                            $vUnit = $isBase ? 'Meter' : 'Pcs';
-                        } elseif ($sizeMode === 'by_feet') {
-                            $vUnit = $isBase ? 'Ft' : 'Pcs';
-                        } elseif ($sizeMode === 'by_cartons') {
-                            $vUnit = ($convFactor == $ppb) ? 'Carton' : 'Pcs';
-                        } else {
-                            $vUnit = $defaultUnit;
-                        }
+                        // 3. Identify if base variant
+                        $isBase = !empty($v['is_base_variant']) || ($isCartonMode ? $isCartonUnit : (in_array($sizeMode, ['by_kg', 'by_meter', 'by_feet']) && $convFactor == 1.0));
 
                         // 4. Calculate live warehouse stock converted for this variant
                         if (in_array($sizeMode, ['by_kg', 'by_meter', 'by_feet'])) {
                             $vCurrentStock = ($convFactor > 0) ? round($stockPieces / $convFactor, 2) : round($stockPieces, 2);
-                        } elseif ($sizeMode === 'by_cartons') {
-                            if (strtolower($vUnit) === 'carton' || strtolower($vUnit) === 'box' || $convFactor == $ppb) {
-                                $vCurrentStock = round($stockPieces / $ppb, 2);
-                            } else {
+                        } elseif ($isCartonMode) {
+                            if ($isPcsUnit) {
                                 $vCurrentStock = round($stockPieces, 2);
+                            } else {
+                                $vCurrentStock = round($stockPieces / $ppb, 2);
                             }
                         } else {
                             if ($convFactor > 0 && $convFactor != 1.0) {
                                 $vCurrentStock = round($stockPieces / $convFactor, 2);
                             } else {
-                                if (isset($v['stock']) && !in_array($sizeMode, ['by_kg', 'by_meter', 'by_feet', 'by_cartons', 'by_pieces'])) {
+                                if (isset($v['stock']) && !in_array($sizeMode, ['by_kg', 'by_meter', 'by_feet', 'by_cartons', 'by_box', 'by_pieces'])) {
                                     $vCurrentStock = (float)$v['stock'];
                                 } else {
                                     $vCurrentStock = round($stockPieces, 2);
@@ -294,7 +302,7 @@ public function getProductVariants(Request $request, $productId)
                         }
 
                         // Step precision for HTML input
-                        $step = (in_array(strtolower($vUnit), ['pcs', 'pc', 'piece', 'pieces']) && $convFactor == 1.0) ? 1 : 0.01;
+                        $step = ($isPcsUnit || (in_array(strtolower($vUnit), ['pcs', 'pc', 'piece', 'pieces']) && $convFactor == 1.0)) ? 1 : 0.01;
 
                         // Display label
                         $metaParts = [];
@@ -367,7 +375,7 @@ public function getProductVariants(Request $request, $productId)
                     'variant_key'  => $request->variant_key,
                     'variant_name' => $request->variant_name,
                     'type'         => $request->type,
-                    'qty'          => (float) $request->qty,
+                    'qty'          => $request->qty,
                     'reason'       => $request->reason,
                 ]);
             });
@@ -426,7 +434,7 @@ public function getProductVariants(Request $request, $productId)
                         'variant_key'  => $item['variant_key'] ?? null,
                         'variant_name' => $item['variant_name'] ?? null,
                         'type'         => $item['type'],
-                        'qty'          => (float) $item['qty'],
+                        'qty'          => $item['qty'],
                         'reason'       => $itemReason,
                     ]);
                 }
@@ -451,7 +459,7 @@ public function getProductVariants(Request $request, $productId)
     /**
      * Private helper to execute a single stock adjustment
      */
-private function processSingleAdjustment(array $data)
+    private function processSingleAdjustment(array $data)
     {
         $product = Product::with('unit')->where('id', $data['product_id'])->lockForUpdate()->first();
         if (!$product) {
@@ -471,17 +479,21 @@ private function processSingleAdjustment(array $data)
 
         $sizeMode = $product->size_mode;
         $ppb = (float) ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+        $isCartonMode = ($sizeMode === 'by_cartons' || $sizeMode === 'by_box');
+
         $defaultUnit = $product->unit->name ?? match($sizeMode) {
             'by_kg'      => 'Kg',
             'by_meter'   => 'Meter',
             'by_feet'    => 'Ft',
             'by_cartons' => 'Carton',
+            'by_box'     => 'Box',
             default      => 'Pcs'
         };
 
         $variantKey  = $data['variant_key'] ?? null;
         $variantName = $data['variant_name'] ?? null;
-        $inputQty    = (float) $data['qty'];
+        $rawQty      = (string)($data['qty'] ?? '0');
+        $inputQty    = (float) $rawQty;
         $type        = $data['type']; // 'add', 'subtract', 'set'
 
         // Determine variant's conv_factor and unit
@@ -489,6 +501,8 @@ private function processSingleAdjustment(array $data)
         $unit = $defaultUnit;
         $parsedVariants = [];
         $matchedIndex = null;
+        $isPcsVariant = in_array(strtolower($defaultUnit), ['pcs', 'pc', 'piece', 'pieces']);
+        $isCartonVariant = in_array(strtolower($defaultUnit), ['carton', 'ctn', 'box']);
 
         if ($product->color) {
             try {
@@ -503,9 +517,28 @@ private function processSingleAdjustment(array $data)
                         $vSize  = $v['size'] ?? '-';
                         $vColor = $v['color'] ?? '-';
 
-                        // Pre-calculate convFactor & unit for this variant
+                        if (!empty($v['unit'])) {
+                            $vU = trim($v['unit']);
+                        } elseif ($sizeMode === 'by_kg') {
+                            $vU = !empty($v['is_base_variant']) ? 'Kg' : 'Pcs';
+                        } elseif ($sizeMode === 'by_meter') {
+                            $vU = !empty($v['is_base_variant']) ? 'Meter' : 'Pcs';
+                        } elseif ($sizeMode === 'by_feet') {
+                            $vU = !empty($v['is_base_variant']) ? 'Ft' : 'Pcs';
+                        } elseif ($isCartonMode) {
+                            $vU = !empty($v['is_base_variant']) ? ($sizeMode === 'by_box' ? 'Box' : 'Carton') : 'Pcs';
+                        } else {
+                            $vU = $defaultUnit;
+                        }
+
+                        $vIsPcs = in_array(strtolower($vU), ['pcs', 'pc', 'piece', 'pieces']);
+                        $vIsCtn = in_array(strtolower($vU), ['carton', 'ctn', 'box']);
+
+                        // Pre-calculate convFactor for this variant
                         $vCf = 1.0;
-                        if (isset($v['conv_factor']) && (float)$v['conv_factor'] > 0) {
+                        if ($isCartonMode) {
+                            $vCf = $vIsPcs ? 1.0 : $ppb;
+                        } elseif (isset($v['conv_factor']) && (float)$v['conv_factor'] > 0) {
                             $vCf = (float)$v['conv_factor'];
                         } elseif (isset($v['weight_per_piece']) && (float)$v['weight_per_piece'] > 0) {
                             if ($sizeMode === 'by_feet') {
@@ -513,47 +546,34 @@ private function processSingleAdjustment(array $data)
                             } elseif ($sizeMode === 'by_kg' || $sizeMode === 'by_meter') {
                                 $vCf = (float)$v['weight_per_piece'] / 1000.0;
                             }
-                        } elseif ($sizeMode === 'by_cartons') {
-                            $vCf = $ppb;
-                        }
-
-                        $isBase = !empty($v['is_base_variant']) || (in_array($sizeMode, ['by_kg', 'by_meter', 'by_feet']) && $vCf == 1.0);
-                        if (!empty($v['unit'])) {
-                            $vU = trim($v['unit']);
-                        } elseif ($sizeMode === 'by_kg') {
-                            $vU = $isBase ? 'Kg' : 'Pcs';
-                        } elseif ($sizeMode === 'by_meter') {
-                            $vU = $isBase ? 'Meter' : 'Pcs';
-                        } elseif ($sizeMode === 'by_feet') {
-                            $vU = $isBase ? 'Ft' : 'Pcs';
-                        } elseif ($sizeMode === 'by_cartons') {
-                            $vU = ($vCf == $ppb) ? 'Carton' : 'Pcs';
-                        } else {
-                            $vU = $defaultUnit;
                         }
 
                         $vKeyWithUnit = "{$vName}|{$vSize}|{$vColor}|{$vU}";
                         $vKeyWithoutUnit = "{$vName}|{$vSize}|{$vColor}";
 
                         if ($variantKey && ($vKeyWithUnit === $variantKey || $vKeyWithoutUnit === $variantKey)) {
-                            $matchedIndex = $idx;
-                            $convFactor   = $vCf;
-                            $unit         = $vU;
+                            $matchedIndex    = $idx;
+                            $convFactor      = $vCf;
+                            $unit            = $vU;
+                            $isPcsVariant    = $vIsPcs;
+                            $isCartonVariant = $vIsCtn;
                             break;
                         } elseif ($variantName && $vName === $variantName) {
-                            $matchedIndex = $idx;
-                            $convFactor   = $vCf;
-                            $unit         = $vU;
-                            // continue in case an exact match appears later
+                            $matchedIndex    = $idx;
+                            $convFactor      = $vCf;
+                            $unit            = $vU;
+                            $isPcsVariant    = $vIsPcs;
+                            $isCartonVariant = $vIsCtn;
                         }
                     }
                 }
             } catch (\Exception $e) {}
         }
 
-        // Special check if standard product is by_cartons
-        if ($sizeMode === 'by_cartons' && empty($variantKey) && (strtolower($unit) === 'carton' || strtolower($unit) === 'box')) {
+        // Special check if standard product is by_cartons or by_box
+        if ($isCartonMode && empty($variantKey) && (strtolower($unit) === 'carton' || strtolower($unit) === 'box')) {
             $convFactor = $ppb;
+            $isCartonVariant = true;
         }
 
         if ($convFactor <= 0) {
@@ -563,22 +583,40 @@ private function processSingleAdjustment(array $data)
         $currentBaseStock = (float) $warehouseStock->total_pieces;
 
         // Current stock in the variant's own unit
-        $oldVariantStock = ($convFactor > 0) ? round($currentBaseStock / $convFactor, 2) : round($currentBaseStock, 2);
+        if ($isCartonMode) {
+            $oldVariantStock = $isPcsVariant ? round($currentBaseStock, 2) : round($currentBaseStock / $ppb, 2);
+        } else {
+            $oldVariantStock = ($convFactor > 0) ? round($currentBaseStock / $convFactor, 2) : round($currentBaseStock, 2);
+        }
 
-        // Calculate Delta in Base Units (e.g. Kg, Ft, Meter, Carton Pieces)
-        // 1 Variant Unit = $convFactor Base Units
+        // Calculate quantity in Base Units (e.g. Kg, Ft, Meter, Pieces)
+        // For carton mode: support dot notation (boxes.loose, e.g. "1.2") if adjusting in cartons
+        $adjBaseQty = 0;
+        if ($isCartonMode && $isCartonVariant) {
+            if (strpos($rawQty, '.') !== false) {
+                [$boxes, $loose] = \App\Http\Controllers\PurchaseController::parseCartonQty($rawQty);
+                $adjBaseQty = ($boxes * $ppb) + $loose;
+            } else {
+                $adjBaseQty = $inputQty * $ppb;
+            }
+        } elseif ($isCartonMode && $isPcsVariant) {
+            $adjBaseQty = $inputQty;
+        } else {
+            $adjBaseQty = $inputQty * $convFactor;
+        }
+
         $deltaBase = 0;
         $newBaseStock = $currentBaseStock;
 
         if ($type === 'add') {
-            $deltaBase = $inputQty * $convFactor;
+            $deltaBase = $adjBaseQty;
             $newBaseStock = $currentBaseStock + $deltaBase;
         } elseif ($type === 'subtract') {
-            $deductBase = $inputQty * $convFactor;
+            $deductBase = $adjBaseQty;
             $deltaBase = -1.0 * min(max(0, $currentBaseStock), $deductBase);
             $newBaseStock = max(0, $currentBaseStock + $deltaBase);
         } else { // 'set'
-            $targetBaseStock = max(0, $inputQty * $convFactor);
+            $targetBaseStock = max(0, $adjBaseQty);
             $deltaBase = $targetBaseStock - $currentBaseStock;
             $newBaseStock = $targetBaseStock;
         }
@@ -587,13 +625,17 @@ private function processSingleAdjustment(array $data)
         if ($type === 'set') {
             $newVariantStock = $inputQty;
         } else {
-            $newVariantStock = ($convFactor > 0) ? round($newBaseStock / $convFactor, 2) : round($newBaseStock, 2);
+            if ($isCartonMode) {
+                $newVariantStock = $isPcsVariant ? round($newBaseStock, 2) : round($newBaseStock / $ppb, 2);
+            } else {
+                $newVariantStock = ($convFactor > 0) ? round($newBaseStock / $convFactor, 2) : round($newBaseStock, 2);
+            }
         }
 
         // Update variant stock in product JSON
         if (count($parsedVariants) > 0) {
             try {
-                if (in_array($sizeMode, ['by_kg', 'by_feet', 'by_meter', 'by_cartons'])) {
+                if (in_array($sizeMode, ['by_kg', 'by_feet', 'by_meter'])) {
                     // All variants are different units of the same base stock -> update all
                     foreach ($parsedVariants as &$pv) {
                         $cf = (float)($pv['conv_factor'] ?? 0);
@@ -602,13 +644,24 @@ private function processSingleAdjustment(array $data)
                                 $cf = (float)$pv['weight_per_piece'] / 12.0;
                             } elseif (($sizeMode === 'by_kg' || $sizeMode === 'by_meter') && !empty($pv['weight_per_piece'])) {
                                 $cf = (float)$pv['weight_per_piece'] / 1000.0;
-                            } elseif ($sizeMode === 'by_cartons') {
-                                $cf = $ppb;
                             } else {
                                 $cf = 1.0;
                             }
                         }
                         $pv['stock'] = round($newBaseStock / ($cf > 0 ? $cf : 1.0), 2);
+                    }
+                    unset($pv);
+                } elseif ($isCartonMode) {
+                    // For carton/box mode:
+                    // Carton variant stock = newBaseStock / ppb
+                    // Loose Pcs variant stock = newBaseStock
+                    foreach ($parsedVariants as &$pv) {
+                        $pvUnit = strtolower(trim($pv['unit'] ?? ''));
+                        if (in_array($pvUnit, ['pcs', 'pc', 'piece', 'pieces'])) {
+                            $pv['stock'] = round($newBaseStock, 2);
+                        } else {
+                            $pv['stock'] = round($newBaseStock / $ppb, 2);
+                        }
                     }
                     unset($pv);
                 } else {
@@ -632,7 +685,7 @@ private function processSingleAdjustment(array $data)
 
         // Update WarehouseStock
         $warehouseStock->total_pieces = $newBaseStock;
-        if ($ppb > 1 && in_array($sizeMode, ['by_cartons', 'by_size'])) {
+        if ($ppb > 1 && in_array($sizeMode, ['by_cartons', 'by_box', 'by_size'])) {
             $warehouseStock->quantity = round($warehouseStock->total_pieces / $ppb, 2);
         } else {
             $warehouseStock->quantity = $warehouseStock->total_pieces;
@@ -641,9 +694,10 @@ private function processSingleAdjustment(array $data)
         $warehouseStock->save();
 
         // Log Stock Movement
-        $noteUnitInfo = "{$inputQty} {$unit}";
-        if ($convFactor != 1.0) {
-            $noteUnitInfo .= " = " . round(abs($deltaBase), 4) . " " . $defaultUnit;
+        $unitDisplay = $isCartonMode ? ($isPcsVariant ? 'Pcs' : ($sizeMode === 'by_box' ? 'Box' : 'Carton')) : $unit;
+        $noteUnitInfo = "{$rawQty} {$unitDisplay}";
+        if ($convFactor != 1.0 || $isCartonMode) {
+            $noteUnitInfo .= " = " . round(abs($deltaBase), 4) . " " . ($isCartonMode ? 'Pcs' : $defaultUnit);
         }
         $note = "Warehouse #{$data['warehouse_id']} | " 
               . ($variantName ? "Variant: {$variantName} | " : '')
@@ -663,7 +717,7 @@ private function processSingleAdjustment(array $data)
         ]);
 
         // Create StockAdjustment audit record
-        $adjVariantDisplay = $variantName ?: ($product->item_name . " ({$unit})");
+        $adjVariantDisplay = $variantName ?: ($product->item_name . " ({$unitDisplay})");
         StockAdjustment::create([
             'user_id'      => auth()->id(),
             'warehouse_id' => $data['warehouse_id'],
@@ -674,7 +728,7 @@ private function processSingleAdjustment(array $data)
             'qty'          => $inputQty,
             'old_stock'    => $oldVariantStock,
             'new_stock'    => $newVariantStock,
-            'reason'       => $data['reason'] . ($convFactor != 1.0 ? " [Base: " . ($deltaBase >= 0 ? '+' : '') . round($deltaBase, 3) . " {$defaultUnit}]" : ''),
+            'reason'       => $data['reason'] . (($convFactor != 1.0 || $isCartonMode) ? " [Base: " . ($deltaBase >= 0 ? '+' : '') . round($deltaBase, 3) . " " . ($isCartonMode ? 'Pcs' : $defaultUnit) . "]" : ''),
         ]);
     }
 }
