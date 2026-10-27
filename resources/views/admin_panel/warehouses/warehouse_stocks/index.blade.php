@@ -336,7 +336,7 @@
                 @php
                     $whTotalUnits = rtrim(rtrim(number_format((float)($wh->total_units_sum ?? 0), 2, '.', ','), '0'), '.');
                     if ($whTotalUnits === '' || $whTotalUnits === '-0') $whTotalUnits = '0';
-                    $whProdCount = $wh->warehouseStocks->count();
+                    $whProdCount = $wh->total_products_count ?? $wh->warehouseStocks->count();
                 @endphp
 
                 <div class="erp-card overflow-hidden mb-3">
@@ -393,7 +393,7 @@
                         <div class="p-3 border-top">
                             <!-- In-Table Toolbar: Page Length Selector & Instant Filter Search -->
                             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-                                <div class="d-flex align-items-center gap-2">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
                                     <label class="erp-caption fw-semibold mb-0">Show:</label>
                                     <select class="form-select erp-input erp-table-length" data-table="whTable_{{ $wh->id }}" style="width: auto;">
                                         <option value="25">25 items</option>
@@ -403,6 +403,11 @@
                                         <option value="500">500 items</option>
                                         <option value="-1">Show All ({{ number_format($whProdCount) }})</option>
                                     </select>
+                                    @if(!request('search') && ($wh->total_products_count ?? 0) > 150)
+                                        <span class="badge bg-light text-muted border py-1 px-2 fw-normal" style="font-size: 11px;">
+                                            <i class="fas fa-info-circle me-1 text-primary"></i>Showing top 150 items. Use search or <a href="{{ request()->fullUrlWithQuery(['view' => 'products']) }}" class="text-primary fw-semibold text-decoration-none">Products View</a> for all.
+                                        </span>
+                                    @endif
                                 </div>
 
                                 <div style="max-width: 320px;" class="w-100">

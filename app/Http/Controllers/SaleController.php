@@ -1418,7 +1418,7 @@ class SaleController extends Controller
             $sale->walkin_name = $isWalkin ? $request->walkin_name : null;
             $sale->reference = $request->reference;
             $rawWh = $request->input('warehouse_id');
-            $headerWhId = is_array($rawWh) ? ($rawWh[0] ?? 1) : ($rawWh ?: 1);
+            $headerWhId = $request->input('header_warehouse_id') ?: (is_array($rawWh) ? ($rawWh[0] ?? 1) : ($rawWh ?: 1));
             $sale->warehouse_id = $headerWhId;
             $sale->total_amount_Words = $request->total_amount_Words; // Consider auto-generating this too?
             $sale->sale_status = $status;

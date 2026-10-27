@@ -501,6 +501,7 @@
                                 <tr>
                                     <th class="col-product">Product</th>
                                     <th class="col-code" style="width: 110px;">Item Code</th>
+                                    <th class="col-wh" style="width: 140px;">Warehouse / Store</th>
                                     <th class="col-unit">Unit</th>
                                     <th class="col-qty">Qty</th>
                                     <th class="col-price">Purchase Price</th>
@@ -515,7 +516,7 @@
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <td colspan="7" class="text-end fw-bold text-muted">Total Amount:</td>
+                                    <td colspan="8" class="text-end fw-bold text-muted">Total Amount:</td>
                                     <td class="text-end fw-bold fs-6 text-dark"><span id="totalAmount">0.00</span>
                                     </td>
                                     <td></td>
@@ -685,6 +686,22 @@
 
     <script>
         $(document).ready(function() {
+            $(document).on('change', '#warehouseSelect', function() {
+                const newWh = $(this).val();
+                if (newWh) {
+                    $('#purchaseTableBody tr').each(function() {
+                        $(this).find('.row-warehouse-select').val(newWh);
+                    });
+                }
+            });
+            $(document).on('change', '#warehouseSelect', function() {
+                const newWh = $(this).val();
+                if (newWh) {
+                    $('#purchaseTableBody tr').each(function() {
+                        $(this).find('.row-warehouse-select').val(newWh);
+                    });
+                }
+            });
             // Init Select2
             $('.select2').select2({
                 width: '100%'
@@ -996,6 +1013,15 @@
                     <td class="col-code text-center align-middle">
                         <input type="text" class="form-control item-code-display text-center input-readonly" readonly placeholder="—" tabindex="-1" style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600; background-color: #f8fafc;">
                     </td>
+                    <td class="col-wh align-middle" style="width: 140px;">
+                        <select name="item_warehouse_id[]" class="form-select form-select-sm row-warehouse-select fw-semibold" style="font-size:0.75rem;">
+                            @foreach(\App\Models\Warehouse::orderByRaw("is_shop ASC, id ASC")->get() as $wh)
+                                <option value="{{ $wh->id }}">
+                                    {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </td>
                     <td class="text-center align-middle">
                         <button type="button" class="btn btn-sm btn-outline-info fw-bold unit-toggle-btn py-0 px-2" data-unit="Pcs" title="Click to toggle unit (Carton ↔ Pcs / Kg ↔ Gm)" style="font-size:0.75rem; min-width: 55px; cursor: pointer;">Pcs</button>
                         <input type="hidden" name="unit[]" class="unit-input-val" value="Pcs">
@@ -1021,6 +1047,10 @@
                 </tr>
                 `;
                 const $row = $(html);
+                const defaultWh = $('#warehouseSelect').val();
+                if (defaultWh) {
+                    $row.find('.row-warehouse-select').val(defaultWh);
+                }
                 $('#purchaseTableBody').append($row);
                 initProductSelect2($row.find('.product-select2'));
             }

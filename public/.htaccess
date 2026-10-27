@@ -19,3 +19,14 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+# Increase PHP memory limit for large ERP data operations
+<IfModule mod_php.c>
+    php_value memory_limit 512M
+</IfModule>
+<IfModule mod_php7.c>
+    php_value memory_limit 512M
+</IfModule>
+<IfModule mod_php8.c>
+    php_value memory_limit 512M
+</IfModule>

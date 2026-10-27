@@ -58,6 +58,7 @@ class WarehouseStockController extends Controller
 
     public function index(Request $request)
     {
+        @ini_set('memory_limit', '512M');
         if (! auth()->user()->can('warehouse.stock.view')) {
             abort(403, 'Unauthorized action. You do not have permission to view Warehouse Stock.');
         }
@@ -70,7 +71,7 @@ class WarehouseStockController extends Controller
         // All available warehouses for dropdowns
         $warehouses = Warehouse::orderByRaw('is_shop DESC, warehouse_name ASC')->get();
 
-        // 1. Warehouses View with child stocks (Image 1 Style Accordions)
+        // 1. Warehouses View Query (Aggregated stats calculated fast in DB)
         $warehousesQuery = Warehouse::query()
             ->when($locationType === 'shop', fn($q) => $q->where('is_shop', 1))
             ->when($locationType === 'godown', fn($q) => $q->where('is_shop', 0))
@@ -85,25 +86,9 @@ class WarehouseStockController extends Controller
                     $q->whereHas('product', fn($pq) => $pq->where('item_name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%"));
                 }
             }], 'total_pieces')
-            ->with(['warehouseStocks' => function ($q) use ($search) {
-                $q->select('id', 'warehouse_id', 'product_id', 'total_pieces', 'quantity', 'remarks', 'created_at')
-                  ->with([
-                      'product' => function ($pq) {
-                          $pq->select('id', 'item_name', 'item_code', 'unit_id', 'size_mode', 'category_id', 'image');
-                      },
-                      'product.unit:id,name',
-                      'product.category_relation:id,name'
-                  ]);
-                if ($search) {
-                    $q->whereHas('product', fn($pq) => $pq->where('item_name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%"));
-                }
-                $q->orderBy('total_pieces', 'DESC');
-            }])
             ->orderByRaw('is_shop DESC, warehouse_name ASC');
 
-        $warehousesWithStock = $warehousesQuery->get();
-
-        // 2. Flat Stocks Query (for products view or pagination)
+        // 2. Flat Stocks Query (for products view with pagination)
         $flatQuery = WarehouseStock::select('id', 'warehouse_id', 'product_id', 'total_pieces', 'quantity', 'remarks')
             ->with([
                 'warehouse:id,warehouse_name,is_shop',
@@ -133,7 +118,32 @@ class WarehouseStockController extends Controller
             });
         }
 
-        $stocks = $flatQuery->orderBy('total_pieces', 'DESC')->paginate(50)->appends($request->query());
+        $warehousesWithStock = collect();
+        $stocks = collect();
+
+        // Memory-safe execution: Only execute the query needed for active viewMode
+        if ($viewMode === 'warehouses') {
+            $warehousesWithStock = $warehousesQuery->get();
+            foreach ($warehousesWithStock as $wh) {
+                $stockQ = WarehouseStock::select('id', 'warehouse_id', 'product_id', 'total_pieces', 'quantity', 'remarks', 'created_at')
+                    ->where('warehouse_id', $wh->id)
+                    ->with([
+                        'product:id,item_name,item_code,unit_id,size_mode,category_id,image',
+                        'product.unit:id,name',
+                        'product.category_relation:id,name'
+                    ]);
+
+                if ($search) {
+                    $stockQ->whereHas('product', fn($pq) => $pq->where('item_name', 'like', "%{$search}%")->orWhere('item_code', 'like', "%{$search}%"));
+                } else {
+                    $stockQ->limit(150); // Sensible limit per warehouse accordion to avoid memory spike
+                }
+
+                $wh->setRelation('warehouseStocks', $stockQ->orderBy('total_pieces', 'DESC')->get());
+            }
+        } else {
+            $stocks = $flatQuery->orderBy('total_pieces', 'DESC')->paginate(50)->appends($request->query());
+        }
 
         // Overall Statistics (Optimized Single Combined Query)
         $stockStats = DB::table('warehouse_stocks')
@@ -168,6 +178,7 @@ class WarehouseStockController extends Controller
 
     public function create()
     {
+        @ini_set('memory_limit', '512M');
         if (! auth()->user()->can('opening.stock.view') && ! auth()->user()->can('opening.stock.create') && ! auth()->user()->can('warehouse.stock.create') && ! auth()->user()->can('warehouse.stock.view')) {
             abort(403, 'Unauthorized action. You do not have permission to access Opening Stock.');
         }

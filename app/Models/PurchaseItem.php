@@ -14,7 +14,7 @@ class PurchaseItem extends Model
         'line_total'    => 'decimal:2',
     ];
 
-    
-    public function purchase() { return $this->belongsTo(Purchase::class); }
-    public function product()  { return $this->belongsTo(Product::class); }
+    public function purchase()  { return $this->belongsTo(Purchase::class); }
+    public function product()   { return $this->belongsTo(Product::class); }
+    public function warehouse() { return $this->belongsTo(Warehouse::class); }
 }

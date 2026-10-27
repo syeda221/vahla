@@ -241,6 +241,16 @@
             background-color: #f8fafc !important;
             color: #334155 !important;
         }
+        .sales-table thead th.col-wh,
+        .sales-table tbody td.col-wh {
+            width: 135px !important;
+            min-width: 125px !important;
+        }
+        .sales-table tbody td.col-wh select.row-warehouse-select {
+            font-size: 0.74rem !important;
+            padding: 2px 4px !important;
+            height: 28px !important;
+        }
         .sales-table thead th.col-stock,
         .sales-table tbody td.col-stock {
             width: 80px !important;
@@ -769,7 +779,7 @@
                         <!-- Dispatch Location / Warehouse -->
                         <div class="col-sm-6 col-md-2 col-lg-2">
                             <label class="meta-label"><i class="fas fa-warehouse text-primary"></i> Dispatch Location</label>
-                            <select class="form-select fw-bold" id="warehouseSelect" name="warehouse_id">
+                            <select class="form-select fw-bold" id="warehouseSelect" name="header_warehouse_id">
                                 @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
                                     <option value="{{ $wh->id }}" {{ (($sale->warehouse_id ?? 1) == $wh->id) ? 'selected' : '' }}>
                                         {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
@@ -865,6 +875,7 @@
                                             <th style="width:30px;" class="text-center">#</th>
                                             <th class="col-product" style="width: 220px; min-width: 180px; max-width: 250px;">PRODUCT</th>
                                             <th class="col-code" style="width: 110px; min-width: 105px;">CODE</th>
+                                            <th class="col-wh" style="width: 135px; min-width: 125px;">LOCATION</th>
                                             <th class="col-stock" style="width: 80px; min-width: 75px;">STOCK</th>
                                             <th class="col-qty" style="width: 85px;">QTY</th>
                                             <th class="col-description" style="width: 130px; min-width: 110px;">DESCRIPTION</th>
@@ -1256,12 +1267,22 @@
                                                         <input type="text" class="form-control item-code-display text-center input-readonly" readonly value="{{ $isSet && $set ? $set->code : ($prod->item_code ?? '') }}" placeholder="Code" tabindex="-1" style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600;">
                                                     </td>
 
+                                                    <!-- LOCATION (Warehouse / Shop) -->
+                                                    <td class="col-wh" style="width: 135px; min-width: 125px;">
+                                                        <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem;">
+                                                            @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
+                                                                <option value="{{ $wh->id }}" {{ (($item->warehouse_id ?? $sale->warehouse_id ?? 1) == $wh->id) ? 'selected' : '' }}>
+                                                                    {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </td>
+
                                                     <!-- STOCK -->
                                                     <td class="col-stock" style="width: 80px; min-width: 75px;">
                                                         <input type="text"
                                                             class="form-control stock text-center input-readonly" readonly
                                                             value="{{ $selStockDisp }}" tabindex="-1" style="font-size: 0.75rem;">
-                                                        <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ $item->warehouse_id ?? (auth()->user()->warehouse_id ?? 1) }}">
                                                         <input type="hidden" class="variant-stock-value" value="{{ $selStockDisp }}">
                                                     </td>
 
@@ -1388,9 +1409,17 @@
                                                 <td class="col-code" style="width: 110px; min-width: 105px;">
                                                     <input type="text" class="form-control item-code-display text-center input-readonly" readonly placeholder="Code" tabindex="-1" style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600;">
                                                 </td>
+                                                <td class="col-wh" style="width: 135px; min-width: 125px;">
+                                                    <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem;">
+                                                        @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
+                                                            <option value="{{ $wh->id }}" {{ ($wh->is_shop || $loop->first) ? 'selected' : '' }}>
+                                                                {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </td>
                                                 <td class="col-stock" style="width: 80px; min-width: 75px;">
                                                     <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1" style="font-size: 0.75rem;">
-                                                    <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ auth()->user()->warehouse_id ?? 1 }}">
                                                     <input type="hidden" class="variant-stock-value">
                                                 </td>
                                                 <td style="width:85px;" class="col-qty-wrapper">

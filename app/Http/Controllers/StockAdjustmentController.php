@@ -65,6 +65,7 @@ class StockAdjustmentController extends Controller
      */
     public function index(Request $request)
     {
+        @ini_set('memory_limit', '512M');
         $this->checkPermission();
 
         $permittedWarehouses = $this->getPermittedWarehouses();
@@ -340,6 +341,7 @@ public function getProductVariants(Request $request, $productId)
      */
     public function store(Request $request)
     {
+        @ini_set('memory_limit', '512M');
         $this->checkPermission();
 
         if (!$request->filled('warehouse_id')) {
@@ -391,6 +393,7 @@ public function getProductVariants(Request $request, $productId)
      */
     public function storeBatch(Request $request)
     {
+        @ini_set('memory_limit', '512M');
         $this->checkPermission();
 
         if (!$request->filled('warehouse_id')) {

@@ -319,10 +319,20 @@
       <input type="text" class="form-control item-code-display text-center input-readonly" readonly placeholder="Code" tabindex="-1" style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600;">
     </td>
 
+    <!-- LOCATION (Warehouse / Shop) -->
+    <td class="col-wh" style="width: 135px; min-width: 125px;">
+      <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem;">
+        @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
+            <option value="{{ $wh->id }}">
+                {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
+            </option>
+        @endforeach
+      </select>
+    </td>
+
     <!-- STOCK -->
     <td class="col-stock" style="width: 80px; min-width: 75px;">
       <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1" style="font-size: 0.75rem;" title="Click to view warehouse stock breakdown">
-      <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ auth()->user()->warehouse_id ?? 1 }}">
       <input type="hidden" class="variant-stock-value">
     </td>
 
@@ -591,13 +601,10 @@
                 product_id: productId
             })
             .done(function(warehouses) {
-                var targetWhId = preSelectId || currentHeaderWh || $whInput.val() || "{{ auth()->user()->warehouse_id ?? 1 }}";
+                var targetWhId = preSelectId || $whInput.val() || currentHeaderWh || "{{ auth()->user()->warehouse_id ?? 1 }}";
                 var validWarehouses = Array.isArray(warehouses) ? warehouses : [];
                 $row.data('product_warehouses', validWarehouses);
                 var matched = validWarehouses.find(function(w) { return w.warehouse_id == targetWhId; });
-                if (!matched && validWarehouses.length > 0) {
-                    matched = validWarehouses[0];
-                }
 
                 if (matched) {
                     $whInput.val(matched.warehouse_id);
@@ -642,6 +649,16 @@
                 console.error('Warehouse fetch error:', xhr);
             });
     }
+
+    // /* row-warehouse-change-listener */
+    $(document).on('change', '.row-warehouse-select, .warehouse', function() {
+        var $row = $(this).closest('tr');
+        var selWhId = $(this).val();
+        var pid = $row.find('.product').val() || $row.find('.product-id-hidden').val();
+        if (pid) {
+            loadWarehousesForProduct($row, pid, selWhId);
+        }
+    });
 
     // Sync all rows when header Dispatch Location changes
     $(document).on('change', '#warehouseSelect', function() {

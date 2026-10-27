@@ -14,6 +14,7 @@ class StockTransferController extends Controller
 {
     public function index(Request $request)
     {
+        @ini_set('memory_limit', '512M');
         if (! auth()->user()->can('stock.transfer.view')) {
             abort(403, 'Unauthorized action. You do not have permission to view Stock Transfers.');
         }
@@ -50,6 +51,7 @@ class StockTransferController extends Controller
 
     public function create()
     {
+        @ini_set('memory_limit', '512M');
         if (! auth()->user()->can('stock.transfer.create') && ! auth()->user()->can('stock.transfer.view')) {
             abort(403, 'Unauthorized action. You do not have permission to create Stock Transfers.');
         }
@@ -62,6 +64,7 @@ class StockTransferController extends Controller
         $products = Product::select('id', 'item_name', 'item_code', 'unit_id', 'size_mode', 'pieces_per_box', 'image')
             ->with('unit:id,name')
             ->orderBy('item_name')
+            ->take(100)
             ->get();
 
         $transferNo = 'TRF-' . date('Ymd') . '-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 4));

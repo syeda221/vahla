@@ -391,8 +391,11 @@ class PurchaseController extends Controller
                 $lineTotal = $qty * $pPrice;
 
                 // Create Purchase Item
+                $itemWh = !empty($request->item_warehouse_id[$i]) ? (int)$request->item_warehouse_id[$i] : (!empty($request->warehouse_id[$i]) ? (int)$request->warehouse_id[$i] : ($warehouseId ?: 1));
+
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
+                    'warehouse_id' => $itemWh,
                     'product_id' => $product->id, // All point to the same master product
                     'price' => $pPrice,
                     'qty' => $qty,
@@ -524,7 +527,8 @@ class PurchaseController extends Controller
                     'updated_at' => now(),
                 ];
                 // stocks
-                $this->upsertStocks($item->product_id, +$baseQty, $branchId, $warehouseId);
+                $itemWhId = $item->warehouse_id ?: $warehouseId;
+                $this->upsertStocks($item->product_id, +$baseQty, $branchId, $itemWhId);
             }
 
             if (! empty($movRows)) {
@@ -629,7 +633,7 @@ class PurchaseController extends Controller
                 'goods_receiving_note_id' => $grn->id,
                 'purchase_item_id' => $pItem->id,
                 'product_id' => $pItem->product_id,
-                'warehouse_id' => $purchase->warehouse_id,
+                'warehouse_id' => $pItem->warehouse_id ?: $purchase->warehouse_id,
                 'received_qty' => $pItem->qty,
                 'boxes' => $pItem->boxes_qty ?: $pItem->qty,
                 'loose_pieces' => $pItem->loose_qty ?: 0,
@@ -916,8 +920,11 @@ class PurchaseController extends Controller
                     $lQty = $qty;
                 }
 
+                $itemWh = !empty($request->item_warehouse_id[$i]) ? (int)$request->item_warehouse_id[$i] : (!empty($request->warehouse_id[$i]) ? (int)$request->warehouse_id[$i] : ($warehouseId ?: 1));
+
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
+                    'warehouse_id' => $itemWh,
                     'product_id' => $pid,
                     'unit' => $unit,
                     'price' => $price,
@@ -1505,7 +1512,7 @@ class PurchaseController extends Controller
             $warehouseId = (int) ($validated['warehouse_id'] ?? $purchase->warehouse_id ?? 1);
 
             // Map old totals per product for Stock Delta Logic (in base pieces)
-            $oldMap = $purchase->items->groupBy('product_id')->map(function ($items) {
+            $oldMap = $purchase->items->groupBy(function($it) use ($oldWarehouseId) { return $it->product_id . '_' . ($it->warehouse_id ?: $oldWarehouseId); })->map(function ($items) {
                 return (float) $items->sum(function ($item) {
                     $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : ($item->product->pieces_per_box ?? 1));
                     if ($ppb <= 0) $ppb = 1;
@@ -1644,8 +1651,11 @@ class PurchaseController extends Controller
                     $lQty = $qty;
                 }
 
+                $itemWh = !empty($request->item_warehouse_id[$i]) ? (int)$request->item_warehouse_id[$i] : (!empty($request->warehouse_id[$i]) ? (int)$request->warehouse_id[$i] : ($warehouseId ?: 1));
+
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
+                    'warehouse_id' => $itemWh,
                     'product_id' => $pid,
                     'unit' => $unit,
                     'price' => $price,
@@ -1744,7 +1754,8 @@ class PurchaseController extends Controller
                 // ---------------------------------------------------
 
                 $subtotal += $lineTotal;
-                $newMap[$pid] = ($newMap[$pid] ?? 0) + $baseQty;
+                $newKey = $pid . '_' . $itemWh;
+                $newMap[$newKey] = ($newMap[$newKey] ?? 0) + $baseQty;
             }
 
             // Totals calculation
@@ -1797,55 +1808,34 @@ class PurchaseController extends Controller
                     $movs = [];
                     $now = now();
 
-                    if ($oldWarehouseId !== $warehouseId) {
-                        // Rollback from old warehouse
-                        foreach ($oldMap as $pid => $oldQ) {
-                            if ($oldQ > 0) {
-                                $this->upsertStocks((int) $pid, -$oldQ, $oldBranchId, $oldWarehouseId);
-                            }
+                    $all = $oldMap->keys()->merge($newMap->keys())->unique();
+                    foreach ($all as $key) {
+                        $oldQ = (float) ($oldMap[$key] ?? 0);
+                        $newQ = (float) ($newMap[$key] ?? 0);
+                        $delta = $newQ - $oldQ;
+                        if ($delta == 0) {
+                            continue;
                         }
-                        // Add to new warehouse
-                        foreach ($newMap as $pid => $newQ) {
-                            if ($newQ > 0) {
-                                $this->upsertStocks((int) $pid, +$newQ, $branchId, $warehouseId);
-                                $movs[] = [
-                                    'product_id' => (int) $pid,
-                                    'type' => 'in',
-                                    'qty' => $newQ,
-                                    'ref_type' => 'PURCHASE_EDIT',
-                                    'ref_id' => $purchase->id,
-                                    'note' => 'Purchase warehouse change delta',
-                                    'created_at' => $now,
-                                    'updated_at' => $now,
-                                ];
-                            }
-                        }
-                    } else {
-                        $all = $oldMap->keys()->merge($newMap->keys())->unique();
-                        foreach ($all as $pid) {
-                            $oldQ = (float) ($oldMap[$pid] ?? 0);
-                            $newQ = (float) ($newMap[$pid] ?? 0);
-                            $delta = $newQ - $oldQ;
-                            if ($delta == 0) {
-                                continue;
-                            }
 
-                            $type = $delta > 0 ? 'in' : 'out';
-                            $qty = abs($delta);
+                        $parts = explode('_', $key);
+                        $pid = (int) ($parts[0] ?? 0);
+                        $targetWh = (int) ($parts[1] ?? $warehouseId);
 
-                            $movs[] = [
-                                'product_id' => (int) $pid,
-                                'type' => $type,
-                                'qty' => $qty,
-                                'ref_type' => 'PURCHASE_EDIT',
-                                'ref_id' => $purchase->id,
-                                'note' => 'Purchase edit delta',
-                                'created_at' => $now,
-                                'updated_at' => $now,
-                            ];
+                        $type = $delta > 0 ? 'in' : 'out';
+                        $qty = abs($delta);
 
-                            $this->upsertStocks((int) $pid, ($type === 'in' ? +$qty : -$qty), $branchId, $warehouseId);
-                        }
+                        $movs[] = [
+                            'product_id' => (int) $pid,
+                            'type' => $type,
+                            'qty' => $qty,
+                            'ref_type' => 'PURCHASE_EDIT',
+                            'ref_id' => $purchase->id,
+                            'note' => 'Purchase edit delta',
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ];
+
+                        $this->upsertStocks((int) $pid, ($type === 'in' ? +$qty : -$qty), $branchId, $targetWh);
                     }
 
                     if (! empty($movs)) {

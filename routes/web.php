@@ -100,7 +100,8 @@ Route::get('/test-log', function () {
 });
 
 Route::get('/dashboard', function () {
-    $lowStockProducts = \App\Models\Product::withSum('warehouseStocks', 'total_pieces')
+    $lowStockProducts = \App\Models\Product::select('id', 'item_name', 'item_code', 'pieces_per_box', 'alert_carton_quantity')
+        ->withSum('warehouseStocks', 'total_pieces')
         ->whereNotNull('alert_carton_quantity')
         ->get()
         ->filter(function ($product) {
