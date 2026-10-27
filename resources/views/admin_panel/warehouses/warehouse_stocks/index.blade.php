@@ -430,9 +430,18 @@
                                         @forelse($wh->warehouseStocks as $stock)
                                             @php
                                                 $qtyVal = (float)$stock->total_pieces;
-                                                $fmtQty = rtrim(rtrim(number_format($qtyVal, 2, '.', ','), '0'), '.');
-                                                if ($fmtQty === '' || $fmtQty === '-0') $fmtQty = '0';
-                                                $unit = $stock->product->unit_name ?? ($stock->product->unit->name ?? 'Kg');
+                                                $isCartonMode = ($stock->product && ($stock->product->size_mode === 'by_cartons' || $stock->product->size_mode === 'by_box'));
+                                                $ppb = ($stock->product && $stock->product->pieces_per_box > 0) ? (float)$stock->product->pieces_per_box : 1;
+                                                if ($isCartonMode && $ppb > 1) {
+                                                    $boxes = (int) floor($qtyVal / $ppb);
+                                                    $loose = (int) round($qtyVal - ($boxes * $ppb));
+                                                    $fmtQty = $loose > 0 ? "{$boxes}.{$loose}" : (string)$boxes;
+                                                    $unit = $stock->product->unit_name ?? 'Box';
+                                                } else {
+                                                    $fmtQty = rtrim(rtrim(number_format($qtyVal, 2, '.', ','), '0'), '.');
+                                                    if ($fmtQty === '' || $fmtQty === '-0') $fmtQty = '0';
+                                                    $unit = $stock->product->unit_name ?? ($stock->product->unit->name ?? 'Kg');
+                                                }
                                                 $itemName = $stock->product->item_name ?? 'N/A';
                                                 $firstLetter = strtoupper(substr(trim($itemName), 0, 1)) ?: 'P';
                                             @endphp
@@ -554,9 +563,18 @@
                         @forelse($stocks as $stock)
                             @php
                                 $qtyVal = (float)$stock->total_pieces;
-                                $fmtQty = rtrim(rtrim(number_format($qtyVal, 2, '.', ','), '0'), '.');
-                                if ($fmtQty === '' || $fmtQty === '-0') $fmtQty = '0';
-                                $unit = $stock->product->unit_name ?? ($stock->product->unit->name ?? 'Kg');
+                                $isCartonMode = ($stock->product && ($stock->product->size_mode === 'by_cartons' || $stock->product->size_mode === 'by_box'));
+                                $ppb = ($stock->product && $stock->product->pieces_per_box > 0) ? (float)$stock->product->pieces_per_box : 1;
+                                if ($isCartonMode && $ppb > 1) {
+                                    $boxes = (int) floor($qtyVal / $ppb);
+                                    $loose = (int) round($qtyVal - ($boxes * $ppb));
+                                    $fmtQty = $loose > 0 ? "{$boxes}.{$loose}" : (string)$boxes;
+                                    $unit = $stock->product->unit_name ?? 'Box';
+                                } else {
+                                    $fmtQty = rtrim(rtrim(number_format($qtyVal, 2, '.', ','), '0'), '.');
+                                    if ($fmtQty === '' || $fmtQty === '-0') $fmtQty = '0';
+                                    $unit = $stock->product->unit_name ?? ($stock->product->unit->name ?? 'Kg');
+                                }
                                 $itemName = $stock->product->item_name ?? 'N/A';
                                 $firstLetter = strtoupper(substr(trim($itemName), 0, 1)) ?: 'P';
                             @endphp

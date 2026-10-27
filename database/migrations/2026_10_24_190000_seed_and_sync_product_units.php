@@ -9,7 +9,7 @@ return new class extends Migration
     {
         $defaultUnits = [
             'Piece', 'Dozen', 'Meter', 'Kilogram',
-            'Pcs', 'Kg', 'Mtr', 'Ft', 'Box', 'Ltr'
+            'Pcs', 'Kg', 'Mtr', 'Ft', 'Box', 'Carton', 'Ltr'
         ];
 
         foreach ($defaultUnits as $name) {

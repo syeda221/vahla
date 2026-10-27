@@ -925,7 +925,7 @@
                                                             if ($vPurchP <= 0 && $item->base_purchase_price > 0) {
                                                                 if (in_array($item->size_mode, ['by_kg', 'by_meter', 'by_feet']) && $vConv > 0) {
                                                                     $vPurchP = round($item->base_purchase_price * $vConv, 2);
-                                                                } elseif ($item->size_mode === 'by_cartons' && $item->pieces_per_box > 0) {
+                                                                } elseif (($item->size_mode === 'by_cartons' || $item->size_mode === 'by_box') && $item->pieces_per_box > 0) {
                                                                     $vPurchP = round($item->base_purchase_price / $item->pieces_per_box, 2);
                                                                 } else {
                                                                     $vPurchP = (float)$item->base_purchase_price;
@@ -934,7 +934,7 @@
                                                             if ($vSaleP <= 0 && $item->base_sale_price > 0) {
                                                                 if (in_array($item->size_mode, ['by_kg', 'by_meter', 'by_feet']) && $vConv > 0) {
                                                                     $vSaleP = round($item->base_sale_price * $vConv, 2);
-                                                                } elseif ($item->size_mode === 'by_cartons' && $item->pieces_per_box > 0) {
+                                                                } elseif (($item->size_mode === 'by_cartons' || $item->size_mode === 'by_box') && $item->pieces_per_box > 0) {
                                                                     $vSaleP = round($item->base_sale_price / $item->pieces_per_box, 2);
                                                                 } else {
                                                                     $vSaleP = (float)$item->base_sale_price;
@@ -946,8 +946,8 @@
                                                             <td>
                                                                 @if($item->size_mode === 'by_kg' && $vWeight)
                                                                     <span class="tag-neutral">{{ $vWeight }}g ({{ $vConv }} kg)</span>
-                                                                @elseif($item->size_mode === 'by_cartons')
-                                                                    <span class="tag-neutral">1/{{ $item->pieces_per_box }} box</span>
+                                                                @elseif($item->size_mode === 'by_cartons' || $item->size_mode === 'by_box')
+                                                                    <span class="tag-neutral">1/{{ $item->pieces_per_box }} {{ $item->size_mode === 'by_box' ? 'box' : 'ctn' }}</span>
                                                                 @else
                                                                     <span class="tag-neutral">{{ $v['unit'] ?? 'pcs' }}</span>
                                                                 @endif

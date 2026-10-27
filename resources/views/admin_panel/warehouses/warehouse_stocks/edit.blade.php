@@ -70,12 +70,28 @@
                             <input type="text" class="form-control erp-input bg-light text-muted" value="{{ $stock->warehouse->is_shop ? '🏪 [Shop] ' : '🏢 [Godown] ' }}{{ $stock->warehouse->warehouse_name ?? '' }}" disabled>
                         </div>
 
+                        @php
+                            $isCartonMode = ($stock->product && ($stock->product->size_mode === 'by_cartons' || $stock->product->size_mode === 'by_box'));
+                            $ppb = ($stock->product && $stock->product->pieces_per_box > 0) ? (float)$stock->product->pieces_per_box : 1;
+                            $qtyVal = (float)$stock->total_pieces;
+                            if ($isCartonMode && $ppb > 1) {
+                                $boxes = (int) floor($qtyVal / $ppb);
+                                $loose = (int) round($qtyVal - ($boxes * $ppb));
+                                $displayRecordedQty = $loose > 0 ? "{$boxes}.{$loose}" : (string)$boxes;
+                                $unitLabel = $stock->product->unit_name ?? 'Box';
+                            } else {
+                                $displayRecordedQty = rtrim(rtrim(number_format($qtyVal, 2, '.', ''), '0'), '.');
+                                if ($displayRecordedQty === '' || $displayRecordedQty === '-0') $displayRecordedQty = '0';
+                                $unitLabel = $stock->product->unit_name ?? ($stock->product->unit->name ?? 'Pcs');
+                            }
+                        @endphp
+
                         <!-- Current Stock Display -->
                         <div class="mb-3">
                             <label class="erp-caption fw-semibold text-uppercase d-block mb-1">Current Recorded Quantity</label>
                             <div class="p-2.5 px-3 bg-light rounded-2 border font-tabular text-dark fs-6">
-                                {{ rtrim(rtrim(number_format((float)$stock->total_pieces, 2, '.', ''), '0'), '.') }} 
-                                <span class="erp-caption text-muted fw-normal ms-1">{{ $stock->product->unit->name ?? 'Pcs' }}</span>
+                                {{ $displayRecordedQty }} 
+                                <span class="erp-caption text-muted fw-normal ms-1">{{ $unitLabel }}</span>
                             </div>
                         </div>
 
@@ -87,10 +103,10 @@
                             <div class="input-group">
                                 <input type="number" step="any" name="quantity" id="quantity" 
                                        class="form-control erp-input font-tabular fw-semibold text-primary" 
-                                       value="{{ old('quantity', rtrim(rtrim(number_format((float)$stock->total_pieces, 2, '.', ''), '0'), '.')) }}" required>
-                                <span class="input-group-text bg-light text-muted fw-semibold" style="border: 1px solid var(--border-color); border-left: 0; font-size: 13px;">{{ $stock->product->unit->name ?? 'Pcs' }}</span>
+                                       value="{{ old('quantity', $displayRecordedQty) }}" required>
+                                <span class="input-group-text bg-light text-muted fw-semibold" style="border: 1px solid var(--border-color); border-left: 0; font-size: 13px;">{{ $unitLabel }}</span>
                             </div>
-                            <div class="erp-caption mt-1">Enter physical stock count. Supports decimals (e.g. <code>0.2</code>, <code>1.5</code>, <code>25.75</code>).</div>
+                            <div class="erp-caption mt-1">Enter physical stock count in {{ $unitLabel }}. Supports decimals (e.g. <code>0.2</code>, <code>1.5</code>, <code>25.75</code>).</div>
                         </div>
 
                         <!-- Remarks -->

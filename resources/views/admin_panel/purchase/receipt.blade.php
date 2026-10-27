@@ -202,6 +202,9 @@
             }
         }
 
+        $formattedTotalQty = (float)$sumTotalPieces == (int)$sumTotalPieces ? (int)$sumTotalPieces : rtrim(rtrim(number_format((float)$sumTotalPieces, 3), '0'), '.');
+        $rawUnitFirst = !empty($purchase->items->first()) ? ucfirst($purchase->items->first()->unit ?? 'Pcs') : 'Pcs';
+
         if ($hasCartonMode && $sumCartons > 0) {
             if ($sumLoosePieces > 0) {
                 $cartonPcsDisplay = "{$sumCartons} Ctn + {$sumLoosePieces} Pcs (" . number_format($sumTotalPieces) . " Total Pcs)";
@@ -211,7 +214,7 @@
         } elseif ($hasCartonMode && $sumLoosePieces > 0) {
             $cartonPcsDisplay = "{$sumLoosePieces} Pcs";
         } else {
-            $cartonPcsDisplay = number_format($sumTotalPieces) . " Pcs";
+            $cartonPcsDisplay = "{$formattedTotalQty} {$rawUnitFirst}";
         }
     @endphp
 
@@ -331,14 +334,24 @@
         @if ($purchase->extra_cost > 0)
             <div class="info-row">
                 <span>Extra Cost:</span>
-                <span>{{ number_format($purchase->extra_cost, 2) }}</span>
+                <span>+{{ number_format($purchase->extra_cost, 2) }}</span>
             </div>
         @endif
 
         <div class="total-row" style="font-size: 14px; border-top: 1px dashed #000; margin-top: 5px; padding-top: 2px;">
-            <span>Total Net:</span>
+            <span>Vendor Payable:</span>
             <span>{{ number_format($purchase->net_amount, 2) }}</span>
         </div>
+        @if ((float)($purchase->purchase_expense ?? 0) > 0)
+            <div class="info-row">
+                <span>Purchase Expense:</span>
+                <span>+{{ number_format($purchase->purchase_expense, 2) }}</span>
+            </div>
+            <div class="info-row" style="font-size: 11px; color: #555;">
+                <span>Total Purchase Cost:</span>
+                <span>{{ number_format($purchase->net_amount + $purchase->purchase_expense, 2) }}</span>
+            </div>
+        @endif
 
         <div class="divider"></div>
 

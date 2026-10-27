@@ -218,8 +218,11 @@ class PurchaseController extends Controller
         $Vendor = Vendor::orderBy('name')->get();
         $Warehouse = Warehouse::orderByRaw("id = 1 DESC, id ASC")->get();
         
-        $accounts = \App\Models\Account::whereHas('head', function($q) {
-            $q->whereIn('name', ['Cash', 'Bank']);
+        $accounts = \App\Models\Account::where(function($q) {
+            $q->whereHas('head', fn($hq) => $hq->whereIn('name', ['Cash', 'Bank']))
+              ->orWhere('account_code', 'CASH')
+              ->orWhere('title', 'like', '%Cash%')
+              ->orWhere('title', 'like', '%Bank%');
         })->where('status', 1)->orderBy('title')->get();
 
         $type = request('type', 'direct_purchase');
@@ -246,8 +249,11 @@ class PurchaseController extends Controller
     {
         $Vendor = Vendor::get();
         $Warehouse = Warehouse::get();
-        $accounts = \App\Models\Account::whereHas('head', function($q) {
-            $q->whereIn('name', ['Cash', 'Bank']);
+        $accounts = \App\Models\Account::where(function($q) {
+            $q->whereHas('head', fn($hq) => $hq->whereIn('name', ['Cash', 'Bank']))
+              ->orWhere('account_code', 'CASH')
+              ->orWhere('title', 'like', '%Cash%')
+              ->orWhere('title', 'like', '%Bank%');
         })->where('status', 1)->orderBy('title')->get();
         
         $categories = \App\Models\Category::get();
@@ -493,7 +499,7 @@ class PurchaseController extends Controller
                     $baseQty = ((float) $item->qty) / 12.0;
                 } elseif ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams' || $unit === 'mm') {
                     $baseQty = ((float) $item->qty) / 1000.0;
-                } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box' || ($pSizeMode === 'by_cartons')) {
+                } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box' || ($pSizeMode === 'by_cartons' || $pSizeMode === 'by_box')) {
                     // Full carton / carton.loose purchased: convert cartons to pieces for warehouse_stocks and stock_movements
                     if ($item->boxes_qty > 0 || $item->loose_qty > 0) {
                         $boxes = (int) $item->boxes_qty;
@@ -558,6 +564,9 @@ class PurchaseController extends Controller
 
             // A. Create Purchase Voucher
             $transactionService->createPurchaseVoucher($purchase);
+
+            // A2. Create Auto Expense Voucher for Purchase Extra Cost / Expense
+            $this->syncPurchaseExpenseVoucher($purchase);
 
             // B. Record Payment (This part is tricky if payments were passed solely in Request)
             // If payments were saved in a temp table or if we re-collect them, good.
@@ -788,6 +797,8 @@ class PurchaseController extends Controller
                 'note' => 'nullable|string',
                 'discount' => 'nullable|numeric|min:0',
                 'extra_cost' => 'nullable|numeric|min:0',
+            'purchase_expense' => 'nullable|numeric|min:0',
+            'expense_account_id' => 'nullable|exists:accounts,id',
                 'product_id' => 'array',
                 'product_id.*' => 'nullable|exists:products,id',
                 'qty' => 'array',
@@ -894,7 +905,7 @@ class PurchaseController extends Controller
                 $curSizeMode = $sizeModes[$i] ?? null;
                 $curPPM2 = (float) ($ppm2[$i] ?? 0);
                 $rawQtyStr = (string) ($qtys[$i] ?? '0');
-                $isCarton = in_array($u, ['carton', 'ctn', 'box']) || ($curSizeMode === 'by_cartons');
+                $isCarton = in_array($u, ['carton', 'ctn', 'box']) || ($curSizeMode === 'by_cartons' || $curSizeMode === 'by_box');
 
                 if ($curSizeMode === 'by_size') {
                     $grossTotal = $curPPM2 * $qty * $price;
@@ -966,6 +977,7 @@ class PurchaseController extends Controller
 
             $discount = (float) ($request->discount ?? 0);
             $extraCost = (float) ($request->extra_cost ?? 0);
+            $purchaseExpense = (float) ($request->purchase_expense ?? 0);
             $netAmount = max(0, ($subtotal - $discount) + $extraCost);
 
             $purchase->update([
@@ -973,6 +985,8 @@ class PurchaseController extends Controller
                 'discount' => $discount,
                 'additional_discount' => $discount,
                 'extra_cost' => $extraCost,
+                'purchase_expense' => $purchaseExpense,
+                'expense_account_id' => $request->input('expense_account_id'),
                 'net_amount' => $netAmount,
                 'due_amount' => $netAmount,
             ]);
@@ -1434,8 +1448,11 @@ class PurchaseController extends Controller
         $Vendor = Vendor::all();
         $Warehouse = Warehouse::all();
         // Filter accounts to only show Cash (1) and Bank (2) heads
-        $accounts = \App\Models\Account::whereHas('head', function($q) {
-            $q->whereIn('name', ['Cash', 'Bank']);
+        $accounts = \App\Models\Account::where(function($q) {
+            $q->whereHas('head', fn($hq) => $hq->whereIn('name', ['Cash', 'Bank']))
+              ->orWhere('account_code', 'CASH')
+              ->orWhere('title', 'like', '%Cash%')
+              ->orWhere('title', 'like', '%Bank%');
         })->where('status', 1)->orderBy('title')->get();
 
         // Fetch existing payment voucher for this purchase
@@ -1486,6 +1503,9 @@ class PurchaseController extends Controller
             'note' => 'nullable|string',
             'discount' => 'nullable|numeric|min:0',
             'extra_cost' => 'nullable|numeric|min:0',
+            'purchase_expense' => 'nullable|numeric|min:0',
+            'expense_account_id' => 'nullable|exists:accounts,id',
+            'expense_account_id' => 'nullable|exists:accounts,id',
 
             'product_id' => 'array',
             'product_id.*' => 'nullable|string',
@@ -1520,7 +1540,7 @@ class PurchaseController extends Controller
                     [$convFactor, $vUnit] = $this->variantConvUnit($item->color);
                     if (empty($u) && $vUnit) $u = $vUnit;
                     $pSizeMode = $item->size_mode ?? ($item->product->size_mode ?? '');
-                    if ($u === 'carton' || $u === 'ctn' || $u === 'box' || ($pSizeMode === 'by_cartons')) {
+                    if ($u === 'carton' || $u === 'ctn' || $u === 'box' || ($pSizeMode === 'by_cartons' || $pSizeMode === 'by_box')) {
                         if ($item->boxes_qty > 0 || $item->loose_qty > 0) {
                             $boxes = (int) $item->boxes_qty;
                             $loose = (int) $item->loose_qty;
@@ -1606,7 +1626,7 @@ class PurchaseController extends Controller
                 }
                 $curPPM2 = (float) ($ppm2[$i] ?? 0);
                 $rawQtyStr = (string) ($qtys[$i] ?? '0');
-                $isCarton = in_array($u, ['carton', 'ctn', 'box']) || ($curSizeMode === 'by_cartons');
+                $isCarton = in_array($u, ['carton', 'ctn', 'box']) || ($curSizeMode === 'by_cartons' || $curSizeMode === 'by_box');
 
                 if ($curSizeMode === 'by_size') {
                     $grossTotal = $curPPM2 * $qty * $price;
@@ -1761,7 +1781,8 @@ class PurchaseController extends Controller
             // Totals calculation
             $discount = (float) ($request->discount ?? 0);
             $extraCost = (float) ($request->extra_cost ?? 0);
-            $netAmount = ($subtotal - $discount) + $extraCost;
+            $purchaseExpense = (float) ($request->purchase_expense ?? 0);
+            $netAmount = max(0, ($subtotal - $discount) + $extraCost);
 
             // Payments calculation from request
             $paymentAccountIds = $request->input('payment_account_id', []);
@@ -1795,6 +1816,8 @@ class PurchaseController extends Controller
                 'discount' => $discount,
                 'additional_discount' => $discount,
                 'extra_cost' => $extraCost,
+                'purchase_expense' => $purchaseExpense,
+                'expense_account_id' => $request->input('expense_account_id'),
                 'net_amount' => $netAmount,
                 'paid_amount' => $newPaidAmount,
                 'due_amount' => $dueAmount,
@@ -1883,6 +1906,9 @@ class PurchaseController extends Controller
                 } else {
                     $transactionService->createPurchaseVoucher($purchase);
                 }
+
+                // Sync Auto Expense Voucher for purchase
+                $this->syncPurchaseExpenseVoucher($purchase);
 
                 // 2. Payment Voucher (Payment Voucher)
                 $paymentVoucher = \App\Models\VoucherMaster::where('remarks', "Auto-Payment for Purchase #{$purchase->invoice_no}")->first();
@@ -2080,6 +2106,13 @@ class PurchaseController extends Controller
                     }
                 }
 
+                // Clean up linked ExpenseVoucher if any
+                $exp = \App\Models\ExpenseVoucher::where('reference_no', $purchase->invoice_no)->where('type', 'purchase')->first();
+                if ($exp) {
+                    \App\Models\JournalEntry::where('source_type', \App\Models\ExpenseVoucher::class)->where('source_id', $exp->id)->delete();
+                    $exp->delete();
+                }
+
                 $purchase->items()->delete();
                 $purchase->delete();
             });
@@ -2188,8 +2221,11 @@ class PurchaseController extends Controller
     public function showReturnForm($id)
     {
         $purchase = Purchase::with(['vendor', 'warehouse', 'items.product'])->findOrFail($id);
-        $accounts = \App\Models\Account::whereHas('head', function($q) {
-            $q->whereIn('name', ['Cash', 'Bank']);
+        $accounts = \App\Models\Account::where(function($q) {
+            $q->whereHas('head', fn($hq) => $hq->whereIn('name', ['Cash', 'Bank']))
+              ->orWhere('account_code', 'CASH')
+              ->orWhere('title', 'like', '%Cash%')
+              ->orWhere('title', 'like', '%Bank%');
         })->where('status', 1)->orderBy('title')->get();
         // Identify max returnable qty: Purchase Qty - Already Returned Qty
         // 1. Get all previous returns for this purchase
@@ -2282,7 +2318,7 @@ class PurchaseController extends Controller
 
             $unit = strtolower($item->unit ?? '');
             $sizeMode = $item->size_mode ?? optional($item->product)->size_mode ?? 'by_pieces';
-            $isCarton = in_array($unit, ['carton', 'ctn', 'box']) || ($sizeMode === 'by_cartons');
+            $isCarton = in_array($unit, ['carton', 'ctn', 'box']) || ($sizeMode === 'by_cartons' || $sizeMode === 'by_box');
 
             // Calculate Total Purchased in Pieces
             if ($isCarton) {
@@ -2481,7 +2517,7 @@ class PurchaseController extends Controller
 
                 $sizeMode = $origItem ? ($origItem->size_mode ?? 'by_pieces') : ($product->size_mode ?? 'by_pieces');
                 $unit = strtolower($origItem->unit ?? ($product->unit->name ?? 'pc'));
-                $isCarton = in_array($unit, ['carton', 'ctn', 'box']) || ($sizeMode === 'by_cartons');
+                $isCarton = in_array($unit, ['carton', 'ctn', 'box']) || ($sizeMode === 'by_cartons' || $sizeMode === 'by_box');
                 
                 // Fallback to m2_of_box if pieces_per_m2 is 0 or missing in old data
                 $ppm2 = $origItem && $origItem->pieces_per_m2 > 0 ? $origItem->pieces_per_m2 : ($product->m2_of_box ?? 0);
@@ -2737,4 +2773,113 @@ class PurchaseController extends Controller
         $return = \App\Models\PurchaseReturn::with(['vendor', 'warehouse', 'items.product'])->findOrFail($id);
         return view('admin_panel.purchase.purchase_return.show', compact('return'));
     }
+
+    /**
+     * Automatically sync Expense Voucher for Purchase extra_cost / carriage / expense.
+     * Keeps expense in Expense accounts / vouchers without affecting Vendor Ledger.
+     */
+    public function syncPurchaseExpenseVoucher(Purchase $purchase)
+    {
+        $extraCost = (float) ($purchase->purchase_expense ?? 0);
+
+        // Find existing expense voucher linked to this purchase
+        $existing = \App\Models\ExpenseVoucher::where('reference_no', $purchase->invoice_no)
+            ->where('type', 'purchase')
+            ->first();
+
+        if ($extraCost <= 0) {
+            if ($existing) {
+                \App\Models\JournalEntry::where('source_type', \App\Models\ExpenseVoucher::class)
+                    ->where('source_id', $existing->id)
+                    ->delete();
+                $existing->delete();
+            }
+            return;
+        }
+
+        $balanceService = app(\App\Services\BalanceService::class);
+        $journalService = app(\App\Services\JournalEntryService::class);
+
+        // Auto Category
+        $cat = \Illuminate\Support\Facades\DB::table('expense_categories')
+            ->where('name', 'Purchase Expense')
+            ->first();
+        if (!$cat) {
+            $catId = \Illuminate\Support\Facades\DB::table('expense_categories')->insertGetId([
+                'name' => 'Purchase Expense',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } else {
+            $catId = $cat->id;
+        }
+
+        // Account Head & Expense Account
+        $expenseHead = \App\Models\AccountHead::firstOrCreate(
+            ['name' => 'Expense'],
+            ['opening_balance' => 0]
+        );
+
+        $expenseAccount = \App\Models\Account::firstOrCreate(
+            ['account_code' => 'PUR-EXP'],
+            [
+                'head_id' => $expenseHead->id,
+                'title' => 'Purchase Expense',
+                'opening_balance' => 0,
+                'current_balance' => 0,
+                'type' => 'Debit',
+                'status' => 1
+            ]
+        );
+
+        $cashAccountId = $purchase->expense_account_id ?: $balanceService->getCashAccountId();
+        $deductAccount = \App\Models\Account::find($cashAccountId);
+        $deductAccountTitle = $deductAccount ? $deductAccount->title : 'Cash Account';
+        $entryDate = $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : date('Y-m-d');
+        $evid = $existing ? $existing->evid : \App\Models\ExpenseVoucher::generateInvoiceNo();
+
+        $voucherData = [
+            'evid' => $evid,
+            'entry_date' => $entryDate,
+            'type' => 'purchase',
+            'party_id' => $purchase->vendor_id,
+            'remarks' => "Purchase Expense for #{$purchase->invoice_no}",
+            'reference_no' => $purchase->invoice_no,
+            'row_account_id' => json_encode([$catId]),
+            'amount' => json_encode([$extraCost]),
+            'total_amount' => $extraCost,
+        ];
+
+        if ($existing) {
+            $existing->update($voucherData);
+            $voucher = $existing;
+            // Clear old journal entries
+            \App\Models\JournalEntry::where('source_type', \App\Models\ExpenseVoucher::class)
+                ->where('source_id', $voucher->id)
+                ->delete();
+        } else {
+            $voucher = \App\Models\ExpenseVoucher::create($voucherData);
+        }
+
+        // 1. Debit Purchase Expense Account (Expense increase)
+        $journalService->recordEntry(
+            $voucher,
+            $expenseAccount->id,
+            $extraCost, // Debit
+            0,          // Credit
+            "Purchase Expense for #{$purchase->invoice_no}",
+            $entryDate
+        );
+
+        // 2. Credit Cash Account (Cash decrease)
+        $journalService->recordEntry(
+            $voucher,
+            $cashAccountId,
+            0,          // Debit
+            $extraCost, // Credit
+            "Paid Purchase Expense for #{$purchase->invoice_no} via {$deductAccountTitle}",
+            $entryDate
+        );
+    }
+
 }

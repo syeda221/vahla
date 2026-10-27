@@ -541,7 +541,7 @@
 
             const ppb = parseFloat(pRes.pieces_per_box) || 1;
             const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
-            if (pRes.size_mode == "by_cartons") {
+            if (pRes.size_mode == "by_cartons" || pRes.size_mode == "by_box") {
                 let piecePrice = parseFloat(pRes.sale_price_per_piece || rate || 0);
                 let cartonPrice = ppb > 1 ? (piecePrice * ppb) : piecePrice;
                 $row.find('.visible-price').val(unitMode === 'pcs' ? piecePrice : cartonPrice);
@@ -591,12 +591,6 @@
             $whInput.val("{{ auth()->user()->warehouse_id ?? 1 }}");
         }
 
-        const variantStockVal = $row.find('.variant-stock-value').val();
-        if (variantStockVal !== '' && variantStockVal !== undefined) {
-            $row.find('.stock').val(variantStockVal);
-            return;
-        }
-
         $.get('{{ route('warehouses.get') }}', {
                 product_id: productId
             })
@@ -611,10 +605,15 @@
                     let disp;
                     const ppb = parseFloat(matched.ppb) || 1;
 
-                    if ((matched.size_mode === 'by_cartons' || matched.size_mode === 'by_size') && ppb > 1) {
-                        const boxes = Math.floor(matched.boxes || 0);
-                        const loose = matched.stock % ppb;
-                        disp = loose > 0 ? `${boxes}.${loose}` : boxes;
+                    const unitMode = ($row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn').toLowerCase();
+                    if ((matched.size_mode === 'by_cartons' || matched.size_mode === 'by_box' || matched.size_mode === 'by_size') && ppb > 1) {
+                        if (unitMode === 'pcs' || unitMode === 'pc') {
+                            disp = matched.stock;
+                        } else {
+                            const boxes = Math.floor(matched.boxes || 0);
+                            const loose = matched.stock % ppb;
+                            disp = loose > 0 ? `${boxes}.${loose}` : boxes;
+                        }
                     } else if (matched.size_mode === 'by_kg') {
                         const s = parseFloat(matched.stock) || 0;
                         if (s > 0 && s < 1) {
@@ -778,6 +777,9 @@
 
             var html = '';
             var totalPieces = 0;
+            var rowSizeMode = $row.data('size_mode') || '';
+            var rowPpb = parseFloat($row.data('pieces_per_box')) || 1;
+            var unitMode = ($row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn').toLowerCase();
 
             warehouses.forEach(function(w) {
                 var isShop = (w.is_shop == 1);
@@ -785,10 +787,50 @@
                 var rawPieces = parseFloat(w.stock_pieces !== undefined ? w.stock_pieces : w.stock) || 0;
                 totalPieces += rawPieces;
 
-                var stockDisplay = w.stock;
-                var numStock = parseFloat(stockDisplay);
-                if (!isNaN(numStock) && !stockDisplay.toString().includes('(') && !stockDisplay.toString().includes(' ')) {
-                    stockDisplay = Number(numStock.toFixed(4)).toString();
+                var sizeMode = w.size_mode || rowSizeMode;
+                var ppb = parseFloat(w.ppb) || rowPpb || 1;
+                var stockDisplay = '';
+
+                if ((sizeMode === 'by_cartons' || sizeMode === 'by_box') && ppb > 1) {
+                    if (unitMode === 'pcs' || unitMode === 'pc') {
+                        stockDisplay = `${rawPieces} Pcs`;
+                    } else {
+                        var boxes = Math.floor(w.boxes !== undefined ? w.boxes : (rawPieces / ppb));
+                        var loose = Math.round(rawPieces - (boxes * ppb));
+                        if (boxes > 0 && loose > 0) {
+                            stockDisplay = `${boxes}.${loose} Ctn (${rawPieces} Pcs)`;
+                        } else if (boxes > 0) {
+                            stockDisplay = `${boxes} Ctn (${rawPieces} Pcs)`;
+                        } else {
+                            stockDisplay = `${loose} Pcs`;
+                        }
+                    }
+                } else if (sizeMode === 'by_kg') {
+                    if (rawPieces > 0 && rawPieces < 1) {
+                        var gm = (rawPieces * 1000).toFixed(1);
+                        stockDisplay = `${rawPieces.toFixed(2)} Kg (${gm} Gm)`;
+                    } else {
+                        stockDisplay = `${rawPieces.toFixed(2)} Kg`;
+                    }
+                } else if (sizeMode === 'by_meter') {
+                    if (rawPieces > 0 && rawPieces < 1) {
+                        var mm = (rawPieces * 1000).toFixed(0);
+                        stockDisplay = `${rawPieces.toFixed(2)} Mtr (${mm} mm)`;
+                    } else {
+                        stockDisplay = `${rawPieces.toFixed(2)} Mtr`;
+                    }
+                } else if (sizeMode === 'by_feet') {
+                    if (rawPieces > 0 && rawPieces < 1) {
+                        var inches = (rawPieces * 12).toFixed(1);
+                        stockDisplay = `${rawPieces.toFixed(2)} Ft (${inches} in)`;
+                    } else {
+                        stockDisplay = `${rawPieces.toFixed(2)} Ft`;
+                    }
+                } else {
+                    var numStock = parseFloat(rawPieces);
+                    stockDisplay = (!isNaN(numStock) && !w.stock.toString().includes('(') && !w.stock.toString().includes(' '))
+                        ? Number(numStock.toFixed(4)).toString()
+                        : (w.stock || '0');
                 }
                 var hasStock = rawPieces > 0;
 
@@ -800,7 +842,6 @@
                     ? '<span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:10px; font-weight:600; padding:2px 6px;">Main Store / Shop</span>' 
                     : '<span class="badge" style="background:#f1f5f9; color:#475569; font-size:10px; font-weight:600; padding:2px 6px;">Godown / Warehouse</span>';
 
-                // Black pill with bold white text as requested
                 var badgeStyle = hasStock
                     ? 'background:#0f172a; color:#ffffff; font-weight:700; font-size:12px; padding:3px 10px; border-radius:999px; letter-spacing:0.2px;'
                     : 'background:#f1f5f9; color:#94a3b8; font-weight:600; font-size:12px; padding:3px 10px; border-radius:999px; border:1px dashed #cbd5e1;';
@@ -826,11 +867,23 @@
             });
 
             $('#modalStockList').html(html);
-            var numTotal = parseFloat(totalPieces);
-            var dispTotal = (!isNaN(numTotal)) ? Number(numTotal.toFixed(4)).toString() : totalPieces;
-            if ($row.find('.stock').val()) {
+
+            if ((rowSizeMode === 'by_cartons' || rowSizeMode === 'by_box') && rowPpb > 1) {
+                var totalBoxes = Math.floor(totalPieces / rowPpb);
+                var totalLoose = Math.round(totalPieces - (totalBoxes * rowPpb));
+                if (unitMode === 'pcs' || unitMode === 'pc') {
+                    $('#modalTotalStockBadge').text(`${totalPieces} Pcs`);
+                } else {
+                    var totalDisp = (totalBoxes > 0 && totalLoose > 0) 
+                        ? `${totalBoxes}.${totalLoose} Ctn (${totalPieces} Pcs)` 
+                        : (totalBoxes > 0 ? `${totalBoxes} Ctn (${totalPieces} Pcs)` : `${totalLoose} Pcs`);
+                    $('#modalTotalStockBadge').text(totalDisp);
+                }
+            } else if ($row.find('.stock').val()) {
                 $('#modalTotalStockBadge').text($row.find('.stock').val());
             } else {
+                var numTotal = parseFloat(totalPieces);
+                var dispTotal = (!isNaN(numTotal)) ? Number(numTotal.toFixed(4)).toString() : totalPieces;
                 $('#modalTotalStockBadge').text(dispTotal);
             }
         }
@@ -886,7 +939,7 @@
         let pcsDisplay = rawQty;
         let gross = 0;
 
-        if (sizeMode === 'by_cartons') {
+        if (sizeMode === 'by_cartons' || sizeMode === 'by_box') {
             if (unitMode === 'pcs') {
                 // Selling in Pieces: unitPrice is price per piece
                 pcsDisplay = rawQty;
@@ -1981,7 +2034,7 @@
 
             const ppb = parseFloat(data.pieces_per_box) || 1;
             const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
-            if (data.size_mode === 'by_cartons') {
+            if (data.size_mode === 'by_cartons' || data.size_mode === 'by_box') {
                 let cartonPrice = ppb > 1 ? (rate * ppb) : rate;
                 $row.find('.visible-price').val(unitMode === 'pcs' ? rate : cartonPrice);
                 $row.find('.price-per-piece').val(unitMode === 'pcs' ? rate : cartonPrice);
@@ -2045,7 +2098,7 @@
     function setupRowQtyToggle($row, sizeMode, variantUnit = null) {
         const $toggleBtn = $row.find('.qty-unit-toggle');
         const vUnitNorm = (variantUnit || '').toLowerCase().trim();
-        if (sizeMode === 'by_cartons') {
+        if (sizeMode === 'by_cartons' || sizeMode === 'by_box') {
             const isPcs = (vUnitNorm === 'pcs' || vUnitNorm === 'pc' || vUnitNorm === 'piece');
             $toggleBtn.removeClass('d-none')
                       .attr('data-unit-mode', isPcs ? 'pcs' : 'ctn')
@@ -2221,7 +2274,7 @@
         const sizeMode = $row.data('size_mode') || $row.find('.size-mode-text').val();
         let currentMode = $btn.attr('data-unit-mode');
 
-        if (sizeMode === 'by_cartons') {
+        if (sizeMode === 'by_cartons' || sizeMode === 'by_box') {
             const packQty = parseFloat($row.find('.pack-qty').val()) || 1;
             const $priceInp = $row.find('.visible-price');
             let curPrice = parseFloat($priceInp.val()) || 0;
@@ -2257,6 +2310,12 @@
                     $priceInp.val(basePiecePrice);
                 }
                 $row.find('.price-per-piece').val($priceInp.val());
+                const validWhs = $row.data('product_warehouses') || [];
+                const curWhId = $row.find('.warehouse').val();
+                const curWh = validWhs.find(w => w.warehouse_id == curWhId);
+                if (curWh) {
+                    $row.find('.stock').val(curWh.stock);
+                }
             } else {
                 currentMode = 'ctn';
                 $btn.attr('data-unit-mode', 'ctn').text('Ctn').removeClass('btn-outline-info').addClass('btn-outline-success');
@@ -2278,6 +2337,15 @@
                     $priceInp.val(cartonPrice % 1 === 0 ? cartonPrice : cartonPrice.toFixed(2));
                 }
                 $row.find('.price-per-piece').val($priceInp.val());
+                const validWhs = $row.data('product_warehouses') || [];
+                const curWhId = $row.find('.warehouse').val();
+                const curWh = validWhs.find(w => w.warehouse_id == curWhId);
+                if (curWh) {
+                    const ppb = parseFloat(curWh.ppb) || 1;
+                    const boxes = Math.floor(curWh.boxes || 0);
+                    const loose = curWh.stock % ppb;
+                    $row.find('.stock').val(loose > 0 ? `${boxes}.${loose}` : boxes);
+                }
             }
             $row.find('.hidden-sub-unit-mode').val(currentMode);
             computeRow($row);
@@ -2539,19 +2607,7 @@
         if (typeof refreshPostedState === 'function') refreshPostedState();
     });
 
-        // Warehouse change -> stock (respect variant stock)
-        $('#salesTableBody').on('change', '.warehouse', function() {
-            const $row = $(this).closest('tr');
-            const variantStockVal = $row.find('.variant-stock-value').val();
-            
-            // If variant stock exists, use that instead of warehouse total
-            if (variantStockVal !== '' && variantStockVal !== undefined) {
-                $row.find('.stock').val(variantStockVal);
-            } else {
-                const stockPieces = $(this).find(':selected').data('ppb') || 0;
-                $row.find('.stock').val(stockPieces);
-            }
-        });
+        // Warehouse change handled globally via loadWarehousesForProduct
 
         // Inputs -> Calc
         // --- Helper for Box Conversion ---
@@ -2560,7 +2616,7 @@
             const sizeMode = $row.data('size_mode');
             const ppb = parseFloat($row.find('.pack-qty').val()) || 1;
 
-            if ((sizeMode === 'by_cartons' || sizeMode === 'by_size') && ppb > 1 && val.includes('.')) {
+            if ((sizeMode === 'by_cartons' || sizeMode === 'by_box' || sizeMode === 'by_size') && ppb > 1 && val.includes('.')) {
                 const parts = val.split('.');
                 const boxes = parseInt(parts[0]) || 0;
                 const looseStr = parts[1];
@@ -2601,7 +2657,7 @@
                     const rowMode = $row.find('.price-mode-row-toggle').attr('data-mode') || 'retail';
 
                     let baseRate = newPrice;
-                    if (sizeMode === 'by_cartons') {
+                    if (sizeMode === 'by_cartons' || sizeMode === 'by_box') {
                         baseRate = (unitMode === 'pcs' || packQty <= 1) ? newPrice : (newPrice / packQty);
                     } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
                         baseRate = (unitMode === 'gm') ? (newPrice * 1000) : newPrice;
@@ -2693,7 +2749,7 @@
             const packQty = parseFloat($row.find('.pack-qty').val()) || 1;
             const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
 
-            if (sizeMode === 'by_cartons') {
+            if (sizeMode === 'by_cartons' || sizeMode === 'by_box') {
                 let cartonPrice = packQty > 1 ? (pieceRate * packQty) : pieceRate;
                 let finalPrice = (unitMode === 'pcs') ? pieceRate : cartonPrice;
                 $row.find('.visible-price').val(finalPrice % 1 === 0 ? finalPrice : finalPrice.toFixed(2));

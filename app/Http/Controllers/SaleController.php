@@ -800,7 +800,7 @@ class SaleController extends Controller
                     $saleItem->total_pieces = max(0, $saleItem->total_pieces - $qty);
                     $prod = Product::find($productId);
                     $ppb = $prod->pieces_per_box > 0 ? $prod->pieces_per_box : 1;
-                    if (in_array($saleItem->size_mode, ['by_cartons', 'by_size'])) {
+                    if (in_array($saleItem->size_mode, ['by_cartons', 'by_box', 'by_size'])) {
                         $saleItem->qty = $saleItem->total_pieces / $ppb;
                         $saleItem->loose_pieces = fmod((float)$saleItem->total_pieces, (float)$ppb);
                     } else {
@@ -1641,7 +1641,7 @@ class SaleController extends Controller
                     $loose = (float) ($request->loose_pieces[$index] ?? 0); // Legacy/Fallback
 
                     // Quantity Logic based on Size Mode
-                    if ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_size') {
+                    if ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box' || $product->size_mode === 'by_size') {
                         // For Carton/Size modes, Frontend sends 'total_pieces' (Calculated Pieces)
                         // and 'qty' contains "Box.Loose" string.
                         $reqTotal = (float) ($request->total_pieces[$index] ?? 0);
@@ -1676,7 +1676,7 @@ class SaleController extends Controller
                     // For measurement/unit modes (kg/meter/feet/pieces), qty stores the exact sold quantity
                     // in that variant's unit (e.g. 1.5 Mtr, 20 Ft, 50 Pcs), while total_pieces holds
                     // converted base units for warehouse stock deduction.
-                    if (in_array($product->size_mode, ['by_cartons', 'by_size'])) {
+                    if (in_array($product->size_mode, ['by_cartons', 'by_box', 'by_size'])) {
                         $storedQtyBox = $ppb > 0 ? ($totalPieces / $ppb) : $totalPieces;
                     } else {
                         $rawSold = (float) ($quantities[$index] ?? 0);
@@ -1707,7 +1707,7 @@ class SaleController extends Controller
                         $lineGross = $discount < 100 ? round($frontendNet / (1 - ($discount / 100)), 2) : $frontendNet;
                     }
                 } else {
-                    if ($sizeMode === 'by_cartons') {
+                    if ($sizeMode === 'by_cartons' || $sizeMode === 'by_box') {
                         $subUnit = $request->sub_unit_mode[$index] ?? 'main';
                         if ($subUnit === 'pcs') {
                             $lineGross = $totalPieces * $dbPrice;

@@ -17,6 +17,7 @@ class Purchase extends Model
         'discount'      => 'decimal:2',
         'additional_discount' => 'decimal:2',
         'extra_cost'    => 'decimal:2',
+        'purchase_expense' => 'decimal:2',
         'net_amount'    => 'decimal:2',
         'paid_amount'   => 'decimal:2',
         'due_amount'    => 'decimal:2',
@@ -81,4 +82,10 @@ class Purchase extends Model
 
         $this->save();
     }
+
+    public function expenseAccount()
+    {
+        return $this->belongsTo(Account::class, 'expense_account_id');
+    }
+
 }

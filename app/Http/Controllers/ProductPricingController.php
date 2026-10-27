@@ -56,7 +56,7 @@ class ProductPricingController extends Controller
             if ($request->size_mode === 'by_kg') {
                 $query->whereIn('size_mode', ['by_kg', 'by_gm', 'by_ton']);
             } elseif ($request->size_mode === 'by_cartons') {
-                $query->where('size_mode', 'by_cartons');
+                $query->whereIn('size_mode', ['by_cartons', 'by_box']);
             } elseif ($request->size_mode === 'by_size') {
                 $query->whereIn('size_mode', ['by_size', 'by_m2']);
             } elseif ($request->size_mode === 'std') {
@@ -90,6 +90,7 @@ class ProductPricingController extends Controller
                 'by_meter' => 'Mtr',
                 'by_feet' => 'Ft',
                 'by_cartons' => 'Carton',
+                'by_box' => 'Box',
                 'by_size' => 'M²',
                 default => 'Pcs',
             };
@@ -98,7 +99,7 @@ class ProductPricingController extends Controller
             if ($product->size_mode === 'by_size') {
                 $basePurchPrice = (float) ($product->purchase_price_per_m2 ?? 0);
                 $baseSalePrice  = (float) ($product->price_per_m2 ?? 0);
-            } elseif ($product->size_mode === 'by_cartons') {
+            } elseif ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box') {
                 $basePurchPrice = (float) ($product->purchase_price_per_box ?? 0);
                 $baseSalePrice  = (float) ($product->sale_price_per_box ?? 0);
             } else {
@@ -236,7 +237,7 @@ class ProductPricingController extends Controller
 
         $basePurch = match ($product->size_mode) {
             'by_size' => (float) ($product->purchase_price_per_m2 ?? 0),
-            'by_cartons' => (float) ($product->purchase_price_per_box ?? 0),
+            'by_cartons', 'by_box' => (float) ($product->purchase_price_per_box ?? 0),
             default => (float) ($product->purchase_price_per_piece ?? 0),
         };
 
@@ -356,7 +357,7 @@ class ProductPricingController extends Controller
                     if ($product->size_mode === 'by_size') {
                         $product->price_per_m2 = $val;
                         $product->sale_price_per_piece = round($val * $ppm2, 2);
-                    } elseif ($product->size_mode === 'by_cartons') {
+                    } elseif ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box') {
                         $product->sale_price_per_box = $val;
                         $product->sale_price_per_piece = round($val / $ppb, 2);
                     } else {
@@ -380,7 +381,7 @@ class ProductPricingController extends Controller
                                 $v['sale_price']   = round($val * $conv, 2);
                                 $v['retail_price'] = round($val * $conv, 2);
                             }
-                        } elseif ($product->size_mode === 'by_cartons' && $ppb > 0) {
+                        } elseif (($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box') && $ppb > 0) {
                             $v['sale_price']   = round($val / $ppb, 2);
                             $v['retail_price'] = round($val / $ppb, 2);
                         }
@@ -390,7 +391,7 @@ class ProductPricingController extends Controller
                     if ($product->size_mode === 'by_size') {
                         $product->purchase_price_per_m2 = $val;
                         $product->purchase_price_per_piece = round($val * $ppm2, 2);
-                    } elseif ($product->size_mode === 'by_cartons') {
+                    } elseif ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box') {
                         $product->purchase_price_per_box = $val;
                         $product->purchase_price_per_piece = round($val / $ppb, 2);
                     } else {
@@ -414,7 +415,7 @@ class ProductPricingController extends Controller
                                 $v['purch_price']    = round($val * $conv, 2);
                                 $v['purchase_price'] = round($val * $conv, 2);
                             }
-                        } elseif ($product->size_mode === 'by_cartons' && $ppb > 0) {
+                        } elseif (($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box') && $ppb > 0) {
                             $v['purch_price']    = round($val / $ppb, 2);
                             $v['purchase_price'] = round($val / $ppb, 2);
                         }
@@ -455,7 +456,7 @@ class ProductPricingController extends Controller
             if ($product->size_mode === 'by_size') {
                 $basePurchPrice = (float) ($product->purchase_price_per_m2 ?? 0);
                 $baseSalePrice  = (float) ($product->price_per_m2 ?? 0);
-            } elseif ($product->size_mode === 'by_cartons') {
+            } elseif ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box') {
                 $basePurchPrice = (float) ($product->purchase_price_per_box ?? 0);
                 $baseSalePrice  = (float) ($product->sale_price_per_box ?? 0);
             } else {
@@ -496,7 +497,7 @@ class ProductPricingController extends Controller
             if ($product->size_mode === 'by_size') {
                 $product->purchase_price_per_m2 = $val;
                 $product->purchase_price_per_piece = round($val * $ppm2, 2);
-            } elseif ($product->size_mode === 'by_cartons') {
+            } elseif ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box') {
                 $product->purchase_price_per_box = $val;
                 $product->purchase_price_per_piece = round($val / $ppb, 2);
             } else {
@@ -524,7 +525,7 @@ class ProductPricingController extends Controller
                         } else {
                             $v['purch_price'] = $val;
                         }
-                    } elseif ($product->size_mode === 'by_cartons') {
+                    } elseif ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box') {
                         $v['purch_price'] = round($val / $ppb, 2);
                     } else {
                         $v['purch_price'] = $val;
@@ -536,7 +537,7 @@ class ProductPricingController extends Controller
             if ($product->size_mode === 'by_size') {
                 $product->price_per_m2 = $val;
                 $product->sale_price_per_piece = round($val * $ppm2, 2);
-            } elseif ($product->size_mode === 'by_cartons') {
+            } elseif ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box') {
                 $product->sale_price_per_box = $val;
                 $product->sale_price_per_piece = round($val / $ppb, 2);
             } else {
@@ -566,7 +567,7 @@ class ProductPricingController extends Controller
                             $v['sale_price']   = $val;
                             $v['retail_price'] = $val;
                         }
-                    } elseif ($product->size_mode === 'by_cartons') {
+                    } elseif ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box') {
                         $v['sale_price']   = round($val / $ppb, 2);
                         $v['retail_price'] = round($val / $ppb, 2);
                     } else {
@@ -598,7 +599,7 @@ class ProductPricingController extends Controller
                         } else {
                             $v['wholesale_price'] = $val;
                         }
-                    } elseif ($product->size_mode === 'by_cartons') {
+                    } elseif ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box') {
                         $v['wholesale_price'] = round($val / $ppb, 2);
                     } else {
                         $v['wholesale_price'] = $val;
@@ -621,13 +622,13 @@ class ProductPricingController extends Controller
 
         $basePurch = match ($product->size_mode) {
             'by_size' => (float) $product->purchase_price_per_m2,
-            'by_cartons' => (float) $product->purchase_price_per_box,
+            'by_cartons', 'by_box' => (float) $product->purchase_price_per_box,
             default => (float) $product->purchase_price_per_piece,
         };
 
         $baseSale = match ($product->size_mode) {
             'by_size' => (float) $product->price_per_m2,
-            'by_cartons' => (float) $product->sale_price_per_box,
+            'by_cartons', 'by_box' => (float) $product->sale_price_per_box,
             default => (float) ($product->sale_price_per_piece ?: $product->sale_price_per_box ?: 0),
         };
 

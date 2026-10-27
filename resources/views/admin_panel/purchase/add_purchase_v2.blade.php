@@ -55,27 +55,70 @@
             padding-left: 10px !important;
         }
         
-        /* Clean inputs with bold borders */
+        /* Clean inputs with unified height */
         .form-control,
-        .form-select,
-        .select2-container--default .select2-selection--single {
-            border: 2px solid #cbd5e1 !important;
-            border-radius: 8px !important;
+        .form-select {
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 6px !important;
             padding: 6px 12px !important;
             font-weight: 500 !important;
             color: #1e293b !important;
             background-color: #ffffff !important;
             transition: all 0.2s ease-in-out !important;
-            height: auto !important;
+            height: 36px !important;
             font-size: 0.85rem !important;
         }
         
         .form-control:focus,
-        .form-select:focus,
-        .select2-container--default.select2-container--focus .select2-selection--single {
+        .form-select:focus {
             border-color: #2563eb !important;
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15) !important;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
             outline: none !important;
+        }
+
+        .form-control-sm {
+            height: 30px !important;
+            padding: 2px 8px !important;
+            font-size: 0.8rem !important;
+        }
+
+        /* Top Header Select2 Uniform Styling */
+        #vendorSelectWrapper .select2-container,
+        .top-header-panel .select2-container {
+            width: 100% !important;
+        }
+        #vendorSelectWrapper .select2-container--default .select2-selection--single,
+        .top-header-panel .select2-container--default .select2-selection--single {
+            height: 36px !important;
+            min-height: 36px !important;
+            padding: 0 10px !important;
+            display: flex !important;
+            align-items: center !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 6px !important;
+            background-color: #ffffff !important;
+            font-size: 0.85rem !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+        #vendorSelectWrapper .select2-container--default.select2-container--focus .select2-selection--single,
+        .top-header-panel .select2-container--default.select2-container--focus .select2-selection--single {
+            border-color: #2563eb !important;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+            outline: none !important;
+        }
+        #vendorSelectWrapper .select2-container--default .select2-selection--single .select2-selection__rendered,
+        .top-header-panel .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 34px !important;
+            padding-left: 0 !important;
+            color: #1e293b !important;
+            font-weight: 500 !important;
+            font-size: 0.85rem !important;
+        }
+        #vendorSelectWrapper .select2-container--default .select2-selection--single .select2-selection__arrow,
+        .top-header-panel .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 34px !important;
+            top: 0 !important;
+            right: 8px !important;
         }
         
         /* Read-only fields */
@@ -401,32 +444,32 @@
                         </div>
                     </div>
 
-                    <div class="row g-2 align-items-end">
+                    <div class="row g-2 align-items-end top-header-panel">
                         <div class="col-md-2">
                             <label class="form-label fw-bold mb-1 text-muted small">
                                 {{ request('type') == 'purchase_order' ? 'ORDER NO.' : 'INVOICE NO.' }}
                             </label>
                             <div class="input-group">
                                 @if(request('type') == 'purchase_order')
-                                    <span class="btn btn-primary d-flex align-items-center justify-content-center fw-bold" style="cursor: default; pointer-events: none; border-top-right-radius: 0; border-bottom-right-radius: 0; padding: 0 10px; font-size: 0.8rem;">
+                                    <span class="btn btn-primary d-flex align-items-center justify-content-center fw-bold" style="cursor: default; pointer-events: none; border-top-right-radius: 0; border-bottom-right-radius: 0; padding: 0 10px; font-size: 0.8rem; height: 36px;">
                                         <span>PO</span>
                                     </span>
                                 @else
-                                    <span class="btn btn-primary d-flex align-items-center justify-content-center fw-bold" style="cursor: default; pointer-events: none; border-top-right-radius: 0; border-bottom-right-radius: 0; padding: 0 8px; font-size: 0.8rem;">
+                                    <span class="btn btn-primary d-flex align-items-center justify-content-center fw-bold" style="cursor: default; pointer-events: none; border-top-right-radius: 0; border-bottom-right-radius: 0; padding: 0 8px; font-size: 0.8rem; height: 36px;">
                                         <span id="activePrefixLabel">{{ $activePrefix ?? 'PINV' }}</span>
                                     </span>
                                 @endif
-                                <input type="text" class="form-control text-center fw-bold" id="inputPurchaseInvoiceNo" name="invoice_no" value="{{ $nextInvoice ?? '' }}" placeholder="e.g. {{ request('type') == 'purchase_order' ? 'PO-0001' : 'PINV-0001' }}" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;" title="Aap custom number bhi enter kar sakte hain">
+                                <input type="text" class="form-control text-center fw-bold" id="inputPurchaseInvoiceNo" name="invoice_no" value="{{ $nextInvoice ?? '' }}" placeholder="e.g. {{ request('type') == 'purchase_order' ? 'PO-0001' : 'PINV-0001' }}" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; height: 36px;" title="Aap custom number bhi enter kar sakte hain">
                             </div>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label fw-bold mb-1 text-muted small">Vendor Inv#</label>
-                            <input type="text" class="form-control" name="vendor_bill_no" placeholder="Manual Ref">
+                            <input type="text" class="form-control" name="vendor_bill_no" placeholder="Manual Ref" style="height: 36px; font-size: 0.85rem;">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="form-label fw-bold mb-1 text-muted small">Select Vendor</label>
-                            <div class="d-flex align-items-center gap-1">
-                                <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-1" id="vendorSelectWrapper">
+                                <div class="flex-grow-1" style="min-width: 0;">
                                     <select class="form-select select2" id="vendorSelect" name="vendor_id">
                                         <option value="" selected disabled>Select Vendor</option>
                                         @foreach ($Vendor as $v)
@@ -434,14 +477,14 @@
                                         @endforeach
                                     </select>
                                 </div>
-                                <button type="button" class="btn btn-primary shadow-sm" data-toggle="modal" data-target="#addVendorModal" style="padding: 0.38rem 0.75rem;" title="Add New Vendor">
+                                <button type="button" class="btn btn-primary shadow-sm d-flex align-items-center justify-content-center" data-toggle="modal" data-target="#addVendorModal" style="height: 36px; width: 36px; min-width: 36px; padding: 0; border-radius: 6px;" title="Add New Vendor">
                                     <i class="bi bi-plus-lg"></i>
                                 </button>
                             </div>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label fw-bold mb-1 text-muted small"><i class="bi bi-building me-1 text-primary"></i> Warehouse</label>
-                            <select class="form-select fw-semibold" id="warehouseSelect" name="warehouse_id">
+                            <select class="form-select fw-semibold" id="warehouseSelect" name="warehouse_id" style="height: 36px; font-size: 0.85rem;">
                                 @foreach(\App\Models\Warehouse::orderByRaw("is_shop ASC, id ASC")->get() as $wh)
                                     <option value="{{ $wh->id }}" {{ (!$wh->is_shop || $loop->first) ? 'selected' : '' }}>
                                         {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
@@ -451,11 +494,14 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label fw-bold mb-1 text-muted small">Date</label>
-                            <input type="text" name="purchase_date" class="form-control datepicker-custom" value="{{ date('Y-m-d') }}">
+                            <input type="text" name="purchase_date" class="form-control datepicker-custom" value="{{ date('Y-m-d') }}" style="height: 36px; font-size: 0.85rem;">
                         </div>
-                        <div class="col-md-3">
+                    </div>
+
+                    <div class="row g-2 align-items-end mt-1">
+                        <div class="col-12">
                             <label class="form-label fw-bold mb-1 text-muted small">M.Bill / Remarks</label>
-                            <input type="text" class="form-control" name="note" id="remarks" placeholder="Optional notes...">
+                            <input type="text" class="form-control" name="note" id="remarks" placeholder="Optional notes / manual bill details..." style="height: 36px; font-size: 0.85rem;">
                         </div>
                     </div>
 
@@ -582,7 +628,51 @@
                                     <div class="col-7 text-muted fw-medium">Extra Cost</div>
                                     <div class="col-5 text-end">
                                         <input type="number" class="form-control text-end form-control-sm"
-                                            name="extra_cost" id="extraCost" value="0">
+                                            name="extra_cost" id="extraCost" value="0" step="0.01">
+                                    </div>
+                                </div>
+                                <div class="row py-1 align-items-center">
+                                    <div class="col-6 text-muted fw-medium">
+                                        Purchase Expense
+                                        <div style="font-size: 10px; color: #64748b;">(Freight/Carriage/Labour)</div>
+                                    </div>
+                                    <div class="col-6 text-end">
+                                        <div class="input-group input-group-sm justify-content-end">
+                                            <input type="number" class="form-control text-end form-control-sm"
+                                                name="purchase_expense" id="purchaseExpense" value="0" step="0.01" min="0" style="max-width: 110px;">
+                                            <button type="button" class="btn btn-outline-primary btn-sm px-2 d-flex align-items-center" id="btnToggleExpAccount" title="Choose Account for Expense" style="border-top-right-radius: 6px; border-bottom-right-radius: 6px;">
+                                                <i class="bi bi-wallet2"></i>
+                                            </button>
+                                        </div>
+                                        <div class="d-flex flex-wrap justify-content-end align-items-center gap-1 mt-1">
+                                            <span class="badge bg-secondary-subtle text-secondary py-0" style="font-size: 9px;">No Vendor Ledger</span>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle py-0" style="font-size: 9px; cursor: pointer;" id="badgeSelectedAccount" title="Click to change account">
+                                                <i class="bi bi-wallet2 me-1"></i><span id="selectedAccountText">Cash Account</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Cute Toggleable Account Selection Panel --}}
+                                <div id="expenseAccountToggleBox" class="p-2 my-2 rounded-3 border shadow-sm" style="display: none; background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border-color: #bae6fd !important;">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-bold text-primary" style="font-size: 11px;">
+                                            <i class="bi bi-bank2 me-1"></i> Select Expense Payment Account:
+                                        </span>
+                                        <button type="button" class="btn btn-link p-0 text-muted" id="btnCloseExpAccount" style="font-size: 13px; text-decoration: none;">
+                                            <i class="bi bi-x-circle-fill"></i>
+                                        </button>
+                                    </div>
+                                    <select class="form-select form-select-sm fw-semibold shadow-none" name="expense_account_id" id="expenseAccountId" style="font-size: 0.82rem; height: 32px; background-color: #ffffff; border: 1.5px solid #0284c7 !important; border-radius: 6px;">
+                                        @foreach ($accounts as $acc)
+                                            <option value="{{ $acc->id }}" {{ (stripos($acc->title, 'cash') !== false || $acc->account_code === 'CASH' || $loop->first) ? 'selected' : '' }}>
+                                                {{ (stripos($acc->title, 'cash') !== false || $acc->account_code === 'CASH') ? '💵 ' : '🏦 ' }}{{ $acc->title }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <div class="d-flex align-items-center justify-content-between mt-1 text-muted" style="font-size: 10px;">
+                                        <span>* Kharcha is account se deduct hoga.</span>
+                                        <span class="badge bg-success-subtle text-success py-0" style="font-size: 9px;">Active</span>
                                     </div>
                                 </div>
                                 @if($type !== 'purchase_order')
@@ -592,18 +682,26 @@
                                     </div>
                                     <hr class="my-2 border-secondary">
                                     <div class="row py-2">
-                                        <div class="col-6 fw-bold fs-5 text-primary">Current Bill</div>
+                                        <div class="col-6 fw-bold fs-5 text-primary">Vendor Bill</div>
                                         <div class="col-6 text-end fw-bold fs-5 text-primary"><span id="tPayable">0.00</span></div>
                                     </div>
                                     <div class="row py-2 bg-warning-subtle rounded-2">
-                                        <div class="col-6 fw-bold fs-5 text-dark">Total Payable</div>
+                                        <div class="col-6 fw-bold fs-5 text-dark">Total Vendor Payable</div>
                                         <div class="col-6 text-end fw-bold fs-5 text-dark"><span id="tTotalPayable">0.00</span></div>
+                                    </div>
+                                    <div class="row py-1 mt-1 align-items-center border-top">
+                                        <div class="col-6 text-muted fw-bold" style="font-size: 13px;">Total Purchase Cost:</div>
+                                        <div class="col-6 text-end fw-bold text-dark" style="font-size: 14px;">Rs. <span id="tTotalCost">0.00</span></div>
                                     </div>
                                 @else
                                     <hr class="my-2 border-secondary">
                                     <div class="row py-2 bg-primary-subtle rounded-2">
                                         <div class="col-6 fw-bold fs-5 text-primary">Total Order Amount</div>
                                         <div class="col-6 text-end fw-bold fs-5 text-primary"><span id="tPayable">0.00</span></div>
+                                    </div>
+                                    <div class="row py-1 mt-1 align-items-center border-top">
+                                        <div class="col-6 text-muted fw-bold" style="font-size: 13px;">Total Cost with Expense:</div>
+                                        <div class="col-6 text-end fw-bold text-dark" style="font-size: 14px;">Rs. <span id="tTotalCost">0.00</span></div>
                                     </div>
                                 @endif
                                 <input type="hidden" name="net_amount" id="netAmountInput" value="0">
@@ -763,7 +861,26 @@
             });
 
             // Summary Inputs
-            $('#billDiscount, #billDiscountPct, #extraCost').on('input', function() {
+            // Toggle Expense Account Box
+            $('#btnToggleExpAccount, #badgeSelectedAccount').on('click', function(e) {
+                e.preventDefault();
+                $('#expenseAccountToggleBox').slideToggle(200);
+            });
+            $('#btnCloseExpAccount').on('click', function(e) {
+                e.preventDefault();
+                $('#expenseAccountToggleBox').slideUp(200);
+            });
+
+            function updateExpenseAccountBadge() {
+                const selectedText = $('#expenseAccountId option:selected').text().replace(/[💵🏦]/g, '').trim();
+                $('#selectedAccountText').text(selectedText || 'Cash Account');
+            }
+            $('#expenseAccountId').on('change', function() {
+                updateExpenseAccountBadge();
+            });
+            updateExpenseAccountBadge();
+
+            $('#billDiscount, #billDiscountPct, #extraCost, #purchaseExpense').on('input', function() {
                 recalcAll();
             });
 
@@ -1563,17 +1680,20 @@
                 $('#discountInput').val(additionalDiscount.toFixed(2));
 
                 const extraCost = parseFloat($('#extraCost').val()) || 0;
-                const net = subtotal - additionalDiscount + extraCost;
+                const purchaseExpense = parseFloat($('#purchaseExpense').val()) || 0;
+                const vendorBill = Math.max(0, (subtotal - additionalDiscount) + extraCost);
+                const totalCost = vendorBill + purchaseExpense;
 
-                $('#tPayable').text(net.toFixed(2));
-                $('#netAmountInput').val(net.toFixed(2));
+                $('#tPayable').text(vendorBill.toFixed(2));
+                $('#netAmountInput').val(vendorBill.toFixed(2));
                 $('#totalAmount').text(subtotal.toFixed(2));
 
                 const prevBal = parseFloat($('#tPrev').text()) || 0;
                 const totalPaid = parseFloat($('#totalPaid').text()) || 0;
-                const totalPayable = (prevBal + net) - totalPaid;
+                const totalPayable = (prevBal + vendorBill) - totalPaid;
                 
                 $('#tTotalPayable').text(totalPayable.toFixed(2));
+                $('#tTotalCost').text(totalCost.toFixed(2));
             }
         });
     </script>

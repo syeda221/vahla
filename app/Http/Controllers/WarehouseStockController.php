@@ -92,7 +92,7 @@ class WarehouseStockController extends Controller
         $flatQuery = WarehouseStock::select('id', 'warehouse_id', 'product_id', 'total_pieces', 'quantity', 'remarks')
             ->with([
                 'warehouse:id,warehouse_name,is_shop',
-                'product:id,item_name,item_code,unit_id,size_mode,category_id,image',
+                'product:id,item_name,item_code,unit_id,size_mode,category_id,image,pieces_per_box',
                 'product.unit:id,name',
                 'product.category_relation:id,name'
             ]);
@@ -128,7 +128,7 @@ class WarehouseStockController extends Controller
                 $stockQ = WarehouseStock::select('id', 'warehouse_id', 'product_id', 'total_pieces', 'quantity', 'remarks', 'created_at')
                     ->where('warehouse_id', $wh->id)
                     ->with([
-                        'product:id,item_name,item_code,unit_id,size_mode,category_id,image',
+                        'product:id,item_name,item_code,unit_id,size_mode,category_id,image,pieces_per_box',
                         'product.unit:id,name',
                         'product.category_relation:id,name'
                     ]);
@@ -258,14 +258,26 @@ class WarehouseStockController extends Controller
 
                     foreach ($locations as $loc) {
                         $whId = !empty($loc['warehouse_id']) ? (int)$loc['warehouse_id'] : (int)$targetWarehouseId;
-                        $qty  = (float)($loc['quantity'] ?? 0);
+                        $rawQty = $loc['quantity'] ?? 0;
+                        $qty  = (float)$rawQty;
 
                         if ($qty > 0 && $whId) {
+                            $product = Product::find($productId);
+                            $ppb = ($product && $product->pieces_per_box > 0) ? (float)$product->pieces_per_box : 1;
+                            if ($product && ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box')) {
+                                [$boxes, $loose] = \App\Http\Controllers\PurchaseController::parseCartonQty($rawQty);
+                                $totalPieces = ($boxes * $ppb) + $loose;
+                                $totalBox = $boxes + ($loose / $ppb);
+                            } else {
+                                $totalPieces = $qty;
+                                $totalBox = $qty;
+                            }
+
                             $this->stockService->addStock(
                                 $whId,
                                 (int)$productId,
-                                $qty,
-                                $qty,
+                                $totalPieces,
+                                $totalBox,
                                 $request->input('remarks') ?: "Opening Stock Manager Entry"
                             );
                             $savedCount++;
@@ -354,12 +366,25 @@ class WarehouseStockController extends Controller
         ]);
 
         DB::transaction(function () use ($request, $warehouseStock) {
-            $oldQty = (float) $warehouseStock->total_pieces;
-            $newQty = (float) $request->input('quantity_clean');
-            $delta  = $newQty - $oldQty;
+            $product = $warehouseStock->product;
+            $ppb = ($product && $product->pieces_per_box > 0) ? (float)$product->pieces_per_box : 1;
+            $rawQty = $request->input('quantity_clean');
+            $newQty = (float)$rawQty;
 
-            $warehouseStock->total_pieces = $newQty;
-            $warehouseStock->quantity     = $newQty;
+            if ($product && ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box')) {
+                [$boxes, $loose] = \App\Http\Controllers\PurchaseController::parseCartonQty($rawQty);
+                $newPieces = ($boxes * $ppb) + $loose;
+                $newBox = $boxes + ($loose / $ppb);
+            } else {
+                $newPieces = $newQty;
+                $newBox = $newQty;
+            }
+
+            $oldPieces = (float) $warehouseStock->total_pieces;
+            $delta  = $newPieces - $oldPieces;
+
+            $warehouseStock->total_pieces = $newPieces;
+            $warehouseStock->quantity     = $newBox;
             if ($request->filled('remarks')) {
                 $warehouseStock->remarks = $request->remarks;
             }

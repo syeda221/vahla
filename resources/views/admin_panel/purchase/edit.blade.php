@@ -734,15 +734,63 @@
                                 <div class="col-7 text-muted fw-medium">Extra Cost</div>
                                 <div class="col-5 text-end">
                                     <input type="number" class="form-control text-end form-control-sm" name="extra_cost"
-                                        id="extraCost" value="{{ (float) $purchase->extra_cost }}">
+                                        id="extraCost" value="{{ (float) $purchase->extra_cost }}" step="0.01">
+                                </div>
+                            </div>
+                            <div class="row py-1 align-items-center">
+                                <div class="col-6 text-muted fw-medium">
+                                    Purchase Expense
+                                    <div style="font-size: 10px; color: #64748b;">(Freight/Carriage/Labour)</div>
+                                </div>
+                                <div class="col-6 text-end">
+                                    <div class="input-group input-group-sm justify-content-end">
+                                        <input type="number" class="form-control text-end form-control-sm" name="purchase_expense"
+                                            id="purchaseExpense" value="{{ (float) ($purchase->purchase_expense ?? 0) }}" step="0.01" min="0" style="max-width: 110px;">
+                                        <button type="button" class="btn btn-outline-primary btn-sm px-2 d-flex align-items-center" id="btnToggleExpAccount" title="Choose Account for Expense" style="border-top-right-radius: 6px; border-bottom-right-radius: 6px;">
+                                            <i class="bi bi-wallet2"></i>
+                                        </button>
+                                    </div>
+                                    <div class="d-flex flex-wrap justify-content-end align-items-center gap-1 mt-1">
+                                        <span class="badge bg-secondary-subtle text-secondary py-0" style="font-size: 9px;">No Vendor Ledger</span>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle py-0" style="font-size: 9px; cursor: pointer;" id="badgeSelectedAccount" title="Click to change account">
+                                            <i class="bi bi-wallet2 me-1"></i><span id="selectedAccountText">Cash Account</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Cute Toggleable Account Selection Panel --}}
+                            <div id="expenseAccountToggleBox" class="p-2 my-2 rounded-3 border shadow-sm" style="display: none; background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border-color: #bae6fd !important;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold text-primary" style="font-size: 11px;">
+                                        <i class="bi bi-bank2 me-1"></i> Select Expense Payment Account:
+                                    </span>
+                                    <button type="button" class="btn btn-link p-0 text-muted" id="btnCloseExpAccount" style="font-size: 13px; text-decoration: none;">
+                                        <i class="bi bi-x-circle-fill"></i>
+                                    </button>
+                                </div>
+                                <select class="form-select form-select-sm fw-semibold shadow-none" name="expense_account_id" id="expenseAccountId" style="font-size: 0.82rem; height: 32px; background-color: #ffffff; border: 1.5px solid #0284c7 !important; border-radius: 6px;">
+                                    @foreach ($accounts as $acc)
+                                        <option value="{{ $acc->id }}" {{ ($purchase->expense_account_id == $acc->id || (!$purchase->expense_account_id && (stripos($acc->title, 'cash') !== false || $acc->account_code === 'CASH'))) ? 'selected' : '' }}>
+                                            {{ (stripos($acc->title, 'cash') !== false || $acc->account_code === 'CASH') ? '💵 ' : '🏦 ' }}{{ $acc->title }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="d-flex align-items-center justify-content-between mt-1 text-muted" style="font-size: 10px;">
+                                    <span>* Kharcha is account se deduct hoga.</span>
+                                    <span class="badge bg-success-subtle text-success py-0" style="font-size: 9px;">Active</span>
                                 </div>
                             </div>
                             <hr class="my-2 border-secondary">
                             <div class="row py-2 {{ $purchase->purchase_type === 'purchase_order' ? 'bg-primary-subtle rounded-2 px-2' : '' }}">
-                                <div class="col-6 fw-bold fs-5 text-primary">{{ $purchase->purchase_type === 'purchase_order' ? 'Total Order Amount' : 'Net Payable' }}</div>
+                                <div class="col-6 fw-bold fs-5 text-primary">{{ $purchase->purchase_type === 'purchase_order' ? 'Total Order Amount' : 'Vendor Bill (Payable)' }}</div>
                                 <div class="col-6 text-end fw-bold fs-5 text-primary"><span id="tPayable">0.00</span>
                                 </div>
                                 <input type="hidden" name="net_amount" id="netAmountInput">
+                            </div>
+                            <div class="row py-1 mt-1 align-items-center border-top">
+                                <div class="col-6 text-muted fw-bold" style="font-size: 13px;">Total Purchase Cost:</div>
+                                <div class="col-6 text-end fw-bold text-dark" style="font-size: 14px;">Rs. <span id="tTotalCost">0.00</span></div>
                             </div>
                         </div>
                     </div>
@@ -1057,7 +1105,26 @@
                 recalcAll();
             });
 
-            $('#billDiscount, #billDiscountPct, #extraCost').on('input', function() {
+            // Toggle Expense Account Box
+            $('#btnToggleExpAccount, #badgeSelectedAccount').on('click', function(e) {
+                e.preventDefault();
+                $('#expenseAccountToggleBox').slideToggle(200);
+            });
+            $('#btnCloseExpAccount').on('click', function(e) {
+                e.preventDefault();
+                $('#expenseAccountToggleBox').slideUp(200);
+            });
+
+            function updateExpenseAccountBadge() {
+                const selectedText = $('#expenseAccountId option:selected').text().replace(/[💵🏦]/g, '').trim();
+                $('#selectedAccountText').text(selectedText || 'Cash Account');
+            }
+            $('#expenseAccountId').on('change', function() {
+                updateExpenseAccountBadge();
+            });
+            updateExpenseAccountBadge();
+
+            $('#billDiscount, #billDiscountPct, #extraCost, #purchaseExpense').on('input', function() {
                 recalcAll();
             });
 
@@ -1221,11 +1288,13 @@
                 $('#discountInput').val(additionalDiscount.toFixed(2));
 
                 const extraCost = parseFloat($('#extraCost').val()) || 0;
+                const purchaseExpense = parseFloat($('#purchaseExpense').val()) || 0;
+                const vendorBill = Math.max(0, (subtotal - additionalDiscount) + extraCost);
+                const totalCost = vendorBill + purchaseExpense;
 
-                const net = subtotal - additionalDiscount + extraCost;
-
-                $('#tPayable').text(net.toFixed(2));
-                $('#netAmountInput').val(net.toFixed(2));
+                $('#tPayable').text(vendorBill.toFixed(2));
+                $('#netAmountInput').val(vendorBill.toFixed(2));
+                $('#tTotalCost').text(totalCost.toFixed(2));
             }
 
             function initProductSelect2($el) {
