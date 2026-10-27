@@ -824,7 +824,7 @@ class SaleController extends Controller
             $allSaleItems = \App\Models\SaleItem::where('sale_id', $sale->id)->get();
             $sale->total_bill_amount = $allSaleItems->sum('total');
             // Recalculate Net (Accounting for extra discount if any)
-            $sale->total_net = max(0, $sale->total_bill_amount - ($sale->total_extradiscount ?? 0));
+            $sale->total_net = max(0, ($sale->total_bill_amount - ($sale->total_extradiscount ?? 0)) + ($sale->shipping_charges ?? 0));
             $sale->total_items = $allSaleItems->sum('total_pieces');
             $sale->save();
         }
@@ -1117,6 +1117,13 @@ class SaleController extends Controller
             return $item;
         });
 
+        // Compute true net sale total accounting for discounts, shipping, and returns
+        if ($totalReturnedPieces > 0) {
+            $netSaleTotal = max(0, round(($netSaleTotal - (float)($sale->total_extradiscount ?? 0)) + (float)($sale->shipping_charges ?? 0), 2));
+        } else {
+            $netSaleTotal = (float)$sale->total_net;
+        }
+
         // Exclude items that have been fully returned if you don't want to show them?
         // Wait, showing them as 0 qty is probably fine or we can filter them.
         // Let's filter them out if net pieces is 0 so the invoice only shows remaining items
@@ -1364,6 +1371,7 @@ class SaleController extends Controller
             'product_id' => 'required|array|min:1',
             'qty' => 'required|array|min:1',
             'warehouse_id' => 'nullable|array',
+            'shipping_charges' => 'nullable|numeric|min:0',
         ];
 
         if ($isWalkin) {
@@ -1804,10 +1812,12 @@ class SaleController extends Controller
             }
             $calculatedExtraDiscount = min($total_bill, max(0, $calculatedExtraDiscount));
 
+            $shippingCharges = max(0, (float)($request->input('shipping_charges', 0)));
             $sale->overall_discount_type = $overallType;
             $sale->overall_discount_value = $overallVal;
             $sale->total_extradiscount = $calculatedExtraDiscount;
-            $sale->total_net = max(0, round($total_bill - $sale->total_extradiscount, 2));
+            $sale->shipping_charges = $shippingCharges;
+            $sale->total_net = max(0, round(($total_bill - $sale->total_extradiscount) + $shippingCharges, 2));
             $sale->total_items = $total_items;
 
             $receiptAmounts = $request->input('receipt_amount', []);
@@ -2000,7 +2010,7 @@ class SaleController extends Controller
                     // Update Original Sale Header Totals
                     $allSaleItems = \App\Models\SaleItem::where('sale_id', $origSale->id)->get();
                     $origSale->total_bill_amount = $allSaleItems->sum('total');
-                    $origSale->total_net = max(0, $origSale->total_bill_amount - ($origSale->total_extradiscount ?? 0));
+                    $origSale->total_net = max(0, ($origSale->total_bill_amount - ($origSale->total_extradiscount ?? 0)) + ($origSale->shipping_charges ?? 0));
                     $origSale->total_items = $allSaleItems->sum('total_pieces');
                     $origSale->save();
 

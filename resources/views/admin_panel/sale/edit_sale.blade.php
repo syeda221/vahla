@@ -1492,6 +1492,13 @@
                                     <span class="text-muted">Overall Discount</span>
                                     <span class="fw-bold text-danger" id="tOrderDisc">0.00</span>
                                 </div>
+                                <div class="summary-row align-items-center">
+                                    <span class="text-muted d-flex align-items-center gap-1"><i class="fas fa-truck text-primary" style="font-size:0.75rem;"></i> Shipping</span>
+                                    <div class="input-group input-group-sm" style="width: 125px;">
+                                        <span class="input-group-text bg-light text-muted px-1" style="font-size:0.7rem; font-weight:600;">Rs</span>
+                                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold text-primary shipping-charges-input" id="shippingChargesInput" name="shipping_charges" value="{{ (float)($sale->shipping_charges ?? 0) > 0 ? (float)$sale->shipping_charges : 0 }}" placeholder="0" style="font-size:0.78rem; height: 26px;">
+                                    </div>
+                                </div>
                                 <div class="summary-row">
                                     <span class="fw-bold text-dark">Net Total</span>
                                     <span class="summary-val-net" id="tSub">0.00</span>
@@ -1589,6 +1596,14 @@
                             <button type="button" class="btn btn-outline-secondary fw-bold px-2" id="overallDiscountToggle" data-type="{{ $overallType }}" style="font-size:0.75rem;" tabindex="-1">{{ $overallType === 'percent' ? '%' : 'PKR' }}</button>
                             <input type="hidden" id="overallDiscountType" name="overall_discount_type" value="{{ $overallType }}">
                             <input type="hidden" id="hiddenTotalExtraCost" name="total_extra_cost" value="{{ (float)($sale->total_extradiscount ?? 0) }}">
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;"><i class="fas fa-truck text-primary me-1"></i>Shipping</span>
+                        <div class="input-group input-group-sm" style="width: 115px;">
+                            <span class="input-group-text bg-light text-muted px-1" style="font-size:0.7rem; font-weight:600;">Rs</span>
+                            <input type="number" step="any" min="0" class="form-control text-end fw-bold text-primary shipping-charges-input" id="bottomShippingChargesInput" value="{{ (float)($sale->shipping_charges ?? 0) > 0 ? (float)$sale->shipping_charges : 0 }}" placeholder="0" style="font-size:0.78rem;">
                         </div>
                     </div>
 

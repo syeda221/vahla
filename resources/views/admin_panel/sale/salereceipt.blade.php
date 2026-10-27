@@ -511,6 +511,13 @@
                 </div>
             @endif
 
+            @if ((float)($sale->shipping_charges ?? 0) > 0)
+                <div class="tot-row">
+                    <span>Shipping Charges:</span>
+                    <span>+ {{ (fmod($sale->shipping_charges, 1) != 0) ? number_format($sale->shipping_charges, 2) : number_format($sale->shipping_charges, 0) }}</span>
+                </div>
+            @endif
+
             @if ($exchangeReturnedAmount > 0)
                 <div class="tot-row">
                     <span>Return Value:</span>

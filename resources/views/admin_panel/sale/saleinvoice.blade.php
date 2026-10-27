@@ -259,7 +259,7 @@
     <div class="invoice-page">
         @php
             // Check if invoice has returns (partial or full)
-            $hasReturn = (!empty($isFullReturn) && $isFullReturn) || (!empty($totalReturnedPieces) && $totalReturnedPieces > 0) || ($sale->returns && $sale->returns->count() > 0) || in_array($sale->sale_status, ['returned', '1', 1]);
+            $hasReturn = (!empty($isFullReturn) && $isFullReturn) || (!empty($totalReturnedPieces) && $totalReturnedPieces > 0) || ($sale->returns && $sale->returns->count() > 0) || in_array($sale->sale_status, ['returned']);
             
             $returnDates = '';
             if ($sale->returns && $sale->returns->count() > 0) {
@@ -540,7 +540,23 @@
                     </tr>
                 @endforeach
                 
-                @if(isset($netSaleTotal) && $netSaleTotal < $sale->total_net)
+                @if((float)($sale->total_extradiscount ?? 0) > 0)
+                <tr>
+                    <td colspan="5" style="text-align: right; font-weight: bold; color: #dc2626;">DISCOUNT:</td>
+                    <td style="text-align: right; font-weight: bold; color: #dc2626;">
+                        -{{ number_format($sale->total_extradiscount, 2) }}
+                    </td>
+                </tr>
+                @endif
+                @if((float)($sale->shipping_charges ?? 0) > 0)
+                <tr>
+                    <td colspan="5" style="text-align: right; font-weight: bold; color: #0284c7;">SHIPPING CHARGES:</td>
+                    <td style="text-align: right; font-weight: bold; color: #0284c7;">
+                        +{{ number_format($sale->shipping_charges, 2) }}
+                    </td>
+                </tr>
+                @endif
+                @if($hasReturn && isset($netSaleTotal) && $netSaleTotal < $sale->total_net)
                 <tr>
                     <td colspan="5" style="text-align: right; font-weight: bold;">GROSS TOTAL:</td>
                     <td style="text-align: right; font-weight: bold;">
@@ -570,7 +586,8 @@
                 @endif
                 @php
                     $paidAmount = (float)($sale->cash ?? 0) + (float)($sale->card ?? 0);
-                    $dueAmount = max(0, (float)($netSaleTotal ?? $sale->total_net) - $paidAmount);
+                    $finalTotal = ($hasReturn && isset($netSaleTotal)) ? (float)$netSaleTotal : (float)$sale->total_net;
+                    $dueAmount = max(0, $finalTotal - $paidAmount);
                 @endphp
                 <tr>
                     <td colspan="5" style="text-align: right; font-weight: bold; padding-top: 10px;">PAID:</td>

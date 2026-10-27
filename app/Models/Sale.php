@@ -10,7 +10,7 @@ class Sale extends Model
     protected $fillable = [
         'customer_id', 'warehouse_id', 'reference', 'total_amount_Words', 'total_bill_amount',
         'overall_discount_type', 'overall_discount_value',
-        'total_extradiscount', 'total_net', 'cash', 'card', 'change', 'change_account_id',
+        'total_extradiscount', 'shipping_charges', 'total_net', 'cash', 'card', 'change', 'change_account_id',
         'total_items', 'discount_type', 'sale_status', 'invoice_no', 'is_booking',
         'sale_type', 'delivery_status', 'parent_quotation_id', 'attachment'
     ];

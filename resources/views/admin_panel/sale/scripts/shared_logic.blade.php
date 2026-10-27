@@ -1084,10 +1084,11 @@
         // Keep hidden input updated for form submission
         $('#hiddenTotalExtraCost').val(orderDisc.toFixed(2));
 
+        const shippingCharges = toNum($('#shippingChargesInput').val() || $('#bottomShippingChargesInput').val() || $('.shipping-charges-input').val());
         const prev = toNum($('#previousBalance').val());
         const receipts = toNum($('#receiptsTotal').text());
-        const payable = Math.max(0, tNet - orderDisc + prev - receipts);
-        const currentInvoiceTotal = Math.max(0, tNet - orderDisc);
+        const currentInvoiceTotal = Math.max(0, (tNet - orderDisc) + shippingCharges);
+        const payable = Math.max(0, currentInvoiceTotal + prev - receipts);
 
         $('#tQty').text(tQty % 1 === 0 ? tQty.toFixed(0) : tQty.toFixed(3).replace(/\.?0+$/, ''));
         $('#tGross').text(tGross.toFixed(2));
@@ -1569,7 +1570,11 @@
     $(document).ready(function() {
 
         // Walk-in UI Event Bindings
-        $(document).on('input', '#walkinDiscountRs', function() {
+        $(document).on('input', '#walkinDiscountRs, #shippingChargesInput, #bottomShippingChargesInput, .shipping-charges-input', function() {
+            if ($(this).hasClass('shipping-charges-input') || $(this).attr('id') === 'shippingChargesInput' || $(this).attr('id') === 'bottomShippingChargesInput') {
+                const val = $(this).val();
+                $('#shippingChargesInput, #bottomShippingChargesInput, .shipping-charges-input').not(this).val(val);
+            }
             updateGrandTotals();
         });
         
