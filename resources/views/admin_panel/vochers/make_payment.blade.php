@@ -573,11 +573,14 @@
                         <select name="paid_from_account_id" id="paidFromAccountId" class="form-select mp-select select2" required>
                             <option value="">-- Select Cash/Bank Account --</option>
                             @foreach ($accounts as $acc)
-                                <option value="{{ $acc->id }}">
-                                    {{ $acc->title }} ({{ $acc->account_code }})
+                                <option value="{{ $acc->id }}" data-balance="{{ $acc->current_balance ?? 0 }}" data-title="{{ $acc->title }}">
+                                    {{ $acc->title }} ({{ $acc->account_code }}) - Bal: PKR {{ number_format($acc->current_balance ?? 0, 2) }}
                                 </option>
                             @endforeach
                         </select>
+                        <div id="accountBalanceDisplay" class="mt-1 small text-muted" style="display: none;">
+                            <i class="fa-solid fa-circle-info text-primary me-1"></i> Current Balance: <span id="accountBalanceSpan" class="fw-bold text-dark">PKR 0.00</span>
+                        </div>
                     </div>
 
                     <!-- Payment Mode -->
@@ -620,21 +623,39 @@
                     <div class="col-12 pb-1 border-bottom d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-2">
                             <i class="fa-solid fa-money-check-dollar text-primary"></i>
-                            <strong class="text-primary small text-uppercase">Cheque Details</strong>
+                            <strong class="text-primary small text-uppercase">Cheque Details & Auto-Deduction Settings</strong>
                         </div>
-                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small">Cheque Mode Active</span>
+                        <span class="badge bg-primary text-white rounded-pill px-3 py-1 small">Cheque Mode Active</span>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="mp-label">Cheque # <span class="req">*</span></label>
                         <input type="text" name="cheque_no" id="chequeNo" class="form-control mp-input" placeholder="e.g. CHQ-882194">
                     </div>
-                    <div class="col-md-4">
-                        <label class="mp-label">Cheque Date <span class="req">*</span></label>
+                    <div class="col-md-3">
+                        <label class="mp-label">Cheque Due Date (Maturity) <span class="req">*</span></label>
                         <input type="date" name="cheque_date" id="chequeDate" class="form-control mp-input" value="{{ date('Y-m-d') }}">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label class="mp-label">Issuing Bank Name</label>
-                        <input type="text" name="cheque_bank" id="chequeBank" class="form-control mp-input" placeholder="e.g. HBL / Meezan Bank / Alfalah">
+                        <input type="text" name="cheque_bank" id="chequeBank" class="form-control mp-input" placeholder="e.g. HBL / Meezan Bank">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="mp-label">Low Balance Alert Days</label>
+                        <select name="alert_days_before" id="alertDaysBefore" class="form-select mp-select">
+                            <option value="3">3 Days Before Due Date</option>
+                            <option value="5" selected>5 Days Before Due Date</option>
+                            <option value="7">7 Days Before Due Date</option>
+                            <option value="10">10 Days Before Due Date</option>
+                            <option value="15">15 Days Before Due Date</option>
+                        </select>
+                    </div>
+                    <div class="col-12 mt-1">
+                        <div class="alert alert-info py-2 px-3 mb-0 small rounded-2 d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-bell text-primary fs-6"></i>
+                            <div>
+                                System selected bank account ka balance monitor karega. Agar cheque date se pehle balance kam hua to alert aayega, aur <strong>due date par bank account se payment auto-deduct ho kar notification generate ho jayegi</strong>.
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -864,11 +885,12 @@ $(document).ready(function() {
         let mode = $('#paymentMode').val();
         if (mode === 'Cheque') {
             $('#chequeDetailsRow').removeClass('d-none');
-            $('#paidFromAccountCol').addClass('d-none');
-            $('#paidFromAccountId').prop('required', false);
-            $('#vendorIdCol').removeClass('col-md-4').addClass('col-md-8');
+            $('#paidFromAccountCol').removeClass('d-none');
+            $('#paidFromAccountId').prop('required', true);
+            $('#vendorIdCol').removeClass('col-md-8').addClass('col-md-4');
             $('#paymentDateCol').removeClass('col-md-3').addClass('col-md-2');
             $('#paymentModeCol').removeClass('col-md-3').addClass('col-md-2');
+            $('#lblPaidFromAccount').html('<i class="fa-solid fa-building-columns text-primary me-1"></i> Issuing Bank Account (Drawn On) <span class="req">*</span>');
             $('#lblReferenceNo').html('<i class="fa-solid fa-receipt text-muted me-1"></i> Additional Reference #');
             $('#referenceNo').attr('placeholder', 'e.g. Voucher / Slip / Memo');
             $('#chequeNo').prop('required', true);
@@ -899,10 +921,42 @@ $(document).ready(function() {
 
     $(document).on('change', '#paymentMode', function() {
         handlePaymentModeChange();
+
+    $(document).on('change', '#paidFromAccountId', function() {
+        let opt = $(this).find(':selected');
+        let bal = opt.data('balance');
+        let title = opt.data('title');
+        if (bal !== undefined && $(this).val()) {
+            $('#accountBalanceSpan').text('PKR ' + parseFloat(bal).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $('#accountBalanceDisplay').show();
+            if ($('#paymentMode').val() === 'Cheque' && title && !$('#chequeBank').val()) {
+                $('#chequeBank').val(title);
+            }
+        } else {
+            $('#accountBalanceDisplay').hide();
+        }
+    });
+    $('#paidFromAccountId').trigger('change');
     });
 
     // Run on load
     handlePaymentModeChange();
+
+    $(document).on('change', '#paidFromAccountId', function() {
+        let opt = $(this).find(':selected');
+        let bal = opt.data('balance');
+        let title = opt.data('title');
+        if (bal !== undefined && $(this).val()) {
+            $('#accountBalanceSpan').text('PKR ' + parseFloat(bal).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $('#accountBalanceDisplay').show();
+            if ($('#paymentMode').val() === 'Cheque' && title && !$('#chequeBank').val()) {
+                $('#chequeBank').val(title);
+            }
+        } else {
+            $('#accountBalanceDisplay').hide();
+        }
+    });
+    $('#paidFromAccountId').trigger('change');
 
     function handleVendorChange() {
         let vendorId = $('#vendorId').val();
@@ -1377,8 +1431,9 @@ $(document).ready(function() {
         }
         let payMode = $('#paymentMode').val();
 
-        if (payMode !== 'Cheque' && !paidAccId) {
-            Swal.fire({ icon: 'warning', title: 'Account Required', text: 'Please select the Paid From Account (Cash/Bank).' });
+        if (!paidAccId) {
+            let msg = (payMode === 'Cheque') ? 'Please select the Issuing Bank Account for this cheque.' : 'Please select the Paid From Account (Cash/Bank).';
+            Swal.fire({ icon: 'warning', title: 'Account Required', text: msg });
             return;
         }
         if (totalSettlement <= 0) {

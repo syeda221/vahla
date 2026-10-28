@@ -118,7 +118,7 @@ class ReportingController extends Controller
             }
 
             if (count($parsedVariants) > 0) {
-                if (count($parsedVariants) <= 1 || in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet', 'by_cartons', 'by_box'])) {
+                if (count($parsedVariants) <= 1 || in_array($product->size_mode, ['by_kg', 'by_gm', 'by_ton', 'by_meter', 'by_feet', 'by_cartons', 'by_box', 'by_size', 'by_m2'])) {
                     // Fetch parent level weight stock and transactions
                     if ($warehouseId && $warehouseId !== 'all') {
                         $parentClosing = (float) $product->warehouseStocks->where('warehouse_id', $warehouseId)->sum('total_pieces');
@@ -338,7 +338,7 @@ class ReportingController extends Controller
                     $ppb = (float) ($product->pieces_per_box ?? 1);
                     if ($ppb <= 0) $ppb = 1;
 
-                    if (count($parsedVariants) <= 1 || in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet', 'by_cartons', 'by_box'])) {
+                    if (count($parsedVariants) <= 1 || in_array($product->size_mode, ['by_kg', 'by_gm', 'by_ton', 'by_meter', 'by_feet', 'by_cartons', 'by_box', 'by_size', 'by_m2'])) {
                         if ($isCartonType) {
                             $isBase = !empty($v['is_base_variant']) || (!$isPcsUnit && in_array($vUnitLower, ['carton', 'ctn', 'box']));
                             $factor = $isBase ? $ppb : 1.0;
@@ -634,7 +634,7 @@ class ReportingController extends Controller
                 $totalSoldAmount   += $saleAmount;
 
                 // Cartons / Loose
-                $isCartonMode = ($product->size_mode === 'by_cartons' || strtolower($unitName) === 'carton');
+                $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_box']) || in_array(strtolower($unitName), ['carton', 'ctn', 'box', 'bale']));
                 $ppb = (float) ($product->pieces_per_box ?? 1);
                 if ($ppb <= 0) $ppb = 1;
 

@@ -504,6 +504,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/vouchers/receive-payment/store', [VoucherController::class, 'storeReceivePayment'])->middleware('permission:vouchers.create|receipts.voucher.view')->name('vouchers.receive_payment.store');
     Route::get('/vouchers/make-payment', [VoucherController::class, 'makePayment'])->middleware('permission:vouchers.create|payment.voucher.view')->name('vouchers.make_payment');
     Route::post('/vouchers/make-payment/store', [VoucherController::class, 'storeMakePayment'])->middleware('permission:vouchers.create|payment.voucher.view')->name('vouchers.make_payment.store');
+    
+    // Cheque Management & Clearance (Inward / Outward / Alerts)
+    Route::get('/cheques', [\App\Http\Controllers\ChequeController::class, 'index'])->name('cheques.index');
+    Route::post('/cheques/{id}/clear-inward', [\App\Http\Controllers\ChequeController::class, 'clearInward'])->name('cheques.clear_inward');
+    Route::post('/cheques/{id}/bounce', [\App\Http\Controllers\ChequeController::class, 'bounce'])->name('cheques.bounce');
+    Route::get('/cheques/run-checks', [\App\Http\Controllers\ChequeController::class, 'runChecks'])->name('cheques.run_checks');
     Route::post('/vouchers/store-party-to-party', [VoucherController::class, 'store_party_to_party'])->middleware('permission:vouchers.create')->name('store_party_to_party');
     Route::get('/vouchers/get-party-balance', [VoucherController::class, 'getPartyBalance'])->name('vouchers.get_party_balance');
     Route::get('vouchers/{type}', [VoucherController::class, 'index'])->middleware('permission:vouchers.view|all.vouchers.view')->name('vouchers.index');

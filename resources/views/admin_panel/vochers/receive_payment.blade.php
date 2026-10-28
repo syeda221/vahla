@@ -570,14 +570,17 @@
                     <!-- Deposit To Account -->
                     <div class="col-md-4" id="depositAccountCol">
                         <label class="rp-label" id="lblDepositAccount"><i class="fa-solid fa-building-columns text-muted me-1"></i> Deposit To Account (Cash/Bank) <span class="req">*</span></label>
-                        <select name="deposit_account_id" id="depositAccountId" class="form-select rp-select select2" required>
+                        <select name="deposit_account_id" id="depositAccountId" class="form-select rp-select select2" required style="width: 100%;">
                             <option value="">-- Select Cash/Bank Account --</option>
                             @foreach ($accounts as $acc)
-                                <option value="{{ $acc->id }}">
-                                    {{ $acc->title }} ({{ $acc->account_code }})
+                                <option value="{{ $acc->id }}" data-balance="{{ $acc->current_balance ?? 0 }}" data-title="{{ $acc->title }}">
+                                    {{ $acc->title }} ({{ $acc->account_code }}) - Bal: PKR {{ number_format($acc->current_balance ?? 0, 2) }}
                                 </option>
                             @endforeach
                         </select>
+                        <div id="depositAccountBalanceDisplay" class="mt-1 small text-muted" style="display: none;">
+                            <i class="fa-solid fa-circle-info text-success me-1"></i> Current Balance: <span id="depositAccountBalanceSpan" class="fw-bold text-dark">PKR 0.00</span>
+                        </div>
                     </div>
 
                     <!-- Payment Mode -->
@@ -635,6 +638,14 @@
                     <div class="col-md-4">
                         <label class="rp-label">Customer's Bank Name</label>
                         <input type="text" name="cheque_bank" id="chequeBank" class="form-control rp-input" placeholder="e.g. Meezan Bank / HBL / UBL">
+                    </div>
+                    <div class="col-12 mt-1">
+                        <div class="alert alert-success py-2 px-3 mb-0 small rounded-2 d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-success fs-6"></i>
+                            <div>
+                                Ye cheque <strong>Cheques in Hand</strong> mein record hoga aur customer ka khata foran clear ho jayega. Cheque due date par notification aayegi jahan se aap isko <strong>Bank ya Cash</strong> account mein direct deposit/clear kar sakte hain.
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -862,7 +873,9 @@ $(document).ready(function() {
 
     function handlePaymentModeChange() {
         let mode = $('#paymentMode').val();
+
         if (mode === 'Cheque') {
+            // When Cheque: hide deposit account dropdown (will be chosen upon maturity/deposit)
             $('#chequeDetailsRow').removeClass('d-none');
             $('#depositAccountCol').addClass('d-none');
             $('#depositAccountId').prop('required', false);
@@ -873,36 +886,70 @@ $(document).ready(function() {
             $('#referenceNo').attr('placeholder', 'e.g. Deposit Slip # / Memo');
             $('#chequeNo').prop('required', true);
         } else if (mode === 'Bank') {
+            // When Bank: show deposit bank account dropdown
             $('#chequeDetailsRow').addClass('d-none');
-            $('#depositAccountCol').removeClass('d-none');
+            $('#depositAccountCol').removeClass('d-none').show();
             $('#depositAccountId').prop('required', true);
             $('#customerIdCol').removeClass('col-md-8').addClass('col-md-4');
             $('#paymentDateCol').removeClass('col-md-3').addClass('col-md-2');
             $('#paymentModeCol').removeClass('col-md-3').addClass('col-md-2');
-            $('#lblDepositAccount').html('<i class="fa-solid fa-building-columns text-muted me-1"></i> Deposit To Bank Account <span class="req">*</span>');
+            $('#lblDepositAccount').html('<i class="fa-solid fa-building-columns text-primary me-1"></i> Deposit To Bank Account <span class="req">*</span>');
             $('#lblReferenceNo').html('<i class="fa-solid fa-receipt text-muted me-1"></i> Transaction / Ref #');
             $('#referenceNo').attr('placeholder', 'e.g. Online Transfer / TR-88123');
             $('#chequeNo').prop('required', false);
+
+            if ($.fn.select2) {
+                $('#depositAccountId').select2({ width: '100%' });
+            }
         } else {
+            // When Cash: show deposit cash account dropdown
             $('#chequeDetailsRow').addClass('d-none');
-            $('#depositAccountCol').removeClass('d-none');
+            $('#depositAccountCol').removeClass('d-none').show();
             $('#depositAccountId').prop('required', true);
             $('#customerIdCol').removeClass('col-md-8').addClass('col-md-4');
             $('#paymentDateCol').removeClass('col-md-3').addClass('col-md-2');
             $('#paymentModeCol').removeClass('col-md-3').addClass('col-md-2');
-            $('#lblDepositAccount').html('<i class="fa-solid fa-building-columns text-muted me-1"></i> Deposit To Account (Cash/Bank) <span class="req">*</span>');
+            $('#lblDepositAccount').html('<i class="fa-solid fa-wallet text-success me-1"></i> Deposit To Cash Account <span class="req">*</span>');
             $('#lblReferenceNo').html('<i class="fa-solid fa-receipt text-muted me-1"></i> Reference / Receipt #');
             $('#referenceNo').attr('placeholder', 'e.g. Slip # / Memo / Receipt #');
             $('#chequeNo').prop('required', false);
+
+            if ($.fn.select2) {
+                $('#depositAccountId').select2({ width: '100%' });
+            }
         }
     }
 
     $(document).on('change', '#paymentMode', function() {
         handlePaymentModeChange();
+
+    $(document).on('change', '#depositAccountId', function() {
+        let opt = $(this).find(':selected');
+        let bal = opt.data('balance');
+        if (bal !== undefined && $(this).val()) {
+            $('#depositAccountBalanceSpan').text('PKR ' + parseFloat(bal).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $('#depositAccountBalanceDisplay').show();
+        } else {
+            $('#depositAccountBalanceDisplay').hide();
+        }
+    });
+    $('#depositAccountId').trigger('change');
     });
 
     // Run on load in case Cheque is restored or default
     handlePaymentModeChange();
+
+    $(document).on('change', '#depositAccountId', function() {
+        let opt = $(this).find(':selected');
+        let bal = opt.data('balance');
+        if (bal !== undefined && $(this).val()) {
+            $('#depositAccountBalanceSpan').text('PKR ' + parseFloat(bal).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $('#depositAccountBalanceDisplay').show();
+        } else {
+            $('#depositAccountBalanceDisplay').hide();
+        }
+    });
+    $('#depositAccountId').trigger('change');
 
     function handleCustomerChange() {
         let customerId = $('#customerId').val();

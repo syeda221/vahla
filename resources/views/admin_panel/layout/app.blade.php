@@ -1017,6 +1017,8 @@
                                                     Receive Payment</a></li>
                                             <li><a href="{{ route('vouchers.make_payment') }}"><i class="fa-solid fa-money-bill-transfer text-primary"></i>
                                                     Make Payment</a></li>
+                                            <li><a href="{{ route('cheques.index') }}"><i class="fa-solid fa-money-check-dollar text-warning"></i>
+                                                    Cheque Register & Alerts</a></li>
                                         @endcan
                                         @can('all.vouchers.view')
                                             <li><a href="{{ route('voucher.history') }}"><i class="fa-solid fa-list-check"></i>

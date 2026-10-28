@@ -2533,10 +2533,9 @@ class VoucherController extends Controller
             ->where(function($q) use ($cashBankHeadIds) {
                 $q->whereIn('head_id', $cashBankHeadIds)
                   ->orWhereRaw('LOWER(title) LIKE ?', ['%cash%'])
-                  ->orWhereRaw('LOWER(title) LIKE ?', ['%bank%'])
-                  ->orWhereRaw('LOWER(title) LIKE ?', ['%cheque%']);
+                  ->orWhereRaw('LOWER(title) LIKE ?', ['%bank%']);
             })
-            ->whereNotIn('account_code', ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP', 'DISC-EXP', 'DISC-INC', 'TAX-REC', 'WHT-PAY'])
+            ->whereNotIn('account_code', ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP', 'DISC-EXP', 'DISC-INC', 'TAX-REC', 'WHT-PAY', 'CHQ-001', 'CHQ-002'])
             ->orderBy('title')
             ->get();
 
@@ -2843,6 +2842,26 @@ class VoucherController extends Controller
                 'description'      => "Receive Payment {$rvid}: " . $narrationList,
             ]);
 
+            // 4. Cheque Tracking for Inward Cheques
+            if ($paymentMode === 'Cheque') {
+                \App\Models\Cheque::create([
+                    'type' => 'inward',
+                    'voucher_type' => 'receipt_voucher',
+                    'voucher_id' => $recVoucher->id,
+                    'voucher_master_id' => $v2Master ? $v2Master->id : null,
+                    'party_type' => 'customer',
+                    'party_id' => $customerId,
+                    'cheque_no' => $chequeNo,
+                    'cheque_date' => $chequeDate,
+                    'issue_date' => $paymentDate,
+                    'amount' => $cashReceived,
+                    'bank_name' => $chequeBank,
+                    'status' => 'pending',
+                    'alert_days_before' => 1,
+                    'created_by' => auth()->id(),
+                ]);
+            }
+
             DB::commit();
 
             $targetPrintId = $v2Master ? $v2Master->id : $recVoucher->id;
@@ -2965,10 +2984,9 @@ class VoucherController extends Controller
             ->where(function($q) use ($cashBankHeadIds) {
                 $q->whereIn('head_id', $cashBankHeadIds)
                   ->orWhereRaw('LOWER(title) LIKE ?', ['%cash%'])
-                  ->orWhereRaw('LOWER(title) LIKE ?', ['%bank%'])
-                  ->orWhereRaw('LOWER(title) LIKE ?', ['%cheque%']);
+                  ->orWhereRaw('LOWER(title) LIKE ?', ['%bank%']);
             })
-            ->whereNotIn('account_code', ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP', 'DISC-EXP', 'DISC-INC', 'TAX-REC', 'WHT-PAY'])
+            ->whereNotIn('account_code', ['AR', 'AP', 'SALES', 'PURCHASE', 'GEN-EXP', 'DISC-EXP', 'DISC-INC', 'TAX-REC', 'WHT-PAY', 'CHQ-001', 'CHQ-002'])
             ->orderBy('title')
             ->get();
 
@@ -3040,42 +3058,12 @@ class VoucherController extends Controller
             $remarks = $request->remarks ?: '';
 
             if ($paymentMode === 'Cheque') {
-                $paidFromAccount = null;
-                if (!empty($request->paid_from_account_id)) {
-                    $paidFromAccount = DB::table('accounts')->where('id', $request->paid_from_account_id)->first();
+                if (empty($request->paid_from_account_id)) {
+                    return response()->json(['success' => false, 'message' => 'Please select the Issuing Bank Account (Checkbook Account).'], 422);
                 }
+                $paidFromAccount = DB::table('accounts')->where('id', $request->paid_from_account_id)->first();
                 if (!$paidFromAccount) {
-                    $chequeAcc = DB::table('accounts')->where(function($q) {
-                        $q->whereRaw('LOWER(title) LIKE ?', ['%cheque%'])
-                          ->orWhereRaw('LOWER(title) LIKE ?', ['%check%']);
-                    })->first();
-
-                    if (!$chequeAcc) {
-                        $head = \App\Models\AccountHead::whereRaw('LOWER(name) LIKE ?', ['%bank%'])
-                            ->orWhereRaw('LOWER(name) LIKE ?', ['%cash%'])
-                            ->orWhereRaw('LOWER(name) LIKE ?', ['%asset%'])
-                            ->first();
-
-                        if (!$head) {
-                            $head = \App\Models\AccountHead::create([
-                                'name' => 'Bank & Cheque Clearing',
-                                'opening_balance' => 0
-                            ]);
-                        }
-
-                        $chequeAccId = DB::table('accounts')->insertGetId([
-                            'title' => 'Cheques in Hand',
-                            'account_code' => 'CHQ-001',
-                            'head_id' => $head->id,
-                            'type' => 'Debit',
-                            'status' => 1,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                        $paidFromAccount = DB::table('accounts')->where('id', $chequeAccId)->first();
-                    } else {
-                        $paidFromAccount = $chequeAcc;
-                    }
+                    return response()->json(['success' => false, 'message' => 'Selected Issuing Bank Account not found.'], 422);
                 }
             } else {
                 $paidFromAccount = null;
@@ -3212,12 +3200,22 @@ class VoucherController extends Controller
                     ];
                 }
 
-                if ($cashPaid > 0 && $paidFromAccount) {
+                $creditGlAccountId = $paidFromAccount ? $paidFromAccount->id : null;
+                if ($paymentMode === 'Cheque') {
+                    $chqPayableAccount = DB::table('accounts')->where('account_code', 'CHQ-002')
+                        ->orWhereRaw('LOWER(title) LIKE ?', ['%cheques payable%'])
+                        ->first();
+                    if ($chqPayableAccount) {
+                        $creditGlAccountId = $chqPayableAccount->id;
+                    }
+                }
+
+                if ($cashPaid > 0 && $creditGlAccountId) {
                     $v2Lines[] = [
-                        'account_id' => $paidFromAccount->id,
+                        'account_id' => $creditGlAccountId,
                         'debit' => 0,
                         'credit' => $cashPaid,
-                        'narration' => "Paid via {$paymentMode}",
+                        'narration' => ($paymentMode === 'Cheque') ? "Cheques Payable (Chq #{$chequeNo})" : "Paid via {$paymentMode}",
                     ];
                 }
 
@@ -3275,6 +3273,36 @@ class VoucherController extends Controller
                 'opening_balance'  => 0,
                 'closing_balance'  => $prevBal - $totalSettlement, // Payment made reduces vendor payable
             ]);
+
+            // 4. Cheque Tracking & Auto-deduction
+            if ($paymentMode === 'Cheque') {
+                $chequeRecord = \App\Models\Cheque::create([
+                    'type' => 'outward',
+                    'voucher_type' => 'payment_voucher',
+                    'voucher_id' => $payVoucher->id,
+                    'voucher_master_id' => $v2Master ? $v2Master->id : null,
+                    'party_type' => 'vendor',
+                    'party_id' => $vendorId,
+                    'cheque_no' => $chequeNo,
+                    'cheque_date' => $chequeDate,
+                    'issue_date' => $paymentDate,
+                    'amount' => $cashPaid,
+                    'bank_name' => $chequeBank ?: ($paidFromAccount ? $paidFromAccount->title : null),
+                    'bank_account_id' => $paidFromAccount ? $paidFromAccount->id : null,
+                    'status' => 'pending',
+                    'alert_days_before' => (int) ($request->alert_days_before ?? 5),
+                    'created_by' => auth()->id(),
+                ]);
+
+                // If cheque date is today or already passed, auto-deduct immediately
+                if ($chequeDate <= date('Y-m-d')) {
+                    try {
+                        app(\App\Services\ChequeAlertService::class)->autoDeductOutwardCheque($chequeRecord);
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning("Immediate auto-deduct error: " . $e->getMessage());
+                    }
+                }
+            }
 
             DB::commit();
 

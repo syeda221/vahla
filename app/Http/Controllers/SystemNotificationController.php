@@ -13,6 +13,13 @@ class SystemNotificationController extends Controller
             return response()->json(['count' => 0, 'notifications' => []]);
         }
 
+        // Trigger automated cheque checks, low balance alerts, and due date auto-deductions
+        try {
+            app(\App\Services\ChequeAlertService::class)->processCheques();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Cheque processing error during fetch: " . $e->getMessage());
+        }
+
         $count = \App\Models\SystemNotification::getUnreadCount($user->id);
         $notifications = \App\Models\SystemNotification::getRecent($user->id, 5); // Latest 5
 
