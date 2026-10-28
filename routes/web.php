@@ -123,6 +123,7 @@ Route::middleware('auth')->group(function () {
     route::get('/category', [CategoryController::class, 'index'])->middleware('permission:categories.view')->name('Category.home');
     Route::get('/category/delete/{id}', [CategoryController::class, 'delete'])->middleware('permission:categories.delete')->name('delete.category');
     route::post('/category/store', [CategoryController::class, 'store'])->middleware('permission:categories.create|categories.edit')->name('store.category');
+    Route::get('/search-categories', [CategoryController::class, 'searchCategories'])->name('search.categories');
 
     Route::get('/expense-categories', [ExpenseCategoryController::class, 'index'])->middleware('permission:expense.voucher.view')->name('expense_categories.index');
     Route::post('/expense-categories/store', [ExpenseCategoryController::class, 'store'])->middleware('permission:expense.voucher.create')->name('expense_categories.store');

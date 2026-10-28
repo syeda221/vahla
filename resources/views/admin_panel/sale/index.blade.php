@@ -148,14 +148,59 @@
         .premium-table {
             border: 2px solid #475569 !important;
             border-radius: 8px !important;
-            overflow: visible !important;
+            width: 100% !important;
+            margin-bottom: 0 !important;
         }
 
-        /* Prevent Dropdowns from Being Clipped on Main Sales Table */
+        /* Responsive Horizontal Scrolling with Clean Overflow */
         .premium-card .table-responsive {
             border-radius: 8px !important;
-            overflow: visible !important;
-            min-height: 380px;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            min-height: 420px;
+            position: relative;
+        }
+
+        /* Sleek Modern Horizontal Scrollbar */
+        .premium-card .table-responsive::-webkit-scrollbar {
+            height: 8px;
+        }
+        .premium-card .table-responsive::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .premium-card .table-responsive::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 4px;
+        }
+        .premium-card .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Action Column & Dropdown Stacking Fix */
+        #sales-table th.col-action,
+        #sales-table td.col-action,
+        #sales-table th:last-child,
+        #sales-table td:last-child {
+            text-align: center !important;
+            white-space: nowrap !important;
+            position: relative;
+        }
+
+        /* Elevate the active row when dropdown is opened so it floats cleanly over all other rows */
+        #sales-table tbody tr:has(.show),
+        #sales-table tbody tr:focus-within {
+            position: relative;
+            z-index: 30;
+        }
+
+        #sales-table .dropdown.show {
+            position: relative;
+            z-index: 40;
+        }
+
+        #sales-table .dropdown-menu {
+            z-index: 1060 !important;
         }
 
         /* Order Trail Modal overrides to eliminate any empty bottom space and scrollbars */
@@ -206,16 +251,17 @@
             font-weight: 700 !important;
             text-transform: uppercase;
             font-size: 11px;
-            letter-spacing: 0.5px;
-            border-bottom: 3px solid #475569 !important;
-            border-right: 1.5px solid #cbd5e1 !important;
-            padding: 12px 10px !important;
+            letter-spacing: 0.3px;
+            border-bottom: 2px solid #334155 !important;
+            border-right: 1px solid #cbd5e1 !important;
+            padding: 9px 7px !important;
+            white-space: nowrap;
         }
         
         .premium-table tbody td {
-            border: 1.5px solid #e2e8f0 !important;
-            padding: 12px 10px !important;
-            font-size: 13px !important;
+            border: 1px solid #e2e8f0 !important;
+            padding: 9px 7px !important;
+            font-size: 12px !important;
             color: #334155 !important;
             background-color: #ffffff;
         }
@@ -295,19 +341,6 @@
                 display: flex;
                 gap: 8px;
             }
-            .table-responsive {
-                overflow: visible !important;
-            }
-            .dataTables_scrollBody {
-                overflow: visible !important;
-            }
-        }
-
-        /* Force all DataTables wrappers and columns to not clip dropdowns */
-        .dataTables_wrapper,
-        .dataTables_wrapper .row,
-        .dataTables_wrapper .col-sm-12 {
-            overflow: visible !important;
         }
 
         .dataTables_wrapper .dataTables_length select {
@@ -600,7 +633,7 @@
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-end text-nowrap">Due</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-center text-nowrap">Date</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-center text-nowrap">Status</th>
-                                        <th class="py-3 pe-3 rounded-end text-secondary fw-semibold text-uppercase small text-center" style="width: 1%; white-space: nowrap;">Action</th>
+                                        <th class="py-3 pe-3 rounded-end text-secondary fw-semibold text-uppercase small text-center col-action" style="width: 1%; white-space: nowrap;">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="salesTableBody">
@@ -628,6 +661,20 @@
 @section('js')
     <script>
         $(document).ready(function() {
+            // Elevate row z-index when action dropdown is open to ensure clean layering across all browsers
+            $(document).on('show.bs.dropdown', '#sales-table .dropdown', function() {
+                $(this).closest('tr').css({
+                    'position': 'relative',
+                    'z-index': 50
+                });
+            });
+            $(document).on('hidden.bs.dropdown', '#sales-table .dropdown', function() {
+                $(this).closest('tr').css({
+                    'position': '',
+                    'z-index': ''
+                });
+            });
+
             // Initialize Select2 with search for customer dropdown
             if ($('.select2-customer').length > 0) {
                 $('.select2-customer').select2({

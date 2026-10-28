@@ -520,6 +520,62 @@
             /* Tablet: 2-col inputs */
             .card-body-pro .col-md-3 { flex: 0 0 50%; max-width: 50%; }
         }
+    
+        /* Select2 Enhanced Dropdown Styling */
+        .select2-container--default .select2-selection--single {
+            height: 40px !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: var(--radius-md) !important;
+            display: flex !important;
+            align-items: center !important;
+            padding-left: 10px !important;
+            padding-right: 30px !important;
+            font-size: 0.88rem !important;
+            background-color: #fff !important;
+        }
+        .select2-container--default.select2-container--focus .select2-selection--single,
+        .select2-container--default.select2-container--open .select2-selection--single {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 38px !important;
+            padding-left: 0 !important;
+            color: var(--text-main) !important;
+            font-size: 0.88rem !important;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 38px !important;
+            right: 8px !important;
+        }
+        .select2-dropdown {
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+            z-index: 99999 !important;
+        }
+        .select2-search--dropdown {
+            padding: 8px !important;
+        }
+        .select2-search--dropdown .select2-search__field {
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 6px !important;
+            padding: 6px 10px !important;
+            outline: none !important;
+            font-size: 13px !important;
+        }
+        .select2-search--dropdown .select2-search__field:focus {
+            border-color: #4f46e5 !important;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
+        }
+        .select2-results__option {
+            padding: 8px 12px !important;
+            font-size: 13px !important;
+        }
+        .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+            background-color: #4f46e5 !important;
+            color: #ffffff !important;
+        }
     </style>
 
     <div class="page-container">
@@ -604,14 +660,16 @@
 
                                         <div class="col-md-3">
                                             <label class="form-label-pro">Category</label>
-                                            <div class="d-flex gap-1">
-                                                <select class="form-select form-control-pro form-select-pro" id="category-dropdown" name="category_id">
-                                                    <option value="">Select...</option>
-                                                    @foreach ($categories as $cat)
-                                                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                                                    @endforeach
-                                                </select>
-                                                <button type="button" class="btn btn-light border px-2 shadow-sm" data-toggle="modal" data-target="#categoryModal">+</button>
+                                            <div class="d-flex gap-1 align-items-stretch">
+                                                <div class="flex-grow-1" style="min-width: 0;">
+                                                    <select class="form-select form-control-pro" id="category-dropdown" name="category_id" style="width: 100%;">
+                                                        <option value="">Search or Select Category...</option>
+                                                        @foreach ($categories as $cat)
+                                                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <button type="button" class="btn btn-light border px-2 shadow-sm d-flex align-items-center justify-content-center" data-toggle="modal" data-target="#categoryModal" data-bs-toggle="modal" data-bs-target="#categoryModal" style="height: 40px; min-width: 38px;" title="Add Category">+</button>
                                             </div>
                                         </div>
                                         <div class="col-md-3">
@@ -1001,6 +1059,32 @@
                     if (activeBtn) activeBtn.innerHTML = originalContent;
                 });
             });
+
+            // Initialize Select2 with AJAX Search for Category
+            if ($.fn.select2) {
+                $('#category-dropdown').select2({
+                    placeholder: 'Search or Select Category...',
+                    allowClear: true,
+                    width: '100%',
+                    ajax: {
+                        url: '{{ route("search.categories") }}',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return {
+                                q: params.term || ''
+                            };
+                        },
+                        processResults: function (data) {
+                            return {
+                                results: data.results || data
+                            };
+                        },
+                        cache: true
+                    },
+                    minimumInputLength: 0
+                });
+            }
 
             $('#category-dropdown').on('change', function() {
                 var cid = $(this).val();

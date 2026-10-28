@@ -99,4 +99,26 @@ class CategoryController extends Controller
     }
    
      
+
+    public function searchCategories(Request $request)
+    {
+        $term = trim($request->get('q', ''));
+        $query = Category::query();
+        if ($term !== '') {
+            $query->where('name', 'LIKE', '%' . $term . '%');
+        }
+        $categories = $query->orderBy('name', 'asc')->limit(100)->get(['id', 'name']);
+
+        $results = $categories->map(function ($cat) {
+            return [
+                'id' => $cat->id,
+                'text' => $cat->name
+            ];
+        });
+
+        return response()->json([
+            'results' => $results
+        ]);
+    }
+
 }
