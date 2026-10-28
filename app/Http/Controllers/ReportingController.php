@@ -118,7 +118,7 @@ class ReportingController extends Controller
             }
 
             if (count($parsedVariants) > 0) {
-                if (in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet', 'by_cartons', 'by_box'])) {
+                if (count($parsedVariants) <= 1 || in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet', 'by_cartons', 'by_box'])) {
                     // Fetch parent level weight stock and transactions
                     if ($warehouseId && $warehouseId !== 'all') {
                         $parentClosing = (float) $product->warehouseStocks->where('warehouse_id', $warehouseId)->sum('total_pieces');
@@ -338,7 +338,7 @@ class ReportingController extends Controller
                     $ppb = (float) ($product->pieces_per_box ?? 1);
                     if ($ppb <= 0) $ppb = 1;
 
-                    if (in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet', 'by_cartons', 'by_box'])) {
+                    if (count($parsedVariants) <= 1 || in_array($product->size_mode, ['by_kg', 'by_meter', 'by_feet', 'by_cartons', 'by_box'])) {
                         if ($isCartonType) {
                             $isBase = !empty($v['is_base_variant']) || (!$isPcsUnit && in_array($vUnitLower, ['carton', 'ctn', 'box']));
                             $factor = $isBase ? $ppb : 1.0;
@@ -520,7 +520,7 @@ class ReportingController extends Controller
                     $rows[] = [
                         'id'              => $product->id,
                         'item_code'       => $product->item_code,
-                        'item_name'       => $vName . ' (' . $vSize . ' | ' . $vColor . ')',
+                        'item_name'       => (($vSize !== '-' && $vSize !== '') || ($vColor !== '-' && $vColor !== '')) ? ($vName . ' (' . $vSize . ' | ' . $vColor . ')') : $vName,
                         'category_name'   => $product->category_relation->name ?? 'Standard',
                         'unit_name'       => $vUnitName,
                         'size_mode'       => $sizeMode,
