@@ -382,9 +382,9 @@
         {{-- PRINT ONLY CONTAINER --}}
         <div class="d-none print-container">
             <div style="text-align: center; margin-bottom: 15px;">
-                <h2 style="font-weight: 900; margin: 0; font-size: 20px; text-transform: uppercase;">{{ \App\Models\Setting::get('company_name', 'WHITE DIAMOND (PACKAGES PRIVATE LIMITED)') }}</h2>
-                <p style="margin: 0; font-size: 11px;">{{ \App\Models\Setting::get('company_address', 'Hanif Garden Dry Port Road Near Soha Mall Faisalabad') }}</p>
-                <p style="margin: 0; font-size: 11px;">Tel: {{ \App\Models\Setting::get('company_phone', '+92 3216293333 | +92 300 7995500') }} | Web: {{ \App\Models\Setting::get('company_website', 'whitediamondpack.com') }}</p>
+                <h2 style="font-weight: 900; margin: 0; font-size: 20px; text-transform: uppercase;">{{ \App\Models\Setting::get('company_name', '') }}</h2>
+                @if(\App\Models\Setting::get('company_address'))<p style="margin: 0; font-size: 11px;">{{ \App\Models\Setting::get('company_address') }}</p>@endif
+                <p style="margin: 0; font-size: 11px;">@if(\App\Models\Setting::get('company_phone'))Tel: {{ \App\Models\Setting::get('company_phone') }}@endif @if(\App\Models\Setting::get('website_link')) | Web: {{ \App\Models\Setting::get('website_link') }}@endif</p>
                 <h5 style="font-weight: 800; margin-top: 15px; margin-bottom: 5px; text-transform: uppercase;">CUSTOMER LEDGER</h5>
             </div>
 
