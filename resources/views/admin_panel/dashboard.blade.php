@@ -23,7 +23,7 @@
         --cyan: #06b6d4;
     }
 
-    .db-wrap, .db-wrap * {
+    .db-wrap, .db-wrap *:not(i):not([class*="fa-"]):not([class*="fas"]):not([class*="far"]):not([class*="fab"]) {
         font-family: var(--f) !important;
     }
 
@@ -783,15 +783,15 @@
          2. QUICK REPORT NAVIGATION PILLS
     ============================================= --}}
     <div class="db-nav-pills">
-        <a href="{{ route('report.sale') }}"           class="db-pill"><i class="fa-solid fa-receipt"              style="color: var(--green);"></i>  Sales Report</a>
-        <a href="{{ route('report.purchase') }}"       class="db-pill"><i class="fa-solid fa-cart-shopping"        style="color: var(--blue);"></i>   Purchase Report</a>
-        <a href="{{ route('report.profit_loss') }}"    class="db-pill"><i class="fa-solid fa-chart-line"           style="color: var(--cyan);"></i>   Profit & Loss</a>
-        <a href="{{ route('report.executive') }}"      class="db-pill"><i class="fa-solid fa-briefcase"            style="color: var(--purple);"></i>  Executive Report</a>
-        <a href="{{ route('report.recovery') }}"       class="db-pill"><i class="fa-solid fa-file-invoice-dollar"  style="color: var(--amber);"></i>  Recovery Report</a>
-        <a href="{{ route('report.payable') }}"        class="db-pill"><i class="fa-solid fa-hand-holding-dollar"  style="color: var(--red);"></i>    Payable Report</a>
-        <a href="{{ route('report.parties_balance') }}" class="db-pill"><i class="fa-solid fa-users-viewfinder"   style="color: var(--blue);"></i>   Parties Balance</a>
-        <a href="{{ route('reports.onhand') }}"        class="db-pill"><i class="fa-solid fa-boxes-stacked"        style="color: var(--green);"></i>  On-Hand Stock</a>
-        <a href="{{ route('report.balance_sheet') }}"  class="db-pill"><i class="fa-solid fa-scale-balanced"      style="color: var(--muted);"></i>  Balance Sheet</a>
+        <a href="{{ route('report.sale') }}"           class="db-pill">Sales Report</a>
+        <a href="{{ route('report.purchase') }}"       class="db-pill">Purchase Report</a>
+        <a href="{{ route('report.profit_loss') }}"    class="db-pill">Profit & Loss</a>
+        <a href="{{ route('report.executive') }}"      class="db-pill">Executive Report</a>
+        <a href="{{ route('report.recovery') }}"       class="db-pill">Recovery Report</a>
+        <a href="{{ route('report.payable') }}"        class="db-pill">Payable Report</a>
+        <a href="{{ route('report.parties_balance') }}" class="db-pill">Parties Balance</a>
+        <a href="{{ route('reports.onhand') }}"        class="db-pill">On-Hand Stock</a>
+        <a href="{{ route('report.balance_sheet') }}"  class="db-pill">Balance Sheet</a>
     </div>
 
     {{-- =============================================
