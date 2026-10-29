@@ -797,8 +797,9 @@ class PurchaseController extends Controller
                 'note' => 'nullable|string',
                 'discount' => 'nullable|numeric|min:0',
                 'extra_cost' => 'nullable|numeric|min:0',
-            'purchase_expense' => 'nullable|numeric|min:0',
-            'expense_account_id' => 'nullable|exists:accounts,id',
+                'shipping_charges' => 'nullable|numeric|min:0',
+                'purchase_expense' => 'nullable|numeric|min:0',
+                'expense_account_id' => 'nullable|exists:accounts,id',
                 'product_id' => 'array',
                 'product_id.*' => 'nullable|exists:products,id',
                 'qty' => 'array',
@@ -869,6 +870,12 @@ class PurchaseController extends Controller
                 'status_purchase' => $statusPurchase,
             ]);
 
+            $shippingCharges = 0;
+            $cuttingCharges = 0;
+            $purchaseExpense = (float) ($request->purchase_expense ?? 0);
+            $totalLandedExtra = $purchaseExpense;
+            $extraCost = 0;
+
             $subtotal = 0;
             $pids = $validated['product_id'] ?? [];
             $qtys = $validated['qty'] ?? [];
@@ -884,6 +891,8 @@ class PurchaseController extends Controller
             $lengths = $request->length ?? [];
             $widths = $request->width ?? [];
 
+            // Pass 1: Parse rows & calculate line totals and subtotal
+            $parsedRows = [];
             foreach ($pids as $i => $pid) {
                 $pid = (int) ($pid ?? 0);
                 $qty = (float) ($qtys[$i] ?? 0);
@@ -933,63 +942,174 @@ class PurchaseController extends Controller
 
                 $itemWh = !empty($request->item_warehouse_id[$i]) ? (int)$request->item_warehouse_id[$i] : (!empty($request->warehouse_id[$i]) ? (int)$request->warehouse_id[$i] : ($warehouseId ?: 1));
 
-                PurchaseItem::create([
-                    'purchase_id' => $purchase->id,
-                    'warehouse_id' => $itemWh,
-                    'product_id' => $pid,
+                $parsedRows[] = [
+                    'pid' => $pid,
                     'unit' => $unit,
                     'price' => $price,
-                    'item_discount' => $discAmount,
+                    'discPercent' => $discPercent,
+                    'discAmount' => $discAmount,
                     'qty' => $qty,
-                    'received_qty' => ($purchaseType === 'direct_purchase' && $statusPurchase === 'approved') ? $qty : 0,
-                    'line_total' => $lineTotal,
+                    'rawQtyStr' => $rawQtyStr,
+                    'lineTotal' => $lineTotal,
                     'color' => $request->color[$i] ?? null,
-                    'size_mode' => $sizeModes[$i] ?? null,
+                    'size_mode' => $curSizeMode,
                     'pieces_per_box' => $curPPB,
-                    'pieces_per_m2' => $ppm2[$i] ?? 0,
+                    'pieces_per_m2' => $curPPM2,
                     'boxes_qty' => $bQty,
                     'loose_qty' => $lQty,
                     'length' => $lengths[$i] ?? null,
                     'width' => $widths[$i] ?? null,
-                ]);
-
-                // Update product price metadata if needed
-                try {
-                    $prod = Product::find($pid);
-                    if ($prod) {
-                        $updateData = [];
-                        if ($curSizeMode === 'by_size') {
-                            $updateData['purchase_price_per_m2'] = $price;
-                        } elseif ($isCarton) {
-                            $updateData['purchase_price_per_box'] = $price;
-                            if ($curPPB > 0) $updateData['purchase_price_per_piece'] = $price / $curPPB;
-                        } else {
-                            $updateData['purchase_price_per_piece'] = $price;
-                            if ($curPPB > 0) $updateData['purchase_price_per_box'] = $price * $curPPB;
-                        }
-                        if ($discPercent > 0) $updateData['purchase_discount_percent'] = $discPercent;
-                        if (!empty($updateData)) $prod->update($updateData);
-                    }
-                } catch (\Exception $e) {}
+                    'itemWh' => $itemWh,
+                    'isCarton' => $isCarton,
+                ];
 
                 $subtotal += $lineTotal;
             }
 
+            // Pass 2: Allocate Landed Extra Cost (Shipping + Cutting) and create purchase items
+            foreach ($parsedRows as $row) {
+                $lineTotal = $row['lineTotal'];
+                $qty = $row['qty'];
+                $price = $row['price'];
+                $isCarton = $row['isCarton'];
+                $curPPB = $row['pieces_per_box'];
+
+                if ($subtotal > 0 && $totalLandedExtra > 0) {
+                    $allocatedExtra = ($lineTotal / $subtotal) * $totalLandedExtra;
+                } else {
+                    $allocatedExtra = 0;
+                }
+
+                if ($isCarton) {
+                    [$boxes, $loose] = self::parseCartonQty($row['rawQtyStr']);
+                    $cartonEquiv = $boxes + ($curPPB > 0 ? ($loose / $curPPB) : 0);
+                    $extraPerUnit = $cartonEquiv > 0 ? ($allocatedExtra / $cartonEquiv) : 0;
+                } else {
+                    $extraPerUnit = $qty > 0 ? ($allocatedExtra / $qty) : 0;
+                }
+
+                $effectivePrice = round($price + $extraPerUnit, 2);
+
+                PurchaseItem::create([
+                    'purchase_id' => $purchase->id,
+                    'warehouse_id' => $row['itemWh'],
+                    'product_id' => $row['pid'],
+                    'unit' => $row['unit'],
+                    'price' => $price,
+                    'effective_price' => $effectivePrice,
+                    'allocated_extra_cost' => round($allocatedExtra, 2),
+                    'item_discount' => $row['discAmount'],
+                    'qty' => $qty,
+                    'received_qty' => ($purchaseType === 'direct_purchase' && $statusPurchase === 'approved') ? $qty : 0,
+                    'line_total' => $lineTotal,
+                    'color' => $row['color'],
+                    'size_mode' => $row['size_mode'],
+                    'pieces_per_box' => $curPPB,
+                    'pieces_per_m2' => $row['pieces_per_m2'],
+                    'boxes_qty' => $row['boxes_qty'],
+                    'loose_qty' => $row['loose_qty'],
+                    'length' => $row['length'],
+                    'width' => $row['width'],
+                ]);
+
+                // Update product price metadata with effective landed cost
+                try {
+                    $prod = Product::find($row['pid']);
+                    if ($prod) {
+                        $updateData = [];
+                        if ($row['size_mode'] === 'by_size') {
+                            $updateData['purchase_price_per_m2'] = $effectivePrice;
+                            if ($curPPM2 > 0) {
+                                $pieceP = round($effectivePrice / $curPPM2, 2);
+                                $updateData['purchase_price_per_piece'] = $pieceP;
+                                if ($curPPB > 0) $updateData['purchase_price_per_box'] = round($pieceP * $curPPB, 2);
+                            }
+                        } elseif ($isCarton) {
+                            $updateData['purchase_price_per_box'] = $effectivePrice;
+                            $pieceP = $curPPB > 0 ? round($effectivePrice / $curPPB, 2) : $effectivePrice;
+                            $updateData['purchase_price_per_piece'] = $pieceP;
+                            if ($curPPM2 > 0) $updateData['purchase_price_per_m2'] = round($pieceP * $curPPM2, 2);
+                        } else {
+                            $updateData['purchase_price_per_piece'] = $effectivePrice;
+                            $updateData['purchase_price_per_box'] = $curPPB > 0 ? round($effectivePrice * $curPPB, 2) : $effectivePrice;
+                            if ($curPPM2 > 0) $updateData['purchase_price_per_m2'] = round($effectivePrice * $curPPM2, 2);
+                        }
+                        if ($row['discPercent'] > 0) {
+                            $updateData['purchase_discount_percent'] = $row['discPercent'];
+                        }
+
+                        // Also update JSON variants if they exist
+                        $purchasedVariant = $row['color'];
+                        if (!empty($prod->color)) {
+                            $rawProductVariants = $prod->color;
+                            $b64 = base64_decode($rawProductVariants, true);
+                            if ($b64 !== false && (str_starts_with(trim($b64), '[') || str_starts_with(trim($b64), '{'))) {
+                                $rawProductVariants = $b64;
+                            }
+                            $decodedProdVariants = json_decode($rawProductVariants, true);
+                            if (is_string($decodedProdVariants)) {
+                                $decodedProdVariants = json_decode($decodedProdVariants, true);
+                            }
+                            
+                            $searchName = null; $searchColor = null; $searchSize = null;
+                            if ($purchasedVariant) {
+                                $pv = base64_decode($purchasedVariant, true);
+                                if ($pv !== false && (str_starts_with(trim($pv), '[') || str_starts_with(trim($pv), '{'))) {
+                                    $purchasedVariant = $pv;
+                                }
+                                $decPV = json_decode($purchasedVariant, true);
+                                if (is_string($decPV)) $decPV = json_decode($decPV, true);
+                                if (is_array($decPV)) {
+                                    $searchName = $decPV['name'] ?? null;
+                                    $searchColor = $decPV['color'] ?? null;
+                                    $searchSize = $decPV['size'] ?? null;
+                                }
+                            }
+
+                            if (is_array($decodedProdVariants)) {
+                                $variantsModified = false;
+                                foreach ($decodedProdVariants as &$v) {
+                                    $match = false;
+                                    if ($searchName && isset($v['name']) && $v['name'] == $searchName) { $match = true; }
+                                    elseif ($searchColor && isset($v['color']) && $v['color'] == $searchColor && isset($v['size']) && $v['size'] == $searchSize) { $match = true; }
+                                    elseif (!$searchName && !$searchColor) { $match = true; }
+                                    
+                                    if ($match) {
+                                        $v['purch_price'] = $effectivePrice;
+                                        $variantsModified = true;
+                                    }
+                                }
+                                if ($variantsModified) {
+                                    $updateData['color'] = json_encode($decodedProdVariants);
+                                }
+                            }
+                        }
+
+                        if (!empty($updateData)) $prod->update($updateData);
+                    }
+                } catch (\Exception $e) {}
+            }
+
             $discount = (float) ($request->discount ?? 0);
-            $extraCost = (float) ($request->extra_cost ?? 0);
             $purchaseExpense = (float) ($request->purchase_expense ?? 0);
-            $netAmount = max(0, ($subtotal - $discount) + $extraCost);
+            // Vendor Net Amount = (subtotal - discount) ONLY (Shipping & cutting are separate expenses)
+            $netAmount = max(0, $subtotal - $discount);
 
             $purchase->update([
                 'subtotal' => $subtotal,
                 'discount' => $discount,
                 'additional_discount' => $discount,
-                'extra_cost' => $extraCost,
+                'extra_cost' => 0,
+                'shipping_charges' => $shippingCharges,
+                'cutting_charges' => $cuttingCharges,
                 'purchase_expense' => $purchaseExpense,
                 'expense_account_id' => $request->input('expense_account_id'),
                 'net_amount' => $netAmount,
                 'due_amount' => $netAmount,
             ]);
+
+            // Sync Auto Expense Voucher for Shipping, Cutting and Freight expenses
+            $this->syncPurchaseExpenseVoucher($purchase);
 
             // Only run approval (stock in + ledger + auto-GRN) if Direct Purchase
             if ($purchaseType === 'direct_purchase' && $statusPurchase === 'approved') {
@@ -1503,12 +1623,12 @@ class PurchaseController extends Controller
             'note' => 'nullable|string',
             'discount' => 'nullable|numeric|min:0',
             'extra_cost' => 'nullable|numeric|min:0',
+            'shipping_charges' => 'nullable|numeric|min:0',
             'purchase_expense' => 'nullable|numeric|min:0',
-            'expense_account_id' => 'nullable|exists:accounts,id',
             'expense_account_id' => 'nullable|exists:accounts,id',
 
             'product_id' => 'array',
-            'product_id.*' => 'nullable|string',
+            'product_id.*' => 'nullable',
             'qty' => 'array',
             'qty.*' => 'nullable|required_with:product_id.*|numeric|min:0',
             'price' => 'array',
@@ -1565,6 +1685,12 @@ class PurchaseController extends Controller
             // Delete old items
             $purchase->items()->delete();
 
+            $shippingCharges = 0;
+            $cuttingCharges = 0;
+            $purchaseExpense = (float) ($request->purchase_expense ?? 0);
+            $totalLandedExtra = $purchaseExpense;
+            $extraCost = 0;
+
             $subtotal = 0;
             $newMap = collect();
             $sizeModeCache = [];
@@ -1586,6 +1712,8 @@ class PurchaseController extends Controller
             $widths = $request->width ?? [];
             $colors = $request->color ?? [];
 
+            // Pass 1: Parse rows & calculate line totals and subtotal
+            $parsedRows = [];
             foreach ($pids as $i => $rawPid) {
                 // If variant ID was passed as "id|variant|data"
                 $pid = $rawPid;
@@ -1673,52 +1801,107 @@ class PurchaseController extends Controller
 
                 $itemWh = !empty($request->item_warehouse_id[$i]) ? (int)$request->item_warehouse_id[$i] : (!empty($request->warehouse_id[$i]) ? (int)$request->warehouse_id[$i] : ($warehouseId ?: 1));
 
-                PurchaseItem::create([
-                    'purchase_id' => $purchase->id,
-                    'warehouse_id' => $itemWh,
-                    'product_id' => $pid,
+                $parsedRows[] = [
+                    'pid' => $pid,
                     'unit' => $unit,
                     'price' => $price,
-                    'item_discount' => $discAmount,
+                    'discPercent' => $discPercent,
+                    'discAmount' => $discAmount,
                     'qty' => $qty,
-                    'line_total' => $lineTotal,
+                    'rawQtyStr' => $rawQtyStr,
+                    'lineTotal' => $lineTotal,
                     'color' => $colors[$i] ?? null,
-
-                    // Snapshots
-                    'size_mode' => $sizeModes[$i] ?? null,
+                    'size_mode' => $curSizeMode,
                     'pieces_per_box' => $curPPB,
-                    'pieces_per_m2' => $ppm2[$i] ?? 0,
+                    'pieces_per_m2' => $curPPM2,
                     'boxes_qty' => $bQty,
                     'loose_qty' => $lQty,
                     'length' => $lengths[$i] ?? null,
                     'width' => $widths[$i] ?? null,
+                    'itemWh' => $itemWh,
+                    'baseQty' => $baseQty,
+                    'isCarton' => $isCarton,
+                ];
+
+                $subtotal += $lineTotal;
+            }
+
+            // Pass 2: Landed Cost Allocation & Purchase Items creation
+            foreach ($parsedRows as $row) {
+                $lineTotal = $row['lineTotal'];
+                $qty = $row['qty'];
+                $price = $row['price'];
+                $isCarton = $row['isCarton'];
+                $curPPB = $row['pieces_per_box'];
+
+                if ($subtotal > 0 && $totalLandedExtra > 0) {
+                    $allocatedExtra = ($lineTotal / $subtotal) * $totalLandedExtra;
+                } else {
+                    $allocatedExtra = 0;
+                }
+
+                if ($isCarton) {
+                    [$boxes, $loose] = self::parseCartonQty($row['rawQtyStr']);
+                    $cartonEquiv = $boxes + ($curPPB > 0 ? ($loose / $curPPB) : 0);
+                    $extraPerUnit = $cartonEquiv > 0 ? ($allocatedExtra / $cartonEquiv) : 0;
+                } else {
+                    $extraPerUnit = $qty > 0 ? ($allocatedExtra / $qty) : 0;
+                }
+
+                $effectivePrice = round($price + $extraPerUnit, 2);
+
+                PurchaseItem::create([
+                    'purchase_id' => $purchase->id,
+                    'warehouse_id' => $row['itemWh'],
+                    'product_id' => $row['pid'],
+                    'unit' => $row['unit'],
+                    'price' => $price,
+                    'effective_price' => $effectivePrice,
+                    'allocated_extra_cost' => round($allocatedExtra, 2),
+                    'item_discount' => $row['discAmount'],
+                    'qty' => $qty,
+                    'line_total' => $lineTotal,
+                    'color' => $row['color'],
+
+                    // Snapshots
+                    'size_mode' => $row['size_mode'],
+                    'pieces_per_box' => $curPPB,
+                    'pieces_per_m2' => $row['pieces_per_m2'],
+                    'boxes_qty' => $row['boxes_qty'],
+                    'loose_qty' => $row['loose_qty'],
+                    'length' => $row['length'],
+                    'width' => $row['width'],
                 ]);
 
-                // --- Automatically Update Product Purchase Price ---
+                // --- Automatically Update Product Purchase Price with Landed Effective Cost ---
                 try {
-                    $prod = Product::find($pid);
+                    $prod = Product::find($row['pid']);
                     if ($prod) {
                         $updateData = [];
-                        if ($curSizeMode === 'by_size') {
-                            $updateData['purchase_price_per_m2'] = $price;
+                        if ($row['size_mode'] === 'by_size') {
+                            $updateData['purchase_price_per_m2'] = $effectivePrice;
+                            if ($curPPM2 > 0) {
+                                $pieceP = round($effectivePrice / $curPPM2, 2);
+                                $updateData['purchase_price_per_piece'] = $pieceP;
+                                if ($curPPB > 0) $updateData['purchase_price_per_box'] = round($pieceP * $curPPB, 2);
+                            }
                         } elseif ($isCarton) {
-                            $updateData['purchase_price_per_box'] = $price;
-                            if ($curPPB > 0) {
-                                $updateData['purchase_price_per_piece'] = $price / $curPPB;
-                            }
+                            $updateData['purchase_price_per_box'] = $effectivePrice;
+                            $pieceP = $curPPB > 0 ? round($effectivePrice / $curPPB, 2) : $effectivePrice;
+                            $updateData['purchase_price_per_piece'] = $pieceP;
+                            if ($curPPM2 > 0) $updateData['purchase_price_per_m2'] = round($pieceP * $curPPM2, 2);
                         } else {
-                            $updateData['purchase_price_per_piece'] = $price;
-                            if ($curPPB > 0) {
-                                $updateData['purchase_price_per_box'] = $price * $curPPB;
-                            }
+                            $updateData['purchase_price_per_piece'] = $effectivePrice;
+                            $updateData['purchase_price_per_box'] = $curPPB > 0 ? round($effectivePrice * $curPPB, 2) : $effectivePrice;
+                            if ($curPPM2 > 0) $updateData['purchase_price_per_m2'] = round($effectivePrice * $curPPM2, 2);
                         }
                         
-                        if ($discPercent > 0) {
-                            $updateData['purchase_discount_percent'] = $discPercent;
+                        if ($row['discPercent'] > 0) {
+                            $updateData['purchase_discount_percent'] = $row['discPercent'];
                         }
 
                         // --- Also update JSON variants if they exist ---
-                        $purchasedVariant = $colors[$i] ?? null;
+                        $purchasedVariant = $row['color'];
                         if (!empty($prod->color)) {
                             $rawProductVariants = $prod->color;
                             $b64 = base64_decode($rawProductVariants, true);
@@ -1754,7 +1937,7 @@ class PurchaseController extends Controller
                                     elseif (!$searchName && !$searchColor) { $match = true; } // Update all if no specific variant identified
                                     
                                     if ($match) {
-                                        $v['purch_price'] = $price;
+                                        $v['purch_price'] = $effectivePrice;
                                         $variantsModified = true;
                                     }
                                 }
@@ -1773,16 +1956,15 @@ class PurchaseController extends Controller
                 }
                 // ---------------------------------------------------
 
-                $subtotal += $lineTotal;
-                $newKey = $pid . '_' . $itemWh;
-                $newMap[$newKey] = ($newMap[$newKey] ?? 0) + $baseQty;
+                $newKey = $row['pid'] . '_' . $row['itemWh'];
+                $newMap[$newKey] = ($newMap[$newKey] ?? 0) + $row['baseQty'];
             }
 
             // Totals calculation
             $discount = (float) ($request->discount ?? 0);
-            $extraCost = (float) ($request->extra_cost ?? 0);
             $purchaseExpense = (float) ($request->purchase_expense ?? 0);
-            $netAmount = max(0, ($subtotal - $discount) + $extraCost);
+            // Vendor Net Amount = (subtotal - discount) ONLY (Shipping & cutting are separate expenses)
+            $netAmount = max(0, $subtotal - $discount);
 
             // Payments calculation from request
             $paymentAccountIds = $request->input('payment_account_id', []);
@@ -1815,7 +1997,9 @@ class PurchaseController extends Controller
                 'subtotal' => $subtotal,
                 'discount' => $discount,
                 'additional_discount' => $discount,
-                'extra_cost' => $extraCost,
+                'extra_cost' => 0,
+                'shipping_charges' => $shippingCharges,
+                'cutting_charges' => $cuttingCharges,
                 'purchase_expense' => $purchaseExpense,
                 'expense_account_id' => $request->input('expense_account_id'),
                 'net_amount' => $netAmount,
@@ -2780,14 +2964,17 @@ class PurchaseController extends Controller
      */
     public function syncPurchaseExpenseVoucher(Purchase $purchase)
     {
-        $extraCost = (float) ($purchase->purchase_expense ?? 0);
+        $shipping = (float) ($purchase->shipping_charges ?? 0);
+        $cutting = (float) ($purchase->cutting_charges ?? 0);
+        $otherExpense = (float) ($purchase->purchase_expense ?? 0);
+        $totalExpense = $shipping + $cutting + $otherExpense;
 
         // Find existing expense voucher linked to this purchase
         $existing = \App\Models\ExpenseVoucher::where('reference_no', $purchase->invoice_no)
             ->where('type', 'purchase')
             ->first();
 
-        if ($extraCost <= 0) {
+        if ($totalExpense <= 0) {
             if ($existing) {
                 \App\Models\JournalEntry::where('source_type', \App\Models\ExpenseVoucher::class)
                     ->where('source_id', $existing->id)
@@ -2838,16 +3025,30 @@ class PurchaseController extends Controller
         $entryDate = $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : date('Y-m-d');
         $evid = $existing ? $existing->evid : \App\Models\ExpenseVoucher::generateInvoiceNo();
 
+        // Build descriptive remarks detailing shipping, cutting, and other expenses
+        $breakdownParts = [];
+        if ($shipping > 0) {
+            $breakdownParts[] = 'Shipping: Rs. ' . number_format($shipping, 2);
+        }
+        if ($cutting > 0) {
+            $breakdownParts[] = 'Cutting: Rs. ' . number_format($cutting, 2);
+        }
+        if ($otherExpense > 0) {
+            $breakdownParts[] = 'Carriage/Other: Rs. ' . number_format($otherExpense, 2);
+        }
+        $breakdownStr = !empty($breakdownParts) ? ' (' . implode(', ', $breakdownParts) . ')' : '';
+        $remarks = "Purchase Expense for #{$purchase->invoice_no}{$breakdownStr}";
+
         $voucherData = [
             'evid' => $evid,
             'entry_date' => $entryDate,
             'type' => 'purchase',
             'party_id' => $purchase->vendor_id,
-            'remarks' => "Purchase Expense for #{$purchase->invoice_no}",
+            'remarks' => $remarks,
             'reference_no' => $purchase->invoice_no,
             'row_account_id' => json_encode([$catId]),
-            'amount' => json_encode([$extraCost]),
-            'total_amount' => $extraCost,
+            'amount' => json_encode([$totalExpense]),
+            'total_amount' => $totalExpense,
         ];
 
         if ($existing) {
@@ -2865,9 +3066,9 @@ class PurchaseController extends Controller
         $journalService->recordEntry(
             $voucher,
             $expenseAccount->id,
-            $extraCost, // Debit
-            0,          // Credit
-            "Purchase Expense for #{$purchase->invoice_no}",
+            $totalExpense, // Debit
+            0,             // Credit
+            $remarks,
             $entryDate
         );
 
@@ -2875,9 +3076,9 @@ class PurchaseController extends Controller
         $journalService->recordEntry(
             $voucher,
             $cashAccountId,
-            0,          // Debit
-            $extraCost, // Credit
-            "Paid Purchase Expense for #{$purchase->invoice_no} via {$deductAccountTitle}",
+            0,             // Debit
+            $totalExpense, // Credit
+            "Paid Purchase Expense for #{$purchase->invoice_no} via {$deductAccountTitle}{$breakdownStr}",
             $entryDate
         );
     }

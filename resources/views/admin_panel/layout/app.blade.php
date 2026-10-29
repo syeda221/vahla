@@ -1096,6 +1096,8 @@
                                         @can('inventory.onhand.view')
                                             <li><a href="{{ route('reports.onhand') }}"><i class="fas fa-warehouse"></i>
                                                     Inventory On-Hand</a></li>
+                                            <li><a href="{{ route('report.product.ledger') }}"><i class="fa-solid fa-boxes-stacked"></i>
+                                                    Product Ledger</a></li>
                                         @endcan
                                         
                                         @can('profit.loss.report.view')

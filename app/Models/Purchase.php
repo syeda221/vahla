@@ -17,6 +17,8 @@ class Purchase extends Model
         'discount'      => 'decimal:2',
         'additional_discount' => 'decimal:2',
         'extra_cost'    => 'decimal:2',
+        'shipping_charges' => 'decimal:2',
+        'cutting_charges'  => 'decimal:2',
         'purchase_expense' => 'decimal:2',
         'net_amount'    => 'decimal:2',
         'paid_amount'   => 'decimal:2',

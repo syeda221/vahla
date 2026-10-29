@@ -7,82 +7,90 @@
     <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
+    <style id="dynamicPageSize">
         @page {
-            size: A5 landscape;
-            margin: 6mm;
+            size: A4 portrait;
+            margin: 4mm 6mm;
         }
-
+    </style>
+    <style>
         :root {
             --pad-blue: #1e40af;
-            --pad-light-blue: #e0f2fe;
+            --pad-header-bg: #0284c7;
+            --pad-light-blue: #eff6ff;
+            --pad-alt-row: #f0f9ff;
             --pad-border: #3b82f6;
             --pad-text: #1e3a8a;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
             background-color: #f1f5f9;
             color: #000;
             font-family: 'Segoe UI', Arial, sans-serif;
-            font-size: 12px;
+            font-size: 10.5px;
             margin: 0;
             padding: 0;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
 
+        /* Action Bar */
         .action-bar {
             background: #ffffff;
             border-bottom: 1px solid #cbd5e1;
-            padding: 10px 24px;
+            padding: 10px 20px;
             position: sticky;
             top: 0;
             z-index: 1000;
         }
 
-        .challan-container {
-            max-width: 290mm;
-            margin: 20px auto;
-            padding: 0 10px;
-        }
-
-        .challan-sheet {
-            margin-bottom: 25px;
-        }
-
-        .invoice-page {
-            width: 285mm;
+        /* A4 Sheet Container */
+        .a4-sheet {
+            width: 202mm;
             max-width: 100%;
-            height: 100mm;
-            min-height: 100mm;
-            max-height: 102mm;
-            margin: 0 auto;
+            margin: 15px auto;
+            background: transparent;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Each Half Sheet (Top Half & Bottom Half) */
+        .invoice-half {
+            width: 100%;
+            height: 139mm;
+            max-height: 140mm;
+            min-height: 137mm;
             background: #ffffff;
-            padding: 4mm 8mm 3mm 8mm;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            position: relative;
-            color: var(--pad-text);
+            border: 1.5px solid var(--pad-border);
+            border-radius: 4px;
+            padding: 3.5mm 6mm 2.5mm 6mm;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             overflow: hidden;
-            border: 1px solid #cbd5e1;
+            position: relative;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
+            margin-bottom: 0;
         }
 
-        /* Dotted cut line between original and duplicate */
+        /* Cut Divider Line between 2 Halves */
         .cut-divider {
-            display: none;
-            width: 285mm;
-            max-width: 100%;
-            margin: 2mm auto;
+            width: 100%;
+            height: 4mm;
+            margin: 1.5mm 0;
+            display: flex;
             align-items: center;
             justify-content: center;
-            height: 4mm;
             position: relative;
-            font-size: 10px;
+            font-size: 9px;
             color: #64748b;
             font-weight: bold;
+            letter-spacing: 0.5px;
         }
 
         .cut-divider::before {
@@ -97,94 +105,81 @@
 
         .cut-divider span {
             background: #f1f5f9;
-            padding: 0 10px;
+            padding: 0 8px;
             position: relative;
             z-index: 2;
-        }
-
-        /* Default: hide duplicate */
-        .copy-duplicate {
-            display: none;
-        }
-
-        /* When two-copies-mode is enabled */
-        body.two-copies-mode .copy-duplicate {
-            display: flex;
-        }
-
-        body.two-copies-mode .cut-divider {
-            display: flex;
-        }
-
-        body.two-copies-mode .cut-divider span {
-            background: #ffffff;
         }
 
         /* Header Layout */
         .pad-header {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 4px;
-            border-bottom: 2px solid var(--pad-border);
-            padding-bottom: 4px;
+            align-items: flex-start;
+            margin-bottom: 3px;
+            border-bottom: 1.5px solid var(--pad-border);
+            padding-bottom: 3px;
         }
 
         .logo-section {
-            width: 42%;
+            width: 44%;
             display: flex;
-            align-items: center;
-            gap: 12px;
+            flex-direction: column;
+            align-items: flex-start;
         }
 
         .logo-img {
-            max-width: 120px;
+            max-width: 130px;
             height: auto;
-            max-height: 46px;
+            max-height: 38px;
             object-fit: contain;
+            margin-bottom: 2px;
         }
 
         .logo-text-box {
             display: flex;
-            flex-direction: column;
+            align-items: baseline;
+            gap: 5px;
+            margin-bottom: 2px;
         }
 
-        .company-title {
-            margin: 0;
+        .logo-title {
+            font-size: 20px;
             font-weight: 900;
-            font-size: 18px;
             color: #1e40af;
-            line-height: 1.1;
+            line-height: 1;
+            letter-spacing: -0.5px;
         }
 
-        .company-subtitle {
-            font-size: 9px;
-            font-weight: bold;
-            letter-spacing: 0.8px;
-            color: #1e40af;
-            margin-bottom: 3px;
+        .logo-subtitle {
+            font-size: 8.5px;
+            font-weight: 700;
+            color: #0284c7;
+            letter-spacing: 1px;
         }
 
         .badge-wrapper {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
+            margin-top: 2px;
         }
 
         .invoice-badge {
-            background-color: #3b82f6;
+            background-color: var(--pad-header-bg);
             color: #ffffff;
             text-align: center;
-            font-weight: bold;
+            font-weight: 800;
             font-size: 11px;
-            padding: 2px 8px;
+            padding: 2.5px 12px;
             display: inline-block;
             letter-spacing: 1.2px;
-            border-radius: 2px;
+            border-radius: 3px;
+            text-transform: uppercase;
         }
 
         .copy-type-tag {
-            font-size: 9.5px;
-            font-weight: bold;
+            font-size: 9px;
+            font-weight: 700;
             color: #1e40af;
             border: 1px solid var(--pad-border);
             padding: 1px 6px;
@@ -193,17 +188,17 @@
         }
 
         .company-details-section {
-            width: 56%;
-            font-size: 10px;
+            width: 55%;
+            font-size: 9px;
             line-height: 1.35;
             color: var(--pad-text);
             text-align: right;
         }
 
         .deals-in {
-            font-weight: bold;
+            font-weight: 700;
             margin-bottom: 2px;
-            font-size: 10px;
+            font-size: 9px;
         }
         
         .deals-in span {
@@ -215,13 +210,13 @@
             align-items: center;
             justify-content: flex-end;
             margin-bottom: 1px;
-            font-size: 9.5px;
+            font-size: 8.5px;
         }
 
         .contact-line i {
             color: #0ea5e9;
             margin-left: 5px;
-            font-size: 9.5px;
+            font-size: 9px;
             width: 12px;
             text-align: center;
         }
@@ -230,24 +225,25 @@
         .meta-section {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
             font-weight: bold;
-            font-size: 11.5px;
+            font-size: 10px;
         }
         
         .meta-left {
-            width: 65%;
+            width: 60%;
         }
         
         .meta-row {
-            margin-bottom: 2px;
+            margin-bottom: 1.5px;
             display: flex;
             align-items: baseline;
         }
         
         .meta-label {
-            width: 45px;
-            font-size: 11px;
+            width: 48px;
+            font-size: 9.5px;
+            color: var(--pad-text);
         }
         
         .meta-value {
@@ -255,42 +251,69 @@
             flex-grow: 1;
             padding-left: 5px;
             color: #1e40af;
-            font-size: 11.5px;
+            font-size: 10px;
+            min-height: 13px;
         }
 
         .meta-right {
-            width: 32%;
+            width: 38%;
         }
 
         /* Pad Table */
         .pad-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
             border: 1px solid var(--pad-border);
         }
 
         .pad-table thead th {
-            background-color: #374151;
+            background-color: var(--pad-header-bg);
             color: #ffffff;
             text-align: center;
-            padding: 3px 6px;
-            font-size: 10.5px;
+            padding: 3px 5px;
+            font-size: 9px;
             border: 1px solid var(--pad-border);
             text-transform: uppercase;
+            font-weight: 700;
         }
 
         .pad-table tbody td {
             border: 1px solid var(--pad-border);
-            padding: 2.5px 6px;
-            height: 19px;
+            padding: 2.5px 5px;
+            height: 18px;
             color: #000;
-            font-size: 11px;
+            font-size: 9.5px;
             vertical-align: middle;
         }
         
         .pad-table tbody tr:nth-child(even) {
-            background-color: rgba(224, 242, 254, 0.35);
+            background-color: var(--pad-alt-row);
+        }
+
+        .totals-label {
+            text-align: right;
+            font-weight: bold;
+            padding: 2px 5px;
+            font-size: 9.5px;
+            border-top: 1px solid var(--pad-border);
+        }
+
+        .totals-val {
+            text-align: right;
+            font-weight: bold;
+            padding: 2px 5px;
+            font-size: 9.5px;
+            border-top: 1px solid var(--pad-border);
+        }
+
+        /* Hide Rate toggle */
+        .hide-rate .rate-col {
+            display: none !important;
+        }
+        
+        .hide-rate .desc-col {
+            width: 60% !important;
         }
 
         /* Footer */
@@ -299,286 +322,122 @@
             justify-content: space-between;
             align-items: flex-end;
             margin-top: 2px;
-            font-size: 10.5px;
+            font-size: 9px;
             font-weight: bold;
+            padding-top: 1px;
+            position: relative;
         }
 
         .footer-note {
-            width: 55%;
-            font-size: 9.5px;
+            width: 50%;
+            font-size: 8.5px;
             color: var(--pad-text);
             line-height: 1.25;
         }
 
         .footer-sign {
-            width: 40%;
+            width: 45%;
             text-align: right;
             position: relative;
             color: var(--pad-text);
-            font-size: 10.5px;
+            font-size: 9.5px;
+            padding-right: 5px;
         }
 
         .footer-stamp {
-            width: 95px;
+            width: 70px;
             height: auto;
             position: absolute;
-            right: 15px;
-            bottom: 10px;
+            right: 120px;
+            bottom: -5px;
             opacity: 0.85;
             transform: rotate(-10deg);
             mix-blend-mode: multiply;
             pointer-events: none;
         }
 
-        .hide-rate .rate-col {
+        /* Single Copy Mode (hides bottom half on screen & print) */
+        body.single-copy-mode .invoice-half.bottom-half,
+        body.single-copy-mode .cut-divider,
+        body.single-copy-mode .continuation-divider {
             display: none !important;
         }
-        
-        .hide-rate .desc-col {
-            width: 65% !important;
-        }
 
-                /* Print Media Rules */
+        /* Print Media Rules */
         @media print {
-            @page {
-                size: A5 landscape;
-                margin: 6mm;
-            }
-
-            /* Hide everything except the DC */
-            nav,
-            .navbar,
-            .sidebar,
-            .action-bar,
-            .no-print,
-            header,
-            footer,
-            button,
-            .btn {
-                display: none !important;
-            }
-
             body { 
                 background: #ffffff !important; 
                 margin: 0 !important; 
                 padding: 0 !important; 
-                font-family: 'Segoe UI', Arial, sans-serif !important;
-                font-size: 8.5px !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
 
-            .challan-container {
-                margin: 0 !important;
+            .action-bar, .no-print { 
+                display: none !important; 
+            }
+
+            .a4-sheet {
+                margin: 0 auto !important;
                 padding: 0 !important;
                 max-width: 100% !important;
                 width: 100% !important;
-            }
-
-            .challan-sheet {
-                margin: 0 !important;
-                padding: 0 !important;
-                page-break-after: auto !important;
-                break-after: auto !important;
-                height: auto !important;
-                max-height: none !important;
-                display: block !important;
-                width: 100% !important;
-            }
-
-            .invoice-page { 
-                margin: 0 auto !important; 
-                box-shadow: none !important; 
-                border: 1px solid var(--pad-border) !important;
-                padding: 2.5mm 4mm !important;
-                width: 100% !important;
-                max-width: 198mm !important;
-                height: 134mm !important;
-                max-height: 134mm !important;
-                min-height: 130mm !important;
-                box-sizing: border-box !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
                 page-break-after: always !important;
                 break-after: page !important;
+                height: 286mm !important;
+                max-height: 288mm !important;
                 display: flex !important;
                 flex-direction: column !important;
                 justify-content: space-between !important;
+            }
+
+            .a4-sheet:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+
+            .invoice-half { 
+                margin: 0 auto !important; 
+                box-shadow: none !important; 
+                border: 1.5px solid var(--pad-border) !important;
+                padding: 3.5mm 6mm 2.5mm 6mm !important;
+                width: 100% !important;
+                max-width: 198mm !important;
+                height: 139mm !important;
+                max-height: 140mm !important;
+                min-height: 137mm !important;
+                box-sizing: border-box !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
                 overflow: hidden !important;
             }
 
-            .challan-sheet:last-child .invoice-page:last-child {
-                page-break-after: auto !important;
-                break-after: auto !important;
+            .cut-divider {
+                display: flex !important;
+                height: 4mm !important;
+                margin: 1.5mm 0 !important;
             }
 
-            /* Proportional header scaling */
-            .pad-header {
-                margin-bottom: 2px !important;
-                padding-bottom: 2px !important;
-                border-bottom: 1.5px solid var(--pad-border) !important;
-            }
-
-            .logo-section {
-                width: 42% !important;
-                gap: 8px !important;
-            }
-
-            .logo-img {
-                max-width: 75px !important;
-                height: auto !important;
-                max-height: 28px !important;
-            }
-
-            .company-title {
-                font-size: 13px !important;
-                line-height: 1.1 !important;
-            }
-
-            .company-subtitle {
-                font-size: 7.5px !important;
-                margin-bottom: 1px !important;
-            }
-
-            .badge-wrapper {
-                gap: 4px !important;
+            .cut-divider span {
+                background: #ffffff !important;
             }
 
             .invoice-badge {
-                font-size: 8.5px !important;
-                padding: 1px 5px !important;
-                background-color: #3b82f6 !important;
+                background-color: #0284c7 !important;
                 color: #ffffff !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-
-            .copy-type-tag {
-                font-size: 7.5px !important;
-                padding: 1px 4px !important;
-                background: var(--pad-light-blue) !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-
-            .company-details-section {
-                width: 56% !important;
-                font-size: 7.5px !important;
-                line-height: 1.25 !important;
-            }
-
-            .deals-in {
-                font-size: 7.5px !important;
-                margin-bottom: 1px !important;
-            }
-
-            .contact-line {
-                font-size: 7.5px !important;
-                margin-bottom: 1px !important;
-            }
-
-            .contact-line i {
-                font-size: 7.5px !important;
-                width: 10px !important;
-            }
-
-            /* Proportional meta section scaling */
-            .meta-section {
-                margin-bottom: 2px !important;
-                font-size: 8.5px !important;
-            }
-
-            .meta-label {
-                width: 40px !important;
-                font-size: 8.5px !important;
-            }
-
-            .meta-value {
-                font-size: 8.5px !important;
-                padding-left: 4px !important;
-            }
-
-            .meta-row {
-                margin-bottom: 1px !important;
-            }
-
-            /* Proportional table scaling & page-break rules */
-            .pad-table {
-                margin-bottom: 2px !important;
-                width: 100% !important;
-                border-collapse: collapse !important;
-            }
-
-            .pad-table thead {
-                display: table-header-group !important;
-            }
-
-            .pad-table tr {
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
             }
 
             .pad-table thead th {
-                background-color: #374151 !important;
+                background-color: #0284c7 !important;
                 color: #ffffff !important;
-                padding: 2px 4px !important;
-                font-size: 8px !important;
-                line-height: 1.15 !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-
-            .pad-table tbody td {
-                padding: 2px 4px !important;
-                height: auto !important;
-                font-size: 8px !important;
-                line-height: 1.15 !important;
             }
 
             .pad-table tbody tr:nth-child(even) {
-                background-color: rgba(224, 242, 254, 0.45) !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
+                background-color: #f0f9ff !important;
             }
 
-            /* Footer, Stamp & Signature scaling */
-            .pad-footer {
-                margin-top: 2px !important;
-                font-size: 8px !important;
-            }
-
-            .footer-note {
-                font-size: 7.5px !important;
-                line-height: 1.2 !important;
-            }
-
-            .footer-sign {
-                font-size: 8px !important;
-            }
-
-            .footer-stamp {
-                width: 60px !important;
-                max-height: 40px !important;
-                right: 10px !important;
-                bottom: 5px !important;
-            }
-
-            /* Single copy mode */
-            body:not(.two-copies-mode) .challan-sheet {
+            body.single-copy-mode .a4-sheet {
                 height: auto !important;
-            }
-
-            /* Two copies mode */
-            body.two-copies-mode .invoice-page {
-                page-break-after: always !important;
-                break-after: page !important;
-            }
-            body.two-copies-mode .challan-sheet:last-child .invoice-page:last-child {
-                page-break-after: auto !important;
-                break-after: auto !important;
-            }
-            body.two-copies-mode .cut-divider {
-                display: none !important;
             }
         }
     </style>
@@ -591,12 +450,12 @@
                 Delivery Challan Preview
             </span>
             <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 ms-2" style="font-size: 11px;">
-                <i class="fa-solid fa-print me-1"></i> A5 Landscape (Half A4)
+                <i class="fa-solid fa-print me-1"></i> <span id="modeBadgeText">A4 Portrait (2 Halves / Copies)</span>
             </span>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <button onclick="toggleCopies()" class="btn btn-outline-primary shadow-sm" id="toggleCopiesBtn">
-                <i class="fa-solid fa-copy me-1"></i> <span id="copiesBtnText">Print 2 Copies (A4 Full)</span>
+            <button onclick="toggleSingleOrTwoCopies()" class="btn btn-outline-primary shadow-sm" id="toggleCopiesBtn">
+                <i class="fa-solid fa-copy me-1"></i> <span id="copiesBtnText">Print 1 Copy (Half Sheet)</span>
             </button>
             <button onclick="toggleRate()" class="btn btn-warning shadow-sm" id="toggleRateBtn">
                 <i class="fa-solid fa-eye-slash me-1"></i> Hide Rate
@@ -613,257 +472,176 @@
     @php
         $saleItemsColl = collect($saleItems);
         $totalItems = $saleItemsColl->count();
-        // 1-6 items fit on 1 half-page; 7+ items use 5 per page
-        $chunkSize = $totalItems <= 6 ? 6 : 5;
-        $itemChunks = $saleItemsColl->chunk($chunkSize);
-        $totalPages = $itemChunks->count();
+        $itemsPerHalf = 5; // 5 items fit on half page with full totals & footer
+        $isTwoCopies = $totalItems <= $itemsPerHalf;
+
         $customerName = $sale->walkin_name ?? ($sale->customer_relation->customer_name ?? 'Walk-in Customer');
+
+        // Find linked Delivery Challan(s)
+        $linkedDcs = \App\Models\DeliveryChallan::where('invoice_id', $sale->id)->get();
+        if ($linkedDcs->isEmpty() && !empty($sale->parent_quotation_id)) {
+            $linkedDcs = \App\Models\DeliveryChallan::where('sale_id', $sale->parent_quotation_id)->get();
+        }
+        if ($linkedDcs->isEmpty()) {
+            $linkedDcs = \App\Models\DeliveryChallan::where('sale_id', $sale->id)->get();
+        }
+        $dcNumbersList = $linkedDcs->pluck('dc_number')->filter()->unique()->values();
+        $dcNumbers = $dcNumbersList->implode(', ');
+        if (empty($dcNumbers)) {
+            $dcNumbers = $sale->invoice_no ? $sale->invoice_no . '-DC01' : 'DC-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
+        }
+
+        // LPO reference
+        $lpoReference = $sale->reference ?? '';
+        if ($dcNumbersList->contains($lpoReference) || str_starts_with($lpoReference, 'Invoice for DC') || $lpoReference === 'Consolidated DC Invoice') {
+            $lpoReference = '';
+            foreach ($linkedDcs as $ldc) {
+                if (!empty($ldc->reference_no)) {
+                    $lpoReference = $ldc->reference_no;
+                    break;
+                }
+            }
+        }
+
+        $paidAmount = (float)($sale->cash ?? 0) + (float)($sale->card ?? 0);
+        $finalTotal = (float)($sale->total_net ?? 0);
+        $dueAmount = max(0, $finalTotal - $paidAmount);
+
+        // Logo resolution
+        $companyLogo = null;
+        $possibleLogos = [
+            'storage/settings/wyGOxkWbD91UardqrGhOkinftnF5Kq49l5eWo3Ur.png',
+            'storage/settings/fDqhIpEeIMkyRwN8po7SyXQwIG8VoN5csDC2D82n.png',
+            'uploads/settings/1786018001_logo.png',
+            \App\Models\Setting::get('company_logo'),
+        ];
+        foreach ($possibleLogos as $pl) {
+            if (!empty($pl) && file_exists(public_path($pl))) {
+                $companyLogo = $pl;
+                break;
+            }
+        }
     @endphp
 
-    <div class="challan-container">
-        @foreach ($itemChunks as $pageIndex => $chunk)
-            <div class="challan-sheet">
-                @foreach (['ORIGINAL', 'DUPLICATE'] as $copyType)
-                    @if ($copyType === 'DUPLICATE')
-                        <div class="cut-divider">
-                            <span><i class="fa-solid fa-scissors me-1"></i> CUT HERE</span>
-                        </div>
-                    @endif
+    @if ($isTwoCopies)
+        {{-- CASE 1: Few Items (<= 5) -> Two identical copies (Original & Duplicate) on 1 single A4 sheet --}}
+        <div class="a4-sheet">
+            <!-- TOP HALF: Original Copy -->
+            <div class="invoice-half top-half">
+                @include('admin_panel.sale.partials.dc_half_body', [
+                    'copyType' => 'ORIGINAL',
+                    'chunkItems' => $saleItemsColl,
+                    'isFirstPart' => true,
+                    'isLastPart' => true,
+                    'startIndex' => 1,
+                    'companyLogo' => $companyLogo,
+                    'sale' => $sale,
+                    'customerName' => $customerName,
+                    'lpoReference' => $lpoReference,
+                    'dcNumbers' => $dcNumbers,
+                    'finalTotal' => $finalTotal,
+                    'paidAmount' => $paidAmount,
+                    'dueAmount' => $dueAmount,
+                ])
+            </div>
 
-                    <div class="invoice-page {{ $copyType === 'DUPLICATE' ? 'copy-duplicate' : 'copy-original' }}">
-                        <div class="invoice-content-top">
-                            <!-- Header -->
-                            <div class="pad-header">
-                                <div class="logo-section">
-                                    @php
-                                        $companyLogo = \App\Models\Setting::get('company_logo');
-                                        if (!$companyLogo || !file_exists(public_path($companyLogo))) {
-                                            $companyLogo = 'assets/images/dummy_logo.svg';
-                                        }
-                                    @endphp
-                                    <img src="{{ asset($companyLogo) }}" alt="Company Logo" class="logo-img">
-                                    <div class="logo-text-box">
-                                        <h2 class="company-title">{{ \App\Models\Setting::get('company_name', 'VAHLA') }}</h2>
-                                        <div class="company-subtitle">INDUSTRIAL SOLUTIONS</div>
-                                        <div class="badge-wrapper">
-                                            <span class="invoice-badge">DELIVERY CHALLAN</span>
-                                            <span class="copy-type-tag">{{ $copyType }}</span>
-                                            @if($totalPages > 1)
-                                                <span class="copy-type-tag">Page {{ $pageIndex + 1 }}/{{ $totalPages }}</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="company-details-section">
-                                    <div class="deals-in">
-                                        <span>DEALS IN:</span> {{ \App\Models\Setting::get('deals_in', 'Fasteners, Bearing, Lifting Equipments, V-belt, PPE\'s, Hand & Cutting Etc') }}
-                                    </div>
-                                    <div class="contact-line">
-                                        <span dir="ltr">{{ \App\Models\Setting::get('company_address', 'Shop No. 91/1, Opp: Fg Girls High School, Saddar Bazar Hyderabad Sindh') }}</span>
-                                        <i class="fa-solid fa-location-dot"></i>
-                                    </div>
-                                    <div class="contact-line">
-                                        <span dir="ltr">{{ \App\Models\Setting::get('company_phone', '+92-022-2781224 - 2730663') }}</span>
-                                        <i class="fa-solid fa-phone"></i>
-                                    </div>
-                                    @if(\App\Models\Setting::get('company_email'))
-                                    <div class="contact-line">
-                                        <span dir="ltr">{{ \App\Models\Setting::get('company_email', 'vahlamillstore@hotmail.com') }}</span>
-                                        <i class="fa-solid fa-envelope"></i>
-                                    </div>
-                                    @endif
-                                </div>
-                            </div>
+            <!-- CUT DIVIDER -->
+            <div class="cut-divider">
+                <span><i class="fa-solid fa-scissors me-1"></i> CUT HERE</span>
+            </div>
 
-                            <!-- Meta -->
-                            <div class="meta-section">
-                                <div class="meta-left">
-                                    <div class="meta-row">
-                                        <div class="meta-label">No:</div>
-                                        <div class="meta-value">{{ $sale->invoice_no ?: ('DC-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT)) }}</div>
-                                    </div>
-                                    <div class="meta-row">
-                                        <div class="meta-label">M/s.</div>
-                                        <div class="meta-value">{{ $customerName }}</div>
-                                    </div>
-                                    <div style="font-size: 10.5px; color: #1e40af; font-weight: bold; margin-top: 2px;">
-                                        Please Receive the following goods, your order No. <span style="border-bottom: 1px solid var(--pad-border); display: inline-block; width: 140px; color: #000; font-weight: normal; text-align: center;">{{ $sale->reference ?? '' }}</span>
-                                    </div>
-                                </div>
-                                <div class="meta-right">
-                                    <div class="meta-row">
-                                        <div class="meta-label" style="width:40px;">Date:</div>
-                                        <div class="meta-value">{{ \Carbon\Carbon::parse($sale->sale_date ?? now())->format('d-m-Y') }}</div>
-                                    </div>
-                                    @if($totalPages > 1)
-                                    <div class="meta-row">
-                                        <div class="meta-label" style="width:40px;">Page:</div>
-                                        <div class="meta-value">{{ $pageIndex + 1 }} of {{ $totalPages }}</div>
-                                    </div>
-                                    @endif
-                                </div>
-                            </div>
+            <!-- BOTTOM HALF: Duplicate Copy -->
+            <div class="invoice-half bottom-half">
+                @include('admin_panel.sale.partials.dc_half_body', [
+                    'copyType' => 'DUPLICATE',
+                    'chunkItems' => $saleItemsColl,
+                    'isFirstPart' => true,
+                    'isLastPart' => true,
+                    'startIndex' => 1,
+                    'companyLogo' => $companyLogo,
+                    'sale' => $sale,
+                    'customerName' => $customerName,
+                    'lpoReference' => $lpoReference,
+                    'dcNumbers' => $dcNumbers,
+                    'finalTotal' => $finalTotal,
+                    'paidAmount' => $paidAmount,
+                    'dueAmount' => $dueAmount,
+                ])
+            </div>
+        </div>
+    @else
+        {{-- CASE 2: More Items (> 5) -> Table continues on the bottom half of the same A4 sheet --}}
+        @php
+            // Split across halves (5 items per half)
+            $halves = $saleItemsColl->chunk($itemsPerHalf);
+            $totalHalves = $halves->count();
+            // Group halves into pairs (2 halves = 1 A4 sheet)
+            $sheets = $halves->chunk(2);
+        @endphp
 
-                            <!-- Table -->
-                            <table class="pad-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 5%;">S.NO</th>
-                                        <th class="desc-col" style="width: 52%; text-align: left;">DESCRIPTION</th>
-                                        <th style="width: 14%;">DELIVERED QTY</th>
-                                        <th class="rate-col" style="width: 14%;">RATE</th>
-                                        <th style="width: 15%;">UNIT</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($chunk as $item)
-                                        @php
-                                            $sNo = ($pageIndex * $chunkSize) + $loop->iteration;
-                                            $piecesPerBox = (float)($item['pieces_per_box'] ?? 1);
-                                            if ($piecesPerBox <= 0) $piecesPerBox = 1;
-                                            
-                                            $totalPieces = (float)($item['total_pieces'] ?? 0);
-                                            $boxes = floor($totalPieces / $piecesPerBox);
-                                            $loosePieces = fmod($totalPieces, $piecesPerBox);
-                                            $sizeMode = $item['size_mode'] ?? 'by_size';
-                                            $variantUnit = strtolower($item['variant_unit'] ?? '');
-                                            
-                                            // Disp Qty & Unit
-                                            $rawSoldQty = (float)($item['qty_box'] ?? 0);
-                                            $convFactor = (float)($item['pieces_per_box'] ?? 1);
-                                            if ($convFactor <= 0) $convFactor = 1;
-                                            $vUnitRaw = trim($item['variant_unit'] ?? '');
-                                            $vUnitLower = strtolower($vUnitRaw);
+        @foreach ($sheets as $sheetIndex => $sheetHalves)
+            <div class="a4-sheet">
+                @php
+                    $firstHalf = $sheetHalves->first();
+                    $secondHalf = $sheetHalves->count() > 1 ? $sheetHalves->last() : null;
+                    
+                    $firstHalfIndex = $sheetIndex * 2;
+                    $firstStartIndex = ($firstHalfIndex * $itemsPerHalf) + 1;
+                    $isFirstHalfLast = ($firstHalfIndex + 1) === $totalHalves;
 
-                                            $dispQty = $totalPieces;
-                                            $dispUnit = 'Pcs';
+                    $secondHalfIndex = ($sheetIndex * 2) + 1;
+                    $secondStartIndex = ($secondHalfIndex * $itemsPerHalf) + 1;
+                    $isSecondHalfLast = ($secondHalfIndex + 1) === $totalHalves;
+                @endphp
 
-                                            if (!empty($vUnitRaw) && !in_array($vUnitLower, ['standard', 'default', '-'])) {
-                                                if ($rawSoldQty > 0) {
-                                                    $dispQty = $rawSoldQty;
-                                                } elseif ($convFactor > 0 && abs($convFactor - 1.0) > 0.00001) {
-                                                    $dispQty = round($totalPieces / $convFactor, 4);
-                                                } else {
-                                                    $dispQty = $totalPieces;
-                                                }
-                                                $dispUnit = ucfirst($vUnitRaw);
-                                            } elseif ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
-                                                $kgWt = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
-                                                if ($vUnitLower === 'gm' || $vUnitLower === 'g' || $sizeMode === 'by_gm') {
-                                                    $dispQty = $kgWt * 1000;
-                                                    $dispUnit = 'Gm';
-                                                } else {
-                                                    $dispQty = $kgWt;
-                                                    $dispUnit = 'Kg';
-                                                }
-                                            } elseif ($sizeMode === 'by_meter') {
-                                                $dispQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
-                                                $dispUnit = 'Mtr';
-                                            } elseif ($sizeMode === 'by_feet') {
-                                                $dispQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
-                                                $dispUnit = 'Ft';
-                                            } elseif ($sizeMode === 'by_pieces') {
-                                                $dispQty = $totalPieces;
-                                                $dispUnit = 'Pcs';
-                                            } elseif ($sizeMode === 'by_cartons' || $sizeMode === 'by_size') {
-                                                $piecesPerBox = (int)$convFactor;
-                                                if ($piecesPerBox <= 0) $piecesPerBox = 1;
-                                                $boxes = floor($totalPieces / $piecesPerBox);
-                                                $loosePieces = fmod($totalPieces, $piecesPerBox);
+                <!-- TOP HALF -->
+                <div class="invoice-half top-half">
+                    @include('admin_panel.sale.partials.dc_half_body', [
+                        'copyType' => 'PAGE ' . ($firstHalfIndex + 1) . '/' . $totalHalves,
+                        'chunkItems' => $firstHalf,
+                        'isFirstPart' => ($firstHalfIndex === 0),
+                        'isLastPart' => $isFirstHalfLast,
+                        'startIndex' => $firstStartIndex,
+                        'companyLogo' => $companyLogo,
+                        'sale' => $sale,
+                        'customerName' => $customerName,
+                        'lpoReference' => $lpoReference,
+                        'dcNumbers' => $dcNumbers,
+                        'finalTotal' => $finalTotal,
+                        'paidAmount' => $paidAmount,
+                        'dueAmount' => $dueAmount,
+                    ])
+                </div>
 
-                                                if ($boxes > 0 && $loosePieces == 0) {
-                                                    $dispQty = $boxes;
-                                                    $dispUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
-                                                } elseif ($boxes == 0 && $loosePieces > 0) {
-                                                    $dispQty = $loosePieces;
-                                                    $dispUnit = 'Pcs';
-                                                } elseif ($boxes > 0 && $loosePieces > 0) {
-                                                    $dispQty = "{$boxes}.{$loosePieces}";
-                                                    $dispUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
-                                                } else {
-                                                    $dispQty = $totalPieces;
-                                                    $dispUnit = 'Pcs';
-                                                }
-                                            } else {
-                                                $dispQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
-                                                $dispUnit = !empty($vUnitRaw) ? ucfirst($vUnitRaw) : 'Pcs';
-                                            }
-
-                                            // Format product title
-                                            $vName = $item['variant_name'] ?? '';
-                                            $vSize = (!empty($item['size_val']) && $item['size_val'] !== '-') ? $item['size_val'] : '';
-                                            $vColor = (!empty($item['color_val']) && $item['color_val'] !== '-') ? $item['color_val'] : '';
-                                            
-                                            $vExtra = [];
-                                            if ($vSize) $vExtra[] = $vSize;
-                                            if ($vColor) $vExtra[] = $vColor;
-                                            $vExtraStr = count($vExtra) > 0 ? ' (' . implode(', ', $vExtra) . ')' : '';
-
-                                            $productTitle = $item['item_name'];
-                                            if ($vName && strtolower(trim($vName)) !== strtolower(trim($productTitle))) {
-                                                $productTitle .= ' - ' . $vName;
-                                            }
-                                            $productTitle .= $vExtraStr;
-                                        @endphp
-
-                                        <tr>
-                                            <td style="text-align: center;">{{ $sNo }}</td>
-                                            <td class="desc-col" style="font-weight: 500;">
-                                                {{ $productTitle }}
-                                                @if($sizeMode === 'by_kg' && !in_array(strtolower($dispUnit), ['kg', 'gm', 'g']) && $totalPieces > 0)
-                                                    <div style="font-size: 10px; color: #64748b; font-weight: normal;">
-                                                        (Weight: {{ ($totalPieces == (int)$totalPieces) ? (int)$totalPieces : number_format($totalPieces, 2) }} Kg)
-                                                    </div>
-                                                @elseif($sizeMode === 'by_meter' && !in_array(strtolower($dispUnit), ['m', 'mtr', 'meter', 'mm']) && $totalPieces > 0)
-                                                    <div style="font-size: 10px; color: #64748b; font-weight: normal;">
-                                                        (Length: {{ ($totalPieces == (int)$totalPieces) ? (int)$totalPieces : number_format($totalPieces, 2) }} Mtr)
-                                                    </div>
-                                                @elseif($sizeMode === 'by_feet' && !in_array(strtolower($dispUnit), ['ft', 'feet', 'in', 'inch', 'inches']) && $totalPieces > 0)
-                                                    <div style="font-size: 10px; color: #64748b; font-weight: normal;">
-                                                        (Length: {{ ($totalPieces == (int)$totalPieces) ? (int)$totalPieces : number_format($totalPieces, 2) }} Ft)
-                                                    </div>
-                                                @endif
-                                                @if(!empty($item['description']))
-                                                    <div style="font-size: 10px; color: #475569; font-weight: normal;">
-                                                        {{ $item['description'] }}
-                                                    </div>
-                                                @endif
-                                            </td>
-                                            <td style="text-align: center; font-weight: bold;">{{ ($dispQty == (int)$dispQty) ? (int)$dispQty : number_format($dispQty, 3) }}</td>
-                                            <td class="rate-col" style="text-align: right;">{{ number_format((float)($item['price'] ?? 0), 2) }}</td>
-                                            <td style="text-align: center;">{{ $dispUnit }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Bottom Area -->
-                        <div class="invoice-content-bottom">
-                            @if ($loop->parent->last && !empty($sale->remarks))
-                                <div style="font-size: 10px; margin-bottom: 2px;">
-                                    <strong>Remarks:</strong> {{ $sale->remarks }}
-                                </div>
-                            @endif
-
-                            <!-- Footer -->
-                            <div class="pad-footer">
-                                <div class="footer-note">
-                                    Received the above goods in good order & condition<br><br><i>Receiver's Signature</i>
-                                </div>
-                                <div class="footer-sign">
-                                    <img src="{{ asset('assets/images/stamp.png') }}" class="footer-stamp" alt="Stamp">
-                                    For {{ \App\Models\Setting::get('company_name', 'VAHLA MILL STORE') }}
-                                </div>
-                            </div>
-                        </div>
+                @if ($secondHalf)
+                    <!-- CUT / CONTINUATION DIVIDER -->
+                    <div class="cut-divider">
+                        <span><i class="fa-solid fa-arrow-down me-1"></i> CONTINUED ON NEXT HALF</span>
                     </div>
-                @endforeach
+
+                    <!-- BOTTOM HALF -->
+                    <div class="invoice-half bottom-half">
+                        @include('admin_panel.sale.partials.dc_half_body', [
+                            'copyType' => 'PAGE ' . ($secondHalfIndex + 1) . '/' . $totalHalves,
+                            'chunkItems' => $secondHalf,
+                            'isFirstPart' => false,
+                            'isLastPart' => $isSecondHalfLast,
+                            'startIndex' => $secondStartIndex,
+                            'companyLogo' => $companyLogo,
+                            'sale' => $sale,
+                            'customerName' => $customerName,
+                            'lpoReference' => $lpoReference,
+                            'dcNumbers' => $dcNumbers,
+                            'finalTotal' => $finalTotal,
+                            'paidAmount' => $paidAmount,
+                            'dueAmount' => $dueAmount,
+                        ])
+                    </div>
+                @endif
             </div>
         @endforeach
-    </div>
-    
+    @endif
+
     <script>
         function toggleRate() {
             document.body.classList.toggle('hide-rate');
@@ -879,18 +657,20 @@
             }
         }
 
-        function toggleCopies() {
-            document.body.classList.toggle('two-copies-mode');
+        function toggleSingleOrTwoCopies() {
+            document.body.classList.toggle('single-copy-mode');
             const btnText = document.getElementById('copiesBtnText');
-            const btn = document.getElementById('toggleCopiesBtn');
-            if (document.body.classList.contains('two-copies-mode')) {
-                btnText.innerText = 'Single Copy Mode';
-                btn.classList.remove('btn-outline-primary');
-                btn.classList.add('btn-primary');
+            const badgeText = document.getElementById('modeBadgeText');
+            const dynStyle = document.getElementById('dynamicPageSize');
+
+            if (document.body.classList.contains('single-copy-mode')) {
+                btnText.innerText = 'Print 2 Halves (Full A4)';
+                badgeText.innerText = 'A5 Landscape (Single Half)';
+                dynStyle.innerHTML = '@page { size: A5 landscape; margin: 4mm; }';
             } else {
-                btnText.innerText = 'Print 2 Copies (A4 Full)';
-                btn.classList.remove('btn-primary');
-                btn.classList.add('btn-outline-primary');
+                btnText.innerText = 'Print 1 Copy (Half Sheet)';
+                badgeText.innerText = 'A4 Portrait (2 Halves / Copies)';
+                dynStyle.innerHTML = '@page { size: A4 portrait; margin: 4mm 6mm; }';
             }
         }
     </script>

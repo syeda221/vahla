@@ -10,7 +10,8 @@ class Sale extends Model
     protected $fillable = [
         'customer_id', 'warehouse_id', 'reference', 'total_amount_Words', 'total_bill_amount',
         'overall_discount_type', 'overall_discount_value',
-        'total_extradiscount', 'shipping_charges', 'total_net', 'cash', 'card', 'change', 'change_account_id',
+        'total_extradiscount', 'shipping_charges', 'cutting_charges', 'total_net', 'cash', 'card', 'change', 'change_account_id',
+        'advance_adjusted', 'advance_settlement_note',
         'total_items', 'discount_type', 'sale_status', 'invoice_no', 'is_booking',
         'sale_type', 'delivery_status', 'parent_quotation_id', 'attachment'
     ];
@@ -131,4 +132,29 @@ class Sale extends Model
             }
         });
     }
+
+    protected $casts = [
+        'advance_adjusted' => 'decimal:2',
+        'cash' => 'decimal:2',
+        'card' => 'decimal:2',
+        'shipping_charges' => 'decimal:2',
+        'cutting_charges' => 'decimal:2',
+        'total_net' => 'decimal:2',
+    ];
+
+    public function getTotalPaidAttribute()
+    {
+        $paid = (float)($this->cash ?? 0) + (float)($this->card ?? 0) + (float)($this->advance_adjusted ?? 0);
+        $change = (float)($this->change ?? 0);
+        if ($change > 0) {
+            $paid = max(0, $paid - $change);
+        }
+        return min((float)$this->total_net, max(0, $paid));
+    }
+
+    public function getDueAmountAttribute()
+    {
+        return max(0, (float)$this->total_net - $this->total_paid);
+    }
+
 }

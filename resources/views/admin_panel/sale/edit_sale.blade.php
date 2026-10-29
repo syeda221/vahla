@@ -779,9 +779,12 @@
                         <!-- Dispatch Location / Warehouse -->
                         <div class="col-sm-6 col-md-2 col-lg-2">
                             <label class="meta-label"><i class="fas fa-warehouse text-primary"></i> Dispatch Location</label>
+                            @php
+                                $mainStoreId = \App\Models\Warehouse::where('warehouse_name', 'like', '%Main Store%')->value('id') ?? 1;
+                            @endphp
                             <select class="form-select fw-bold" id="warehouseSelect" name="header_warehouse_id">
-                                @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
-                                    <option value="{{ $wh->id }}" {{ (($sale->warehouse_id ?? 1) == $wh->id) ? 'selected' : '' }}>
+                                @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
+                                    <option value="{{ $wh->id }}" {{ (($sale->warehouse_id ?? $mainStoreId) == $wh->id) ? 'selected' : '' }}>
                                         {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
                                     </option>
                                 @endforeach
@@ -1270,8 +1273,8 @@
                                                     <!-- LOCATION (Warehouse / Shop) -->
                                                     <td class="col-wh" style="width: 135px; min-width: 125px;">
                                                         <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem;">
-                                                            @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
-                                                                <option value="{{ $wh->id }}" {{ (($item->warehouse_id ?? $sale->warehouse_id ?? 1) == $wh->id) ? 'selected' : '' }}>
+                                                            @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
+                                                                <option value="{{ $wh->id }}" {{ (($item->warehouse_id ?? $sale->warehouse_id ?? $mainStoreId) == $wh->id) ? 'selected' : '' }}>
                                                                     {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
                                                                 </option>
                                                             @endforeach
@@ -1411,8 +1414,8 @@
                                                 </td>
                                                 <td class="col-wh" style="width: 135px; min-width: 125px;">
                                                     <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem;">
-                                                        @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
-                                                            <option value="{{ $wh->id }}" {{ ($wh->is_shop || $loop->first) ? 'selected' : '' }}>
+                                                        @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
+                                                            <option value="{{ $wh->id }}" {{ $wh->id == $mainStoreId ? 'selected' : '' }}>
                                                                 {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
                                                             </option>
                                                         @endforeach
@@ -1497,6 +1500,13 @@
                                     <div class="input-group input-group-sm" style="width: 125px;">
                                         <span class="input-group-text bg-light text-muted px-1" style="font-size:0.7rem; font-weight:600;">Rs</span>
                                         <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold text-primary shipping-charges-input" id="shippingChargesInput" name="shipping_charges" value="{{ (float)($sale->shipping_charges ?? 0) > 0 ? (float)$sale->shipping_charges : 0 }}" placeholder="0" style="font-size:0.78rem; height: 26px;">
+                                    </div>
+                                </div>
+                                <div class="summary-row align-items-center">
+                                    <span class="text-muted d-flex align-items-center gap-1"><i class="fas fa-cut text-warning" style="font-size:0.75rem;"></i> Cutting</span>
+                                    <div class="input-group input-group-sm" style="width: 125px;">
+                                        <span class="input-group-text bg-light text-muted px-1" style="font-size:0.7rem; font-weight:600;">Rs</span>
+                                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold text-warning cutting-charges-input" id="cuttingChargesInput" name="cutting_charges" value="{{ (float)($sale->cutting_charges ?? 0) > 0 ? (float)$sale->cutting_charges : 0 }}" placeholder="0" style="font-size:0.78rem; height: 26px;">
                                     </div>
                                 </div>
                                 <div class="summary-row">
@@ -1604,6 +1614,14 @@
                         <div class="input-group input-group-sm" style="width: 115px;">
                             <span class="input-group-text bg-light text-muted px-1" style="font-size:0.7rem; font-weight:600;">Rs</span>
                             <input type="number" step="any" min="0" class="form-control text-end fw-bold text-primary shipping-charges-input" id="bottomShippingChargesInput" value="{{ (float)($sale->shipping_charges ?? 0) > 0 ? (float)$sale->shipping_charges : 0 }}" placeholder="0" style="font-size:0.78rem;">
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;"><i class="fas fa-cut text-warning me-1"></i>Cutting</span>
+                        <div class="input-group input-group-sm" style="width: 115px;">
+                            <span class="input-group-text bg-light text-muted px-1" style="font-size:0.7rem; font-weight:600;">Rs</span>
+                            <input type="number" step="any" min="0" class="form-control text-end fw-bold text-warning cutting-charges-input" id="bottomCuttingChargesInput" value="{{ (float)($sale->cutting_charges ?? 0) > 0 ? (float)$sale->cutting_charges : 0 }}" placeholder="0" style="font-size:0.78rem;">
                         </div>
                     </div>
 

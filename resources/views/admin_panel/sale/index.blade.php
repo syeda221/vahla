@@ -656,6 +656,92 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal: Settle Invoice from Customer Advance (Option 2) -->
+    <div class="modal fade" id="modalSettleAdvance" tabindex="-1" role="dialog" aria-labelledby="modalSettleAdvanceLabel" aria-hidden="true" style="z-index: 99999;">
+        <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 480px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+                <div class="modal-header border-0 px-3 py-3 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #fff9e6 0%, #fff2c6 100%);">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px; background: #ffe082; color: #b78103;">
+                            <i class="fas fa-coins fa-lg"></i>
+                        </div>
+                        <div>
+                            <h6 class="modal-title fw-bold text-dark mb-0" id="modalSettleAdvanceLabel">Settle from Customer Advance</h6>
+                            <small class="text-muted" style="font-size: 11px;">Adjust invoice balance directly from customer credit</small>
+                        </div>
+                    </div>
+                    <button type="button" class="close text-dark" data-dismiss="modal" aria-label="Close" style="font-size: 1.6rem; line-height: 1; opacity: 0.7;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                
+                <div class="modal-body p-3">
+                    <div id="settleAdvanceLoading" class="text-center py-4">
+                        <div class="spinner-border text-warning" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        <div class="text-muted small mt-2">Checking customer advance details...</div>
+                    </div>
+
+                    <div id="settleAdvanceError" class="alert alert-danger d-none py-2 px-3 small"></div>
+
+                    <form id="formSettleAdvance" class="d-none">
+                        @csrf
+                        <input type="hidden" id="settleSaleId" name="sale_id">
+
+                        <!-- Invoice & Customer Summary Card -->
+                        <div class="p-3 mb-3 rounded-3" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted small">Customer:</span>
+                                <span class="fw-bold text-dark small" id="settleCustName">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted small">Invoice No:</span>
+                                <span class="badge badge-secondary text-white fw-bold font-monospace" id="settleInvoiceNo">—</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-muted small">Invoice Due Amount:</span>
+                                <span class="fw-bold text-danger font-monospace fs-6" id="settleInvoiceDue">Rs. 0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                <span class="text-muted small d-flex align-items-center gap-1">
+                                    <i class="fas fa-wallet text-warning"></i> Available Advance:
+                                </span>
+                                <span class="fw-bold text-success font-monospace fs-6" id="settleCustAdvance">Rs. 0.00</span>
+                            </div>
+                        </div>
+
+                        <!-- Settlement Amount Input -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label fw-bold text-dark small mb-0">Amount to Settle (Rs.)</label>
+                                <button type="button" class="btn btn-link p-0 text-primary small text-decoration-none fw-bold" id="btnFillMaxAdvance" style="font-size: 11px;">
+                                    <i class="fas fa-bolt me-1"></i>Settle Full Due
+                                </button>
+                            </div>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text bg-white fw-bold text-muted border-right-0">Rs.</span>
+                                </div>
+                                <input type="number" step="0.01" min="0.01" class="form-control fw-bold font-monospace border-left-0" id="settleAmountInput" name="amount" required style="font-size: 1.05rem;">
+                            </div>
+                            <small class="text-muted d-block mt-1" style="font-size: 11px;">
+                                Maximum settleable from advance: <span class="fw-bold text-dark" id="settleMaxAllowed">Rs. 0.00</span>
+                            </small>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-end pt-2 border-top">
+                            <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-warning btn-sm fw-bold px-3 text-dark shadow-sm" id="btnSubmitSettleAdvance">
+                                <i class="fas fa-check-circle me-1"></i> Settle Invoice
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('js')
@@ -1089,6 +1175,128 @@
                     $('#orderModalInvoiceNo').val(nextNo);
                 }
             });
+
+            // --- Settle from Customer Advance (Option 2) ---
+            $(document).on('click', '.btn-settle-advance-modal', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                var $btn = $(this).closest('.btn-settle-advance-modal');
+                var saleId = $btn.attr('data-sale-id') || $btn.data('sale-id');
+                var invNo = $btn.attr('data-invoice-no') || $btn.data('invoice-no');
+
+                if (!saleId) {
+                    console.error('Sale ID not found');
+                    return;
+                }
+
+                $('#settleSaleId').val(saleId);
+                $('#settleInvoiceNo').text(invNo || ('#' + saleId));
+                $('#settleAdvanceLoading').show().removeClass('d-none');
+                $('#formSettleAdvance').hide().addClass('d-none');
+                $('#settleAdvanceError').hide().addClass('d-none');
+
+                // Open modal reliably via jQuery Bootstrap 4
+                $('#modalSettleAdvance').modal('show');
+
+                $.ajax({
+                    url: "{{ url('sales') }}/" + saleId + "/advance-info",
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(res) {
+                        $('#settleAdvanceLoading').hide().addClass('d-none');
+                        if (!res.success) {
+                            $('#settleAdvanceError').text(res.message || 'Could not fetch advance details.').show().removeClass('d-none');
+                            return;
+                        }
+
+                        if (!res.can_settle && res.available_advance <= 0.001) {
+                            $('#settleAdvanceError').html('<i class="fas fa-exclamation-triangle me-1"></i> Customer <strong>' + res.customer_name + '</strong> has no advance balance (Available Advance: Rs. 0.00).').show().removeClass('d-none');
+                            return;
+                        }
+
+                        if (res.due_amount <= 0.001) {
+                            $('#settleAdvanceError').html('<i class="fas fa-check-circle me-1"></i> Invoice <strong>#' + res.invoice_no + '</strong> is already fully paid.').show().removeClass('d-none');
+                            return;
+                        }
+
+                        $('#settleCustName').text(res.customer_name);
+                        $('#settleInvoiceDue').text('Rs. ' + parseFloat(res.due_amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                        $('#settleCustAdvance').text('Rs. ' + parseFloat(res.available_advance).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                        
+                        var maxSettle = Math.min(res.available_advance, res.due_amount);
+                        $('#settleMaxAllowed').text('Rs. ' + maxSettle.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                        $('#settleAmountInput').attr('max', maxSettle).val(maxSettle.toFixed(2));
+
+                        $('#btnFillMaxAdvance').off('click').on('click', function() {
+                            $('#settleAmountInput').val(maxSettle.toFixed(2));
+                        });
+
+                        $('#formSettleAdvance').show().removeClass('d-none');
+                    },
+                    error: function(xhr) {
+                        $('#settleAdvanceLoading').hide().addClass('d-none');
+                        var msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Error fetching advance info.';
+                        $('#settleAdvanceError').text(msg).show().removeClass('d-none');
+                    }
+                });
+            });
+
+            $('#formSettleAdvance').on('submit', function(e) {
+                e.preventDefault();
+                var saleId = $('#settleSaleId').val();
+                var amount = $('#settleAmountInput').val();
+                var $btn = $('#btnSubmitSettleAdvance');
+
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Settling...');
+
+                $.ajax({
+                    url: "{{ url('sales') }}/" + saleId + "/settle-advance",
+                    type: 'POST',
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        amount: amount
+                    },
+                    dataType: 'json',
+                    success: function(res) {
+                        $btn.prop('disabled', false).html('<i class="fas fa-check-circle me-1"></i> Settle Invoice');
+                        if (res.success) {
+                            $('#modalSettleAdvance').modal('hide');
+
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Settled!',
+                                    text: res.message,
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                            } else {
+                                alert(res.message);
+                            }
+
+                            setTimeout(function() {
+                                if (typeof window.applySalesFilters === 'function') {
+                                    window.applySalesFilters();
+                                } else {
+                                    window.location.reload();
+                                }
+                            }, 1200);
+                        } else {
+                            alert(res.message || 'Settlement failed.');
+                        }
+                    },
+                    error: function(xhr) {
+                        $btn.prop('disabled', false).html('<i class="fas fa-check-circle me-1"></i> Settle Invoice');
+                        var msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'An error occurred during settlement.';
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({ icon: 'error', title: 'Error', text: msg });
+                        } else {
+                            alert(msg);
+                        }
+                    }
+                });
+            });
         });
     </script>
 
@@ -1189,4 +1397,6 @@
             </div>
         </div>
     </div>
+
+
 @endsection

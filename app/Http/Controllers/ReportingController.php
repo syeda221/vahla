@@ -3447,4 +3447,316 @@ class ReportingController extends Controller
             'customers' => array_values($grouped)
         ]);
     }
+
+    /**
+     * Product Stock Movement Ledger Report Page
+     */
+    public function product_ledger_report(Request $request)
+    {
+        $categories = \App\Models\Category::orderBy("name")->get();
+        $brands = \App\Models\Brand::orderBy("name")->get();
+        $units = \App\Models\Unit::orderBy("name")->get();
+        $warehouses = \App\Models\Warehouse::orderBy("warehouse_name")->get();
+
+        $selectedProductId = $request->query("product_id");
+        $selectedProduct = null;
+        if ($selectedProductId) {
+            $selectedProduct = \App\Models\Product::with("unit")->find($selectedProductId);
+        }
+
+        // Default initial products for quick selection
+        $initialProducts = \App\Models\Product::with("unit")
+            ->where("is_active", 1)
+            ->orderBy("item_name")
+            ->take(50)
+            ->get();
+
+        return view("admin_panel.reporting.product_ledger_report", compact(
+            "categories",
+            "brands",
+            "units",
+            "warehouses",
+            "selectedProduct",
+            "initialProducts"
+        ));
+    }
+
+    /**
+     * AJAX Search Products for Ledger
+     */
+    public function searchProductsForLedger(Request $request)
+    {
+        $term = trim($request->input("q", ""));
+
+        $query = \App\Models\Product::with(["unit", "brand", "category"])
+            ->where("is_active", 1);
+
+        if (!empty($term)) {
+            $query->where(function ($q) use ($term) {
+                $q->where("item_name", "like", "%{$term}%")
+                  ->orWhere("item_code", "like", "%{$term}%")
+                  ->orWhere("model", "like", "%{$term}%");
+            });
+        }
+
+        $products = $query->orderBy("item_name")->take(40)->get();
+
+        $results = [];
+        foreach ($products as $p) {
+            $unitName = $p->unit->name ?? "Pcs";
+            $stock = (float)($p->total_stock_qty ?? 0);
+            $results[] = [
+                "id" => $p->id,
+                "text" => ($p->item_code ? "[" . $p->item_code . "] " : "") . $p->item_name . " (" . $unitName . ")",
+                "item_name" => $p->item_name,
+                "item_code" => $p->item_code ?: "N/A",
+                "unit" => $unitName,
+                "stock" => $stock,
+                "brand" => $p->brand->name ?? "-",
+                "category" => $p->category->name ?? "-",
+            ];
+        }
+
+        return response()->json(["results" => $results]);
+    }
+
+    /**
+     * AJAX Fetch Product Stock Movement Ledger
+     */
+    public function fetchProductLedger(Request $request)
+    {
+        $productId = $request->input("product_id");
+        if (!$productId) {
+            return response()->json(["success" => false, "message" => "Please select a product."], 422);
+        }
+
+        $product = \App\Models\Product::with(["unit", "category", "brand"])->findOrFail($productId);
+        $baseUnit = $product->unit->name ?? "Pcs";
+
+        $startDate = $request->input("start_date", "2000-01-01");
+        $endDate   = $request->input("end_date", date("Y-m-d"));
+        $filterType = $request->input("movement_type", "all");
+
+        // 1. Calculate Opening Stock (all movements before start_date 00:00:00)
+        $openingMovements = DB::table("stock_movements")
+            ->where("product_id", $productId)
+            ->where("created_at", "<", $startDate . " 00:00:00")
+            ->get();
+
+        $openingStock = 0;
+        foreach ($openingMovements as $om) {
+            $omQty = (float)$om->qty;
+            if ($om->type === "in" || ($om->type === "adjustment" && $omQty >= 0)) {
+                $openingStock += abs($omQty);
+            } else {
+                $openingStock -= abs($omQty);
+            }
+        }
+        $openingStock = round($openingStock, 4);
+
+        // 2. Fetch movements in date range
+        $query = DB::table("stock_movements")
+            ->where("product_id", $productId)
+            ->whereBetween("created_at", [$startDate . " 00:00:00", $endDate . " 23:59:59"])
+            ->orderBy("created_at", "asc")
+            ->orderBy("id", "asc");
+
+        if ($filterType === "sale") {
+            $query->whereIn("ref_type", ["sale", "DELIVERY_CHALLAN", "direct_dc"]);
+        } elseif ($filterType === "purchase") {
+            $query->whereIn("ref_type", ["PURCHASE", "GRN"]);
+        } elseif ($filterType === "return") {
+            $query->whereIn("ref_type", ["SALE_RETURN", "PURCHASE_RETURN", "sale_in"]);
+        } elseif ($filterType === "adjustment") {
+            $query->whereIn("ref_type", ["adjustment", "INIT", "IMPORT", "EDIT_INIT"]);
+        }
+
+        $movements = $query->get();
+
+        // 3. Batch load related records for party names & links
+        $saleIds   = $movements->where("ref_type", "sale")->pluck("ref_id")->filter()->unique()->toArray();
+        $purchIds  = $movements->whereIn("ref_type", ["PURCHASE", "PURCHASE_DELETE", "PURCHASE_EDIT"])->pluck("ref_id")->filter()->unique()->toArray();
+        $srIds     = $movements->where("ref_type", "SALE_RETURN")->pluck("ref_id")->filter()->unique()->toArray();
+        $prIds     = $movements->where("ref_type", "PURCHASE_RETURN")->pluck("ref_id")->filter()->unique()->toArray();
+        $dcIds     = $movements->whereIn("ref_type", ["DELIVERY_CHALLAN", "direct_dc"])->pluck("ref_id")->filter()->unique()->toArray();
+        $adjIds    = $movements->where("ref_type", "adjustment")->pluck("ref_id")->filter()->unique()->toArray();
+
+        $salesMap   = !empty($saleIds) ? \App\Models\Sale::with("customer_relation")->whereIn("id", $saleIds)->get()->keyBy("id") : collect();
+        $saleItems  = !empty($saleIds) ? \App\Models\SaleItem::whereIn("sale_id", $saleIds)->where("product_id", $productId)->get()->groupBy("sale_id") : collect();
+
+        $purchMap   = !empty($purchIds) ? \App\Models\Purchase::with("vendor")->whereIn("id", $purchIds)->get()->keyBy("id") : collect();
+        $purchItems = !empty($purchIds) ? \App\Models\PurchaseItem::whereIn("purchase_id", $purchIds)->where("product_id", $productId)->get()->groupBy("purchase_id") : collect();
+
+        $srMap      = !empty($srIds) ? \App\Models\SaleReturn::with("customer")->whereIn("id", $srIds)->get()->keyBy("id") : collect();
+        $prMap      = !empty($prIds) ? \App\Models\PurchaseReturn::with("vendor")->whereIn("id", $prIds)->get()->keyBy("id") : collect();
+        $dcMap      = !empty($dcIds) ? \App\Models\DeliveryChallan::whereIn("id", $dcIds)->get()->keyBy("id") : collect();
+        $adjMap     = !empty($adjIds) ? \App\Models\StockAdjustment::whereIn("id", $adjIds)->get()->keyBy("id") : collect();
+
+        // 4. Chronological Running Balance Computation
+        $runningBalance = $openingStock;
+        $totalInward = 0;
+        $totalOutward = 0;
+        $rows = [];
+
+        foreach ($movements as $idx => $m) {
+            $mQty = (float)$m->qty;
+            $isInward = ($m->type === "in" || ($m->type === "adjustment" && $mQty >= 0));
+            
+            $inQty  = 0;
+            $outQty = 0;
+
+            if ($isInward) {
+                $inQty = abs($mQty);
+                $runningBalance += $inQty;
+                $totalInward += $inQty;
+            } else {
+                $outQty = abs($mQty);
+                $runningBalance -= $outQty;
+                $totalOutward += $outQty;
+            }
+
+            // Defaults
+            $typeBadge = "secondary";
+            $typeLabel = strtoupper($m->type);
+            $voucherNo = "REF #" . ($m->ref_id ?: $m->id);
+            $voucherUrl = null;
+            $partyName = "—";
+            $variantDetail = "";
+            $adjMode = "";
+            $note = $m->note ?: "";
+
+            $refTypeLower = strtolower(trim($m->ref_type ?? ""));
+
+            if ($refTypeLower === "sale") {
+                $typeBadge = "danger";
+                $typeLabel = "Sale";
+                $sale = $salesMap->get($m->ref_id);
+                if ($sale) {
+                    $voucherNo = $sale->invoice_no ?: "INV-" . $sale->id;
+                    $voucherUrl = route("sales.invoice", $sale->id);
+                    $cust = $sale->customer_relation;
+                    $partyName = $cust ? ($cust->name . ($cust->customer_id ? " (" . $cust->customer_id . ")" : "")) : "Walk-in Customer";
+                }
+                // Check if SaleItem was in a variant or pieces
+                $sItems = $saleItems->get($m->ref_id);
+                if ($sItems && $sItems->count() > 0) {
+                    $sItem = $sItems->first();
+                    $sPcs = (float)($sItem->total_pieces > 0 ? $sItem->total_pieces : $sItem->qty);
+                    if ($sPcs > 0 && abs($sPcs - $outQty) > 0.001) {
+                        $variantDetail = number_format($sPcs, 0) . " Pcs";
+                    }
+                }
+            } elseif ($refTypeLower === "purchase") {
+                $typeBadge = "success";
+                $typeLabel = "Purchase";
+                $purch = $purchMap->get($m->ref_id);
+                if ($purch) {
+                    $voucherNo = $purch->purchase_invoice ?: "PINV-" . $purch->id;
+                    $voucherUrl = route("purchase.invoice", $purch->id);
+                    $partyName = $purch->vendor->name ?? "Vendor #" . $purch->vendor_id;
+                }
+            } elseif ($refTypeLower === "purchase_delete") {
+                $typeBadge = "dark";
+                $typeLabel = "Purchase Cancel";
+                $partyName = "Reversal";
+            } elseif ($refTypeLower === "sale_return" || $refTypeLower === "sale_in") {
+                $typeBadge = "info";
+                $typeLabel = "Sale Return";
+                $sr = $srMap->get($m->ref_id);
+                if ($sr) {
+                    $voucherNo = $sr->return_invoice ?: "SR-" . $sr->id;
+                    $partyName = $sr->customer->name ?? "Customer";
+                }
+            } elseif ($refTypeLower === "purchase_return") {
+                $typeBadge = "warning";
+                $typeLabel = "Purchase Return";
+                $pr = $prMap->get($m->ref_id);
+                if ($pr) {
+                    $voucherNo = $pr->return_invoice ?: "PR-" . $pr->id;
+                    $partyName = $pr->vendor->name ?? "Vendor";
+                }
+            } elseif (in_array($refTypeLower, ["delivery_challan", "direct_dc"])) {
+                $typeBadge = "primary";
+                $typeLabel = "Delivery Challan";
+                $dc = $dcMap->get($m->ref_id);
+                if ($dc) {
+                    $voucherNo = $dc->challan_no ?: "DC-" . $dc->id;
+                    $voucherUrl = \Route::has("sales.dc_print") ? route("sales.dc_print", $dc->id) : null;
+                    $partyName = $dc->customer->name ?? "Customer";
+                }
+            } elseif (in_array($refTypeLower, ["import", "init", "opening_stock", "edit_init"])) {
+                $typeBadge = "secondary";
+                $typeLabel = "Opening Stock";
+                $voucherNo = "INIT-STOCK";
+                $partyName = "System Initial";
+            } elseif ($refTypeLower === "adjustment") {
+                $typeBadge = "warning";
+                $typeLabel = "Stock Adjustment";
+                $adj = $adjMap->get($m->ref_id);
+                if ($adj) {
+                    $voucherNo = "ADJ-" . $adj->id;
+                    $partyName = "Audit (" . ucfirst($adj->type) . ")";
+                    $adjMode = ucfirst($adj->type);
+                    if ($adj->type === "set") {
+                        $adjMode .= " (" . (float)$adj->old_stock . " -> " . (float)$adj->new_stock . ")";
+                    }
+                    if ($adj->reason) {
+                        $note = $adj->reason . ($note ? " | " . $note : "");
+                    }
+                }
+            }
+
+            $rows[] = [
+                "index" => $idx + 1,
+                "id" => $m->id,
+                "date" => date("d M Y", strtotime($m->created_at)),
+                "time" => date("h:i A", strtotime($m->created_at)),
+                "datetime_raw" => $m->created_at,
+                "type_badge" => $typeBadge,
+                "type_label" => $typeLabel,
+                "voucher_no" => $voucherNo,
+                "voucher_url" => $voucherUrl,
+                "party_name" => $partyName,
+                "variant_detail" => $variantDetail,
+                "in_qty" => $inQty > 0 ? round($inQty, 4) : 0,
+                "out_qty" => $outQty > 0 ? round($outQty, 4) : 0,
+                "running_balance" => round($runningBalance, 4),
+                "adj_mode" => $adjMode,
+                "note" => $note,
+            ];
+        }
+
+        $netMovement = round($totalInward - $totalOutward, 4);
+        $closingStock = round($runningBalance, 4);
+
+        return response()->json([
+            "success" => true,
+            "product" => [
+                "id" => $product->id,
+                "item_name" => $product->item_name,
+                "item_code" => $product->item_code ?: "N/A",
+                "category" => $product->category->name ?? "-",
+                "brand" => $product->brand->name ?? "-",
+                "base_unit" => $baseUnit,
+                "pieces_per_box" => (float)($product->pieces_per_box ?? 1),
+                "sale_price" => (float)($product->sale_price_per_piece ?: $product->sale_price_per_box ?: 0),
+                "purchase_price" => (float)($product->purchase_price_per_piece ?: $product->purchase_price_per_box ?: 0),
+                "master_stock" => (float)($product->total_stock_qty ?? 0),
+            ],
+            "kpi" => [
+                "opening_stock" => $openingStock,
+                "total_inward" => round($totalInward, 4),
+                "total_outward" => round($totalOutward, 4),
+                "net_movement" => $netMovement,
+                "closing_stock" => $closingStock,
+                "base_unit" => $baseUnit,
+                "is_stock_synced" => abs($closingStock - (float)($product->total_stock_qty ?? 0)) < 0.01,
+            ],
+            "start_date" => date("d M Y", strtotime($startDate)),
+            "end_date" => date("d M Y", strtotime($endDate)),
+            "rows" => $rows,
+            "total_movements" => count($rows),
+        ]);
+    }
+
 }

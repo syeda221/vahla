@@ -10,8 +10,10 @@ class PurchaseItem extends Model
 
     protected $casts = [
         'price'         => 'decimal:2',
+        'effective_price' => 'decimal:2',
         'item_discount' => 'decimal:2',
         'line_total'    => 'decimal:2',
+        'allocated_extra_cost' => 'decimal:2',
     ];
 
     public function purchase()  { return $this->belongsTo(Purchase::class); }

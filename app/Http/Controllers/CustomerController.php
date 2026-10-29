@@ -44,10 +44,14 @@ class CustomerController extends Controller
         $customer = Customer::findOrFail($id);
 
         $data = $customer->toArray();
-        $data['previous_balance'] = $customer->previous_balance;
-        $data['balance_range'] = $customer->balance_range ?? 0;
+        
+        // Fetch latest closing balance from customer ledger
+        $latestLedger = \App\Models\CustomerLedger::where('customer_id', $customer->id)->orderBy('id', 'desc')->first();
+        $closingBalance = $latestLedger ? (float)$latestLedger->closing_balance : (float)($customer->previous_balance ?? 0);
 
-        // Map status to remarks if needed by frontend
+        $data['previous_balance'] = $closingBalance;
+        $data['balance_range'] = $customer->balance_range ?? 0;
+        $data['available_advance'] = $closingBalance < 0 ? abs($closingBalance) : 0;
         $data['remarks'] = $customer->status ?? '';
 
         return response()->json($data);

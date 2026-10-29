@@ -254,9 +254,10 @@
 
         @php
             $saleNet = (float) $sale->total_net;
-            $salePaid = max(0, (float) ($sale->cash ?? 0) + (float) ($sale->card ?? 0));
+            $advAdjusted = (float) ($sale->advance_adjusted ?? 0);
+            $salePaid = max(0, (float) ($sale->cash ?? 0) + (float) ($sale->card ?? 0) + $advAdjusted);
             $saleChange = (float) ($sale->change ?? 0);
-            if ($saleChange > 0) {
+            if ($saleChange > 0 && ((float) ($sale->cash ?? 0) + (float) ($sale->card ?? 0)) > 0) {
                 $salePaid = max(0, $salePaid - $saleChange);
             }
             $salePaid = min($saleNet, $salePaid);
@@ -269,6 +270,11 @@
                 <span class="text-muted">-</span>
             @elseif ($salePaid > 0.001)
                 <span class="text-success fw-bold">Rs. {{ number_format($salePaid, 2) }}</span>
+                @if ($advAdjusted > 0.001)
+                    <br><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-1 py-0" style="font-size: 10px;" title="{{ $sale->advance_settlement_note ?? 'Settled from Customer Advance' }}">
+                        <i class="fas fa-coins me-1 text-warning"></i>Adv: Rs. {{ number_format($advAdjusted, 0) }}
+                    </span>
+                @endif
             @else
                 <span class="text-muted">Rs. 0.00</span>
             @endif
@@ -377,6 +383,16 @@
                         </li>
                     @endif
                     --}}
+
+                    @if ($saleDue > 0.001 && $sale->customer_id && ($sale->sale_type === 'direct_sale' || empty($sale->sale_type) || ($sale->sale_type === 'sales_order' && $sale->sale_status === 'posted')))
+                        <li>
+                            <a href="javascript:void(0)" class="dropdown-item text-warning-emphasis d-flex align-items-center gap-2 py-2 fw-semibold btn-settle-advance-modal"
+                                data-sale-id="{{ $sale->id }}"
+                                data-invoice-no="{{ $sale->invoice_no }}">
+                                <i class="fas fa-coins text-warning fa-fw"></i> Settle from Customer Advance
+                            </a>
+                        </li>
+                    @endif
 
                     <li><hr class="dropdown-divider"></li>
 

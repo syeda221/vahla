@@ -64,9 +64,12 @@
                             </div>
                             <div class="col-md-3 form-group mb-2">
                                 <label class="fw-bold text-muted mb-1" style="font-size: 0.8rem;"><i class="fas fa-warehouse text-primary me-1"></i> Dispatch Warehouse</label>
+                                @php
+                                    $mainStoreId = \App\Models\Warehouse::where('warehouse_name', 'like', '%Main Store%')->value('id') ?? 1;
+                                @endphp
                                 <select class="form-select fw-semibold" name="warehouse_id">
-                                    @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
-                                        <option value="{{ $wh->id }}" {{ ($wh->is_shop || $loop->first) ? 'selected' : '' }}>
+                                    @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
+                                        <option value="{{ $wh->id }}" {{ $wh->id == $mainStoreId ? 'selected' : '' }}>
                                             {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
                                         </option>
                                     @endforeach

@@ -438,6 +438,8 @@ Route::middleware('auth')->group(function () {
     Route::get('booking/receipt/{id}', [ProductBookingController::class, 'receipt'])->middleware('permission:bookings.view')->name('booking.receipt');
     Route::get('/sales/from-booking/{id}', [SaleController::class, 'convertFromBooking'])->name('sales.from.booking');
     Route::post('/sales/{id}/confirm', [SaleController::class, 'confirmBooking'])->middleware('permission:sales.create|sales_orders.create')->name('sales.confirm');
+    Route::get('/sales/{id}/advance-info', [SaleController::class, 'getSaleAdvanceInfo'])->name('sales.advance_info');
+    Route::post('/sales/{id}/settle-advance', [SaleController::class, 'settleFromAdvance'])->middleware('permission:sales.create|sales.edit')->name('sales.settle_advance');
 
     // Quotation to Sales Order
     Route::post('/sales/{id}/convert-to-order', [SaleController::class, 'convertToOrder'])->middleware('permission:quotations.convert_to_so|sales_orders.create')->name('sales.convert_to_order');
@@ -597,6 +599,11 @@ Route::middleware('auth')->group(function () {
     Route::get('report/vendor-ledger/fetch', [ReportingController::class, 'fetch_vendor_ledger'])->middleware('permission:vendor.ledger.view')->name('report.vendor.ledger.fetch');
 
     Route::get('reports/onhand', [ReportingController::class, 'onhand'])->middleware('permission:inventory.onhand.view')->name('reports.onhand');
+    
+    // Product Stock Movement Ledger Report
+    Route::get('report/product/ledger', [ReportingController::class, 'product_ledger_report'])->name('report.product.ledger');
+    Route::get('report/product-ledger/fetch', [ReportingController::class, 'fetchProductLedger'])->name('report.product.ledger.fetch');
+    Route::get('report/product-ledger/search-products', [ReportingController::class, 'searchProductsForLedger'])->name('report.product.ledger.search');
 
     // Return modules list for permission dropdowns (AJAX)
     Route::get('/modules/list', function () {

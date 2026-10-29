@@ -754,6 +754,11 @@
 
                             <td class="text-end font-monospace" style="font-size: 12px;">
                                 {{ number_format($item->price, 2) }}
+                                @if (!empty($item->effective_price) && (float)$item->effective_price > 0 && (float)$item->effective_price != (float)$item->price)
+                                    <div class="text-success small" style="font-size: 10px;" title="Effective Landed Price (incl. Expense)">
+                                        Eff: {{ number_format($item->effective_price, 2) }}
+                                    </div>
+                                @endif
                             </td>
 
                             <td class="text-end">
@@ -901,38 +906,12 @@
                                 <td class="text-end text-danger font-monospace">-Rs. {{ number_format($purchase->additional_discount, 2) }}</td>
                             </tr>
                         @endif
-                        @if ($purchase->extra_cost > 0)
-                            <tr>
-                                <td class="text-secondary">Extra Cost (Vendor Bill)</td>
-                                <td class="text-end font-monospace">+Rs. {{ number_format($purchase->extra_cost, 2) }}</td>
-                            </tr>
-                        @endif
 
                         {{-- Prominent Vendor Net Payable --}}
                         <tr class="highlight-payable">
                             <td>Vendor Net Payable</td>
                             <td class="text-end font-monospace">Rs. {{ number_format($purchase->net_amount, 2) }}</td>
                         </tr>
-
-                        {{-- Separate Purchase Expense (Internal Carriage/Labour) --}}
-                        @if ((float)($purchase->purchase_expense ?? 0) > 0)
-                            <tr class="expense-row">
-                                <td class="fw-bold text-success">
-                                    <i class="bi bi-wallet2 me-1"></i> Purchase Expense
-                                </td>
-                                <td class="text-end font-monospace text-success fw-bold">
-                                    +Rs. {{ number_format($purchase->purchase_expense, 2) }}
-                                </td>
-                            </tr>
-                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-                                <td class="text-dark fw-bold" style="font-size: 11.5px;">
-                                    Total Purchase Cost
-                                </td>
-                                <td class="text-end fw-bold font-monospace" style="font-size: 12px; color: #0f172a;">
-                                    Rs. {{ number_format($purchase->net_amount + $purchase->purchase_expense, 2) }}
-                                </td>
-                            </tr>
-                        @endif
 
                         {{-- Settlement & Vendor Balances (Non-PO) --}}
                         @if($purchase->purchase_type !== 'purchase_order')
@@ -954,6 +933,56 @@
                                 <td>Vendor Closing Balance</td>
                                 <td class="text-end font-monospace">
                                     Rs. {{ number_format($currentBalance, 2) }}
+                                </td>
+                            </tr>
+                        @endif
+
+                        {{-- Purchase Expenses & Landed Cost (Expense Voucher - Deducted from Cash, NOT Vendor Ledger) --}}
+                        @php
+                            $totalExpenses = (float)($purchase->shipping_charges ?? 0) + (float)($purchase->cutting_charges ?? 0) + (float)($purchase->purchase_expense ?? 0);
+                        @endphp
+                        @if ($totalExpenses > 0)
+                            <tr>
+                                <td colspan="2" class="pt-2 pb-1 text-uppercase text-muted fw-bold" style="font-size: 10px; letter-spacing: 0.5px; border-top: 2px dashed #cbd5e1; background: #f8fafc;">
+                                    <i class="bi bi-receipt me-1"></i> Expenses (Expense Voucher)
+                                </td>
+                            </tr>
+                            @if ((float)($purchase->shipping_charges ?? 0) > 0)
+                                <tr class="expense-row">
+                                    <td class="text-muted" style="font-size: 11px;">
+                                        <i class="bi bi-truck me-1"></i> Shipping Charges
+                                    </td>
+                                    <td class="text-end font-monospace text-muted" style="font-size: 11px;">
+                                        +Rs. {{ number_format($purchase->shipping_charges, 2) }}
+                                    </td>
+                                </tr>
+                            @endif
+                            @if ((float)($purchase->cutting_charges ?? 0) > 0)
+                                <tr class="expense-row">
+                                    <td class="text-muted" style="font-size: 11px;">
+                                        <i class="bi bi-scissors me-1"></i> Cutting Charges
+                                    </td>
+                                    <td class="text-end font-monospace text-muted" style="font-size: 11px;">
+                                        +Rs. {{ number_format($purchase->cutting_charges, 2) }}
+                                    </td>
+                                </tr>
+                            @endif
+                            @if ((float)($purchase->purchase_expense ?? 0) > 0)
+                                <tr class="expense-row">
+                                    <td class="text-muted" style="font-size: 11px;">
+                                        <i class="bi bi-wallet2 me-1"></i> Freight / Labour Expense
+                                    </td>
+                                    <td class="text-end font-monospace text-muted" style="font-size: 11px;">
+                                        +Rs. {{ number_format($purchase->purchase_expense, 2) }}
+                                    </td>
+                                </tr>
+                            @endif
+                            <tr style="background: #f1f5f9; border-top: 1px solid #cbd5e1; border-bottom: 2px solid #cbd5e1;">
+                                <td class="text-dark fw-bold" style="font-size: 11.5px;">
+                                    Total Landed Cost (Bill + Expense)
+                                </td>
+                                <td class="text-end fw-bold font-monospace" style="font-size: 12px; color: #0f172a;">
+                                    Rs. {{ number_format($purchase->net_amount + $totalExpenses, 2) }}
                                 </td>
                             </tr>
                         @endif

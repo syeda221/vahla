@@ -518,6 +518,13 @@
                 </div>
             @endif
 
+            @if ((float)($sale->cutting_charges ?? 0) > 0)
+                <div class="tot-row">
+                    <span>Cutting Charges:</span>
+                    <span>+ {{ (fmod($sale->cutting_charges, 1) != 0) ? number_format($sale->cutting_charges, 2) : number_format($sale->cutting_charges, 0) }}</span>
+                </div>
+            @endif
+
             @if ($exchangeReturnedAmount > 0)
                 <div class="tot-row">
                     <span>Return Value:</span>
@@ -547,9 +554,18 @@
                 <span>{{ (fmod($previousBalance, 1) != 0) ? number_format(abs($previousBalance), 2) : number_format(abs($previousBalance), 0) }} {{ $previousBalance >= 0 ? 'Dr' : 'Cr' }}</span>
             </div>
             @endif
+            @if((float)($sale->advance_adjusted ?? 0) > 0.001)
+            <div class="tot-row" style="color: #b45309; font-weight: bold;">
+                <span>From Advance:</span>
+                <span>{{ (fmod($sale->advance_adjusted, 1) != 0) ? number_format($sale->advance_adjusted, 2) : number_format($sale->advance_adjusted, 0) }}</span>
+            </div>
+            @endif
+            @php
+                $receiptPaid = (float)($sale->cash ?? 0) + (float)($sale->advance_adjusted ?? 0);
+            @endphp
             <div class="tot-row">
                 <span>Paid Amount:</span>
-                <span>{{ (fmod($sale->cash, 1) != 0) ? number_format($sale->cash, 2) : number_format($sale->cash, 0) }}</span>
+                <span>{{ (fmod($receiptPaid, 1) != 0) ? number_format($receiptPaid, 2) : number_format($receiptPaid, 0) }}</span>
             </div>
             @if($sale->change > 0)
             <div class="tot-row">

@@ -556,6 +556,14 @@
                     </td>
                 </tr>
                 @endif
+                @if((float)($sale->cutting_charges ?? 0) > 0)
+                <tr>
+                    <td colspan="5" style="text-align: right; font-weight: bold; color: #d97706;">CUTTING CHARGES:</td>
+                    <td style="text-align: right; font-weight: bold; color: #d97706;">
+                        +{{ number_format($sale->cutting_charges, 2) }}
+                    </td>
+                </tr>
+                @endif
                 @if($hasReturn && isset($netSaleTotal) && $netSaleTotal < $sale->total_net)
                 <tr>
                     <td colspan="5" style="text-align: right; font-weight: bold;">GROSS TOTAL:</td>
@@ -585,13 +593,22 @@
                 </tr>
                 @endif
                 @php
-                    $paidAmount = (float)($sale->cash ?? 0) + (float)($sale->card ?? 0);
+                    $advAdjusted = (float)($sale->advance_adjusted ?? 0);
+                    $paidAmount = (float)($sale->cash ?? 0) + (float)($sale->card ?? 0) + $advAdjusted;
                     $finalTotal = ($hasReturn && isset($netSaleTotal)) ? (float)$netSaleTotal : (float)$sale->total_net;
                     $dueAmount = max(0, $finalTotal - $paidAmount);
                 @endphp
+                @if($advAdjusted > 0.001)
                 <tr>
-                    <td colspan="5" style="text-align: right; font-weight: bold; padding-top: 10px;">PAID:</td>
-                    <td style="text-align: right; font-weight: bold; color: #16a34a; padding-top: 10px;">
+                    <td colspan="5" style="text-align: right; font-weight: 600; color: #b45309; padding-top: 6px;">FROM ADVANCE:</td>
+                    <td style="text-align: right; font-weight: bold; color: #b45309; padding-top: 6px;">
+                        {{ number_format($advAdjusted, 2) }}
+                    </td>
+                </tr>
+                @endif
+                <tr>
+                    <td colspan="5" style="text-align: right; font-weight: bold; padding-top: 6px;">PAID:</td>
+                    <td style="text-align: right; font-weight: bold; color: #16a34a; padding-top: 6px;">
                         {{ number_format($paidAmount, 2) }}
                     </td>
                 </tr>

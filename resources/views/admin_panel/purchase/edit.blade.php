@@ -422,9 +422,12 @@
 
                             <div class="mb-2">
                                 <label class="form-label fw-bold text-muted small"><i class="bi bi-building me-1 text-primary"></i> Warehouse</label>
+                                @php
+                                    $mainStoreId = \App\Models\Warehouse::where('warehouse_name', 'like', '%Main Store%')->value('id') ?? 1;
+                                @endphp
                                 <select class="form-select fw-semibold" id="warehouseSelect" name="warehouse_id">
-                                    @foreach(\App\Models\Warehouse::orderByRaw("is_shop ASC, id ASC")->get() as $wh)
-                                        <option value="{{ $wh->id }}" {{ (($purchase->warehouse_id ?: 1) == $wh->id) ? 'selected' : '' }}>
+                                    @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
+                                        <option value="{{ $wh->id }}" {{ (($purchase->warehouse_id ?: $mainStoreId) == $wh->id) ? 'selected' : '' }}>
                                             {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
                                         </option>
                                     @endforeach
@@ -454,6 +457,10 @@
                                             <th class="col-unit" style="width: 100px;">Unit</th>
                                             <th class="col-qty" style="width: 110px;">Qty</th>
                                             <th class="col-price" style="width: 130px;">Purchase Price</th>
+                                            <th class="col-eff-price text-center" style="width: 130px; background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0;">
+                                                Effective Price
+                                                <div style="font-size: 9px; font-weight: normal; color: #15803d;">(Ship+Cut Incl.)</div>
+                                            </th>
                                             <th class="col-disc" style="width: 90px;">Disc %</th>
                                             <th class="col-disc-amt" style="width: 110px;">Disc Amt</th>
                                             <th class="col-amount" style="width: 130px;">Amount</th>
@@ -578,8 +585,8 @@
                                                 </td>
                                                 <td class="col-wh align-middle" style="width: 140px;">
                                                     <select name="item_warehouse_id[]" class="form-select form-select-sm row-warehouse-select fw-semibold" style="font-size:0.75rem;">
-                                                        @foreach(\App\Models\Warehouse::orderByRaw("is_shop ASC, id ASC")->get() as $wh)
-                                                            <option value="{{ $wh->id }}" {{ (($item->warehouse_id ?? $purchase->warehouse_id ?? 1) == $wh->id) ? 'selected' : '' }}>
+                                                        @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
+                                                            <option value="{{ $wh->id }}" {{ (($item->warehouse_id ?? $purchase->warehouse_id ?? $mainStoreId) == $wh->id) ? 'selected' : '' }}>
                                                                 {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
                                                             </option>
                                                         @endforeach
@@ -609,6 +616,12 @@
                                                     </div>
                                                 </td>
                                                 <td>
+                                                    <input type="number" class="form-control text-end input-readonly effective-price"
+                                                        value="{{ (float) ($item->effective_price > 0 ? $item->effective_price : $item->price) }}" readonly
+                                                        style="background-color: #f0fdf4; color: #166534; font-weight: 700; border-color: #bbf7d0;"
+                                                        title="Effective Landed Price (Purchase Price + Expense Share)">
+                                                </td>
+                                                <td>
                                                     <input type="number" name="item_discount[]" class="form-control text-end item-disc-percent"
                                                         step="0.01" value="{{ round($dPct, 2) }}">
                                                 </td>
@@ -631,7 +644,7 @@
                                     </tbody>
                                     <tfoot>
                                         <tr>
-                                            <td colspan="6" class="text-end fw-bold text-muted">Total Amount:</td>
+                                            <td colspan="7" class="text-end fw-bold text-muted">Total Amount:</td>
                                             <td class="text-end fw-bold fs-6 text-dark" colspan="2"><span id="totalAmount">0.00</span>
                                             </td>
                                             <td></td>
@@ -730,17 +743,11 @@
                                     <input type="hidden" name="discount" id="discountInput" value="{{ (float) $purchase->discount }}">
                                 </div>
                             </div>
-                            <div class="row py-1 align-items-center">
-                                <div class="col-7 text-muted fw-medium">Extra Cost</div>
-                                <div class="col-5 text-end">
-                                    <input type="number" class="form-control text-end form-control-sm" name="extra_cost"
-                                        id="extraCost" value="{{ (float) $purchase->extra_cost }}" step="0.01">
-                                </div>
-                            </div>
+                            <input type="hidden" name="extra_cost" id="extraCost" value="0">
                             <div class="row py-1 align-items-center">
                                 <div class="col-6 text-muted fw-medium">
                                     Purchase Expense
-                                    <div style="font-size: 10px; color: #64748b;">(Freight/Carriage/Labour)</div>
+                                    <div style="font-size: 10px; color: #0284c7;">(Freight/Carriage/Landed Cost)</div>
                                 </div>
                                 <div class="col-6 text-end">
                                     <div class="input-group input-group-sm justify-content-end">
@@ -752,8 +759,20 @@
                                     </div>
                                     <div class="d-flex flex-wrap justify-content-end align-items-center gap-1 mt-1">
                                         <span class="badge bg-secondary-subtle text-secondary py-0" style="font-size: 9px;">No Vendor Ledger</span>
+                                        @php
+                                            $defaultCashId = app(\App\Services\BalanceService::class)->getCashAccountId();
+                                            if (!$defaultCashId) {
+                                                $defaultCashAcc = $accounts->first(function($a) {
+                                                    $t = strtolower($a->title);
+                                                    return (str_contains($t, 'cash in hand') || str_contains($t, 'cash account') || $a->account_code === 'CASH') && !str_contains($t, 'jazz');
+                                                }) ?? $accounts->first(fn($a) => str_contains(strtolower($a->title), 'cash') && !str_contains(strtolower($a->title), 'jazz')) ?? $accounts->first();
+                                                $defaultCashId = $defaultCashAcc ? $defaultCashAcc->id : 0;
+                                            }
+                                            $selectedExpenseAccId = $purchase->expense_account_id ?: $defaultCashId;
+                                            $selectedExpenseAccTitle = optional($accounts->firstWhere('id', $selectedExpenseAccId))->title ?? 'CASH IN HAND';
+                                        @endphp
                                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle py-0" style="font-size: 9px; cursor: pointer;" id="badgeSelectedAccount" title="Click to change account">
-                                            <i class="bi bi-wallet2 me-1"></i><span id="selectedAccountText">Cash Account</span>
+                                            <i class="bi bi-wallet2 me-1"></i><span id="selectedAccountText">{{ $selectedExpenseAccTitle }}</span>
                                         </span>
                                     </div>
                                 </div>
@@ -771,8 +790,8 @@
                                 </div>
                                 <select class="form-select form-select-sm fw-semibold shadow-none" name="expense_account_id" id="expenseAccountId" style="font-size: 0.82rem; height: 32px; background-color: #ffffff; border: 1.5px solid #0284c7 !important; border-radius: 6px;">
                                     @foreach ($accounts as $acc)
-                                        <option value="{{ $acc->id }}" {{ ($purchase->expense_account_id == $acc->id || (!$purchase->expense_account_id && (stripos($acc->title, 'cash') !== false || $acc->account_code === 'CASH'))) ? 'selected' : '' }}>
-                                            {{ (stripos($acc->title, 'cash') !== false || $acc->account_code === 'CASH') ? '💵 ' : '🏦 ' }}{{ $acc->title }}
+                                        <option value="{{ $acc->id }}" {{ $acc->id == $selectedExpenseAccId ? 'selected' : '' }}>
+                                            {{ ($acc->id == $defaultCashId || (stripos($acc->title, 'cash') !== false && stripos($acc->title, 'jazz') === false)) ? '💵 ' : '🏦 ' }}{{ $acc->title }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -1050,8 +1069,8 @@
                     </td>
                     <td class="col-wh align-middle" style="width: 140px;">
                         <select name="item_warehouse_id[]" class="form-select form-select-sm row-warehouse-select fw-semibold" style="font-size:0.75rem;">
-                            @foreach(\App\Models\Warehouse::orderByRaw("is_shop ASC, id ASC")->get() as $wh)
-                                <option value="{{ $wh->id }}">
+                            @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
+                                <option value="{{ $wh->id }}" {{ $wh->id == $mainStoreId ? 'selected' : '' }}>
                                     {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
                                 </option>
                             @endforeach
@@ -1068,6 +1087,9 @@
                         <div class="input-group input-group-sm">
                             <input type="number" step="0.01" name="price[]" class="form-control text-end price" value="0">
                         </div>
+                    </td>
+                    <td>
+                        <input type="number" class="form-control text-end input-readonly effective-price" value="0.00" readonly style="background-color: #f0fdf4; color: #166534; font-weight: 700; border-color: #bbf7d0;" title="Effective Landed Price (Purchase Price + Expense Share)">
                     </td>
                     <td>
                         <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-percent" value="0">
@@ -1287,10 +1309,39 @@
 
                 $('#discountInput').val(additionalDiscount.toFixed(2));
 
-                const extraCost = parseFloat($('#extraCost').val()) || 0;
                 const purchaseExpense = parseFloat($('#purchaseExpense').val()) || 0;
-                const vendorBill = Math.max(0, (subtotal - additionalDiscount) + extraCost);
-                const totalCost = vendorBill + purchaseExpense;
+                const totalLandedExtra = purchaseExpense;
+                $('#extraCost').val('0.00');
+                const extraCost = 0;
+
+                // Live calculate Effective Price (Landed Cost) for each row
+                $('#purchaseTableBody tr').each(function() {
+                    const rowTotal = parseFloat($(this).find('.row-total').val()) || 0;
+                    const qty = parseFloat($(this).find('.main-qty-input').val()) || 0;
+                    const price = parseFloat($(this).find('.price').val()) || 0;
+                    const unitVal = ($(this).find('.unit-input-val').val() || '').toLowerCase();
+                    const sizeMode = $(this).data('sizemode') || $(this).find('.hidden-size-mode').val();
+                    const isCarton = (unitVal === 'carton' || unitVal === 'ctn' || unitVal === 'box' || sizeMode === 'by_cartons');
+                    const ppb = parseFloat($(this).find('.hidden-pieces-per-box').val()) || parseFloat($(this).data('pieces_per_box')) || 1;
+
+                    let effPrice = price;
+                    if (subtotal > 0 && totalLandedExtra > 0) {
+                        const rowShare = (rowTotal / subtotal) * totalLandedExtra;
+                        if (isCarton) {
+                            const bQty = parseFloat($(this).find('.hidden-boxes-qty').val()) || 0;
+                            const lQty = parseFloat($(this).find('.hidden-loose-qty').val()) || 0;
+                            const cartonEquiv = bQty + (ppb > 0 ? (lQty / ppb) : 0);
+                            effPrice = cartonEquiv > 0 ? (price + (rowShare / cartonEquiv)) : price;
+                        } else {
+                            effPrice = qty > 0 ? (price + (rowShare / qty)) : price;
+                        }
+                    }
+                    $(this).find('.effective-price').val(effPrice.toFixed(2));
+                });
+
+                const vendorBill = Math.max(0, subtotal - additionalDiscount);
+                const totalExpenses = purchaseExpense;
+                const totalCost = vendorBill + totalExpenses;
 
                 $('#tPayable').text(vendorBill.toFixed(2));
                 $('#netAmountInput').val(vendorBill.toFixed(2));

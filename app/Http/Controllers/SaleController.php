@@ -824,7 +824,7 @@ class SaleController extends Controller
             $allSaleItems = \App\Models\SaleItem::where('sale_id', $sale->id)->get();
             $sale->total_bill_amount = $allSaleItems->sum('total');
             // Recalculate Net (Accounting for extra discount if any)
-            $sale->total_net = max(0, ($sale->total_bill_amount - ($sale->total_extradiscount ?? 0)) + ($sale->shipping_charges ?? 0));
+            $sale->total_net = max(0, ($sale->total_bill_amount - ($sale->total_extradiscount ?? 0)) + ($sale->shipping_charges ?? 0) + ($sale->cutting_charges ?? 0));
             $sale->total_items = $allSaleItems->sum('total_pieces');
             $sale->save();
         }
@@ -1119,7 +1119,7 @@ class SaleController extends Controller
 
         // Compute true net sale total accounting for discounts, shipping, and returns
         if ($totalReturnedPieces > 0) {
-            $netSaleTotal = max(0, round(($netSaleTotal - (float)($sale->total_extradiscount ?? 0)) + (float)($sale->shipping_charges ?? 0), 2));
+            $netSaleTotal = max(0, round(($netSaleTotal - (float)($sale->total_extradiscount ?? 0)) + (float)($sale->shipping_charges ?? 0) + (float)($sale->cutting_charges ?? 0), 2));
         } else {
             $netSaleTotal = (float)$sale->total_net;
         }
@@ -1372,6 +1372,7 @@ class SaleController extends Controller
             'qty' => 'required|array|min:1',
             'warehouse_id' => 'nullable|array',
             'shipping_charges' => 'nullable|numeric|min:0',
+            'cutting_charges' => 'nullable|numeric|min:0',
         ];
 
         if ($isWalkin) {
@@ -1813,11 +1814,13 @@ class SaleController extends Controller
             $calculatedExtraDiscount = min($total_bill, max(0, $calculatedExtraDiscount));
 
             $shippingCharges = max(0, (float)($request->input('shipping_charges', 0)));
+            $cuttingCharges = max(0, (float)($request->input('cutting_charges', 0)));
             $sale->overall_discount_type = $overallType;
             $sale->overall_discount_value = $overallVal;
             $sale->total_extradiscount = $calculatedExtraDiscount;
             $sale->shipping_charges = $shippingCharges;
-            $sale->total_net = max(0, round(($total_bill - $sale->total_extradiscount) + $shippingCharges, 2));
+            $sale->cutting_charges = $cuttingCharges;
+            $sale->total_net = max(0, round(($total_bill - $sale->total_extradiscount) + $shippingCharges + $cuttingCharges, 2));
             $sale->total_items = $total_items;
 
             $receiptAmounts = $request->input('receipt_amount', []);
@@ -1828,7 +1831,27 @@ class SaleController extends Controller
                 }
             }
             $sale->cash = $totalCashPaid > 0 ? $totalCashPaid : (float)($request->cash ?? 0);
-            $sale->change = round($sale->cash - $sale->total_net, 2);
+            // Handle Settle from Customer Advance (Option 1)
+            if ($request->filled('settle_from_advance') && in_array($request->input('settle_from_advance'), ['1', 1, 'true', true]) && $sale->customer_id) {
+                $lastLedger = \App\Models\CustomerLedger::where('customer_id', $sale->customer_id)
+                    ->orderBy('id', 'desc')
+                    ->first();
+                $custClosing = $lastLedger ? (float) $lastLedger->closing_balance : 0;
+                $availAdvance = $custClosing < 0 ? abs($custClosing) : 0;
+
+                $unpaidDue = max(0, (float) $sale->total_net - (float) $sale->cash);
+                $reqAdv = $request->filled('advance_adjusted_amount') ? (float) $request->input('advance_adjusted_amount') : null;
+                $settleAmt = $reqAdv !== null ? min($reqAdv, $availAdvance, $unpaidDue) : min($availAdvance, $unpaidDue);
+                $settleAmt = max(0, round($settleAmt, 2));
+
+                if ($settleAmt > 0) {
+                    $sale->advance_adjusted = $settleAmt;
+                    $sale->advance_settlement_note = 'Settled Rs. ' . number_format($settleAmt, 2) . ' from Customer Advance upon Invoice Creation';
+                }
+            }
+
+            $effectivePaid = (float) $sale->cash + (float) ($sale->advance_adjusted ?? 0);
+            $sale->change = round($effectivePaid - $sale->total_net, 2);
             $sale->change_account_id = $request->input('change_account_id') ?: null;
 
             $isConvertToSale = $request->has('convert_to_sale') && $request->convert_to_sale == '1';
@@ -2010,7 +2033,7 @@ class SaleController extends Controller
                     // Update Original Sale Header Totals
                     $allSaleItems = \App\Models\SaleItem::where('sale_id', $origSale->id)->get();
                     $origSale->total_bill_amount = $allSaleItems->sum('total');
-                    $origSale->total_net = max(0, ($origSale->total_bill_amount - ($origSale->total_extradiscount ?? 0)) + ($origSale->shipping_charges ?? 0));
+                    $origSale->total_net = max(0, ($origSale->total_bill_amount - ($origSale->total_extradiscount ?? 0)) + ($origSale->shipping_charges ?? 0) + ($origSale->cutting_charges ?? 0));
                     $origSale->total_items = $allSaleItems->sum('total_pieces');
                     $origSale->save();
 
@@ -3611,6 +3634,163 @@ class SaleController extends Controller
             return redirect()->back()->with('error', $msg);
         }
     }
+
+    /**
+     * Get Customer Advance Info for a specific Sale Invoice
+     */
+    public function getSaleAdvanceInfo($id)
+    {
+        $sale = Sale::with("customer_relation")->findOrFail($id);
+
+        if (!$sale->customer_id) {
+            return response()->json([
+                "success" => false,
+                "message" => "This invoice does not have a customer assigned."
+            ], 422);
+        }
+
+        $customer = $sale->customer_relation ?? \App\Models\Customer::find($sale->customer_id);
+
+        $allSales = Sale::where("customer_id", $sale->customer_id)->get();
+        $totalNet = (float) $allSales->sum("total_net");
+        $totalDirectPaid = (float) $allSales->sum(function($s) {
+            return (float)($s->cash ?? 0) + (float)($s->card ?? 0);
+        });
+        $totalAdvAdjusted = (float) $allSales->sum(function($s) {
+            return (float)($s->advance_adjusted ?? 0);
+        });
+        $totalInvoicesDue = max(0, $totalNet - ($totalDirectPaid + $totalAdvAdjusted));
+
+        // Fetch latest closing balance from CustomerLedger
+        $lastLedger = \App\Models\CustomerLedger::where("customer_id", $sale->customer_id)
+            ->orderBy("id", "desc")
+            ->first();
+        
+        $closingBalance = $lastLedger ? (float) $lastLedger->closing_balance : (float) ($customer->previous_balance ?? 0);
+
+        if ($closingBalance <= 0) {
+            $availableAdvance = abs($closingBalance) + max(0, $totalInvoicesDue);
+        } else {
+            $availableAdvance = max(0, $totalInvoicesDue - $closingBalance);
+        }
+        $availableAdvance = round($availableAdvance, 2);
+
+        $due = $sale->due_amount;
+
+        $displayName = ($customer && !empty(trim($customer->name ?? ""))) 
+            ? trim($customer->name) . ($customer->customer_id ? " (" . $customer->customer_id . ")" : "") 
+            : ($customer->customer_id ?? "Customer #" . $sale->customer_id);
+
+        return response()->json([
+            "success" => true,
+            "sale_id" => $sale->id,
+            "invoice_no" => $sale->invoice_no,
+            "customer_id" => $sale->customer_id,
+            "customer_name" => $displayName,
+            "total_net" => (float)$sale->total_net,
+            "advance_already_adjusted" => (float)($sale->advance_adjusted ?? 0),
+            "due_amount" => round($due, 2),
+            "available_advance" => $availableAdvance,
+            "can_settle" => ($availableAdvance > 0.001 && $due > 0.001),
+            "max_settleable" => round(min($availableAdvance, $due), 2),
+        ]);
+    }
+
+    /**
+     * Settle an existing Unpaid/Partial Sale Invoice from Customer Advance
+     */
+    public function settleFromAdvance(Request $request, $id)
+    {
+        $sale = Sale::findOrFail($id);
+
+        if (!$sale->customer_id) {
+            return response()->json([
+                "success" => false,
+                "message" => "No customer is associated with this invoice."
+            ], 422);
+        }
+
+        $customer = $sale->customer_relation ?? \App\Models\Customer::find($sale->customer_id);
+
+        $allSales = Sale::where("customer_id", $sale->customer_id)->get();
+        $totalNet = (float) $allSales->sum("total_net");
+        $totalDirectPaid = (float) $allSales->sum(function($s) {
+            return (float)($s->cash ?? 0) + (float)($s->card ?? 0);
+        });
+        $totalAdvAdjusted = (float) $allSales->sum(function($s) {
+            return (float)($s->advance_adjusted ?? 0);
+        });
+        $totalInvoicesDue = max(0, $totalNet - ($totalDirectPaid + $totalAdvAdjusted));
+
+        // Fetch current customer available advance
+        $lastLedger = \App\Models\CustomerLedger::where("customer_id", $sale->customer_id)
+            ->orderBy("id", "desc")
+            ->first();
+        $closingBalance = $lastLedger ? (float) $lastLedger->closing_balance : (float) ($customer->previous_balance ?? 0);
+
+        if ($closingBalance <= 0) {
+            $availableAdvance = abs($closingBalance) + max(0, $totalInvoicesDue);
+        } else {
+            $availableAdvance = max(0, $totalInvoicesDue - $closingBalance);
+        }
+        $availableAdvance = round($availableAdvance, 2);
+
+        if ($availableAdvance <= 0.001) {
+            return response()->json([
+                "success" => false,
+                "message" => "Customer does not have any advance balance available to adjust."
+            ], 422);
+        }
+
+        $due = $sale->due_amount;
+        if ($due <= 0.001) {
+            return response()->json([
+                "success" => false,
+                "message" => "This invoice is already fully paid."
+            ], 422);
+        }
+
+        $requestedAmount = $request->filled("amount") ? (float)$request->input("amount") : $due;
+        if ($requestedAmount <= 0) {
+            return response()->json([
+                "success" => false,
+                "message" => "Settlement amount must be greater than zero."
+            ], 422);
+        }
+
+        $settleAmount = min($requestedAmount, $availableAdvance, $due);
+        $settleAmount = round($settleAmount, 2);
+
+        if ($settleAmount <= 0) {
+            return response()->json([
+                "success" => false,
+                "message" => "Invalid settlement amount."
+            ], 422);
+        }
+
+        // Increment sale advance_adjusted
+        $sale->advance_adjusted = round((float)($sale->advance_adjusted ?? 0) + $settleAmount, 2);
+        
+        $note = "Settled Rs. " . number_format($settleAmount, 2) . " from Customer Advance on " . now()->format("d M Y, h:i A");
+        if (!empty($sale->advance_settlement_note)) {
+            $sale->advance_settlement_note .= " | " . $note;
+        } else {
+            $sale->advance_settlement_note = $note;
+        }
+
+        $sale->save();
+
+        return response()->json([
+            "success" => true,
+            "message" => "Rs. " . number_format($settleAmount, 2) . " successfully settled from Customer Advance for Invoice #" . $sale->invoice_no . "!",
+            "sale_id" => $sale->id,
+            "invoice_no" => $sale->invoice_no,
+            "advance_adjusted" => (float)$sale->advance_adjusted,
+            "due_amount" => round($sale->due_amount, 2),
+            "is_fully_paid" => ($sale->due_amount <= 0.001)
+        ]);
+    }
+
 }
 
 

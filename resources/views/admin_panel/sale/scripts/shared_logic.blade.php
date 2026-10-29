@@ -1138,9 +1138,10 @@
         $('#hiddenTotalExtraCost').val(orderDisc.toFixed(2));
 
         const shippingCharges = toNum($('#shippingChargesInput').val() || $('#bottomShippingChargesInput').val() || $('.shipping-charges-input').val());
+        const cuttingCharges = toNum($('#cuttingChargesInput').val() || $('#bottomCuttingChargesInput').val() || $('.cutting-charges-input').val());
         const prev = toNum($('#previousBalance').val());
         const receipts = toNum($('#receiptsTotal').text());
-        const currentInvoiceTotal = Math.max(0, (tNet - orderDisc) + shippingCharges);
+        const currentInvoiceTotal = Math.max(0, (tNet - orderDisc) + shippingCharges + cuttingCharges);
         const payable = Math.max(0, currentInvoiceTotal + prev - receipts);
 
         $('#tQty').text(tQty % 1 === 0 ? tQty.toFixed(0) : tQty.toFixed(3).replace(/\.?0+$/, ''));
@@ -1232,6 +1233,10 @@
             $('#cc_closing_bal_val, #cc_closing_bal_suffix').removeClass('text-success').addClass('text-danger');
         } else {
             $('#cc_closing_bal_val, #cc_closing_bal_suffix').removeClass('text-danger').addClass('text-success');
+        }
+
+        if (typeof window.syncAdvanceSettlementUI === 'function') {
+            window.syncAdvanceSettlementUI();
         }
     }
 
@@ -1623,10 +1628,14 @@
     $(document).ready(function() {
 
         // Walk-in UI Event Bindings
-        $(document).on('input', '#walkinDiscountRs, #shippingChargesInput, #bottomShippingChargesInput, .shipping-charges-input', function() {
+        $(document).on('input', '#walkinDiscountRs, #shippingChargesInput, #bottomShippingChargesInput, .shipping-charges-input, #cuttingChargesInput, #bottomCuttingChargesInput, .cutting-charges-input', function() {
             if ($(this).hasClass('shipping-charges-input') || $(this).attr('id') === 'shippingChargesInput' || $(this).attr('id') === 'bottomShippingChargesInput') {
                 const val = $(this).val();
                 $('#shippingChargesInput, #bottomShippingChargesInput, .shipping-charges-input').not(this).val(val);
+            }
+            if ($(this).hasClass('cutting-charges-input') || $(this).attr('id') === 'cuttingChargesInput' || $(this).attr('id') === 'bottomCuttingChargesInput') {
+                const val = $(this).val();
+                $('#cuttingChargesInput, #bottomCuttingChargesInput, .cutting-charges-input').not(this).val(val);
             }
             updateGrandTotals();
         });

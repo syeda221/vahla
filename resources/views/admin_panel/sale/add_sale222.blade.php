@@ -810,9 +810,12 @@
                         <!-- Dispatch Location / Warehouse -->
                         <div class="col-sm-6 col-md-2 col-lg-2">
                             <label class="meta-label"><i class="fas fa-warehouse text-primary"></i> Dispatch Location</label>
+                            @php
+                                $mainStoreId = \App\Models\Warehouse::where('warehouse_name', 'like', '%Main Store%')->value('id') ?? 1;
+                            @endphp
                             <select class="form-select fw-bold" id="warehouseSelect" name="header_warehouse_id">
-                                @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
-                                    <option value="{{ $wh->id }}" {{ ($wh->is_shop || $loop->first) ? 'selected' : '' }}>
+                                @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
+                                    <option value="{{ $wh->id }}" {{ $wh->id == $mainStoreId ? 'selected' : '' }}>
                                         {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
                                     </option>
                                 @endforeach
@@ -843,6 +846,26 @@
                                     <option value=""></option>
                                 </select>
                             </div>
+                            <!-- Advance Settlement Alert & Toggle (Option 1) -->
+                            <div id="advanceSettleBox" class="mt-2 p-2 rounded-2 border border-warning-subtle shadow-sm d-none" style="background: linear-gradient(135deg, #fffdf2 0%, #fff8db 100%);">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span class="badge bg-warning text-dark fw-bold rounded-pill px-2 py-1" style="font-size: 0.72rem;">
+                                            <i class="fas fa-coins me-1"></i>Advance: Rs. <span id="advAvailableAmtText">0.00</span>
+                                        </span>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="toggleSettleFromAdvance" name="settle_from_advance" value="1" style="cursor: pointer;">
+                                        <label class="form-check-label fw-bold text-dark" for="toggleSettleFromAdvance" style="font-size: 0.75rem; cursor: pointer;">
+                                            Settle from Advance
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="advanceSettleDetailRow" class="d-none mt-1 pt-1 border-top border-warning-subtle text-muted d-flex justify-content-between align-items-center" style="font-size: 0.72rem;">
+                                    <span>Adjusted from Advance:</span>
+                                    <span class="fw-bold text-success font-monospace" id="advSettlingAmtText">Rs. 0.00</span>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Save Sale Button -->
@@ -860,6 +883,7 @@
                 <input type="hidden" id="tel" name="tel">
                 <input type="hidden" id="previousBalance" value="0">
                 <input type="hidden" id="rangeBalance" value="0">
+                <input type="hidden" name="advance_adjusted_amount" id="hiddenAdvanceAdjusted" value="0">
 
                 <!-- 2-COLUMN RESPONSIVE POS LAYOUT -->
                 <div class="row g-3 align-items-stretch">
@@ -930,8 +954,8 @@
                                             <!-- LOCATION (Warehouse / Shop) -->
                                             <td class="col-wh" style="width: 135px; min-width: 125px;">
                                                 <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem;">
-                                                    @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
-                                                        <option value="{{ $wh->id }}" {{ ($wh->is_shop || $loop->first) ? 'selected' : '' }}>
+                                                    @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
+                                                        <option value="{{ $wh->id }}" {{ $wh->id == $mainStoreId ? 'selected' : '' }}>
                                                             {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
                                                         </option>
                                                     @endforeach
@@ -1066,9 +1090,20 @@
                                         <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold text-primary shipping-charges-input" id="shippingChargesInput" name="shipping_charges" value="0" placeholder="0" style="font-size:0.78rem; height: 26px;">
                                     </div>
                                 </div>
+                                <div class="summary-row align-items-center">
+                                    <span class="text-muted d-flex align-items-center gap-1"><i class="fas fa-cut text-warning" style="font-size:0.75rem;"></i> Cutting</span>
+                                    <div class="input-group input-group-sm" style="width: 125px;">
+                                        <span class="input-group-text bg-light text-muted px-1" style="font-size:0.7rem; font-weight:600;">Rs</span>
+                                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold text-warning cutting-charges-input" id="cuttingChargesInput" name="cutting_charges" value="0" placeholder="0" style="font-size:0.78rem; height: 26px;">
+                                    </div>
+                                </div>
                                 <div class="summary-row">
                                     <span class="fw-bold text-dark">Net Total</span>
                                     <span class="summary-val-net" id="tSub">0.00</span>
+                                </div>
+                                <div class="summary-row" id="rowAdvanceAdjusted" style="display: none; background: #fffdf2; padding: 2px 6px; border-radius: 4px; border: 1px dashed #ffe082;">
+                                    <span class="text-warning-emphasis fw-semibold"><i class="fas fa-coins me-1 text-warning"></i>From Advance</span>
+                                    <span class="fw-bold text-warning-emphasis fs-6" id="summaryAdvanceAdjusted">0.00</span>
                                 </div>
                                 <div class="summary-row">
                                     <span class="text-muted">Total Paid</span>
@@ -1161,6 +1196,14 @@
                         <div class="input-group input-group-sm" style="width: 115px;">
                             <span class="input-group-text bg-light text-muted px-1" style="font-size:0.7rem; font-weight:600;">Rs</span>
                             <input type="number" step="any" min="0" class="form-control text-end fw-bold text-primary shipping-charges-input" id="bottomShippingChargesInput" value="0" placeholder="0" style="font-size:0.78rem;">
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;"><i class="fas fa-cut text-warning me-1"></i>Cutting</span>
+                        <div class="input-group input-group-sm" style="width: 115px;">
+                            <span class="input-group-text bg-light text-muted px-1" style="font-size:0.7rem; font-weight:600;">Rs</span>
+                            <input type="number" step="any" min="0" class="form-control text-end fw-bold text-warning cutting-charges-input" id="bottomCuttingChargesInput" value="0" placeholder="0" style="font-size:0.78rem;">
                         </div>
                     </div>
 
@@ -1407,6 +1450,48 @@
             });
 
             // Customer selected → load details
+            window.currentCustomerAvailableAdvance = 0;
+
+            window.syncAdvanceSettlementUI = function() {
+                const isChecked = $('#toggleSettleFromAdvance').is(':checked');
+                const availAdv = window.currentCustomerAvailableAdvance || 0;
+
+                if (!isChecked || availAdv <= 0) {
+                    $('#hiddenAdvanceAdjusted').val('0');
+                    $('#rowAdvanceAdjusted').hide();
+                    $('#advanceSettleDetailRow').addClass('d-none');
+                    return;
+                }
+
+                const netBill = parseFloat($('#tSub').text().replace(/,/g, '')) || 0;
+                let cashPaid = 0;
+                $('.rv-amount').each(function() {
+                    cashPaid += parseFloat($(this).val()) || 0;
+                });
+
+                const unpaidDue = Math.max(0, netBill - cashPaid);
+                const settleAmt = Math.min(availAdv, unpaidDue);
+
+                $('#hiddenAdvanceAdjusted').val(settleAmt.toFixed(2));
+                $('#advSettlingAmtText').text('Rs. ' + settleAmt.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#summaryAdvanceAdjusted').text(settleAmt.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#advanceSettleDetailRow').removeClass('d-none');
+                $('#rowAdvanceAdjusted').show();
+
+                // If fully paid between cash and advance
+                const totalPaidWithAdv = cashPaid + settleAmt;
+                const change = totalPaidWithAdv - netBill;
+                $('#walkinChange').text(change.toFixed(2));
+                if (change >= 0) {
+                    $('#walkinChange').removeClass('text-danger text-warning').addClass('text-success');
+                }
+            };
+
+            $('#toggleSettleFromAdvance').on('change', function() {
+                window.syncAdvanceSettlementUI();
+            });
+
+            // Customer selected → load details
             $('#customerSelect').on('select2:select', function(e) {
                 const id = e.params.data.id;
                 if (!id) return;
@@ -1419,6 +1504,17 @@
                     const range = parseFloat(d.balance_range || 0);
                     $('#previousBalance').val(prev.toFixed(2));
                     $('#rangeBalance').val(range.toFixed(2));
+
+                    // Available Advance Check
+                    const avail = parseFloat(d.available_advance || 0);
+                    window.currentCustomerAvailableAdvance = avail;
+                    if (avail > 0.001) {
+                        $('#advAvailableAmtText').text(avail.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                        $('#advanceSettleBox').removeClass('d-none');
+                    } else {
+                        $('#advanceSettleBox').addClass('d-none');
+                        $('#toggleSettleFromAdvance').prop('checked', false);
+                    }
 
                     // Fill info card
                     $('#ci_code').text(d.customer_id || '—');
@@ -1435,6 +1531,7 @@
                     }
 
                     if (typeof updateGrandTotals === 'function') updateGrandTotals();
+                    window.syncAdvanceSettlementUI();
                 }).fail(function() {
                     showAlert('error', 'Failed to load customer details');
                 });
@@ -1453,6 +1550,10 @@
                 $('#ci_prev_bal, #ci_range_bal').text('0.00');
                 $('#customerInfoCard').addClass('d-none');
                 $('#salesOfficerSelect').val('');
+                window.currentCustomerAvailableAdvance = 0;
+                $('#advanceSettleBox').addClass('d-none');
+                $('#toggleSettleFromAdvance').prop('checked', false);
+                if (typeof window.syncAdvanceSettlementUI === 'function') window.syncAdvanceSettlementUI();
             }
 
             $('#clearCustomerData').on('click', function() {
