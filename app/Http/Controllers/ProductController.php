@@ -141,19 +141,48 @@ class ProductController extends Controller
         if (!empty($words)) {
             $query->where(function ($q) use ($words) {
                 foreach ($words as $w) {
-                    $q->where(function ($subQ) use ($w) {
+                    $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $w);
+                    $q->where(function ($subQ) use ($w, $escaped) {
                         $subQ->where('item_name', 'like', "%{$w}%")
                             ->orWhere('item_code', 'like', "%{$w}%")
                             ->orWhere('barcode_path', 'like', "%{$w}%")
-                            ->orWhere('color', 'like', "%{$w}%");
+                            ->orWhereRaw("JSON_SEARCH(color, 'one', ?, NULL, '$[*].name', '$[*].color', '$[*].size', '$[*].barcode') IS NOT NULL", ["%{$escaped}%"]);
                     });
                 }
             });
+
+            // Relevance ordering:
+            // 1. Exact match on full term
+            // 2. Starts with full term
+            // 3. Contains full phrase
+            // 4. All search words in item_name
+            // 5. Starts with first word
+            // 6. Contains first word
+            $cleanTerm = addslashes($term);
+            $allWordsInNameSql = [];
+            foreach ($words as $w) {
+                $cleanW = addslashes($w);
+                $allWordsInNameSql[] = "item_name LIKE '%{$cleanW}%'";
+            }
+            $allWordsInNameCondition = implode(' AND ', $allWordsInNameSql);
+            $firstWord = addslashes($words[0]);
+
+            $query->orderByRaw("
+                CASE
+                    WHEN item_name = '{$cleanTerm}' THEN 1
+                    WHEN item_name LIKE '{$cleanTerm}%' THEN 2
+                    WHEN item_name LIKE '%{$cleanTerm}%' THEN 3
+                    WHEN ({$allWordsInNameCondition}) THEN 4
+                    WHEN item_name LIKE '{$firstWord}%' THEN 5
+                    WHEN item_name LIKE '%{$firstWord}%' THEN 6
+                    ELSE 7
+                END ASC, item_name ASC
+            ");
+        } else {
+            $query->orderBy('item_name', 'asc');
         }
 
-        $query->orderBy('item_code', 'asc');
-
-        $products = $query->paginate(15); // Lazy loading (15 per request)
+        $products = $query->simplePaginate(15); // Fast lazy loading (15 per request)
 
         $setResults = collect();
         if ((int)($request->get('page') ?? 1) === 1) {
@@ -245,102 +274,114 @@ class ProductController extends Controller
                 } catch (\Exception $e) {}
             }
 
+            $hasMultiVariants = count($variants) > 1;
+
             if (count($variants) > 0) {
-                // Fetch all sales and returns for this product to distribute
-                $salesList = DB::table('sale_items')
-                    ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
-                    ->where('sale_items.product_id', $p->id)
-                    ->whereIn('sales.sale_status', ['posted', 'returned'])->where('sales.sale_type', '!=', 'sales_order')
-                    ->select('sale_items.total_pieces', 'sale_items.color')
-                    ->get();
-
-                // Fetch confirmed web sales
-                $webSalesList = DB::table('ecommerce_order_items as eoi')
-                    ->join('ecommerce_orders as eo', 'eo.id', '=', 'eoi.ecommerce_order_id')
-                    ->where('eoi.product_id', $p->id)
-                    ->where('eo.is_stock_deducted', 1)
-                    ->select('eoi.quantity as total_pieces', 'eoi.color', 'eoi.size')
-                    ->get();
-
-                $salesListArray = $salesList->toArray();
-                foreach ($webSalesList as $wItem) {
-                    $salesListArray[] = (object) [
-                        'total_pieces' => $wItem->total_pieces,
-                        'color' => json_encode([
-                            'color' => $wItem->color ?: '-',
-                            'size' => $wItem->size ?: '-'
-                        ])
-                    ];
-                }
-                $dcList = DB::table('delivery_challan_items as dci')
-                    ->join('delivery_challans as dc', 'dc.id', '=', 'dci.delivery_challan_id')
-                    ->leftJoin('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
-                    ->leftJoin('sales', 'sales.id', '=', 'dc.sale_id')
-                    ->leftJoin('sales as s_inv', 's_inv.id', '=', 'dc.invoice_id')
-                    ->where('dci.product_id', $p->id)
-                    ->where(function($q) {
-                        $q->whereNull('dc.sale_id')
-                          ->orWhere('sales.sale_type', '=', 'sales_order');
-                    })
-                    ->where(function($q) {
-                        $q->where('dc.is_invoiced', 0)
-                          ->orWhereNull('dc.invoice_id')
-                          ->orWhere('s_inv.sale_type', '=', 'sales_order');
-                    })
-                    ->select('dci.delivered_qty as total_pieces', DB::raw('COALESCE(dci.color, si.color) as color'))
-                    ->get();
-                foreach ($dcList as $dcItem) {
-                    $salesListArray[] = (object) [
-                        'total_pieces' => $dcItem->total_pieces,
-                        'total' => 0, // DCs don't hold price natively in this array
-                        'color' => $dcItem->color
-                    ];
-                }
-                $salesList = collect($salesListArray);
-
-                $returnsList = DB::table('sale_return_items as sri')
-                    ->join('sale_returns as sr', 'sr.id', '=', 'sri.sale_return_id')
-                    ->where('sri.product_id', $p->id)
-                    ->select('sri.qty', 'sri.color', 'sr.sale_id')
-                    ->get();
-
-                $saleIds = $returnsList->pluck('sale_id')->unique()->toArray();
+                $salesList = collect();
+                $returnsList = collect();
                 $saleItemsMap = [];
-                if (!empty($saleIds)) {
-                    $siList = DB::table('sale_items')
-                        ->whereIn('sale_id', $saleIds)
-                        ->where('product_id', $p->id)
-                        ->select('sale_id', 'color')
+                $purchasesList = collect();
+                $purchaseReturnsList = collect();
+
+                // Only query the transaction ledgers if there are multiple variants to distribute stock between
+                if ($hasMultiVariants) {
+                    // Fetch all sales and returns for this product to distribute
+                    $salesList = DB::table('sale_items')
+                        ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                        ->where('sale_items.product_id', $p->id)
+                        ->whereIn('sales.sale_status', ['posted', 'returned'])->where('sales.sale_type', '!=', 'sales_order')
+                        ->select('sale_items.total_pieces', 'sale_items.color')
                         ->get();
-                    foreach ($siList as $si) {
-                        $saleItemsMap[$si->sale_id][] = $si->color;
+
+                    // Fetch confirmed web sales
+                    $webSalesList = DB::table('ecommerce_order_items as eoi')
+                        ->join('ecommerce_orders as eo', 'eo.id', '=', 'eoi.ecommerce_order_id')
+                        ->where('eoi.product_id', $p->id)
+                        ->where('eo.is_stock_deducted', 1)
+                        ->select('eoi.quantity as total_pieces', 'eoi.color', 'eoi.size')
+                        ->get();
+
+                    $salesListArray = $salesList->toArray();
+                    foreach ($webSalesList as $wItem) {
+                        $salesListArray[] = (object) [
+                            'total_pieces' => $wItem->total_pieces,
+                            'color' => json_encode([
+                                'color' => $wItem->color ?: '-',
+                                'size' => $wItem->size ?: '-'
+                            ])
+                        ];
                     }
+                    $dcList = DB::table('delivery_challan_items as dci')
+                        ->join('delivery_challans as dc', 'dc.id', '=', 'dci.delivery_challan_id')
+                        ->leftJoin('sale_items as si', 'si.id', '=', 'dci.sale_item_id')
+                        ->leftJoin('sales', 'sales.id', '=', 'dc.sale_id')
+                        ->leftJoin('sales as s_inv', 's_inv.id', '=', 'dc.invoice_id')
+                        ->where('dci.product_id', $p->id)
+                        ->where(function($q) {
+                            $q->whereNull('dc.sale_id')
+                              ->orWhere('sales.sale_type', '=', 'sales_order');
+                        })
+                        ->where(function($q) {
+                            $q->where('dc.is_invoiced', 0)
+                              ->orWhereNull('dc.invoice_id')
+                              ->orWhere('s_inv.sale_type', '=', 'sales_order');
+                        })
+                        ->select('dci.delivered_qty as total_pieces', DB::raw('COALESCE(dci.color, si.color) as color'))
+                        ->get();
+                    foreach ($dcList as $dcItem) {
+                        $salesListArray[] = (object) [
+                            'total_pieces' => $dcItem->total_pieces,
+                            'total' => 0, // DCs don't hold price natively in this array
+                            'color' => $dcItem->color
+                        ];
+                    }
+                    $salesList = collect($salesListArray);
+
+                    $returnsList = DB::table('sale_return_items as sri')
+                        ->join('sale_returns as sr', 'sr.id', '=', 'sri.sale_return_id')
+                        ->where('sri.product_id', $p->id)
+                        ->select('sri.qty', 'sri.color', 'sr.sale_id')
+                        ->get();
+
+                    $saleIds = $returnsList->pluck('sale_id')->unique()->toArray();
+                    if (!empty($saleIds)) {
+                        $siList = DB::table('sale_items')
+                            ->whereIn('sale_id', $saleIds)
+                            ->where('product_id', $p->id)
+                            ->select('sale_id', 'color')
+                            ->get();
+                        foreach ($siList as $si) {
+                            $saleItemsMap[$si->sale_id][] = $si->color;
+                        }
+                    }
+
+                    // Fetch all approved/returned purchases
+                    $purchasesList = DB::table('purchase_items as pi')
+                        ->join('purchases as pur', 'pur.id', '=', 'pi.purchase_id')
+                        ->where('pi.product_id', $p->id)
+                        ->whereIn('pur.status_purchase', ['approved', 'Returned', 'Partial'])
+                        ->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.color')
+                        ->get();
+
+                    // Fetch all purchase returns
+                    $purchaseReturnsList = DB::table('purchase_return_items as pri')
+                        ->where('pri.product_id', $p->id)
+                        ->select('pri.qty', 'pri.color')
+                        ->get();
                 }
-
-                // Fetch all approved/returned purchases
-                $purchasesList = DB::table('purchase_items as pi')
-                    ->join('purchases as pur', 'pur.id', '=', 'pi.purchase_id')
-                    ->where('pi.product_id', $p->id)
-                    ->whereIn('pur.status_purchase', ['approved', 'Returned', 'Partial'])
-                    ->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.color')
-                    ->get();
-
-                // Fetch all purchase returns
-                $purchaseReturnsList = DB::table('purchase_return_items as pri')
-                    ->where('pri.product_id', $p->id)
-                    ->select('pri.qty', 'pri.color')
-                    ->get();
 
                 $expanded = [];
                 foreach ($variants as $v) {
-                    $size = (isset($v['size']) && $v['size'] !== '-') ? " {$v['size']}" : '';
-                    $color = (isset($v['color']) && $v['color'] !== '-') ? " ({$v['color']})" : '';
-                    $vName = ($v['name'] ?? $p->item_name) . $size . $color;
+                    $vSizeVal = trim($v['size'] ?? '');
+                    $vColorVal = trim($v['color'] ?? '');
+                    $size = ($vSizeVal !== '' && $vSizeVal !== '-') ? " {$vSizeVal}" : '';
+                    $color = ($vColorVal !== '' && $vColorVal !== '-') ? " ({$vColorVal})" : '';
+                    $vName = trim(($v['name'] ?? $p->item_name) . $size . $color);
                     
                     $vUnitName = $v['unit'] ?? $unitName;
 
                     if (!empty($words)) {
-                        $variantText = strtolower($vName . ' ' . $vUnitName . ' ' . ($v['barcode'] ?? '') . ' ' . $p->item_name . ' ' . ($p->item_code ?? ''));
+                        $variantText = strtolower($vName . ' ' . $vUnitName . ' ' . ($v['barcode'] ?? '') . ' ' . ($p->barcode_path ?? '') . ' ' . $p->item_name . ' ' . ($p->item_code ?? ''));
                         $allWordsMatch = true;
                         foreach ($words as $w) {
                             if (!str_contains($variantText, strtolower($w))) {
@@ -380,6 +421,9 @@ class ProductController extends Controller
                         } else {
                             $vBalance = round(max(0, $stockPieces) / $factor, 4);
                         }
+                    } elseif (!$hasMultiVariants) {
+                        // Single variant product: warehouse stock is the current total stock
+                        $vBalance = max(0, $stockPieces);
                     } else {
                         // Initial Stock in Pieces
                         $vRawStock = (string) ($v['stock'] ?? '0');
@@ -560,22 +604,45 @@ class ProductController extends Controller
     // ===== Product search (general) =====
     public function searchProducts(Request $request)
     {
-        $term = $request->get('q', '');
+        $term = trim($request->get('q', ''));
+        $words = array_values(array_filter(explode(' ', $term)));
 
-        $products = Product::with('category_relation', 'sub_category_relation', 'brand')
+        $query = Product::with('category_relation', 'sub_category_relation', 'brand')
             ->withSum('warehouseStocks', 'total_pieces')
-            ->where('is_active', true) /* Only active products */
-            ->when($term, function ($query) use ($term) {
-                $query->where('item_name', 'like', "%{$term}%")
-                    ->orWhere('item_code', 'like', "%{$term}%")
-                    ->orWhere('barcode_path', $term)
-                    ->orWhere('color', 'like', "%{$term}%")
-                    ->orWhereHas('category_relation', fn ($q) => $q->where('name', 'like', "%{$term}%"))
-                    ->orWhereHas('sub_category_relation', fn ($q) => $q->where('name', 'like', "%{$term}%"))
-                    ->orWhereHas('brand', fn ($q) => $q->where('name', 'like', "%{$term}%"));
-            })
-            ->limit(500) // limit for performance
-            ->get();
+            ->where('is_active', true); /* Only active products */
+
+        if (!empty($words)) {
+            $query->where(function ($q) use ($words) {
+                foreach ($words as $w) {
+                    $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $w);
+                    $q->where(function ($subQ) use ($w, $escaped) {
+                        $subQ->where('item_name', 'like', "%{$w}%")
+                            ->orWhere('item_code', 'like', "%{$w}%")
+                            ->orWhere('barcode_path', $w)
+                            ->orWhereRaw("JSON_SEARCH(color, 'one', ?, NULL, '$[*].name', '$[*].color', '$[*].size', '$[*].barcode') IS NOT NULL", ["%{$escaped}%"])
+                            ->orWhereHas('category_relation', fn ($catQ) => $catQ->where('name', 'like', "%{$w}%"))
+                            ->orWhereHas('sub_category_relation', fn ($subCatQ) => $subCatQ->where('name', 'like', "%{$w}%"))
+                            ->orWhereHas('brand', fn ($brandQ) => $brandQ->where('name', 'like', "%{$w}%"));
+                    });
+                }
+            });
+
+            $cleanTerm = addslashes($term);
+            $firstWord = addslashes($words[0]);
+            $query->orderByRaw("
+                CASE
+                    WHEN item_name = '{$cleanTerm}' THEN 1
+                    WHEN item_name LIKE '{$cleanTerm}%' THEN 2
+                    WHEN item_name LIKE '%{$cleanTerm}%' THEN 3
+                    WHEN item_name LIKE '{$firstWord}%' THEN 4
+                    ELSE 5
+                END ASC, item_name ASC
+            ");
+        } else {
+            $query->orderBy('item_name', 'asc');
+        }
+
+        $products = $query->limit(500)->get();
 
         return response()->json($products->map(function ($p, $key) {
             $stockPieces = (float) ($p->warehouse_stocks_sum_total_pieces ?? 0);

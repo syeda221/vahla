@@ -540,6 +540,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/all_expense_vochers', [VoucherController::class, 'all_expense_vochers'])->name('all_expense_vochers');
     Route::get('/expense_vochers', [VoucherController::class, 'expense_vochers'])->name('expense_vochers');
     Route::post('/store_expense_vochers', [VoucherController::class, 'store_expense_vochers'])->name('store_expense_vochers');
+    Route::get('/expense_vochers/{id}/edit', [VoucherController::class, 'edit_expense_voucher'])->name('expense_vouchers.edit');
+    Route::match(['put', 'patch', 'post'], '/expense_vochers/{id}', [VoucherController::class, 'update_expense_voucher'])->name('expense_vouchers.update');
     Route::delete('/expense_vochers/{id}', [VoucherController::class, 'destroyExpenseVoucher'])->name('expense_vouchers.destroy');
     Route::get('/expenseprint/{id}', [VoucherController::class, 'expenseprint'])->name('expenseprint');
 

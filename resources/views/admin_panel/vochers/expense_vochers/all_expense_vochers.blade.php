@@ -70,15 +70,21 @@
                                                         class="btn btn-sm btn-outline-primary" title="Print">
                                                         <i class="bi bi-printer"></i>
                                                     </a>
-                                                    @can('expense.voucher.delete')
+                                                    @if(auth()->user()->hasRole('Super Admin') || auth()->user()->can('expense.voucher.edit'))
+                                                    <a href="{{ route('expense_vouchers.edit', $item->id) }}"
+                                                        class="btn btn-sm btn-outline-warning" title="Edit">
+                                                        <i class="bi bi-pencil-square"></i>
+                                                    </a>
+                                                    @endif
+                                                    @if(auth()->user()->hasRole('Super Admin') || auth()->user()->can('expense.voucher.delete'))
                                                     <form action="{{ route('expense_vouchers.destroy', $item->id) }}" method="POST" class="d-inline delete-form">
                                                         @csrf
                                                         @method('DELETE')
-                                                        <button type="button" class="btn btn-sm btn-outline-danger delete-btn" title="Delete">
+                                                        <button type="button" class="btn btn-sm btn-outline-danger delete-btn" title="Delete & Refund Amount">
                                                             <i class="bi bi-trash"></i>
                                                         </button>
                                                     </form>
-                                                    @endcan
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>
@@ -109,12 +115,12 @@
 
             Swal.fire({
                 title: 'Are you sure?',
-                text: "Do you want to delete this Expense Voucher?",
+                text: "Deleting this Expense Voucher will refund the amount back to the account. Do you want to proceed?",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
                 cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, delete it!'
+                confirmButtonText: 'Yes, delete & refund!'
             }).then((result) => {
                 if (result.isConfirmed) {
                     form.submit();

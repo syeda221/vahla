@@ -1512,6 +1512,364 @@ class VoucherController extends Controller
         }
     }
 
+        public function edit_expense_voucher($id)
+    {
+        $voucher = ExpenseVoucher::findOrFail($id);
+        $narrations = \App\Models\Narration::where('expense_head', 'Expense voucher')
+            ->pluck('narration', 'id');
+        $expenseCategories = \App\Models\ExpenseCategory::orderBy('name')->get();
+        $AccountHeads = AccountHead::whereIn('name', ['Cash', 'bank', 'cash', 'Bank'])->get();
+
+        // Decode rows safely
+        $rowAccountIds = json_decode($voucher->row_account_id, true) ?? [];
+        $rowAmounts = json_decode($voucher->amount, true) ?? [];
+        $narrationIds = json_decode($voucher->narration_id, true) ?? [];
+
+        // Build list of rows with category and narration text
+        $rows = [];
+        $rowCount = max(count($rowAccountIds), count($rowAmounts), 1);
+        for ($i = 0; $i < $rowCount; $i++) {
+            $catId = $rowAccountIds[$i] ?? null;
+            $amt = $rowAmounts[$i] ?? 0;
+            $narrId = $narrationIds[$i] ?? null;
+            $narrText = '';
+            if (!empty($narrId)) {
+                $narrText = DB::table('narrations')->where('id', $narrId)->value('narration') ?? '';
+            }
+            $rows[] = [
+                'category_id' => $catId,
+                'narration_id' => $narrId,
+                'narration_text' => $narrText,
+                'amount' => $amt,
+            ];
+        }
+
+        // Get party options and current balance/code
+        $parties = [];
+        $selectedPartyBalance = 0;
+        $selectedPartyCode = $voucher->tel ?? '';
+        $selectedHeadId = $voucher->type;
+
+        if (is_numeric($voucher->type)) {
+            $parties = Account::where('head_id', $voucher->type)->get();
+            $acc = Account::find($voucher->party_id);
+            if ($acc) {
+                $selectedPartyBalance = $acc->current_balance ?? $acc->opening_balance ?? 0;
+                if (empty($selectedPartyCode)) {
+                    $selectedPartyCode = $acc->account_code;
+                }
+            }
+        } elseif ($voucher->type === 'vendor') {
+            $vendors = \App\Models\Vendor::all();
+            foreach ($vendors as $v) {
+                $parties[] = (object)[
+                    'id' => $v->id,
+                    'title' => $v->name,
+                    'account_code' => $v->phone,
+                    'current_balance' => \App\Models\VendorLedger::where('vendor_id', $v->id)->latest()->value('closing_balance') ?? 0,
+                ];
+            }
+            $vLedger = VendorLedger::where('vendor_id', $voucher->party_id)->latest()->first();
+            $selectedPartyBalance = $vLedger ? $vLedger->closing_balance : 0;
+            $vend = \App\Models\Vendor::find($voucher->party_id);
+            if ($vend && empty($selectedPartyCode)) {
+                $selectedPartyCode = $vend->phone;
+            }
+        } elseif ($voucher->type === 'customer') {
+            $customers = \App\Models\Customer::all();
+            foreach ($customers as $c) {
+                $parties[] = (object)[
+                    'id' => $c->id,
+                    'title' => $c->customer_name,
+                    'account_code' => $c->mobile,
+                    'current_balance' => \App\Models\CustomerLedger::where('customer_id', $c->id)->latest()->value('closing_balance') ?? 0,
+                ];
+            }
+            $cLedger = CustomerLedger::where('customer_id', $voucher->party_id)->latest()->first();
+            $selectedPartyBalance = $cLedger ? $cLedger->closing_balance : 0;
+            $cust = \App\Models\Customer::find($voucher->party_id);
+            if ($cust && empty($selectedPartyCode)) {
+                $selectedPartyCode = $cust->mobile;
+            }
+        } elseif ($voucher->type === 'purchase') {
+            $acc = Account::find($voucher->party_id);
+            if ($acc) {
+                $selectedHeadId = $acc->head_id;
+                $parties = Account::where('head_id', $acc->head_id)->get();
+                $selectedPartyBalance = $acc->current_balance ?? $acc->opening_balance ?? 0;
+                if (empty($selectedPartyCode)) {
+                    $selectedPartyCode = $acc->account_code;
+                }
+            }
+        }
+
+        return view('admin_panel.vochers.expense_vochers.edit_expense_voucher', compact(
+            'voucher',
+            'narrations',
+            'expenseCategories',
+            'AccountHeads',
+            'rows',
+            'parties',
+            'selectedPartyBalance',
+            'selectedPartyCode',
+            'selectedHeadId'
+        ));
+    }
+
+    public function update_expense_voucher(Request $request, $id)
+    {
+        $request->validate([
+            'entry_date' => 'required|date',
+            'vendor_type' => 'required',
+            'vendor_id' => 'required',
+            'row_account_id' => 'required|array|min:1',
+            'row_account_id.*' => 'required',
+            'amount' => 'required|array|min:1',
+            'amount.*' => 'required|numeric|min:0.01',
+            'total_amount' => 'required|numeric|min:0.01',
+        ], [
+            'entry_date.required' => 'Voucher date is required.',
+            'vendor_type.required' => 'Please select Payment Head (Source).',
+            'vendor_id.required' => 'Please select Account / Paid From.',
+            'row_account_id.required' => 'Please add at least one expense category.',
+            'row_account_id.*.required' => 'Please select an expense category for all rows.',
+            'amount.required' => 'Please enter expense amounts.',
+            'amount.*.required' => 'Amount is required for each expense row.',
+            'amount.*.min' => 'Amount must be greater than zero.',
+            'total_amount.required' => 'Total amount is required.',
+            'total_amount.min' => 'Total amount must be greater than zero.',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $expense = ExpenseVoucher::findOrFail($id);
+            $journalService = app(\App\Services\JournalEntryService::class);
+            $balanceService = app(\App\Services\BalanceService::class);
+
+            // ==========================================
+            // STEP 1: REVERSE OLD FINANCIAL POSTINGS
+            // ==========================================
+            $hasJournalEntries = \App\Models\JournalEntry::where('source_type', get_class($expense))
+                ->where('source_id', $expense->id)
+                ->exists();
+
+            if ($hasJournalEntries) {
+                // Automatically restores Dr General Expense and Cr Cash/Bank Account
+                $journalService->reverseEntriesForSource($expense);
+            } else {
+                if (is_numeric($expense->type) || $expense->type === 'purchase') {
+                    $acc = Account::find($expense->party_id);
+                    if ($acc) {
+                        $acc->current_balance = ($acc->current_balance ?? 0) + (float) $expense->total_amount;
+                        $acc->save();
+                    }
+                }
+            }
+
+            // Restore old Vendor Ledger
+            if ($expense->type === 'vendor' && $expense->party_id) {
+                $vLedger = VendorLedger::where('vendor_id', $expense->party_id)->latest()->first();
+                if ($vLedger) {
+                    $vLedger->previous_balance = $vLedger->closing_balance;
+                    $vLedger->closing_balance = $vLedger->closing_balance + (float) $expense->total_amount;
+                    $vLedger->save();
+                }
+            }
+
+            // Restore old Customer Ledger
+            if ($expense->type === 'customer' && $expense->party_id) {
+                $cLedger = CustomerLedger::where('customer_id', $expense->party_id)->latest()->first();
+                if ($cLedger) {
+                    $cLedger->previous_balance = $cLedger->closing_balance;
+                    $cLedger->closing_balance = $cLedger->closing_balance + (float) $expense->total_amount;
+                    $cLedger->save();
+                }
+            }
+
+            // ==========================================
+            // STEP 2: PROCESS NARRATIONS
+            // ==========================================
+            $narrationIds = [];
+            if ($request->narration_id && is_array($request->narration_id)) {
+                foreach ($request->narration_id as $index => $narrId) {
+                    $manualText = $request->narration_text[$index] ?? null;
+
+                    if (empty($narrId) && !empty($manualText)) {
+                        $new = \App\Models\Narration::create([
+                            'expense_head' => 'Expense voucher',
+                            'narration' => $manualText,
+                        ]);
+                        $narrationIds[] = (string) $new->id;
+                    } elseif (!empty($narrId)) {
+                        if (!empty($manualText)) {
+                            $narrObj = \App\Models\Narration::find($narrId);
+                            if ($narrObj && $narrObj->narration !== $manualText) {
+                                $new = \App\Models\Narration::create([
+                                    'expense_head' => 'Expense voucher',
+                                    'narration' => $manualText,
+                                ]);
+                                $narrationIds[] = (string) $new->id;
+                            } else {
+                                $narrationIds[] = (string) $narrId;
+                            }
+                        } else {
+                            $narrationIds[] = (string) $narrId;
+                        }
+                    } else {
+                        $narrationIds[] = "";
+                    }
+                }
+            }
+
+            // ==========================================
+            // STEP 3: UPDATE EXPENSE VOUCHER RECORD
+            // ==========================================
+            $expense->update([
+                'entry_date' => $request->entry_date,
+                'type' => $request->vendor_type,
+                'party_id' => $request->vendor_id,
+                'tel' => $request->tel,
+                'remarks' => $request->remarks,
+                'reference_no' => $request->ref_no_header,
+                'narration_id' => json_encode($narrationIds),
+                'row_account_head' => json_encode($request->row_account_head ?? array_fill(0, count($request->row_account_id ?? []), "0")),
+                'row_account_id' => json_encode($request->row_account_id),
+                'amount' => json_encode($request->amount),
+                'total_amount' => $request->total_amount,
+            ]);
+
+            $evid = $expense->evid;
+            $newAmount = (float) $request->total_amount;
+
+            // ==========================================
+            // STEP 4: POST NEW FINANCIAL ENTRIES
+            // ==========================================
+            $expenseHead = AccountHead::firstOrCreate(
+                ['name' => 'Expense'],
+                ['opening_balance' => 0]
+            );
+
+            $generalExpenseAccount = Account::firstOrCreate(
+                ['account_code' => 'GEN-EXP'],
+                [
+                    'head_id' => $expenseHead->id,
+                    'title' => 'General Expense',
+                    'opening_balance' => 0,
+                    'current_balance' => 0,
+                    'type' => 'Debit',
+                    'status' => 1
+                ]
+            );
+
+            if ($request->row_account_id && $request->amount) {
+                foreach ($request->row_account_id as $index => $accId) {
+                    $rowAmount = isset($request->amount[$index]) ? (float) $request->amount[$index] : 0;
+                    if ($rowAmount > 0) {
+                        $categoryName = DB::table('expense_categories')->where('id', $accId)->value('name') ?? 'General Expense';
+                        $journalService->recordEntry(
+                            $expense,
+                            $generalExpenseAccount->id,
+                            $rowAmount, // Debit Expense
+                            0, // Credit
+                            "Expense Voucher #$evid ($categoryName)",
+                            $request->entry_date ?? date('Y-m-d')
+                        );
+                    }
+                }
+            }
+
+            if ($request->vendor_type === 'vendor') {
+                $ledger = VendorLedger::where('vendor_id', $request->vendor_id)->latest()->first();
+                if ($ledger) {
+                    $ledger->previous_balance = $ledger->closing_balance;
+                    $ledger->closing_balance = $ledger->closing_balance - $newAmount;
+                    $ledger->save();
+                } else {
+                    VendorLedger::create([
+                        'vendor_id' => $request->vendor_id,
+                        'admin_or_user_id' => auth()->id(),
+                        'opening_balance' => 0,
+                        'previous_balance' => 0,
+                        'closing_balance' => -$newAmount,
+                    ]);
+                }
+
+                $journalService->recordEntry(
+                    $expense,
+                    $balanceService->getAccountsPayableId(),
+                    0,
+                    $newAmount,
+                    "Expense Voucher #$evid",
+                    $request->entry_date ?? date('Y-m-d'),
+                    \App\Models\Vendor::find($request->vendor_id)
+                );
+            } elseif ($request->vendor_type === 'customer') {
+                $ledger = CustomerLedger::where('customer_id', $request->vendor_id)->latest()->first();
+                if ($ledger) {
+                    $ledger->previous_balance = $ledger->closing_balance;
+                    $ledger->closing_balance = $ledger->closing_balance - $newAmount;
+                    $ledger->save();
+                } else {
+                    CustomerLedger::create([
+                        'customer_id' => $request->vendor_id,
+                        'admin_or_user_id' => auth()->id(),
+                        'previous_balance' => 0,
+                        'opening_balance' => 0,
+                        'closing_balance' => -$newAmount,
+                    ]);
+                }
+
+                $journalService->recordEntry(
+                    $expense,
+                    $balanceService->getAccountsReceivableId(),
+                    0,
+                    $newAmount,
+                    "Expense Voucher #$evid",
+                    $request->entry_date ?? date('Y-m-d'),
+                    \App\Models\Customer::find($request->vendor_id)
+                );
+            } else {
+                $account = Account::find($request->vendor_id);
+                if ($account) {
+                    $journalService->recordEntry(
+                        $expense,
+                        $account->id,
+                        0,
+                        $newAmount,
+                        "Expense Voucher #$evid",
+                        $request->entry_date ?? date('Y-m-d')
+                    );
+                }
+            }
+
+            DB::commit();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Expense Voucher updated successfully!',
+                    'voucher_id' => $expense->id,
+                    'print_url' => route('expenseprint', $expense->id),
+                    'all_vouchers_url' => route('all_expense_vochers'),
+                ]);
+            }
+
+            return redirect()->route('all_expense_vochers')->with('success', 'Expense Voucher updated successfully!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Expense Voucher Update Error: ' . $e->getMessage());
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
+
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
     public function all_expense_vochers()
     {
         $receipts = \App\Models\ExpenseVoucher::orderBy('id', 'DESC')->get();
@@ -1574,8 +1932,10 @@ class VoucherController extends Controller
 
         // 🧾 Prepare detailed rows
         $rows = [];
-        foreach ($narrations as $index => $narrId) {
-            $narration = DB::table('narrations')->where('id', $narrId)->value('narration');
+        $loopCount = max(count($accounts), count($amounts), count($narrations));
+        for ($index = 0; $index < $loopCount; $index++) {
+            $narrId = $narrations[$index] ?? null;
+            $narration = $narrId ? DB::table('narrations')->where('id', $narrId)->value('narration') : null;
             $ref = $references[$index] ?? null;
 
             // Check if it is a new custom category or a legacy account
@@ -1835,12 +2195,43 @@ class VoucherController extends Controller
 
             $journalService = app(\App\Services\JournalEntryService::class);
 
-            // 1. Reverse all journal entries (this restores cash/bank/general expense account balances)
-            $journalService->reverseEntriesForSource($expense);
+            // 1. Reverse journal entries (restores Cash/Bank Account balance and decreases Expense Account)
+            $hasJournalEntries = \App\Models\JournalEntry::where('source_type', get_class($expense))
+                ->where('source_id', $expense->id)
+                ->exists();
 
-            // 2. Revert customer ledger if affected
+            if ($hasJournalEntries) {
+                $journalService->reverseEntriesForSource($expense);
+            } else {
+                // Fallback for vouchers without journal entries: refund cash/bank account directly
+                if (is_numeric($expense->type) || $expense->type === 'purchase') {
+                    $account = Account::find($expense->party_id);
+                    if ($account) {
+                        $account->current_balance = ($account->current_balance ?? 0) + (float) $expense->total_amount;
+                        $account->save();
+                    }
+                }
+            }
+
+            // 2. Revert vendor ledger if affected (refund vendor)
+            if ($expense->type === 'vendor' && $expense->party_id) {
+                $vLedger = VendorLedger::where('vendor_id', $expense->party_id)->latest()->first();
+                if ($vLedger) {
+                    $vLedger->previous_balance = $vLedger->closing_balance;
+                    $vLedger->closing_balance = $vLedger->closing_balance + (float) $expense->total_amount;
+                    $vLedger->save();
+                }
+            }
+
+            // 3. Revert customer ledger if affected (refund customer)
             $evid = $expense->evid;
             if ($expense->type === 'customer' && $expense->party_id) {
+                $cLedger = CustomerLedger::where('customer_id', $expense->party_id)->latest()->first();
+                if ($cLedger) {
+                    $cLedger->previous_balance = $cLedger->closing_balance;
+                    $cLedger->closing_balance = $cLedger->closing_balance + (float) $expense->total_amount;
+                    $cLedger->save();
+                }
                 if (\Illuminate\Support\Facades\Schema::hasColumn('customer_ledgers', 'description')) {
                     CustomerLedger::where('customer_id', $expense->party_id)
                         ->where('description', 'like', "%{$evid}%")
@@ -1848,15 +2239,15 @@ class VoucherController extends Controller
                 }
             }
 
-            // 3. Delete expense voucher
+            // 4. Delete expense voucher
             $expense->delete();
 
             DB::commit();
 
             if (request()->ajax() || request()->wantsJson()) {
-                return response()->json(['success' => true, 'message' => 'Expense Voucher deleted successfully.']);
+                return response()->json(['success' => true, 'message' => 'Expense Voucher deleted and amount refunded successfully.']);
             }
-            return back()->with('success', 'Expense Voucher deleted successfully.');
+            return back()->with('success', 'Expense Voucher deleted and amount refunded successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Expense Voucher Delete Error: ' . $e->getMessage());

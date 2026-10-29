@@ -273,33 +273,61 @@ class SaleController extends Controller
 
     public function searchpname(Request $request)
     {
-        $q = $request->get('q');
+        $q = trim($request->get('q', ''));
         $warehouseId = $request->get('warehouse_id', 1);
+        $words = array_values(array_filter(explode(' ', $q)));
 
-        $products = Product::with(['brand'])
+        $productsQuery = Product::with(['brand'])
             ->leftJoin('warehouse_stocks', function ($join) use ($warehouseId) {
                 $join->on('products.id', '=', 'warehouse_stocks.product_id')
                     ->where('warehouse_stocks.warehouse_id', $warehouseId);
             })
-            ->where('products.is_active', true) /* Only active products */
-            ->where(function ($query) use ($q) {
-                $query->where('products.item_name', 'like', "%{$q}%")
-                    ->orWhere('products.item_code', 'like', "%{$q}%")
-                    ->orWhere('products.barcode_path', $q)
-                    ->orWhere('products.color', 'like', "%\"barcode\":\"{$q}\"%");
-            })
-            ->select(
+            ->where('products.is_active', true); /* Only active products */
+
+        if (!empty($words)) {
+            $productsQuery->where(function ($query) use ($words) {
+                foreach ($words as $w) {
+                    $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $w);
+                    $query->where(function ($subQ) use ($w, $escaped) {
+                        $subQ->where('products.item_name', 'like', "%{$w}%")
+                            ->orWhere('products.item_code', 'like', "%{$w}%")
+                            ->orWhere('products.barcode_path', 'like', "%{$w}%")
+                            ->orWhereRaw("JSON_SEARCH(products.color, 'one', ?, NULL, '$[*].name', '$[*].color', '$[*].size', '$[*].barcode') IS NOT NULL", ["%{$escaped}%"]);
+                    });
+                }
+            });
+
+            $cleanTerm = addslashes($q);
+            $allWordsInNameSql = [];
+            foreach ($words as $w) {
+                $cleanW = addslashes($w);
+                $allWordsInNameSql[] = "products.item_name LIKE '%{$cleanW}%'";
+            }
+            $allWordsInNameCondition = implode(' AND ', $allWordsInNameSql);
+            $firstWord = addslashes($words[0]);
+
+            $productsQuery->orderByRaw("
+                CASE
+                    WHEN products.item_name = '{$cleanTerm}' THEN 1
+                    WHEN products.item_name LIKE '{$cleanTerm}%' THEN 2
+                    WHEN products.item_name LIKE '%{$cleanTerm}%' THEN 3
+                    WHEN ({$allWordsInNameCondition}) THEN 4
+                    WHEN products.item_name LIKE '{$firstWord}%' THEN 5
+                    WHEN products.item_name LIKE '%{$firstWord}%' THEN 6
+                    ELSE 7
+                END ASC, products.item_name ASC
+            ");
+        } else {
+            $productsQuery->orderBy('products.item_name', 'asc');
+        }
+
+        $products = $productsQuery->select(
                 'products.*',
                 'warehouse_stocks.total_pieces as wh_stock',
                 'warehouse_stocks.quantity as wh_box_qty'
             )
-            ->orderBy('products.item_code', 'asc')
             ->limit(50)
-            ->get()
-            ->map(function ($product) {
-                return $product;
-            });
-
+            ->get();
 
         return response()->json($products);
     }
