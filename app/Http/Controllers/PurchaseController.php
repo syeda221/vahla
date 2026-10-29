@@ -2971,7 +2971,6 @@ class PurchaseController extends Controller
 
         // Find existing expense voucher linked to this purchase
         $existing = \App\Models\ExpenseVoucher::where('reference_no', $purchase->invoice_no)
-            ->where('type', 'purchase')
             ->first();
 
         if ($totalExpense <= 0) {
@@ -3042,8 +3041,8 @@ class PurchaseController extends Controller
         $voucherData = [
             'evid' => $evid,
             'entry_date' => $entryDate,
-            'type' => 'purchase',
-            'party_id' => $purchase->vendor_id,
+            'type' => (string) ($deductAccount->head_id ?? 1),
+            'party_id' => $cashAccountId,
             'remarks' => $remarks,
             'reference_no' => $purchase->invoice_no,
             'row_account_id' => json_encode([$catId]),

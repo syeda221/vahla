@@ -1525,7 +1525,7 @@ class VoucherController extends Controller
                 $accountHead = DB::table('account_heads')->where('id', $voucher->type)->first();
                 $account = DB::table('accounts')->where('id', $voucher->party_id)->first();
 
-                $typeLabel = $accountHead->name ?? 'Account';
+                $typeLabel = $accountHead ? ucfirst($accountHead->name) : 'Account';
                 $partyName = $account->title ?? '-';
             } elseif ($voucher->type === 'vendor') {
                 $vendor = DB::table('vendors')->where('id', $voucher->party_id)->first();
@@ -1542,6 +1542,11 @@ class VoucherController extends Controller
                     ->first();
                 $typeLabel = 'Walk-in';
                 $partyName = $walkin->customer_name ?? '-';
+            } elseif ($voucher->type === 'purchase') {
+                $account = DB::table('accounts')->where('id', $voucher->party_id)->first();
+                $accountHead = $account ? DB::table('account_heads')->where('id', $account->head_id)->first() : null;
+                $typeLabel = $accountHead ? ucfirst($accountHead->name) : 'Cash';
+                $partyName = $account->title ?? 'CASH IN HAND';
             } else {
                 $account = DB::table('accounts')->where('id', $voucher->party_id)->first();
                 $typeLabel = 'Account';
