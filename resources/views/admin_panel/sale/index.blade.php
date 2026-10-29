@@ -228,7 +228,31 @@
             font-size: 11px;
             letter-spacing: 0.8px;
             border: none !important;
-            padding: 16px 24px 16px 12px !important;
+            padding: 14px 12px !important;
+        }
+        .premium-table thead th::before,
+        .premium-table thead th::after,
+        .premium-table thead th:before,
+        .premium-table thead th:after,
+        #sales-table thead th::before,
+        #sales-table thead th::after,
+        #sales-table thead th:before,
+        #sales-table thead th:after,
+        table.dataTable thead .sorting::before,
+        table.dataTable thead .sorting::after,
+        table.dataTable thead .sorting:before,
+        table.dataTable thead .sorting:after,
+        table.dataTable thead .sorting_asc::before,
+        table.dataTable thead .sorting_asc::after,
+        table.dataTable thead .sorting_asc:before,
+        table.dataTable thead .sorting_asc:after,
+        table.dataTable thead .sorting_desc::before,
+        table.dataTable thead .sorting_desc::after,
+        table.dataTable thead .sorting_desc:before,
+        table.dataTable thead .sorting_desc:after {
+            display: none !important;
+            content: "" !important;
+            background-image: none !important;
         }
         .premium-table thead tr th:first-child {
             border-top-left-radius: 12px !important;

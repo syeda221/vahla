@@ -332,9 +332,22 @@
         .dropdown-toggle::after,
         .nav-link::after,
         .navbar-nav .nav-item .nav-link::after,
-        .count-indicator::after {
+        .count-indicator::after,
+        table.dataTable thead .sorting::before,
+        table.dataTable thead .sorting::after,
+        table.dataTable thead .sorting:before,
+        table.dataTable thead .sorting:after,
+        table.dataTable thead .sorting_asc::before,
+        table.dataTable thead .sorting_asc::after,
+        table.dataTable thead .sorting_asc:before,
+        table.dataTable thead .sorting_asc:after,
+        table.dataTable thead .sorting_desc::before,
+        table.dataTable thead .sorting_desc::after,
+        table.dataTable thead .sorting_desc:before,
+        table.dataTable thead .sorting_desc:after {
             display: none !important;
-            content: none !important;
+            content: "" !important;
+            background-image: none !important;
         }
         .rt_nav_header.horizontal-layout .top_nav {
             background: #090e1a !important;
