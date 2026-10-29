@@ -261,7 +261,8 @@
 </head>
 
     <div class="print-controls no-print" style="width: 76mm; margin: 10px auto 14px auto; display: flex; gap: 6px;">
-        <a href="javascript:void(0)" onclick="triggerPrint()" class="btn btn-primary" style="flex: 1; padding: 7px 4px; font-size: 11px; border-radius: 5px; text-decoration: none; text-align: center; background: #000; color: #fff; font-weight: 600;">🖨️ Print Receipt</a>
+        <a href="javascript:void(0)" onclick="triggerPrint()" class="btn btn-primary" style="flex: 1; padding: 7px 4px; font-size: 11px; border-radius: 5px; text-decoration: none; text-align: center; background: #000; color: #fff; font-weight: 600;">🖨️ Thermal Print</a>
+        <a href="{{ route('sales.invoice', $sale->id) }}" class="btn btn-success" style="flex: 1; padding: 7px 4px; font-size: 11px; border-radius: 5px; text-decoration: none; text-align: center; background: #16a34a; color: #fff; font-weight: 600;">📄 A4 Invoice</a>
         <a href="javascript:void(0)" onclick="handleGoBack()" class="btn btn-secondary" style="flex: 1; padding: 7px 4px; font-size: 11px; border-radius: 5px; text-decoration: none; text-align: center; background: #2563eb; color: #fff; font-weight: 600;">⬅️ Back</a>
     </div>
 

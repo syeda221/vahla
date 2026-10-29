@@ -196,9 +196,10 @@
 
 <body>
 
-    <div class="print-controls no-print">
-        <a href="javascript:window.print()" class="btn btn-primary">🖨️ Print DC</a>
-        <a href="javascript:void(0)" onclick="handleGoBack()" class="btn btn-secondary">← Back</a>
+    <div class="print-controls no-print" style="width: 80mm; margin: 0 auto 15px auto; display: flex; gap: 6px;">
+        <a href="javascript:window.print()" class="btn btn-primary" style="flex: 1; padding: 7px 4px; font-size: 11px; border-radius: 5px; text-decoration: none; text-align: center; background: #000; color: #fff; font-weight: 600;">🖨️ Thermal Print</a>
+        <a href="{{ route('sales.dc', $sale->id) }}" class="btn btn-success" style="flex: 1; padding: 7px 4px; font-size: 11px; border-radius: 5px; text-decoration: none; text-align: center; background: #16a34a; color: #fff; font-weight: 600;">📄 A4 DC</a>
+        <a href="javascript:void(0)" onclick="handleGoBack()" class="btn btn-secondary" style="flex: 1; padding: 7px 4px; font-size: 11px; border-radius: 5px; text-decoration: none; text-align: center; background: #2563eb; color: #fff; font-weight: 600;">Back</a>
     </div>
 
     <div class="receipt-container">

@@ -211,16 +211,6 @@
                                 <i class="fas fa-shipping-fast text-warning fa-fw"></i> Delivery Challan (DC)
                             </a>
                         </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc_thermal', $sale->id) }}" target="_blank">
-                                <i class="fas fa-truck text-muted fa-fw"></i> DC Thermal
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.receipt', $sale->id) }}" target="_blank">
-                                <i class="fas fa-receipt text-success fa-fw"></i> Receipt
-                            </a>
-                        </li>
                     @endcan
 
                     @if ($sale->sale_status !== 'returned')
