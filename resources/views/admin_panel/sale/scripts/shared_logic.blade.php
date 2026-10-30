@@ -1,5 +1,3 @@
-
-
 <style>
     .last-sale-badge-container {
         margin-top: 2px;
@@ -187,7 +185,7 @@
             ajax: {
                 url: '{{ route('products.ajax.search') }}',
                 dataType: 'json',
-                delay: 300,
+                delay: 150,
                 data: function(params) {
                     return {
                         term: params.term,
@@ -320,14 +318,22 @@
     </td>
 
     <!-- LOCATION (Warehouse / Shop) -->
-    <td class="col-wh" style="width: 135px; min-width: 125px;">
-      <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem;">
-        @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
-            <option value="{{ $wh->id }}">
-                {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
-            </option>
-        @endforeach
-      </select>
+    <td class="col-wh" style="width: 160px; min-width: 150px;">
+      <div class="d-flex align-items-center gap-1">
+        <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem; flex: 1; min-width: 0;">
+          @foreach(\App\Models\Warehouse::orderByRaw("is_shop DESC, id ASC")->get() as $wh)
+              <option value="{{ $wh->id }}">
+                  {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
+              </option>
+          @endforeach
+        </select>
+        <button type="button" class="btn btn-xs btn-outline-primary btn-split-wh px-1 py-0" title="Sell from Multiple Locations (Shop & Warehouse)" data-bs-toggle="tooltip">
+            <i class="fas fa-boxes" style="font-size: 0.72rem;"></i>
+        </button>
+      </div>
+      <input type="hidden" class="warehouse-breakdown-input" name="warehouse_breakdown[]" value="">
+      <div class="mwh-applied-badge-wrap mt-1" style="display: none;"></div>
+      <div class="wh-stock-hint text-muted mt-1" style="font-size: 0.65rem; line-height: 1.1; display: none;" title="Click to allocate across warehouses"></div>
     </td>
 
     <!-- STOCK -->
@@ -567,6 +573,8 @@
 
             setupRowQtyToggle($row, pRes.size_mode);
             computeRow($row);
+            updateGrandTotals();
+            refreshPostedState();
 
             // Check and notify recent price
             const custId = $('#customerSelect').val();
@@ -600,12 +608,36 @@
                 $row.data('product_warehouses', validWarehouses);
                 var matched = validWarehouses.find(function(w) { return w.warehouse_id == targetWhId; });
 
+                // Resolve conversion factor and variant unit for this row
+                let convFactor = 0;
+                let variantUnit = '';
+                const vdEncoded = $row.find('.variant-data-hidden').val();
+                if (vdEncoded) {
+                    try {
+                        let vd;
+                        try { vd = JSON.parse(atob(vdEncoded)); } catch(e) { vd = JSON.parse(vdEncoded); }
+                        if (vd) {
+                            variantUnit = (vd.unit || '').toLowerCase().trim();
+                            if (vd.conv_factor && parseFloat(vd.conv_factor) > 0) {
+                                convFactor = parseFloat(vd.conv_factor);
+                            } else if (vd.weight_per_piece && parseFloat(vd.weight_per_piece) > 0) {
+                                convFactor = parseFloat(vd.weight_per_piece) / 1000.0;
+                            }
+                        }
+                    } catch(ex) {}
+                }
+                if (convFactor <= 0) {
+                    const wpp = parseFloat($row.find('.weight-per-piece').val()) || 0;
+                    if (wpp > 0) convFactor = wpp / 1000.0;
+                }
+
+                const unitMode = ($row.find('.qty-unit-toggle').attr('data-unit-mode') || variantUnit || 'ctn').toLowerCase();
+
                 if (matched) {
                     $whInput.val(matched.warehouse_id);
                     let disp;
                     const ppb = parseFloat(matched.ppb) || 1;
 
-                    const unitMode = ($row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn').toLowerCase();
                     if ((matched.size_mode === 'by_cartons' || matched.size_mode === 'by_box' || matched.size_mode === 'by_size') && ppb > 1) {
                         if (unitMode === 'pcs' || unitMode === 'pc') {
                             disp = matched.stock;
@@ -616,7 +648,10 @@
                         }
                     } else if (matched.size_mode === 'by_kg') {
                         const s = parseFloat(matched.stock) || 0;
-                        if (s > 0 && s < 1) {
+                        if ((unitMode === 'pcs' || unitMode === 'pc') && convFactor > 0) {
+                            const pcs = Math.round(s / convFactor);
+                            disp = `${pcs.toLocaleString()} Pcs (${s.toFixed(2)} Kg)`;
+                        } else if (s > 0 && s < 1) {
                             const gm = (s * 1000).toFixed(1);
                             disp = `${s.toFixed(2)} Kg (${gm} Gm)`;
                         } else {
@@ -642,6 +677,42 @@
                         disp = matched.stock;
                     }
                     $row.find('.stock').val(disp);
+                }
+
+                // Surface multi-warehouse stock breakdown hint on the row
+                if (validWarehouses.length > 1) {
+                    let hintItems = [];
+                    validWarehouses.forEach(function(w) {
+                        let icon = w.is_shop ? '🏪' : '🏢';
+                        let sName = (w.warehouse_name || '').replace('WAREHOUSE', 'WH').trim();
+                        let sVal = parseFloat(w.stock) || 0;
+                        let colorClass = sVal > 0 ? 'text-primary font-monospace' : 'text-danger font-monospace';
+                        let labelVal = sVal;
+
+                        if (matched && matched.size_mode === 'by_kg') {
+                            if ((unitMode === 'pcs' || unitMode === 'pc') && convFactor > 0) {
+                                let whPcs = Math.round(sVal / convFactor);
+                                labelVal = `${whPcs.toLocaleString()} Pcs <small class="text-muted">(${sVal.toFixed(2)} Kg)</small>`;
+                            } else {
+                                labelVal = `${sVal.toFixed(2)} Kg`;
+                            }
+                        } else if (matched && (matched.size_mode === 'by_cartons' || matched.size_mode === 'by_box') && (parseFloat(matched.ppb) || 1) > 1) {
+                            let ppb = parseFloat(matched.ppb) || 1;
+                            if (unitMode === 'ctn') {
+                                let boxes = Math.floor(sVal / ppb);
+                                let loose = sVal % ppb;
+                                let ctnStr = loose > 0 ? `${boxes}.${loose} Ctn` : `${boxes} Ctn`;
+                                labelVal = `${ctnStr} <small class="text-muted">(${sVal} Pcs)</small>`;
+                            } else {
+                                labelVal = `${sVal} Pcs`;
+                            }
+                        }
+
+                        hintItems.push(`${icon} ${sName}: <span class="${colorClass}">${labelVal}</span>`);
+                    });
+                    $row.find('.wh-stock-hint').html(hintItems.join(' | ')).show();
+                } else {
+                    $row.find('.wh-stock-hint').hide();
                 }
             })
             .fail(function(xhr) {
@@ -781,6 +852,27 @@
             var rowPpb = parseFloat($row.data('pieces_per_box')) || 1;
             var unitMode = ($row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn').toLowerCase();
 
+            // Resolve convFactor from variant
+            let convFactor = 0;
+            const vdEncoded = $row.find('.variant-data-hidden').val();
+            if (vdEncoded) {
+                try {
+                    let vd;
+                    try { vd = JSON.parse(atob(vdEncoded)); } catch(e) { vd = JSON.parse(vdEncoded); }
+                    if (vd) {
+                        if (vd.conv_factor && parseFloat(vd.conv_factor) > 0) {
+                            convFactor = parseFloat(vd.conv_factor);
+                        } else if (vd.weight_per_piece && parseFloat(vd.weight_per_piece) > 0) {
+                            convFactor = parseFloat(vd.weight_per_piece) / 1000.0;
+                        }
+                    }
+                } catch(ex) {}
+            }
+            if (convFactor <= 0) {
+                const wpp = parseFloat($row.find('.weight-per-piece').val()) || 0;
+                if (wpp > 0) convFactor = wpp / 1000.0;
+            }
+
             warehouses.forEach(function(w) {
                 var isShop = (w.is_shop == 1);
                 var whName = w.name || w.warehouse_name || 'Warehouse';
@@ -806,7 +898,10 @@
                         }
                     }
                 } else if (sizeMode === 'by_kg') {
-                    if (rawPieces > 0 && rawPieces < 1) {
+                    if ((unitMode === 'pcs' || unitMode === 'pc') && convFactor > 0) {
+                        var whPcs = Math.round(rawPieces / convFactor);
+                        stockDisplay = `${whPcs.toLocaleString()} Pcs (${rawPieces.toFixed(2)} Kg)`;
+                    } else if (rawPieces > 0 && rawPieces < 1) {
                         var gm = (rawPieces * 1000).toFixed(1);
                         stockDisplay = `${rawPieces.toFixed(2)} Kg (${gm} Gm)`;
                     } else {
@@ -879,6 +974,11 @@
                         : (totalBoxes > 0 ? `${totalBoxes} Ctn (${totalPieces} Pcs)` : `${totalLoose} Pcs`);
                     $('#modalTotalStockBadge').text(totalDisp);
                 }
+            } else if (rowSizeMode === 'by_kg' && (unitMode === 'pcs' || unitMode === 'pc') && convFactor > 0) {
+                var totalPcs = Math.round(totalPieces / convFactor);
+                $('#modalTotalStockBadge').text(`${totalPcs.toLocaleString()} Pcs (${totalPieces.toFixed(2)} Kg)`);
+            } else if (rowSizeMode === 'by_kg') {
+                $('#modalTotalStockBadge').text(`${totalPieces.toFixed(2)} Kg`);
             } else if ($row.find('.stock').val()) {
                 $('#modalTotalStockBadge').text($row.find('.stock').val());
             } else {
@@ -1238,6 +1338,10 @@
         if (typeof window.syncAdvanceSettlementUI === 'function') {
             window.syncAdvanceSettlementUI();
         }
+
+        if (typeof refreshPostedState === 'function') {
+            refreshPostedState();
+        }
     }
 
 
@@ -1250,14 +1354,28 @@
     }
 
     function canPost() {
+        // Fast-path: If invoice already has a positive calculated Net Total, it's definitely postable
+        const currentNet = toNum($('#walkinNetTotal').text()) || toNum($('#totalBalance').val()) || toNum($('#posCartTotal').text());
+        if (currentNet > 0) {
+            return true;
+        }
+
         let ok = false;
         $('#salesTableBody tr').each(function() {
-            const pid = $(this).find('.product-id-hidden').val() || $(this).find('.product').val();
-            const cartons = parseFloat($(this).find('.carton-qty').val()) || 0;
-            const loose   = parseFloat($(this).find('.loose-pcs-input').val()) || 0;
-            const pieces  = parseFloat($(this).find('.total-pieces').val()) || 0;
-            const qty     = parseFloat($(this).find('.sales-qty').val()) || 0;
-            if (pid && (cartons > 0 || loose > 0 || pieces > 0 || qty > 0)) {
+            const $r = $(this);
+            const pid = $r.find('.product-id-hidden').val() 
+                     || $r.find('.product').val()
+                     || $r.find('.product-set-id-hidden').val()
+                     || ($r.find('.product option:selected').val())
+                     || $r.find('.item-code-display').val();
+
+            const cartons = toNum($r.find('.carton-qty').val());
+            const loose   = toNum($r.find('.loose-pcs-input').val());
+            const pieces  = toNum($r.find('.total-pieces').val());
+            const qty     = toNum($r.find('.sales-qty').val());
+            const amount  = toNum($r.find('.sales-amount').val());
+
+            if ((cartons > 0 || loose > 0 || pieces > 0 || qty > 0 || amount > 0) && (pid || amount > 0)) {
                 ok = true;
                 return false;
             }
@@ -1984,6 +2102,8 @@
                 $row.data('pieces_per_box', 1);
 
                 computeRow($row);
+            updateGrandTotals();
+            refreshPostedState();
                 return;
             }
 
@@ -2029,28 +2149,11 @@
                 $row.find('.variant-stock-value').val('');
             }
             
-            loadWarehousesForProduct($row, pid);
-            
             // Set properties directly
             $row.find('.item-code-display').val(data.sku || data.item_code || '');
             $row.find('.retail-price').val(data.retail_price || data.trade_price || 0);
             $row.find('.wholesale-price').val(data.wholesale_price || 0);
             $row.find('.weight-per-piece').val(data.weight_per_piece || 0);
-            
-            let rowMode = $row.find('.price-mode-row-toggle').attr('data-mode') || 'retail';
-            let wsPrice = parseFloat(data.wholesale_price) || 0;
-            let rate = (rowMode === 'wholesale' && wsPrice > 0) ? wsPrice : (data.retail_price || data.trade_price || 0);
-
-            const ppb = parseFloat(data.pieces_per_box) || 1;
-            const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
-            if (data.size_mode === 'by_cartons' || data.size_mode === 'by_box') {
-                let cartonPrice = ppb > 1 ? (rate * ppb) : rate;
-                $row.find('.visible-price').val(unitMode === 'pcs' ? rate : cartonPrice);
-                $row.find('.price-per-piece').val(unitMode === 'pcs' ? rate : cartonPrice);
-            } else {
-                $row.find('.visible-price').val(rate);
-                $row.find('.price-per-piece').val(rate);
-            }
             
             $row.find('.pack-qty').val(data.pieces_per_box || 1);
             $row.find('.size-h').val(data.height || '-');
@@ -2075,7 +2178,26 @@
 
             setupRowQtyToggle($row, data.size_mode, variantUnit);
 
+            let rowMode = $row.find('.price-mode-row-toggle').attr('data-mode') || 'retail';
+            let wsPrice = parseFloat(data.wholesale_price) || 0;
+            let rate = (rowMode === 'wholesale' && wsPrice > 0) ? wsPrice : (data.retail_price || data.trade_price || 0);
+
+            const ppb = parseFloat(data.pieces_per_box) || 1;
+            const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
+            if (data.size_mode === 'by_cartons' || data.size_mode === 'by_box') {
+                let cartonPrice = ppb > 1 ? (rate * ppb) : rate;
+                $row.find('.visible-price').val(unitMode === 'pcs' ? rate : cartonPrice);
+                $row.find('.price-per-piece').val(unitMode === 'pcs' ? rate : cartonPrice);
+            } else {
+                $row.find('.visible-price').val(rate);
+                $row.find('.price-per-piece').val(rate);
+            }
+
+            loadWarehousesForProduct($row, pid);
+
             computeRow($row);
+            updateGrandTotals();
+            refreshPostedState();
 
             // Check & Notify Customer's Recent Sold Price
             const currentSelectedCustId = $('#customerSelect').val();
@@ -2358,6 +2480,8 @@
             }
             $row.find('.hidden-sub-unit-mode').val(currentMode);
             computeRow($row);
+            updateGrandTotals();
+            refreshPostedState();
         } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
             const $priceInp = $row.find('.visible-price');
             let curPrice = parseFloat($priceInp.val()) || 0;
@@ -2652,7 +2776,7 @@
         // ... existing bindings ...
 
         // Inputs -> Calc
-        $(document).on('input', '.carton-qty, .loose-pcs-input, .pack-qty, .discount-value, .visible-price',
+        $(document).on('input change keyup blur paste', '.carton-qty, .loose-pcs-input, .pack-qty, .discount-value, .visible-price, .sales-qty',
             function() {
                 // If user manually changes the visible price, also update the hidden price-per-piece and normalized base rate
                 if ($(this).hasClass('visible-price')) {
@@ -2790,6 +2914,8 @@
             }
             
             computeRow($row);
+            updateGrandTotals();
+            refreshPostedState();
             updateGrandTotals();
         });
 
@@ -3778,4 +3904,464 @@
             }
         }
     }); // Close $(document).ready
+</script>
+
+<script>
+</script>
+
+<script>
+    // =========================================================================
+    // MULTI-WAREHOUSE STOCK DISPATCH & ALLOCATION LOGIC (SHOP & GODOWN SPLIT)
+    // Gathered in a SINGLE row (no clone rows created)
+    // =========================================================================
+    window.$activeMwhRow = null;
+
+    function showMwhModal() {
+        const modalEl = document.getElementById('multiWarehouseModal');
+        if (!modalEl) {
+            console.error('#multiWarehouseModal element not found in DOM!');
+            return;
+        }
+        if (typeof $(modalEl).modal === 'function') {
+            $(modalEl).modal('show');
+        } else if (window.bootstrap && window.bootstrap.Modal) {
+            const m = window.bootstrap.Modal.getOrCreateInstance(modalEl);
+            m.show();
+        }
+    }
+
+    function hideMwhModal() {
+        const modalEl = document.getElementById('multiWarehouseModal');
+        if (!modalEl) return;
+        if (typeof $(modalEl).modal === 'function') {
+            $(modalEl).modal('hide');
+        } else if (window.bootstrap && window.bootstrap.Modal) {
+            const m = window.bootstrap.Modal.getInstance(modalEl);
+            if (m) m.hide();
+        }
+    }
+
+    $(document).on('click', '.btn-split-wh, .wh-stock-hint, .mwh-applied-badge', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const $row = $(this).closest('tr');
+        const pid = $row.find('.product-id-hidden').val() || $row.find('.product').val();
+
+        if (!pid) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Pehle Product Select Karein',
+                    text: 'Pehle is row mein product select karein taake warehouse stock allocate kiya ja sake.'
+                });
+            } else {
+                alert('Pehle is row mein product select karein taake warehouse stock allocate kiya ja sake.');
+            }
+            return;
+        }
+
+        openMultiWarehouseModal($row, pid);
+    });
+
+    function openMultiWarehouseModal($row, pid) {
+        window.$activeMwhRow = $row;
+
+        const prodSelect = $row.find('.product');
+        let prodText = prodSelect.find('option:selected').text().trim() 
+            || $row.find('.select2-selection__rendered').text().trim() 
+            || $row.data('product_info')?.name 
+            || 'Selected Product';
+        
+        let prodCode = $row.find('.item-code-display').val() || '—';
+        let price = parseFloat($row.find('.visible-price').val()) || parseFloat($row.find('.price-per-piece').val()) || 0;
+        let currentQty = parseFloat($row.find('.carton-qty').val()) || 0;
+        let unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'Pcs';
+        let currentWhId = $row.find('.row-warehouse-select').val();
+
+        // Check if existing breakdown exists on this row
+        let existingBreakdown = null;
+        let bVal = $row.find('.warehouse-breakdown-input').val();
+        if (bVal) {
+            try {
+                existingBreakdown = typeof bVal === 'string' ? JSON.parse(bVal) : bVal;
+            } catch(e) {}
+        }
+        if (!existingBreakdown || !Array.isArray(existingBreakdown)) {
+            existingBreakdown = $row.data('warehouse_breakdown') || null;
+        }
+
+        // If breakdown exists, calculate sum of breakdown quantities
+        if (existingBreakdown && Array.isArray(existingBreakdown) && existingBreakdown.length > 0) {
+            let bSum = 0;
+            existingBreakdown.forEach(function(a) { bSum += parseFloat(a.qty) || 0; });
+            if (bSum > 0 && (currentQty <= 0 || Math.abs(currentQty - bSum) < 0.0001)) {
+                currentQty = bSum;
+            }
+        }
+
+        $('#mwhProductName').text(prodText);
+        $('#mwhProductCode').text(prodCode);
+        $('#mwhProductMeta').text('Price: Rs. ' + price.toLocaleString('en-US', {minimumFractionDigits: 2}) + ' | Mode: ' + unitMode.toUpperCase());
+        $('#mwhTotalQty').val(currentQty > 0 ? currentQty : 1);
+        $('#mwhUnitLabel').text(unitMode.toUpperCase());
+
+        // Check if warehouses are already cached on the row
+        const cachedWhs = $row.data('product_warehouses');
+        if (cachedWhs && Array.isArray(cachedWhs) && cachedWhs.length > 0) {
+            renderMwhModalRows(cachedWhs, currentWhId, currentQty, unitMode, existingBreakdown);
+        } else {
+            // Load warehouses dynamically
+            $('#mwhWarehousesBody').html('<tr><td colspan="5" class="text-center py-3 text-muted"><i class="fas fa-spinner fa-spin me-1"></i> Checking warehouse stocks...</td></tr>');
+            showMwhModal();
+
+            $.get('{{ route('warehouses.get') }}', { product_id: pid })
+                .done(function(warehouses) {
+                    const validWhs = Array.isArray(warehouses) ? warehouses : [];
+                    $row.data('product_warehouses', validWhs);
+                    renderMwhModalRows(validWhs, currentWhId, currentQty, unitMode, existingBreakdown);
+                })
+                .fail(function() {
+                    $('#mwhWarehousesBody').html('<tr><td colspan="5" class="text-center py-3 text-danger"><i class="fas fa-exclamation-triangle me-1"></i> Failed to fetch warehouse stocks.</td></tr>');
+                });
+        }
+    }
+
+    function renderMwhModalRows(warehouses, currentWhId, currentQty, unitMode, existingBreakdown = null) {
+        let html = '';
+        if (!warehouses || warehouses.length === 0) {
+            html = '<tr><td colspan="5" class="text-center py-3 text-muted">No warehouses found in system.</td></tr>';
+            $('#mwhWarehousesBody').html(html);
+            showMwhModal();
+            return;
+        }
+
+        // Resolve active row details (convFactor, sizeMode, etc.)
+        let convFactor = 0;
+        let sizeMode = '';
+        let ppb = 1;
+        const $activeRow = window.$activeMwhRow;
+        if ($activeRow && $activeRow.length > 0) {
+            sizeMode = $activeRow.data('size_mode') || $activeRow.find('.size-mode-text').val() || '';
+            ppb = parseFloat($activeRow.data('pieces_per_box')) || parseFloat($activeRow.find('.pack-qty').val()) || 1;
+            
+            const vdEncoded = $activeRow.find('.variant-data-hidden').val();
+            if (vdEncoded) {
+                try {
+                    let vd;
+                    try { vd = JSON.parse(atob(vdEncoded)); } catch(e) { vd = JSON.parse(vdEncoded); }
+                    if (vd) {
+                        if (vd.conv_factor && parseFloat(vd.conv_factor) > 0) {
+                            convFactor = parseFloat(vd.conv_factor);
+                        } else if (vd.weight_per_piece && parseFloat(vd.weight_per_piece) > 0) {
+                            convFactor = parseFloat(vd.weight_per_piece) / 1000.0;
+                        }
+                    }
+                } catch(ex) {}
+            }
+            if (convFactor <= 0) {
+                const wpp = parseFloat($activeRow.find('.weight-per-piece').val()) || 0;
+                if (wpp > 0) convFactor = wpp / 1000.0;
+            }
+        }
+
+        // Sort: Shops (is_shop == 1) first, then Godowns
+        const sortedWhs = [...warehouses].sort((a, b) => (b.is_shop || 0) - (a.is_shop || 0));
+
+        sortedWhs.forEach(function(wh, idx) {
+            const isShop = wh.is_shop == 1;
+            const icon = isShop ? '🏪' : '🏢';
+            const typeBadge = isShop 
+                ? '<span class="badge bg-success-subtle text-success border border-success-subtle px-1" style="font-size: 0.65rem;">SHOP / STORE</span>' 
+                : '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-1" style="font-size: 0.65rem;">GODOWN / WH</span>';
+            const rawStock = parseFloat(wh.stock) || 0;
+            const whSizeMode = wh.size_mode || sizeMode;
+            const whPpb = parseFloat(wh.ppb) || ppb || 1;
+
+            let allocStock = rawStock;
+            let stockBadgeHtml = '';
+
+            const uModeLower = (unitMode || '').toLowerCase();
+
+            if (whSizeMode === 'by_kg') {
+                if ((uModeLower === 'pcs' || uModeLower === 'pc') && convFactor > 0) {
+                    allocStock = Math.round(rawStock / convFactor);
+                    stockBadgeHtml = `
+                        <span class="badge ${rawStock > 0 ? 'bg-success' : 'bg-danger'} text-white fw-bold px-2 py-1" style="font-size: 0.78rem;">
+                            ${allocStock.toLocaleString()} PCS
+                        </span>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">(${rawStock.toFixed(2)} Kg)</small>
+                    `;
+                } else {
+                    allocStock = rawStock;
+                    stockBadgeHtml = `
+                        <span class="badge ${rawStock > 0 ? 'bg-success' : 'bg-danger'} text-white fw-bold px-2 py-1" style="font-size: 0.78rem;">
+                            ${rawStock.toFixed(2)} KG
+                        </span>
+                    `;
+                }
+            } else if ((whSizeMode === 'by_cartons' || whSizeMode === 'by_box') && whPpb > 1) {
+                if (uModeLower === 'ctn') {
+                    const boxes = Math.floor(wh.boxes !== undefined ? wh.boxes : (rawStock / whPpb));
+                    const loose = rawStock % whPpb;
+                    allocStock = boxes;
+                    const ctnDisp = loose > 0 ? `${boxes}.${loose}` : boxes;
+                    stockBadgeHtml = `
+                        <span class="badge ${rawStock > 0 ? 'bg-success' : 'bg-danger'} text-white fw-bold px-2 py-1" style="font-size: 0.78rem;">
+                            ${ctnDisp} CTN
+                        </span>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">(${rawStock} Pcs)</small>
+                    `;
+                } else {
+                    allocStock = rawStock;
+                    stockBadgeHtml = `
+                        <span class="badge ${rawStock > 0 ? 'bg-success' : 'bg-danger'} text-white fw-bold px-2 py-1" style="font-size: 0.78rem;">
+                            ${rawStock} PCS
+                        </span>
+                    `;
+                }
+            } else {
+                allocStock = rawStock;
+                stockBadgeHtml = `
+                    <span class="badge ${rawStock > 0 ? 'bg-success' : 'bg-danger'} text-white fw-bold px-2 py-1" style="font-size: 0.78rem;">
+                        ${rawStock} ${unitMode.toUpperCase()}
+                    </span>
+                `;
+            }
+
+            // Pre-fill initial allocation:
+            let initialVal = '';
+            if (existingBreakdown && Array.isArray(existingBreakdown) && existingBreakdown.length > 0) {
+                let matchAlloc = existingBreakdown.find(function(a) {
+                    return (a.wh_id == wh.warehouse_id || a.warehouse_id == wh.warehouse_id);
+                });
+                if (matchAlloc && parseFloat(matchAlloc.qty) > 0) {
+                    initialVal = matchAlloc.qty;
+                }
+            } else {
+                initialVal = (wh.warehouse_id == currentWhId && currentQty > 0) ? currentQty : '';
+            }
+
+            html += `
+                <tr data-wh-id="${wh.warehouse_id}">
+                    <td class="text-center fw-bold text-muted small">${idx + 1}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <span style="font-size: 1.25rem;">${icon}</span>
+                            <div>
+                                <strong class="text-dark d-block" style="font-size: 0.85rem;">${wh.warehouse_name}</strong>
+                                ${typeBadge}
+                            </div>
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        ${stockBadgeHtml}
+                    </td>
+                    <td class="text-center">
+                        <div class="input-group input-group-sm justify-content-center" style="max-width: 140px; margin: 0 auto;">
+                            <input type="number" step="any" min="0" class="form-control text-center fw-bold mwh-wh-input" 
+                                   data-wh-id="${wh.warehouse_id}" 
+                                   data-wh-name="${wh.warehouse_name}" 
+                                   data-wh-stock="${allocStock}" 
+                                   data-raw-stock="${rawStock}" 
+                                   value="${initialVal}" 
+                                   placeholder="0"
+                                   style="border-color: #cbd5e1; font-size: 0.88rem;">
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-xs btn-outline-primary mwh-btn-max px-2 py-1" data-stock="${allocStock}" title="Fill available stock">
+                            Max
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        $('#mwhWarehousesBody').html(html);
+        updateMwhCalculation();
+        showMwhModal();
+    }
+
+    // Live update calculations inside multi-warehouse modal
+    function updateMwhCalculation() {
+        const needed = parseFloat($('#mwhTotalQty').val()) || 0;
+        let allocated = 0;
+
+        $('.mwh-wh-input').each(function() {
+            allocated += parseFloat($(this).val()) || 0;
+        });
+
+        const remaining = needed - allocated;
+
+        $('#mwhDispNeeded').text(needed.toFixed(2));
+        $('#mwhDispAllocated').text(allocated.toFixed(2));
+        $('#mwhDispRemaining').text(remaining.toFixed(2));
+
+        const $box = $('#mwhAllocationStatusBox');
+        const $badge = $('#mwhStatusBadge');
+
+        if (needed <= 0) {
+            $box.css({ 'background': '#f8fafc', 'border-color': '#cbd5e1' });
+            $badge.attr('class', 'badge bg-secondary text-white px-3 py-2').html('<i class="fas fa-info-circle me-1"></i> Enter Needed Quantity');
+            $('#mwhBtnApply').prop('disabled', true);
+        } else if (Math.abs(remaining) < 0.0001) {
+            $box.css({ 'background': '#f0fdf4', 'border-color': '#86efac' });
+            $badge.attr('class', 'badge bg-success text-white px-3 py-2').html('<i class="fas fa-check-circle me-1"></i> Balanced &amp; Ready!');
+            $('#mwhBtnApply').prop('disabled', false);
+        } else if (remaining > 0) {
+            $box.css({ 'background': '#fffbeb', 'border-color': '#fde68a' });
+            $badge.attr('class', 'badge bg-warning text-dark px-3 py-2').html(`<i class="fas fa-exclamation-circle me-1"></i> Short by ${remaining.toFixed(2)}`);
+            $('#mwhBtnApply').prop('disabled', false);
+        } else {
+            $box.css({ 'background': '#fef2f2', 'border-color': '#fca5a5' });
+            $badge.attr('class', 'badge bg-danger text-white px-3 py-2').html(`<i class="fas fa-exclamation-triangle me-1"></i> Over by ${Math.abs(remaining).toFixed(2)}`);
+            $('#mwhBtnApply').prop('disabled', false);
+        }
+    }
+
+    $(document).on('input change', '.mwh-wh-input, #mwhTotalQty', function() {
+        updateMwhCalculation();
+    });
+
+    // Auto Allocate Button (Shop First, then Godowns)
+    $(document).on('click', '#mwhBtnAutoDistribute', function() {
+        let needed = parseFloat($('#mwhTotalQty').val()) || 0;
+        if (needed <= 0) {
+            needed = 1;
+            $('#mwhTotalQty').val(1);
+        }
+
+        let remaining = needed;
+        $('.mwh-wh-input').each(function() {
+            const stock = parseFloat($(this).data('wh-stock')) || 0;
+            if (remaining > 0 && stock > 0) {
+                const give = Math.min(stock, remaining);
+                $(this).val(give);
+                remaining -= give;
+            } else {
+                $(this).val('');
+            }
+        });
+
+        if (remaining > 0) {
+            const $first = $('.mwh-wh-input').first();
+            const cur = parseFloat($first.val()) || 0;
+            $first.val(cur + remaining);
+        }
+
+        updateMwhCalculation();
+    });
+
+    // Max Button on row in modal
+    $(document).on('click', '.mwh-btn-max', function() {
+        const stock = parseFloat($(this).data('stock')) || 0;
+        const $input = $(this).closest('tr').find('.mwh-wh-input');
+        $input.val(stock > 0 ? stock : 0).trigger('input');
+    });
+
+    // Apply Multi-Warehouse Allocation: GATHER IN SINGLE ROW (NO DUPLICATE ROWS!)
+    $(document).on('click', '#mwhBtnApply', function() {
+        if (!window.$activeMwhRow || window.$activeMwhRow.length === 0) {
+            hideMwhModal();
+            return;
+        }
+
+        let $row = window.$activeMwhRow;
+        let allocations = [];
+        let totalAllocated = 0;
+
+        $('.mwh-wh-input').each(function() {
+            let qty = parseFloat($(this).val()) || 0;
+            let whId = $(this).data('wh-id');
+            let whName = $(this).data('wh-name');
+            let whStock = parseFloat($(this).data('wh-stock')) || 0;
+            if (qty > 0) {
+                allocations.push({
+                    wh_id: whId,
+                    warehouse_id: whId,
+                    wh_name: whName,
+                    warehouse_name: whName,
+                    wh_stock: whStock,
+                    qty: qty
+                });
+                totalAllocated += qty;
+            }
+        });
+
+        if (allocations.length === 0) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Quantity Required',
+                    text: 'Kam az kam aik warehouse / location mein sale quantity enter karein.'
+                });
+            } else {
+                alert('Kam az kam aik warehouse / location mein sale quantity enter karein.');
+            }
+            return;
+        }
+
+        // Set primary warehouse to the first allocated warehouse
+        const firstAlloc = allocations[0];
+        $row.find('.row-warehouse-select').val(firstAlloc.wh_id);
+        
+        // Gather ALL quantities into this SINGLE row!
+        $row.find('.carton-qty').val(totalAllocated);
+
+        if (allocations.length > 1) {
+            // Multi-location: Save JSON breakdown on row
+            const jsonStr = JSON.stringify(allocations);
+            $row.find('.warehouse-breakdown-input').val(jsonStr);
+            $row.data('warehouse_breakdown', allocations);
+
+            let badgesHtml = allocations.map(function(a) {
+                let sName = (a.wh_name || '').replace('WAREHOUSE', 'WH').trim();
+                return `<span class="badge bg-primary text-white border me-1 px-1 py-0" style="font-size:0.65rem;">${sName}: <b>${a.qty}</b></span>`;
+            }).join('');
+
+            let badgeContainer = `
+                <div class="mwh-applied-badge d-flex flex-wrap align-items-center gap-1 mt-1 p-1 bg-light rounded border border-primary-subtle" style="font-size:0.68rem; cursor:pointer;" title="Click to view/edit multi-location allocation">
+                    <span class="text-primary fw-bold"><i class="fas fa-boxes me-1"></i>Split:</span>
+                    ${badgesHtml}
+                </div>
+            `;
+            $row.find('.mwh-applied-badge-wrap').html(badgeContainer).show();
+            $row.find('.wh-stock-hint').hide();
+        } else {
+            // Single location allocation
+            $row.find('.warehouse-breakdown-input').val('');
+            $row.removeData('warehouse_breakdown');
+            $row.find('.mwh-applied-badge-wrap').html('').hide();
+            $row.find('.wh-stock-hint').show();
+        }
+
+        // Recompute row totals for the single gathered row
+        computeRow($row);
+        updateGrandTotals();
+        refreshPostedState();
+        hideMwhModal();
+
+        if (typeof Swal !== 'undefined') {
+            let summaryText = allocations.map(a => `${a.qty} from ${a.wh_name}`).join(' + ');
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: `Gathered ${totalAllocated} in Row (${summaryText})`,
+                showConfirmButton: false,
+                timer: 3500
+            });
+        }
+    });
+
+    // If user manually changes warehouse dropdown on the row, clear breakdown
+    $(document).on('change', '.row-warehouse-select', function() {
+        const $row = $(this).closest('tr');
+        if ($row.find('.warehouse-breakdown-input').val()) {
+            $row.find('.warehouse-breakdown-input').val('');
+            $row.removeData('warehouse_breakdown');
+            $row.find('.mwh-applied-badge-wrap').html('').hide();
+            $row.find('.wh-stock-hint').show();
+        }
+    });
 </script>

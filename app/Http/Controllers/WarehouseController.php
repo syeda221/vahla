@@ -13,27 +13,38 @@ class WarehouseController extends Controller
     {
         $productId = $request->input('product_id');
 
+        $product = \App\Models\Product::with('unit')->find($productId);
+        $ppb = ($product && $product->pieces_per_box > 0) ? (float) $product->pieces_per_box : 1.0;
+        $sizeMode = $product ? $product->size_mode : 'std';
+        $wpp = ($product && $product->weight_per_piece > 0) ? (float) $product->weight_per_piece : 0.0;
+        $unitName = $product && $product->unit ? $product->unit->name : '';
+
         // Get all warehouses first
         $allWarehouses = Warehouse::all();
         
-        // Get stock entries for this product
-        $warehouseStocks = WarehouseStock::with(['stockWarehouse', 'product'])
+        // Sum stock entries for this product grouped by warehouse_id (handles multiple rows per warehouse cleanly)
+        $stockSums = \Illuminate\Support\Facades\DB::table('warehouse_stocks')
             ->where('product_id', $productId)
+            ->groupBy('warehouse_id')
+            ->select(
+                'warehouse_id',
+                \Illuminate\Support\Facades\DB::raw('SUM(total_pieces) as total_pieces'),
+                \Illuminate\Support\Facades\DB::raw('SUM(quantity) as quantity')
+            )
             ->get()
             ->keyBy('warehouse_id');
 
-        $response = $allWarehouses->map(function ($warehouse) use ($warehouseStocks, $productId) {
-            $ws = $warehouseStocks->get($warehouse->id);
-            $stockVal = 0;
+        $response = $allWarehouses->map(function ($warehouse) use ($stockSums, $ppb, $sizeMode, $wpp, $unitName) {
+            $ws = $stockSums->get($warehouse->id);
+            $stockVal = 0.0;
             
             if ($ws) {
-                $ppb = ($ws->product && $ws->product->pieces_per_box > 0) ? $ws->product->pieces_per_box : 1;
-                
-                // Trust total_pieces as the absolute source of truth, fallback to quantity * ppb only if total_pieces is 0
-                if ($ws->total_pieces != 0) {
-                     $stockVal = $ws->total_pieces;
+                $totalPieces = (float) $ws->total_pieces;
+                $qty = (float) $ws->quantity;
+                if ($totalPieces != 0.0) {
+                    $stockVal = $totalPieces;
                 } else {
-                     $stockVal = $ws->quantity * $ppb;
+                    $stockVal = $qty * $ppb;
                 }
             }
 
@@ -43,11 +54,13 @@ class WarehouseController extends Controller
             return [
                 'warehouse_id' => $warehouse->id,
                 'warehouse_name' => $warehouse->warehouse_name,
-                'is_shop' => (int)($warehouse->is_shop ?? 0),
-                'stock' => $cleanStock, // Total pieces formatted cleanly
-                'boxes' => $ws ? ($stockVal / $ppb) : 0, // Dynamically calculated box quantity to prevent rounding errors
-                'ppb' => $ws && $ws->product ? $ws->product->pieces_per_box : 1,
-                'size_mode' => $ws && $ws->product ? $ws->product->size_mode : 'std',
+                'is_shop' => (int) ($warehouse->is_shop ?? 0),
+                'stock' => $cleanStock, // Total pieces/kg summed across all records
+                'boxes' => $ppb > 0 ? ($stockVal / $ppb) : 0, // Dynamically calculated box quantity
+                'ppb' => $ppb,
+                'size_mode' => $sizeMode,
+                'weight_per_piece' => $wpp,
+                'unit_name' => $unitName,
             ];
         });
 

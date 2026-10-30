@@ -244,6 +244,9 @@
             </span>
         </div>
         <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('sales.dc', $sale->id) }}" class="btn btn-outline-primary shadow-sm">
+                <i class="fa-solid fa-copy me-1"></i> Print 2-Copy (A4 Rotated)
+            </a>
             <button onclick="toggleRate()" class="btn btn-warning shadow-sm" id="toggleRateBtn">
                 <i class="fa-solid fa-eye-slash"></i> Hide Rate
             </button>
@@ -514,6 +517,22 @@
                                 <div style="font-size: 11px; color: #64748b; font-weight: normal; margin-top: 1px;">
                                     (Length: {{ ($totalPieces == (int)$totalPieces) ? (int)$totalPieces : number_format($totalPieces, 2) }} Ft)
                                 </div>
+                            @endif
+                            @if(!empty($item['warehouse_breakdown']))
+                                @php
+                                    $wbArr = is_string($item['warehouse_breakdown']) ? json_decode($item['warehouse_breakdown'], true) : $item['warehouse_breakdown'];
+                                    $wbStrList = [];
+                                    if (is_array($wbArr) && count($wbArr) > 1) {
+                                        foreach ($wbArr as $w) {
+                                            $wbStrList[] = ($w['wh_name'] ?? $w['warehouse_name'] ?? 'WH') . ': ' . ($w['qty'] ?? 0);
+                                        }
+                                    }
+                                @endphp
+                                @if(count($wbStrList) > 0)
+                                    <div style="font-size: 10px; color: #0284c7; font-weight: 600; margin-top: 1px;">
+                                        <i class="fas fa-boxes"></i> Dispatch: {{ implode(' | ', $wbStrList) }}
+                                    </div>
+                                @endif
                             @endif
                             @if(!empty($item['description']))
                                 <div style="font-size: 11px; color: #475569; font-weight: normal; margin-top: 2px;">

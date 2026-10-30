@@ -285,40 +285,48 @@ class SaleController extends Controller
             ->where('products.is_active', true); /* Only active products */
 
         if (!empty($words)) {
+            $cleanTerm = addslashes($q);
+            $cleanAlphaNum = addslashes(preg_replace('/[^a-zA-Z0-9]/', '', $q));
+            $paddedCode = is_numeric($cleanAlphaNum) ? str_pad($cleanAlphaNum, 4, '0', STR_PAD_LEFT) : $cleanAlphaNum;
+
             $productsQuery->where(function ($query) use ($words) {
                 foreach ($words as $w) {
                     $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $w);
                     $query->where(function ($subQ) use ($w, $escaped) {
                         $subQ->where('products.item_name', 'like', "%{$w}%")
                             ->orWhere('products.item_code', 'like', "%{$w}%")
-                            ->orWhere('products.barcode_path', 'like', "%{$w}%")
-                            ->orWhereRaw("JSON_SEARCH(products.color, 'one', ?, NULL, '$[*].name', '$[*].color', '$[*].size', '$[*].barcode') IS NOT NULL", ["%{$escaped}%"]);
+                            ->orWhere('products.barcode_path', 'like', "%{$w}%");
+
+                        if (strlen($w) >= 3) {
+                            $subQ->orWhere('products.color', 'like', "%\"name\":\"%{$escaped}%\"%")
+                                ->orWhere('products.color', 'like', "%\"barcode\":\"%{$escaped}%\"%");
+                        }
                     });
                 }
             });
 
-            $cleanTerm = addslashes($q);
-            $allWordsInNameSql = [];
-            foreach ($words as $w) {
-                $cleanW = addslashes($w);
-                $allWordsInNameSql[] = "products.item_name LIKE '%{$cleanW}%'";
-            }
-            $allWordsInNameCondition = implode(' AND ', $allWordsInNameSql);
-            $firstWord = addslashes($words[0]);
+            $allWordsCondition = count($words) > 1 
+                ? implode(' AND ', array_map(fn($w) => "products.item_name LIKE '%" . addslashes($w) . "%'", $words)) 
+                : "products.item_name LIKE '%{$cleanTerm}%'";
 
             $productsQuery->orderByRaw("
                 CASE
-                    WHEN products.item_name = '{$cleanTerm}' THEN 1
-                    WHEN products.item_name LIKE '{$cleanTerm}%' THEN 2
-                    WHEN products.item_name LIKE '%{$cleanTerm}%' THEN 3
-                    WHEN ({$allWordsInNameCondition}) THEN 4
-                    WHEN products.item_name LIKE '{$firstWord}%' THEN 5
-                    WHEN products.item_name LIKE '%{$firstWord}%' THEN 6
-                    ELSE 7
-                END ASC, products.item_name ASC
+                    WHEN products.item_code = '{$cleanTerm}' THEN 1
+                    WHEN products.item_code = 'ITEM-{$cleanTerm}' THEN 2
+                    WHEN products.item_code = 'ITEM-{$paddedCode}' THEN 3
+                    WHEN products.barcode_path = '{$cleanTerm}' THEN 4
+                    WHEN products.item_code LIKE '%-{$cleanTerm}' THEN 5
+                    WHEN products.item_code LIKE '%-{$paddedCode}' THEN 6
+                    WHEN products.item_name = '{$cleanTerm}' THEN 7
+                    WHEN products.item_name LIKE '{$cleanTerm}%' THEN 8
+                    WHEN ({$allWordsCondition}) THEN 9
+                    WHEN products.item_code LIKE '%{$cleanTerm}%' THEN 10
+                    WHEN products.barcode_path LIKE '{$cleanTerm}%' THEN 11
+                    ELSE 12
+                END ASC, products.item_code ASC, products.item_name ASC
             ");
         } else {
-            $productsQuery->orderBy('products.item_name', 'asc');
+            $productsQuery->orderBy('products.item_code', 'asc');
         }
 
         $products = $productsQuery->select(
@@ -1785,6 +1793,10 @@ class SaleController extends Controller
                 $saleItem->color = $colorVal;
                 $itemWh = is_array($warehouses) ? ($warehouses[$index] ?? null) : $warehouses;
                 $saleItem->warehouse_id = $itemWh ?: $defaultWhId;
+                $rawWb = $request->warehouse_breakdown[$index] ?? null;
+                $saleItem->warehouse_breakdown = (!empty($rawWb) && $rawWb !== 'null' && $rawWb !== '[]') 
+                    ? (is_string($rawWb) ? $rawWb : json_encode($rawWb)) 
+                    : null;
                 $saleItem->product_name = $productName; // Store name snapshot
                 $saleItem->description = $request->description[$index] ?? ($isSet && $productSet && $productSet->code ? "[{$productSet->code}]" : null);
 
@@ -2620,68 +2632,133 @@ class SaleController extends Controller
             }
 
             $targetWhId = $item->warehouse_id ?: ($sale->warehouse_id ?: (auth()->user()->warehouse_id ?? 1));
-            $stock = WarehouseStock::where('product_id', $item->product_id)
-                ->where('warehouse_id', $targetWhId)
-                ->lockForUpdate() // LOCK ROW
-                ->first();
-
-            if (! $stock) {
-                $stock = WarehouseStock::create([
-                    'warehouse_id' => $targetWhId,
-                    'product_id' => $item->product_id,
-                    'total_pieces' => 0,
-                    'quantity' => 0,
-                ]);
-            }
 
             // Calculate stock deduction quantity (for Kg products, total_pieces in WarehouseStock = total Kg)
             $productMode = $item->product->size_mode ?? '';
             $qtyPieces = (float)$item->total_pieces;
 
             if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter' || $productMode === 'by_feet') {
-                // total_pieces is always stored in master units (KG for weight, Meter for length, Feet for length)
-                // (kg/gm/pcs and m/mm/pcs sub-units all convert to master unit in the frontend). So deduct directly.
                 $qtyPieces = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
             }
 
-            if ($type === 'out') {
-                // Deduct (allow negative stock)
-                $stock->total_pieces -= $qtyPieces;
-                // Update approx boxes for display
-                $ppb = $item->product->pieces_per_box ?? 1;
-                $stock->quantity = round($stock->total_pieces / ($ppb > 0 ? $ppb : 1), 2);
-                $stock->save();
+            // Check if item has multi-warehouse breakdown
+            $breakdown = null;
+            if (!empty($item->warehouse_breakdown)) {
+                $decoded = is_array($item->warehouse_breakdown) ? $item->warehouse_breakdown : json_decode($item->warehouse_breakdown, true);
+                if (is_array($decoded) && count($decoded) > 0) {
+                    $breakdown = $decoded;
+                }
+            }
 
-                // Movement
-                DB::table('stock_movements')->insert([
-                    'product_id' => $item->product_id,
-                    'type' => 'out',
-                    'qty' => -$qtyPieces, // Negative for OUT
-                    'ref_type' => 'sale',
-                    'ref_id' => $sale->id,
-                    'note' => 'Sale Posted #'.$sale->invoice_no,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            } elseif ($type === 'in' || $type === 'return') {
-                // Restore (Cancel or Return)
-                $stock->total_pieces += $qtyPieces;
-                // Update approx boxes
-                $ppb = $item->product->pieces_per_box ?? 1;
-                $stock->quantity = round($stock->total_pieces / ($ppb > 0 ? $ppb : 1), 2);
-                $stock->save();
+            if ($breakdown) {
+                // Proportional conversion factor between item input qty and total_pieces
+                $itemInputQty = (float) ($item->qty > 0 ? $item->qty : ($qtyPieces > 0 ? $qtyPieces : 1));
+                $convFactor = ($qtyPieces > 0 && $itemInputQty > 0) ? ($qtyPieces / $itemInputQty) : 1;
+                $ppb = (float) ($item->product->pieces_per_box ?? 1);
 
-                // Movement
-                DB::table('stock_movements')->insert([
-                    'product_id' => $item->product_id,
-                    'type' => 'in',
-                    'qty' => $qtyPieces,
-                    'ref_type' => 'sale_'.$type, // sale_in (cancel), sale_return
-                    'ref_id' => $sale->id,
-                    'note' => 'Sale '.ucfirst($type).' #'.$sale->invoice_no,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                foreach ($breakdown as $alloc) {
+                    $allocWhId = (int) ($alloc['wh_id'] ?? $alloc['warehouse_id'] ?? $targetWhId);
+                    $allocQty = (float) ($alloc['qty'] ?? 0);
+                    if ($allocWhId <= 0 || $allocQty <= 0) continue;
+
+                    $allocPieces = $allocQty * $convFactor;
+                    $whName = $alloc['wh_name'] ?? $alloc['warehouse_name'] ?? "Warehouse #{$allocWhId}";
+
+                    $stock = WarehouseStock::where('product_id', $item->product_id)
+                        ->where('warehouse_id', $allocWhId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $stock) {
+                        $stock = WarehouseStock::create([
+                            'warehouse_id' => $allocWhId,
+                            'product_id' => $item->product_id,
+                            'total_pieces' => 0,
+                            'quantity' => 0,
+                        ]);
+                    }
+
+                    if ($type === 'out') {
+                        $stock->total_pieces -= $allocPieces;
+                        $stock->quantity = round($stock->total_pieces / ($ppb > 0 ? $ppb : 1), 2);
+                        $stock->save();
+
+                        DB::table('stock_movements')->insert([
+                            'product_id' => $item->product_id,
+                            'type' => 'out',
+                            'qty' => -$allocPieces,
+                            'ref_type' => 'sale',
+                            'ref_id' => $sale->id,
+                            'note' => 'Sale Posted #'.$sale->invoice_no.' ('.$whName.')',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    } elseif ($type === 'in' || $type === 'return') {
+                        $stock->total_pieces += $allocPieces;
+                        $stock->quantity = round($stock->total_pieces / ($ppb > 0 ? $ppb : 1), 2);
+                        $stock->save();
+
+                        DB::table('stock_movements')->insert([
+                            'product_id' => $item->product_id,
+                            'type' => 'in',
+                            'qty' => $allocPieces,
+                            'ref_type' => 'sale_'.$type,
+                            'ref_id' => $sale->id,
+                            'note' => 'Sale '.ucfirst($type).' #'.$sale->invoice_no.' ('.$whName.')',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            } else {
+                // Default Single Warehouse Deduction
+                $stock = WarehouseStock::where('product_id', $item->product_id)
+                    ->where('warehouse_id', $targetWhId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $stock) {
+                    $stock = WarehouseStock::create([
+                        'warehouse_id' => $targetWhId,
+                        'product_id' => $item->product_id,
+                        'total_pieces' => 0,
+                        'quantity' => 0,
+                    ]);
+                }
+
+                $ppb = (float) ($item->product->pieces_per_box ?? 1);
+
+                if ($type === 'out') {
+                    $stock->total_pieces -= $qtyPieces;
+                    $stock->quantity = round($stock->total_pieces / ($ppb > 0 ? $ppb : 1), 2);
+                    $stock->save();
+
+                    DB::table('stock_movements')->insert([
+                        'product_id' => $item->product_id,
+                        'type' => 'out',
+                        'qty' => -$qtyPieces,
+                        'ref_type' => 'sale',
+                        'ref_id' => $sale->id,
+                        'note' => 'Sale Posted #'.$sale->invoice_no,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                } elseif ($type === 'in' || $type === 'return') {
+                    $stock->total_pieces += $qtyPieces;
+                    $stock->quantity = round($stock->total_pieces / ($ppb > 0 ? $ppb : 1), 2);
+                    $stock->save();
+
+                    DB::table('stock_movements')->insert([
+                        'product_id' => $item->product_id,
+                        'type' => 'in',
+                        'qty' => $qtyPieces,
+                        'ref_type' => 'sale_'.$type,
+                        'ref_id' => $sale->id,
+                        'note' => 'Sale '.ucfirst($type).' #'.$sale->invoice_no,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
             }
         }
     }
@@ -2903,6 +2980,8 @@ class SaleController extends Controller
                 'width' => $item->product->width ?? 0,
                 'pieces_per_m2' => $item->product->pieces_per_m2 ?? 0,
                 'size_mode' => $item->size_mode ?? $item->product->size_mode ?? 'std',
+                'warehouse_breakdown' => $item->warehouse_breakdown,
+                'warehouse_id' => $item->warehouse_id,
             ];
         });
     }
@@ -3554,24 +3633,65 @@ class SaleController extends Controller
                         $qtyPieces = (float) ($it->total_pieces > 0 ? $it->total_pieces : $it->qty);
 
                         if ($pid > 0 && $qtyPieces > 0) {
-                            $movs[] = [
-                                'product_id' => $pid,
-                                'type' => 'in',
-                                'qty' => $qtyPieces,
-                                'ref_type' => 'SALE_DELETE',
-                                'ref_id' => $sale->id,
-                                'note' => 'Reverted on Sale Invoice deletion #'.$sale->invoice_no,
-                                'created_at' => $now,
-                                'updated_at' => $now,
-                            ];
+                            $itBreakdown = null;
+                            if (!empty($it->warehouse_breakdown)) {
+                                $dec = is_array($it->warehouse_breakdown) ? $it->warehouse_breakdown : json_decode($it->warehouse_breakdown, true);
+                                if (is_array($dec) && count($dec) > 0) {
+                                    $itBreakdown = $dec;
+                                }
+                            }
 
-                            $product = $it->product ?: Product::find($pid);
-                            $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
-                            $stock = WarehouseStock::where('warehouse_id', $itemWhId)->where('product_id', $pid)->first();
-                            if ($stock) {
-                                $stock->total_pieces += $qtyPieces;
-                                $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
-                                $stock->save();
+                            if ($itBreakdown) {
+                                $itInputQty = (float) ($it->qty > 0 ? $it->qty : ($qtyPieces > 0 ? $qtyPieces : 1));
+                                $convFactor = ($qtyPieces > 0 && $itInputQty > 0) ? ($qtyPieces / $itInputQty) : 1;
+                                $product = $it->product ?: Product::find($pid);
+                                $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+
+                                foreach ($itBreakdown as $alloc) {
+                                    $allocWhId = (int) ($alloc['wh_id'] ?? $alloc['warehouse_id'] ?? $itemWhId);
+                                    $allocQty = (float) ($alloc['qty'] ?? 0);
+                                    if ($allocWhId <= 0 || $allocQty <= 0) continue;
+                                    $allocPieces = $allocQty * $convFactor;
+                                    $whName = $alloc['wh_name'] ?? $alloc['warehouse_name'] ?? "Warehouse #{$allocWhId}";
+
+                                    $movs[] = [
+                                        'product_id' => $pid,
+                                        'type' => 'in',
+                                        'qty' => $allocPieces,
+                                        'ref_type' => 'SALE_DELETE',
+                                        'ref_id' => $sale->id,
+                                        'note' => 'Reverted on Sale Invoice deletion #'.$sale->invoice_no.' ('.$whName.')',
+                                        'created_at' => $now,
+                                        'updated_at' => $now,
+                                    ];
+
+                                    $stock = WarehouseStock::where('warehouse_id', $allocWhId)->where('product_id', $pid)->first();
+                                    if ($stock) {
+                                        $stock->total_pieces += $allocPieces;
+                                        $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
+                                        $stock->save();
+                                    }
+                                }
+                            } else {
+                                $movs[] = [
+                                    'product_id' => $pid,
+                                    'type' => 'in',
+                                    'qty' => $qtyPieces,
+                                    'ref_type' => 'SALE_DELETE',
+                                    'ref_id' => $sale->id,
+                                    'note' => 'Reverted on Sale Invoice deletion #'.$sale->invoice_no,
+                                    'created_at' => $now,
+                                    'updated_at' => $now,
+                                ];
+
+                                $product = $it->product ?: Product::find($pid);
+                                $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+                                $stock = WarehouseStock::where('warehouse_id', $itemWhId)->where('product_id', $pid)->first();
+                                if ($stock) {
+                                    $stock->total_pieces += $qtyPieces;
+                                    $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
+                                    $stock->save();
+                                }
                             }
                         }
                     }

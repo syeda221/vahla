@@ -1,57 +1,66 @@
+{{-- admin_panel/sale/partials/dc_half_body.blade.php --}}
+@php
+    $finalBadgeTitle = $badgeTitle ?? 'INVOICE / BILL';
+@endphp
+
 <div class="invoice-content-top">
-    <!-- Header -->
+    <!-- Header (matching saleinvoice style) -->
     <div class="pad-header">
         <div class="logo-section">
             @if(!empty($companyLogo) && file_exists(public_path($companyLogo)))
                 <img src="{{ asset($companyLogo) }}" alt="Company Logo" class="logo-img">
+            @elseif(\App\Models\Setting::get('company_logo') && file_exists(public_path(\App\Models\Setting::get('company_logo'))))
+                <img src="{{ asset(\App\Models\Setting::get('company_logo')) }}" alt="Company Logo" class="logo-img">
             @else
-                <div class="logo-text-box">
-                    <span class="logo-title">{{ \App\Models\Setting::get('company_name', 'VAHLA') }}</span>
-                    <span class="logo-subtitle">MILL STORE</span>
-                </div>
+                <h2 style="margin:0; font-weight:900; font-size:22px; color: #1e40af;">{{ \App\Models\Setting::get('company_name', 'VAHLA') }}</h2>
+                <div style="font-size:9px; font-weight:bold; letter-spacing:1px; margin-bottom:4px; color: #1e40af;">INDUSTRIAL SOLUTIONS</div>
             @endif
-            <div class="badge-wrapper">
-                <span class="invoice-badge">{{ $badgeTitle ?? 'DELIVERY CHALLAN' }}</span>
-                <span class="copy-type-tag">{{ $copyType }}</span>
+            <div class="invoice-badge-wrap">
+                <span class="invoice-badge pill-title-text">{{ $finalBadgeTitle }}</span>
+                @if(!empty($copyType))
+                    <span class="copy-type-tag">{{ $copyType }}</span>
+                @endif
             </div>
         </div>
-        
+
         <div class="company-details-section">
             <div class="deals-in">
-                <span>DEALER IN:</span> {{ \App\Models\Setting::get('deals_in', 'Fasteners, Bearings, Equipments, V-belt, PPE\'s, Hand & Cutting Tools etc.') }}
+                <span>DEALS IN:</span> {{ \App\Models\Setting::get('deals_in') ?: 'Fasteners, Bearing, Lifting Equipments, V-belt, PPE\'s, Hand & Cutting Etc' }}
             </div>
             <div class="contact-line">
-                <span dir="ltr">{{ \App\Models\Setting::get('company_address', 'SHOP: 91-74-OP, FC GARDEN, SECTOR NO: 15-A/L-1, SADDAR BAZAR HYD.') }}</span>
+                <span dir="ltr">{{ \App\Models\Setting::get('company_address') ?: 'SHOP NO.91/1, OPP; FG GIRLS SCHOOL, SADDAR BAZAR HYDERABAD SINDH' }}</span>
                 <i class="fa-solid fa-location-dot"></i>
             </div>
             <div class="contact-line">
-                <span dir="ltr">{{ \App\Models\Setting::get('company_phone', '+92 022 2780007 / 03003077299') }}</span>
+                <span dir="ltr">{{ \App\Models\Setting::get('company_phone') ?: '+92-022-2781224 / 03003077299' }}</span>
                 <i class="fa-solid fa-phone"></i>
             </div>
-            @if(\App\Models\Setting::get('website_link') || \App\Models\Setting::get('company_email'))
+            @if(\App\Models\Setting::get('company_email') || \App\Models\Setting::get('website_link'))
             <div class="contact-line">
-                <span dir="ltr">{{ \App\Models\Setting::get('website_link') ?: \App\Models\Setting::get('company_email', 'vahlamillstore@hotmail.com') }}</span>
+                <span dir="ltr">{{ \App\Models\Setting::get('company_email') ?: 'vahlamillstore@hotmail.com' }}</span>
                 <i class="fa-solid fa-envelope"></i>
             </div>
             @endif
         </div>
     </div>
 
-    <!-- Meta -->
+    <!-- Meta Section (matching saleinvoice style with blue underlines) -->
     <div class="meta-section">
         <div class="meta-left">
             <div class="meta-row">
-                <div class="meta-label">S.No.</div>
+                <div class="meta-label">S. No.</div>
                 <div class="meta-value">{{ $sale ? $sale->invoice_no : ($dcNumbers ?? 'DC') }}</div>
             </div>
             <div class="meta-row">
                 <div class="meta-label">LPO</div>
                 <div class="meta-value">{{ $lpoReference }}</div>
             </div>
+            @if(!empty(optional($sale)->transport_name) || !empty(optional($sale)->vehicle_number))
             <div class="meta-row">
                 <div class="meta-label">T/P</div>
                 <div class="meta-value">{{ optional($sale)->transport_name ?? (optional($sale)->vehicle_number ?? '') }}</div>
             </div>
+            @endif
             <div class="meta-row">
                 <div class="meta-label">M/s</div>
                 <div class="meta-value">{{ $customerName }}</div>
@@ -59,26 +68,28 @@
         </div>
         <div class="meta-right">
             <div class="meta-row">
-                <div class="meta-label" style="width: 55px;">Date:</div>
+                <div class="meta-label" style="width: 50px;">Date:</div>
                 <div class="meta-value">{{ \Carbon\Carbon::parse(optional($sale)->sale_date ?? (optional($sale)->created_at ?? now()))->format('d-m-Y') }}</div>
             </div>
+            @if(!empty($dcNumbers) && $dcNumbers !== ($sale ? $sale->invoice_no : ''))
             <div class="meta-row">
-                <div class="meta-label" style="width: 55px;">D.C. No:</div>
+                <div class="meta-label" style="width: 50px;">D. No:</div>
                 <div class="meta-value">{{ $dcNumbers }}</div>
             </div>
+            @endif
         </div>
     </div>
 
-    <!-- Table -->
+    <!-- Pad Table (matching saleinvoice style) -->
     <table class="pad-table">
         <thead>
             <tr>
-                <th style="width: 5%;">S.NO</th>
+                <th style="width: 6%;">S.NO</th>
                 <th class="desc-col" style="width: 44%; text-align: left;">DESCRIPTION</th>
                 <th style="width: 10%;">QTY</th>
                 <th class="rate-col" style="width: 13%;">RATE</th>
-                <th style="width: 13%;">UNIT</th>
-                <th class="rate-col" style="width: 15%;">AMOUNT</th>
+                <th style="width: 11%;">UNIT</th>
+                <th class="rate-col" style="width: 16%;">AMOUNT</th>
             </tr>
         </thead>
         <tbody>
@@ -200,11 +211,28 @@
 
                 <tr>
                     <td style="text-align: center;">{{ $sNo }}</td>
-                    <td class="desc-col" style="font-weight: 600;">
+                    <td class="desc-col" style="font-weight: 500;">
                         {{ $productTitle }}
                         @if(!empty($itemDesc))
-                            <div style="font-size: 8.5px; color: #475569; font-weight: normal;">
+                            <div style="font-size: 8px; color: #475569; font-weight: normal; margin-top: 1px;">
                                 {{ $itemDesc }}
+                            </div>
+                        @endif
+                        @php
+                            $rawWb = $isModel ? ($item->warehouse_breakdown ?? optional($item->saleItem)->warehouse_breakdown) : ($item['warehouse_breakdown'] ?? null);
+                            $wbStrList = [];
+                            if (!empty($rawWb)) {
+                                $wbArr = is_string($rawWb) ? json_decode($rawWb, true) : $rawWb;
+                                if (is_array($wbArr) && count($wbArr) > 1) {
+                                    foreach ($wbArr as $w) {
+                                        $wbStrList[] = ($w['wh_name'] ?? $w['warehouse_name'] ?? 'WH') . ': ' . ($w['qty'] ?? 0);
+                                    }
+                                }
+                            }
+                        @endphp
+                        @if(count($wbStrList) > 0)
+                            <div style="font-size: 8px; color: #0284c7; font-weight: 600; margin-top: 1px;">
+                                Dispatch: {{ implode(', ', $wbStrList) }}
                             </div>
                         @endif
                     </td>
@@ -217,53 +245,53 @@
                 </tr>
             @endforeach
 
-            {{-- Totals block only on the final part --}}
+            {{-- Totals block on final part --}}
             @if ($isLastPart)
                 @if(optional($sale)->total_extradiscount > 0)
-                <tr>
-                    <td colspan="5" class="totals-label text-danger">DISCOUNT:</td>
-                    <td class="rate-col totals-val text-danger">
+                <tr class="rate-col">
+                    <td colspan="5" style="text-align: right; font-weight: bold; color: #dc2626;">DISCOUNT:</td>
+                    <td class="rate-col" style="text-align: right; font-weight: bold; color: #dc2626;">
                         -{{ number_format($sale->total_extradiscount, 2) }}
                     </td>
                 </tr>
                 @endif
                 @if(optional($sale)->shipping_charges > 0)
-                <tr>
-                    <td colspan="5" class="totals-label" style="color: #0284c7;">SHIPPING CHARGES:</td>
-                    <td class="rate-col totals-val" style="color: #0284c7;">
+                <tr class="rate-col">
+                    <td colspan="5" style="text-align: right; font-weight: bold; color: #0284c7;">SHIPPING CHARGES:</td>
+                    <td class="rate-col" style="text-align: right; font-weight: bold; color: #0284c7;">
                         +{{ number_format($sale->shipping_charges, 2) }}
                     </td>
                 </tr>
                 @endif
                 @if(optional($sale)->cutting_charges > 0)
-                <tr>
-                    <td colspan="5" class="totals-label" style="color: #d97706;">CUTTING CHARGES:</td>
-                    <td class="rate-col totals-val" style="color: #d97706;">
+                <tr class="rate-col">
+                    <td colspan="5" style="text-align: right; font-weight: bold; color: #d97706;">CUTTING CHARGES:</td>
+                    <td class="rate-col" style="text-align: right; font-weight: bold; color: #d97706;">
                         +{{ number_format($sale->cutting_charges, 2) }}
                     </td>
                 </tr>
                 @endif
-                <tr>
-                    <td colspan="5" class="totals-label">TOTAL:</td>
-                    <td class="rate-col totals-val" style="background-color: rgba(224, 242, 254, 0.6);">
+                <tr class="rate-col">
+                    <td colspan="5" style="text-align: right; font-weight: bold;">TOTAL:</td>
+                    <td class="rate-col" style="text-align: right; font-weight: bold; background-color: rgba(224, 242, 254, 0.5);">
                         {{ number_format($finalTotal, 2) }}
                     </td>
                 </tr>
-                <tr>
-                    <td colspan="5" class="totals-label">PAID:</td>
-                    <td class="rate-col totals-val" style="color: #16a34a;">
+                <tr class="rate-col">
+                    <td colspan="5" style="text-align: right; font-weight: bold;">PAID:</td>
+                    <td class="rate-col" style="text-align: right; font-weight: bold; color: #16a34a;">
                         {{ number_format($paidAmount, 2) }}
                     </td>
                 </tr>
-                <tr>
-                    <td colspan="5" class="totals-label">DUE:</td>
-                    <td class="rate-col totals-val" style="color: #dc2626;">
+                <tr class="rate-col">
+                    <td colspan="5" style="text-align: right; font-weight: bold;">DUE:</td>
+                    <td class="rate-col" style="text-align: right; font-weight: bold; color: #dc2626;">
                         {{ number_format($dueAmount, 2) }}
                     </td>
                 </tr>
             @else
                 <tr>
-                    <td colspan="6" style="text-align: center; font-weight: bold; font-size: 9px; color: #1e40af; background: #eff6ff; padding: 2.5px;">
+                    <td colspan="6" style="text-align: center; font-weight: bold; font-size: 8.5px; color: #1e40af; background: #eff6ff; padding: 3px;">
                         --- CONTINUED ON NEXT HALF PAGE ---
                     </td>
                 </tr>
@@ -272,14 +300,14 @@
     </table>
 </div>
 
-<!-- Footer -->
+<!-- Footer (matching saleinvoice style) -->
 <div class="pad-footer">
     <div class="footer-note">
         Goods once sold can not be exchange<br>
-        or taken back without receipt.
+        or taken back without receipt
     </div>
     <div class="footer-sign">
-        <img src="{{ asset('assets/images/stamp.png') }}" class="footer-stamp" alt="Stamp">
-        For {{ \App\Models\Setting::get('company_name', 'VAHLA MILL STORE') }}
+        <img src="{{ asset('assets/images/stamp.png') }}" class="footer-stamp" alt="Stamp"><br>
+        <span class="for-company">For {{ \App\Models\Setting::get('company_name', 'VAHLA MILL STORE') }}</span>
     </div>
 </div>

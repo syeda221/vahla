@@ -135,70 +135,80 @@ class ProductController extends Controller
         $query = Product::query()
             ->select('id', 'item_name', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece')
             ->with(['unit'])
-            ->withSum('warehouseStocks', 'total_pieces') /* Sum PIECES, not boxes */
             ->where('is_active', true); /* Only active products */
 
         if (!empty($words)) {
+            $cleanTerm = addslashes($term);
+            $cleanAlphaNum = addslashes(preg_replace('/[^a-zA-Z0-9]/', '', $term));
+            $paddedCode = is_numeric($cleanAlphaNum) ? str_pad($cleanAlphaNum, 4, '0', STR_PAD_LEFT) : $cleanAlphaNum;
+
             $query->where(function ($q) use ($words) {
                 foreach ($words as $w) {
                     $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $w);
                     $q->where(function ($subQ) use ($w, $escaped) {
                         $subQ->where('item_name', 'like', "%{$w}%")
                             ->orWhere('item_code', 'like', "%{$w}%")
-                            ->orWhere('barcode_path', 'like', "%{$w}%")
-                            ->orWhereRaw("JSON_SEARCH(color, 'one', ?, NULL, '$[*].name', '$[*].color', '$[*].size', '$[*].barcode') IS NOT NULL", ["%{$escaped}%"]);
+                            ->orWhere('barcode_path', 'like', "%{$w}%");
+
+                        if (strlen($w) >= 3) {
+                            $subQ->orWhere('color', 'like', "%\"name\":\"%{$escaped}%\"%")
+                                ->orWhere('color', 'like', "%\"barcode\":\"%{$escaped}%\"%");
+                        }
                     });
                 }
             });
 
-            // Relevance ordering:
-            // 1. Exact match on full term
-            // 2. Starts with full term
-            // 3. Contains full phrase
-            // 4. All search words in item_name
-            // 5. Starts with first word
-            // 6. Contains first word
-            $cleanTerm = addslashes($term);
-            $allWordsInNameSql = [];
-            foreach ($words as $w) {
-                $cleanW = addslashes($w);
-                $allWordsInNameSql[] = "item_name LIKE '%{$cleanW}%'";
-            }
-            $allWordsInNameCondition = implode(' AND ', $allWordsInNameSql);
-            $firstWord = addslashes($words[0]);
+            // Fast relevance ordering
+            $allWordsCondition = count($words) > 1 
+                ? implode(' AND ', array_map(fn($w) => "item_name LIKE '%" . addslashes($w) . "%'", $words)) 
+                : "item_name LIKE '%{$cleanTerm}%'";
 
             $query->orderByRaw("
                 CASE
-                    WHEN item_name = '{$cleanTerm}' THEN 1
-                    WHEN item_name LIKE '{$cleanTerm}%' THEN 2
-                    WHEN item_name LIKE '%{$cleanTerm}%' THEN 3
-                    WHEN ({$allWordsInNameCondition}) THEN 4
-                    WHEN item_name LIKE '{$firstWord}%' THEN 5
-                    WHEN item_name LIKE '%{$firstWord}%' THEN 6
-                    ELSE 7
-                END ASC, item_name ASC
+                    WHEN item_code = '{$cleanTerm}' THEN 1
+                    WHEN item_code = 'ITEM-{$cleanTerm}' THEN 2
+                    WHEN item_code = 'ITEM-{$paddedCode}' THEN 3
+                    WHEN barcode_path = '{$cleanTerm}' THEN 4
+                    WHEN item_code LIKE '%-{$cleanTerm}' THEN 5
+                    WHEN item_code LIKE '%-{$paddedCode}' THEN 6
+                    WHEN item_name = '{$cleanTerm}' THEN 7
+                    WHEN item_name LIKE '{$cleanTerm}%' THEN 8
+                    WHEN ({$allWordsCondition}) THEN 9
+                    WHEN item_code LIKE '%{$cleanTerm}%' THEN 10
+                    WHEN barcode_path LIKE '{$cleanTerm}%' THEN 11
+                    ELSE 12
+                END ASC, item_code ASC, item_name ASC
             ");
         } else {
-            $query->orderBy('item_name', 'asc');
+            $query->orderBy('item_code', 'asc');
         }
 
         $products = $query->simplePaginate(15); // Fast lazy loading (15 per request)
 
+        // Ultra-fast covered stock calculation for only the 15 displayed products
+        $productIds = $products->pluck('id')->filter()->unique();
+        $stocksMap = [];
+        if ($productIds->isNotEmpty()) {
+            $stocksMap = DB::table('warehouse_stocks')
+                ->whereIn('product_id', $productIds)
+                ->groupBy('product_id')
+                ->select('product_id', DB::raw('SUM(total_pieces) as total'))
+                ->pluck('total', 'product_id');
+        }
+
         $setResults = collect();
-        if ((int)($request->get('page') ?? 1) === 1) {
+        if ((int)($request->get('page') ?? 1) === 1 && !empty($words)) {
             $setQuery = \App\Models\ProductSet::with(['items.product'])->where('is_active', true);
-            if (!empty($words)) {
-                $setQuery->where(function ($q) use ($words) {
-                    foreach ($words as $w) {
-                        $q->where(function ($subQ) use ($w) {
-                            $subQ->where('name', 'like', "%{$w}%")
-                                ->orWhere('code', 'like', "%{$w}%")
-                                ->orWhere('description', 'like', "%{$w}%");
-                        });
-                    }
-                });
-            }
-            $matchedSets = $setQuery->take(10)->get();
+            $setQuery->where(function ($q) use ($words) {
+                foreach ($words as $w) {
+                    $q->where(function ($subQ) use ($w) {
+                        $subQ->where('name', 'like', "%{$w}%")
+                            ->orWhere('code', 'like', "%{$w}%")
+                            ->orWhere('description', 'like', "%{$w}%");
+                    });
+                }
+            });
+            $matchedSets = $setQuery->take(5)->get();
 
             $setResults = $matchedSets->map(function ($s) {
                 // Calculate set price if not explicit
@@ -241,8 +251,8 @@ class ProductController extends Controller
             });
         }
 
-        $results = $products->getCollection()->flatMap(function ($p) use ($words) {
-            $stockPieces = (float) ($p->warehouse_stocks_sum_total_pieces ?? 0);
+        $results = $products->getCollection()->flatMap(function ($p) use ($words, $stocksMap) {
+            $stockPieces = (float) ($stocksMap[$p->id] ?? 0);
             $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
 
             $unitName = $p->unit->name ?? match($p->size_mode) {
@@ -381,7 +391,8 @@ class ProductController extends Controller
                     $vUnitName = $v['unit'] ?? $unitName;
 
                     if (!empty($words)) {
-                        $variantText = strtolower($vName . ' ' . $vUnitName . ' ' . ($v['barcode'] ?? '') . ' ' . ($p->barcode_path ?? '') . ' ' . $p->item_name . ' ' . ($p->item_code ?? ''));
+                        $cleanItemCode = strtolower(str_replace('-', '', $p->item_code ?? ''));
+                        $variantText = strtolower($vName . ' ' . $vUnitName . ' ' . ($v['barcode'] ?? '') . ' ' . ($p->barcode_path ?? '') . ' ' . $p->item_name . ' ' . ($p->item_code ?? '') . ' ' . $cleanItemCode);
                         $allWordsMatch = true;
                         foreach ($words as $w) {
                             if (!str_contains($variantText, strtolower($w))) {

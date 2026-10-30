@@ -83,6 +83,18 @@
             </div>
             @endif
 
+            @if(isset($payload['warnings']) && count($payload['warnings']) > 0)
+            <div class="alert alert-info shadow-sm">
+                <strong><i class="las la-info-circle"></i> Auto-Resolved Barcodes ({{ count($payload['warnings']) }}):</strong>
+                <ul class="mb-0 mt-1" style="max-height: 120px; overflow-y: auto;">
+                    @foreach($payload['warnings'] as $warning)
+                        <li>Row {{ $warning['row'] }}: {{ $warning['msg'] }}</li>
+                    @endforeach
+                </ul>
+                <div class="mt-1 small text-muted"><i class="las la-check-circle text-success"></i> In duplicate barcodes ko system ne automatically unique barcodes assign kar diye hain taake aapka koi product skip na ho aur POS scanner pe conflict na aye.</div>
+            </div>
+            @endif
+
             @if(count($payload['master_data']['categories']) > 0 || count($payload['master_data']['brands']) > 0)
             <div class="alert alert-warning shadow-sm">
                 <strong><i class="las la-exclamation-triangle"></i> Notice:</strong> The following master data is missing and will be auto-created:<br>
@@ -197,7 +209,7 @@ $(document).ready(function() {
             data: {
                 _token: "{{ csrf_token() }}",
                 offset: offset,
-                chunk_size: 50
+                chunk_size: 100
             },
             success: function(res) {
                 if (res.status === 'success') {

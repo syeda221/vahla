@@ -246,10 +246,38 @@
             width: 135px !important;
             min-width: 125px !important;
         }
+        .sales-table thead th.col-wh,
+        .sales-table tbody td.col-wh {
+            width: 160px !important;
+            min-width: 150px !important;
+        }
         .sales-table tbody td.col-wh select.row-warehouse-select {
             font-size: 0.74rem !important;
             padding: 2px 4px !important;
             height: 28px !important;
+        }
+        .btn-split-wh {
+            font-size: 0.72rem;
+            padding: 2px 6px;
+            height: 28px;
+            border-radius: 4px;
+            border: 1px solid #93c5fd;
+            background: #eff6ff;
+            color: #2563eb;
+            transition: all 0.15s ease;
+        }
+        .btn-split-wh:hover {
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #2563eb;
+        }
+        .wh-stock-hint {
+            cursor: pointer;
+            transition: opacity 0.15s ease;
+        }
+        .wh-stock-hint:hover {
+            opacity: 0.8;
+            text-decoration: underline;
         }
         .sales-table thead th.col-stock,
         .sales-table tbody td.col-stock {
@@ -878,7 +906,7 @@
                                             <th style="width:30px;" class="text-center">#</th>
                                             <th class="col-product" style="width: 220px; min-width: 180px; max-width: 250px;">PRODUCT</th>
                                             <th class="col-code" style="width: 110px; min-width: 105px;">CODE</th>
-                                            <th class="col-wh" style="width: 135px; min-width: 125px;">LOCATION</th>
+                                            <th class="col-wh" style="width: 160px; min-width: 150px;">LOCATION</th>
                                             <th class="col-stock" style="width: 80px; min-width: 75px;">STOCK</th>
                                             <th class="col-qty" style="width: 85px;">QTY</th>
                                             <th class="col-description" style="width: 130px; min-width: 110px;">DESCRIPTION</th>
@@ -1271,14 +1299,37 @@
                                                     </td>
 
                                                     <!-- LOCATION (Warehouse / Shop) -->
-                                                    <td class="col-wh" style="width: 135px; min-width: 125px;">
-                                                        <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem;">
-                                                            @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
-                                                                <option value="{{ $wh->id }}" {{ (($item->warehouse_id ?? $sale->warehouse_id ?? $mainStoreId) == $wh->id) ? 'selected' : '' }}>
-                                                                    {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
+                                                    <td class="col-wh" style="width: 160px; min-width: 150px;">
+                                                        <div class="d-flex align-items-center gap-1">
+                                                            <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem; flex: 1; min-width: 0;">
+                                                                @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
+                                                                    <option value="{{ $wh->id }}" {{ (($item->warehouse_id ?? $sale->warehouse_id ?? $mainStoreId) == $wh->id) ? 'selected' : '' }}>
+                                                                        {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
+                                                                    </option>
+                                                                @endforeach
+                                                            </select>
+                                                            <button type="button" class="btn btn-xs btn-outline-primary btn-split-wh px-1 py-0" title="Sell from Multiple Locations (Shop & Warehouse)" data-bs-toggle="tooltip">
+                                                                <i class="fas fa-boxes" style="font-size: 0.72rem;"></i>
+                                                            </button>
+                                                        </div>
+                                                        @php
+                                                            $curWb = $item->warehouse_breakdown ?? null;
+                                                            $curWbArr = !empty($curWb) ? (is_string($curWb) ? json_decode($curWb, true) : $curWb) : null;
+                                                        @endphp
+                                                        <input type="hidden" class="warehouse-breakdown-input" name="warehouse_breakdown[]" value="{{ is_array($curWbArr) ? json_encode($curWbArr) : ($curWb ?? '') }}">
+                                                        <div class="mwh-applied-badge-wrap mt-1" style="{{ (is_array($curWbArr) && count($curWbArr) > 1) ? '' : 'display: none;' }}">
+                                                            @if(is_array($curWbArr) && count($curWbArr) > 1)
+                                                                <div class="mwh-applied-badge d-flex flex-wrap align-items-center gap-1 mt-1 p-1 bg-light rounded border border-primary-subtle" style="font-size:0.68rem; cursor:pointer;" title="Click to view/edit multi-location allocation">
+                                                                    <span class="text-primary fw-bold"><i class="fas fa-boxes me-1"></i>Split:</span>
+                                                                    @foreach($curWbArr as $a)
+                                                                        <span class="badge bg-primary text-white border me-1 px-1 py-0" style="font-size:0.65rem;">
+                                                                            {{ str_replace('WAREHOUSE', 'WH', $a['wh_name'] ?? $a['warehouse_name'] ?? 'WH') }}: <b>{{ $a['qty'] ?? 0 }}</b>
+                                                                        </span>
+                                                                    @endforeach
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                        <div class="wh-stock-hint text-muted mt-1" style="font-size: 0.65rem; line-height: 1.1; {{ (is_array($curWbArr) && count($curWbArr) > 1) ? 'display: none;' : '' }}" title="Click to allocate across warehouses"></div>
                                                     </td>
 
                                                     <!-- STOCK -->
@@ -1412,14 +1463,22 @@
                                                 <td class="col-code" style="width: 110px; min-width: 105px;">
                                                     <input type="text" class="form-control item-code-display text-center input-readonly" readonly placeholder="Code" tabindex="-1" style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600;">
                                                 </td>
-                                                <td class="col-wh" style="width: 135px; min-width: 125px;">
-                                                    <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem;">
-                                                        @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
-                                                            <option value="{{ $wh->id }}" {{ $wh->id == $mainStoreId ? 'selected' : '' }}>
-                                                                {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
-                                                            </option>
-                                                        @endforeach
-                                                    </select>
+                                                <td class="col-wh" style="width: 160px; min-width: 150px;">
+                                                    <div class="d-flex align-items-center gap-1">
+                                                        <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem; flex: 1; min-width: 0;">
+                                                            @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
+                                                                <option value="{{ $wh->id }}" {{ $wh->id == $mainStoreId ? 'selected' : '' }}>
+                                                                    {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                        <button type="button" class="btn btn-xs btn-outline-primary btn-split-wh px-1 py-0" title="Sell from Multiple Locations (Shop & Warehouse)" data-bs-toggle="tooltip">
+                                                            <i class="fas fa-boxes" style="font-size: 0.72rem;"></i>
+                                                        </button>
+                                                    </div>
+                                                    <input type="hidden" class="warehouse-breakdown-input" name="warehouse_breakdown[]" value="">
+                                                        <div class="mwh-applied-badge-wrap mt-1" style="display: none;"></div>
+                                                        <div class="wh-stock-hint text-muted mt-1" style="font-size: 0.65rem; line-height: 1.1; display: none;" title="Click to allocate across warehouses"></div>
                                                 </td>
                                                 <td class="col-stock" style="width: 80px; min-width: 75px;">
                                                     <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1" style="font-size: 0.75rem;">
@@ -1760,6 +1819,7 @@
 
     {{-- Quick Add Product Modal --}}
     @include('admin_panel.partials.quick_add_product_modal')
+    @include('admin_panel.sale.partials.multi_warehouse_modal')
 @endsection
 
 @section('js')

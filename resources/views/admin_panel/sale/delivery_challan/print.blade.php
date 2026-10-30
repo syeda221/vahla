@@ -5,35 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Delivery Challan - {{ $dc->dc_number }}</title>
     <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style id="dynamicPageSize">
         @page {
             size: A4 portrait;
-            margin: 4mm 6mm;
+            margin: 0;
         }
     </style>
     <style>
         :root {
             --pad-blue: #1e40af;
-            --pad-header-bg: #0284c7;
-            --pad-light-blue: #eff6ff;
-            --pad-alt-row: #f0f9ff;
+            --pad-light-blue: #e0f2fe;
             --pad-border: #3b82f6;
             --pad-text: #1e3a8a;
         }
 
         * {
             box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
 
-        body {
-            background-color: #f1f5f9;
-            color: #000;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            font-size: 10.5px;
+        html, body {
             margin: 0;
             padding: 0;
+            background-color: #f1f5f9;
+            color: var(--pad-text);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 9.5px;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
@@ -48,76 +47,119 @@
             z-index: 1000;
         }
 
-        /* A4 Sheet Container */
+        /* A4 Page Container: 210mm x 297mm */
         .a4-sheet {
-            width: 202mm;
-            max-width: 100%;
+            width: 210mm;
+            height: 297mm;
+            max-height: 297mm;
             margin: 15px auto;
-            background: transparent;
-            padding: 0;
+            background: #ffffff;
+            position: relative;
+            overflow: hidden;
             box-sizing: border-box;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
         }
 
-        /* Each Half Sheet (Top Half & Bottom Half) */
-        .invoice-half {
-            width: 100%;
-            height: 139mm;
-            max-height: 140mm;
-            min-height: 137mm;
-            background: #ffffff;
-            border: 1.5px solid var(--pad-border);
-            border-radius: 4px;
-            padding: 3.5mm 6mm 2.5mm 6mm;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            overflow: hidden;
+        .a4-sheet:not(:last-child) {
+            page-break-after: always !important;
+            break-after: page !important;
+        }
+
+        .a4-sheet:last-child {
+            page-break-after: auto !important;
+            break-after: auto !important;
+        }
+
+        /* Equal Halves: Top (210mm x 148.5mm) & Bottom (210mm x 148.5mm) */
+        .half {
             position: relative;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06);
-            margin-bottom: 0;
+            width: 210mm;
+            height: 148.5mm;
+            max-height: 148.5mm;
+            overflow: hidden;
+            box-sizing: border-box;
+            background: #ffffff;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+
+        /* Blank Half Notice (Only in preview) */
+        .blank-half-notice {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            background: #fafafa;
+            border: 1px dashed #cbd5e1;
+            margin: 4mm;
+            border-radius: 4px;
         }
 
         /* Cut Divider Line between 2 Halves */
         .cut-divider {
-            width: 100%;
-            height: 4mm;
-            margin: 1.5mm 0;
+            position: absolute;
+            top: 148.5mm;
+            left: 0;
+            width: 210mm;
+            height: 0;
+            border-top: 1.5px dashed #94a3b8;
+            z-index: 100;
+            pointer-events: none;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            font-size: 9px;
-            color: #64748b;
-            font-weight: bold;
-            letter-spacing: 0.5px;
-        }
-
-        .cut-divider::before {
-            content: "";
-            position: absolute;
-            left: 0;
-            right: 0;
-            top: 50%;
-            border-top: 1.5px dashed #94a3b8;
-            z-index: 1;
         }
 
         .cut-divider span {
-            background: #f1f5f9;
-            padding: 0 8px;
-            position: relative;
-            z-index: 2;
+            transform: translateY(-50%);
+            background: #ffffff;
+            padding: 0 10px;
+            font-size: 8px;
+            font-weight: bold;
+            color: #64748b;
+            letter-spacing: 1px;
         }
 
-        /* Header Layout */
+        /* Rotated A5 Portrait Copy (136mm x 194mm rotated 90deg centered inside 210mm x 148.5mm half) */
+        .copy {
+            position: absolute;
+            left: 37mm;
+            top: -22.75mm;
+            width: 136mm;
+            height: 194mm;
+            transform-origin: center center;
+            transform: rotate(90deg);
+            box-sizing: border-box;
+            padding: 3mm 5mm 2.5mm 5mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: #ffffff;
+            overflow: hidden;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: var(--pad-text);
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+
+        .invoice-content-top {
+            flex-shrink: 0;
+        }
+
+        /* Counter-clockwise rotation if toggled */
+        body.rotate-counter .copy {
+            transform: rotate(-90deg);
+        }
+
+        /* Header Layout (from saleinvoice) */
         .pad-header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 3px;
-            border-bottom: 1.5px solid var(--pad-border);
-            padding-bottom: 3px;
+            margin-bottom: 8px;
+            border-bottom: 2px solid var(--pad-border);
+            padding-bottom: 8px;
         }
 
         .logo-section {
@@ -128,267 +170,255 @@
         }
 
         .logo-img {
-            max-width: 130px;
+            max-width: 100%;
             height: auto;
-            max-height: 38px;
+            max-height: 52px;
             object-fit: contain;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
         }
 
-        .logo-text-box {
-            display: flex;
-            align-items: baseline;
-            gap: 5px;
-            margin-bottom: 2px;
-        }
-
-        .logo-title {
-            font-size: 20px;
-            font-weight: 900;
-            color: #1e40af;
-            line-height: 1;
-            letter-spacing: -0.5px;
-        }
-
-        .logo-subtitle {
-            font-size: 8.5px;
-            font-weight: 700;
-            color: #0284c7;
-            letter-spacing: 1px;
-        }
-
-        .badge-wrapper {
+        .invoice-badge-wrap {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             margin-top: 2px;
         }
 
         .invoice-badge {
-            background-color: var(--pad-header-bg);
-            color: #ffffff;
+            background-color: #3b82f6 !important;
+            color: #ffffff !important;
             text-align: center;
-            font-weight: 800;
+            font-weight: bold;
             font-size: 11px;
-            padding: 2.5px 12px;
+            padding: 3px 12px;
             display: inline-block;
-            letter-spacing: 1.2px;
-            border-radius: 3px;
+            letter-spacing: 1.5px;
+            border-radius: 2px;
             text-transform: uppercase;
         }
 
         .copy-type-tag {
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 700;
-            color: #1e40af;
-            border: 1px solid var(--pad-border);
+            color: #3b82f6;
+            border: 1px solid #bfdbfe;
+            background: #eff6ff;
+            border-radius: 3px;
             padding: 1px 6px;
-            border-radius: 2px;
-            background: var(--pad-light-blue);
+            letter-spacing: 0.5px;
         }
 
         .company-details-section {
             width: 55%;
-            font-size: 9px;
+            font-size: 8.5px;
             line-height: 1.35;
             color: var(--pad-text);
             text-align: right;
         }
 
         .deals-in {
-            font-weight: 700;
-            margin-bottom: 2px;
+            font-weight: bold;
+            margin-bottom: 4px;
             font-size: 9px;
         }
-        
+
         .deals-in span {
             color: #0284c7;
         }
 
         .contact-line {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: flex-end;
-            margin-bottom: 1px;
-            font-size: 8.5px;
+            margin-bottom: 2px;
         }
 
         .contact-line i {
             color: #0ea5e9;
-            margin-left: 5px;
+            margin-left: 6px;
+            margin-top: 2px;
             font-size: 9px;
             width: 12px;
             text-align: center;
         }
 
-        /* Meta Section */
+        /* Meta Section (S.No, Date, etc - from saleinvoice) */
         .meta-section {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 3px;
+            margin-bottom: 8px;
             font-weight: bold;
-            font-size: 10px;
-        }
-        
-        .meta-left {
-            width: 60%;
-        }
-        
-        .meta-row {
-            margin-bottom: 1.5px;
-            display: flex;
-            align-items: baseline;
-        }
-        
-        .meta-label {
-            width: 48px;
             font-size: 9.5px;
             color: var(--pad-text);
         }
-        
-        .meta-value {
-            border-bottom: 1px solid var(--pad-border);
-            flex-grow: 1;
-            padding-left: 5px;
-            color: #1e40af;
-            font-size: 10px;
-            min-height: 13px;
+
+        .meta-left {
+            width: 60%;
         }
 
         .meta-right {
-            width: 38%;
+            width: 36%;
         }
 
-        /* Pad Table */
+        .meta-row {
+            margin-bottom: 5px;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .meta-label {
+            width: 48px;
+            flex-shrink: 0;
+            color: var(--pad-text);
+            font-size: 9.5px;
+        }
+
+        .meta-value {
+            border-bottom: 1.5px solid var(--pad-border);
+            flex-grow: 1;
+            padding-left: 5px;
+            color: var(--pad-text);
+            font-weight: bold;
+            font-size: 9.5px;
+            min-height: 16px;
+            line-height: 1.2;
+        }
+
+        /* Pad Table (from saleinvoice) */
         .pad-table {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
-            margin-bottom: 2px;
-            border: 1px solid var(--pad-border);
+            margin-bottom: 4px;
+            border: 1.5px solid var(--pad-border);
         }
 
         .pad-table thead th {
-            background-color: var(--pad-header-bg);
-            color: #ffffff;
+            background-color: #374151 !important;
+            color: #ffffff !important;
             text-align: center;
-            padding: 3px 5px;
-            font-size: 9px;
+            padding: 4px 5px;
+            font-size: 8.5px;
             border: 1px solid var(--pad-border);
             text-transform: uppercase;
-            font-weight: 700;
+            font-weight: bold;
         }
 
         .pad-table tbody td {
             border: 1px solid var(--pad-border);
-            padding: 2.5px 5px;
-            height: 18px;
+            padding: 3px 5px;
+            height: 19px;
             color: #000;
-            font-size: 9.5px;
+            vertical-align: middle;
+            font-size: 8.5px;
+        }
+
+        .pad-table tbody tr:nth-child(even) {
+            background-color: rgba(224, 242, 254, 0.4);
+        }
+
+        .pad-table tfoot td {
+            border: 1px solid var(--pad-border);
+            padding: 2.5px 5px;
+            font-size: 8.5px;
             vertical-align: middle;
         }
-        
-        .pad-table tbody tr:nth-child(even) {
-            background-color: var(--pad-alt-row);
-        }
 
-        .totals-label {
-            text-align: right;
-            font-weight: bold;
-            padding: 2px 5px;
-            font-size: 9.5px;
-            border-top: 1px solid var(--pad-border);
-        }
-
-        .totals-val {
-            text-align: right;
-            font-weight: bold;
-            padding: 2px 5px;
-            font-size: 9.5px;
-            border-top: 1px solid var(--pad-border);
-        }
-
-        /* Hide Rate toggle */
-        .hide-rate .rate-col {
-            display: none !important;
-        }
-        
-        .hide-rate .desc-col {
-            width: 60% !important;
-        }
-
-        /* Footer */
+        /* Footer (from saleinvoice) */
         .pad-footer {
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
-            margin-top: 2px;
-            font-size: 9px;
-            font-weight: bold;
-            padding-top: 1px;
-            position: relative;
+            margin-top: auto;
+            padding-top: 4px;
+            flex-shrink: 0;
         }
 
         .footer-note {
-            width: 50%;
+            width: 55%;
             font-size: 8.5px;
+            font-weight: bold;
             color: var(--pad-text);
-            line-height: 1.25;
+            line-height: 1.35;
         }
 
         .footer-sign {
-            width: 45%;
+            width: 42%;
             text-align: right;
-            position: relative;
             color: var(--pad-text);
-            font-size: 9.5px;
-            padding-right: 5px;
+            position: relative;
         }
 
         .footer-stamp {
-            width: 70px;
+            width: 65px;
             height: auto;
-            position: absolute;
-            right: 120px;
-            bottom: -5px;
-            opacity: 0.85;
+            margin-bottom: -4px;
+            margin-right: 12px;
+            display: inline-block;
+            opacity: 0.9;
             transform: rotate(-10deg);
             mix-blend-mode: multiply;
-            pointer-events: none;
         }
 
-        /* Single Copy Mode (hides bottom half on screen & print) */
-        body.single-copy-mode .invoice-half.bottom-half,
-        body.single-copy-mode .cut-divider,
-        body.single-copy-mode .continuation-divider {
+        .for-company {
+            font-size: 9px;
+            font-weight: bold;
+            color: var(--pad-text);
+            position: relative;
+            z-index: 5;
+        }
+
+        /* Hide Rate behavior */
+        .hide-rate .rate-col {
             display: none !important;
         }
 
-        /* Print Media Rules */
+        .hide-rate .desc-col {
+            width: 73% !important;
+        }
+
+        .pad-table, .pad-table tr, .pad-table tbody, .pad-header, .pad-footer {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+
+        .pad-table thead {
+            display: table-row-group !important;
+        }
+
+        /* Print Media Styles */
         @media print {
-            body { 
-                background: #ffffff !important; 
-                margin: 0 !important; 
-                padding: 0 !important; 
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                width: 210mm !important;
+                height: 297mm !important;
             }
 
-            .action-bar, .no-print { 
-                display: none !important; 
+            .action-bar {
+                display: none !important;
+            }
+
+            .no-print {
+                display: none !important;
             }
 
             .a4-sheet {
-                margin: 0 auto !important;
+                margin: 0 !important;
                 padding: 0 !important;
-                max-width: 100% !important;
-                width: 100% !important;
+                box-shadow: none !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                overflow: hidden !important;
+            }
+
+            .a4-sheet:not(:last-child) {
                 page-break-after: always !important;
                 break-after: page !important;
-                height: 286mm !important;
-                max-height: 288mm !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: space-between !important;
             }
 
             .a4-sheet:last-child {
@@ -396,26 +426,32 @@
                 break-after: auto !important;
             }
 
-            .invoice-half { 
-                margin: 0 auto !important; 
-                box-shadow: none !important; 
-                border: 1.5px solid var(--pad-border) !important;
-                padding: 3.5mm 6mm 2.5mm 6mm !important;
-                width: 100% !important;
-                max-width: 198mm !important;
-                height: 139mm !important;
-                max-height: 140mm !important;
-                min-height: 137mm !important;
-                box-sizing: border-box !important;
+            .half {
+                width: 210mm !important;
+                height: 148.5mm !important;
+                max-height: 148.5mm !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
-                overflow: hidden !important;
             }
 
             .cut-divider {
-                display: flex !important;
-                height: 4mm !important;
-                margin: 1.5mm 0 !important;
+                top: 148.5mm !important;
+            }
+
+            .copy {
+                position: absolute !important;
+                left: 37mm !important;
+                top: -22.75mm !important;
+                width: 136mm !important;
+                height: 194mm !important;
+                transform-origin: center center !important;
+                transform: rotate(90deg) !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            body.rotate-counter .copy {
+                transform: rotate(-90deg) !important;
             }
 
             .cut-divider span {
@@ -423,22 +459,29 @@
             }
 
             .invoice-badge {
-                background-color: #0284c7 !important;
+                background-color: #3b82f6 !important;
                 color: #ffffff !important;
             }
 
             .pad-table thead th {
-                background-color: #0284c7 !important;
+                background-color: #374151 !important;
                 color: #ffffff !important;
             }
 
             .pad-table tbody tr:nth-child(even) {
-                background-color: #f0f9ff !important;
+                background-color: rgba(224, 242, 254, 0.4) !important;
             }
+        }
 
-            body.single-copy-mode .a4-sheet {
-                height: auto !important;
-            }
+        /* Half Sheet (Single Copy Cut Paper) */
+        body.single-copy-mode .a4-sheet {
+            height: 148.5mm !important;
+            margin: 10px auto !important;
+        }
+
+        body.single-copy-mode .half-bottom,
+        body.single-copy-mode .cut-divider {
+            display: none !important;
         }
     </style>
 </head>
@@ -450,17 +493,34 @@
                 Delivery Challan Preview
             </span>
             <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 ms-2" style="font-size: 11px;">
-                <i class="fa-solid fa-print me-1"></i> <span id="modeBadgeText">A4 Portrait (2 Halves / Copies)</span>
+                <i class="fa-solid fa-print me-1"></i> <span id="modeBadgeText">1 Print (Half Sheet Layout)</span>
             </span>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <button onclick="toggleSingleOrTwoCopies()" class="btn btn-outline-primary shadow-sm" id="toggleCopiesBtn">
-                <i class="fa-solid fa-copy me-1"></i> <span id="copiesBtnText">Print 1 Copy (Half Sheet)</span>
+            <button type="button" onclick="toggleTitlePill()" class="btn btn-outline-primary shadow-sm" id="toggleTitleBtn">
+                <i class="fa-solid fa-tag me-1"></i> <span id="titleBtnText">Title: DELIVERY CHALLAN</span>
             </button>
-            <button onclick="toggleRate()" class="btn btn-warning shadow-sm" id="toggleRateBtn">
+            <button type="button" onclick="toggleRotation()" class="btn btn-outline-secondary shadow-sm" id="toggleRotateBtn">
+                <i class="fa-solid fa-rotate me-1"></i> <span id="rotateBtnText">Rotate: 90°</span>
+            </button>
+            @php
+                $dcItemsColl = $dc->items;
+                $totalItems = $dcItemsColl->count();
+                $itemsPerHalf = 11;
+                $isSingleHalf = $totalItems <= $itemsPerHalf;
+            @endphp
+            @if ($isSingleHalf)
+            <button type="button" onclick="toggleDuplicate()" class="btn btn-outline-primary shadow-sm" id="toggleDuplicateBtn">
+                <i class="fa-solid fa-copy me-1"></i> <span id="duplicateBtnText">Print 2 Copies</span>
+            </button>
+            @endif
+            <button type="button" onclick="toggleSingleOrTwoCopies()" class="btn btn-outline-secondary shadow-sm" id="toggleCopiesBtn">
+                <i class="fa-solid fa-scissors me-1"></i> <span id="copiesBtnText">Paper: Full A4</span>
+            </button>
+            <button type="button" onclick="toggleRate()" class="btn btn-warning shadow-sm" id="toggleRateBtn">
                 <i class="fa-solid fa-eye-slash me-1"></i> Hide Rate
             </button>
-            <button onclick="window.print()" class="btn btn-primary shadow-sm">
+            <button type="button" onclick="window.print()" class="btn btn-primary shadow-sm">
                 <i class="fa-solid fa-print me-1"></i> Print DC
             </button>
             <a href="javascript:history.back()" class="btn btn-secondary shadow-sm">
@@ -470,17 +530,12 @@
     </div>
 
     @php
-        $dcItemsColl = $dc->items;
-        $totalItems = $dcItemsColl->count();
-        $itemsPerHalf = 5;
-        $isTwoCopies = $totalItems <= $itemsPerHalf;
-
         $sale = $dc->sale;
-        $customerName = 'Walk-in Customer';
+        $customerName = 'Without Customer';
         if ($sale) {
-            $customerName = $sale->walkin_name ?? (optional($sale->customer_relation)->customer_name ?? 'Walk-in Customer');
+            $customerName = $sale->walkin_name ?? (optional($sale->customer_relation)->customer_name ?? 'Without Customer');
         } elseif ($dc->customer_id) {
-            $customerName = optional($dc->customer)->customer_name ?? 'Customer';
+            $customerName = optional($dc->customer)->customer_name ?? 'Without Customer';
         }
 
         $lpoReference = $dc->reference_no ?: (optional($sale)->reference ?? '');
@@ -514,54 +569,70 @@
         }
     @endphp
 
-    @if ($isTwoCopies)
-        {{-- CASE 1: Few Items (<= 5) -> Two identical copies (Original & Duplicate) on 1 single A4 sheet --}}
-        <div class="a4-sheet">
-            <!-- TOP HALF: Original Copy -->
-            <div class="invoice-half top-half">
-                @include('admin_panel.sale.partials.dc_half_body', [
-                    'copyType' => 'ORIGINAL',
-                    'chunkItems' => $dcItemsColl,
-                    'isFirstPart' => true,
-                    'isLastPart' => true,
-                    'startIndex' => 1,
-                    'companyLogo' => $companyLogo,
-                    'sale' => $sale,
-                    'customerName' => $customerName,
-                    'lpoReference' => $lpoReference,
-                    'dcNumbers' => $dcNumbers,
-                    'finalTotal' => $finalTotal,
-                    'paidAmount' => $paidAmount,
-                    'dueAmount' => $dueAmount,
-                ])
+    @if ($isSingleHalf)
+        {{-- CASE 1: Few Items (<= 6) -> BY DEFAULT 1 PRINT on Top Half --}}
+        <div class="a4-sheet" id="sheetSingle">
+            <!-- TOP HALF: The 1 Print -->
+            <div class="half half-top">
+                <div class="copy">
+                    @include('admin_panel.sale.partials.dc_half_body', [
+                        'copyType' => '',
+                        'badgeTitle' => 'DELIVERY CHALLAN',
+                        'chunkItems' => $dcItemsColl,
+                        'isFirstPart' => true,
+                        'isLastPart' => true,
+                        'startIndex' => 1,
+                        'companyLogo' => $companyLogo,
+                        'sale' => $sale,
+                        'customerName' => $customerName,
+                        'lpoReference' => $lpoReference,
+                        'dcNumbers' => $dcNumbers,
+                        'finalTotal' => $finalTotal,
+                        'paidAmount' => $paidAmount,
+                        'dueAmount' => $dueAmount,
+                    ])
+                </div>
             </div>
 
             <!-- CUT DIVIDER -->
             <div class="cut-divider">
-                <span><i class="fa-solid fa-scissors me-1"></i> CUT HERE</span>
+                <span><i class="fa-solid fa-scissors me-1"></i> CUT LINE</span>
             </div>
 
-            <!-- BOTTOM HALF: Duplicate Copy -->
-            <div class="invoice-half bottom-half">
-                @include('admin_panel.sale.partials.dc_half_body', [
-                    'copyType' => 'DUPLICATE',
-                    'chunkItems' => $dcItemsColl,
-                    'isFirstPart' => true,
-                    'isLastPart' => true,
-                    'startIndex' => 1,
-                    'companyLogo' => $companyLogo,
-                    'sale' => $sale,
-                    'customerName' => $customerName,
-                    'lpoReference' => $lpoReference,
-                    'dcNumbers' => $dcNumbers,
-                    'finalTotal' => $finalTotal,
-                    'paidAmount' => $paidAmount,
-                    'dueAmount' => $dueAmount,
-                ])
+            <!-- BOTTOM HALF: Blank by default (Only 1 print). Toggled to Duplicate if user clicks button -->
+            <div class="half half-bottom" id="bottomHalfWrap">
+                <!-- Blank notice shown in preview only -->
+                <div class="blank-half-notice no-print" id="blankNotice">
+                    <div class="text-muted text-center py-4">
+                        <i class="fa-solid fa-file-lines fa-2x mb-2 text-secondary"></i><br>
+                        <strong>Bottom Half Blank</strong> (Single Print Mode)<br>
+                        <small class="text-secondary">Agar duplicate copy chahiye to upar "Print 2 Copies" dabayein</small>
+                    </div>
+                </div>
+
+                <!-- Duplicate copy (Hidden by default) -->
+                <div class="copy" id="duplicateCopy" style="display: none;">
+                    @include('admin_panel.sale.partials.dc_half_body', [
+                        'copyType' => 'DUPLICATE',
+                        'badgeTitle' => 'DELIVERY CHALLAN',
+                        'chunkItems' => $dcItemsColl,
+                        'isFirstPart' => true,
+                        'isLastPart' => true,
+                        'startIndex' => 1,
+                        'companyLogo' => $companyLogo,
+                        'sale' => $sale,
+                        'customerName' => $customerName,
+                        'lpoReference' => $lpoReference,
+                        'dcNumbers' => $dcNumbers,
+                        'finalTotal' => $finalTotal,
+                        'paidAmount' => $paidAmount,
+                        'dueAmount' => $dueAmount,
+                    ])
+                </div>
             </div>
         </div>
     @else
-        {{-- CASE 2: More Items (> 5) -> Table continues on the bottom half of the same A4 sheet --}}
+        {{-- CASE 2: More Items (> 6) -> Take remaining products to next half paper --}}
         @php
             $halves = $dcItemsColl->chunk($itemsPerHalf);
             $totalHalves = $halves->count();
@@ -583,39 +654,16 @@
                     $isSecondHalfLast = ($secondHalfIndex + 1) === $totalHalves;
                 @endphp
 
-                <!-- TOP HALF -->
-                <div class="invoice-half top-half">
-                    @include('admin_panel.sale.partials.dc_half_body', [
-                        'copyType' => 'PAGE ' . ($firstHalfIndex + 1) . '/' . $totalHalves,
-                        'chunkItems' => $firstHalf,
-                        'isFirstPart' => ($firstHalfIndex === 0),
-                        'isLastPart' => $isFirstHalfLast,
-                        'startIndex' => $firstStartIndex,
-                        'companyLogo' => $companyLogo,
-                        'sale' => $sale,
-                        'customerName' => $customerName,
-                        'lpoReference' => $lpoReference,
-                        'dcNumbers' => $dcNumbers,
-                        'finalTotal' => $finalTotal,
-                        'paidAmount' => $paidAmount,
-                        'dueAmount' => $dueAmount,
-                    ])
-                </div>
-
-                @if ($secondHalf)
-                    <!-- CUT / CONTINUATION DIVIDER -->
-                    <div class="cut-divider">
-                        <span><i class="fa-solid fa-arrow-down me-1"></i> CONTINUED ON NEXT HALF</span>
-                    </div>
-
-                    <!-- BOTTOM HALF -->
-                    <div class="invoice-half bottom-half">
+                <!-- TOP HALF (Chunk 1) -->
+                <div class="half half-top">
+                    <div class="copy">
                         @include('admin_panel.sale.partials.dc_half_body', [
-                            'copyType' => 'PAGE ' . ($secondHalfIndex + 1) . '/' . $totalHalves,
-                            'chunkItems' => $secondHalf,
-                            'isFirstPart' => false,
-                            'isLastPart' => $isSecondHalfLast,
-                            'startIndex' => $secondStartIndex,
+                            'copyType' => 'PAGE ' . ($firstHalfIndex + 1) . '/' . $totalHalves,
+                            'badgeTitle' => 'DELIVERY CHALLAN',
+                            'chunkItems' => $firstHalf,
+                            'isFirstPart' => ($firstHalfIndex === 0),
+                            'isLastPart' => $isFirstHalfLast,
+                            'startIndex' => $firstStartIndex,
                             'companyLogo' => $companyLogo,
                             'sale' => $sale,
                             'customerName' => $customerName,
@@ -626,12 +674,78 @@
                             'dueAmount' => $dueAmount,
                         ])
                     </div>
+                </div>
+
+                @if ($secondHalf)
+                    <!-- CUT / CONTINUATION DIVIDER -->
+                    <div class="cut-divider">
+                        <span><i class="fa-solid fa-arrow-down me-1"></i> CONTINUED ON NEXT HALF</span>
+                    </div>
+
+                    <!-- BOTTOM HALF: Remaining Products on Next Half -->
+                    <div class="half half-bottom">
+                        <div class="copy">
+                            @include('admin_panel.sale.partials.dc_half_body', [
+                                'copyType' => 'PAGE ' . ($secondHalfIndex + 1) . '/' . $totalHalves,
+                                'badgeTitle' => 'DELIVERY CHALLAN',
+                                'chunkItems' => $secondHalf,
+                                'isFirstPart' => false,
+                                'isLastPart' => $isSecondHalfLast,
+                                'startIndex' => $secondStartIndex,
+                                'companyLogo' => $companyLogo,
+                                'sale' => $sale,
+                                'customerName' => $customerName,
+                                'lpoReference' => $lpoReference,
+                                'dcNumbers' => $dcNumbers,
+                                'finalTotal' => $finalTotal,
+                                'paidAmount' => $paidAmount,
+                                'dueAmount' => $dueAmount,
+                            ])
+                        </div>
+                    </div>
+                @else
+                    <!-- CUT DIVIDER -->
+                    <div class="cut-divider">
+                        <span><i class="fa-solid fa-scissors me-1"></i> CUT LINE</span>
+                    </div>
+
+                    <!-- Blank bottom half if odd number of chunks -->
+                    <div class="half half-bottom">
+                        <div class="blank-half-notice no-print">
+                            <div class="text-muted text-center py-4">
+                                <i class="fa-solid fa-check text-success mb-2 fa-2x"></i><br>
+                                <strong>Challan Completed on Top Half</strong>
+                            </div>
+                        </div>
+                    </div>
                 @endif
             </div>
         @endforeach
     @endif
 
     <script>
+        function toggleDuplicate() {
+            const dup = document.getElementById('duplicateCopy');
+            const notice = document.getElementById('blankNotice');
+            const btn = document.getElementById('duplicateBtnText');
+            const btnEl = document.getElementById('toggleDuplicateBtn');
+            if (!dup) return;
+
+            if (dup.style.display === 'none') {
+                dup.style.display = 'flex';
+                if (notice) notice.style.display = 'none';
+                btn.innerText = 'Showing 2 Copies';
+                btnEl.classList.remove('btn-outline-primary');
+                btnEl.classList.add('btn-primary');
+            } else {
+                dup.style.display = 'none';
+                if (notice) notice.style.display = 'block';
+                btn.innerText = 'Print 2 Copies';
+                btnEl.classList.remove('btn-primary');
+                btnEl.classList.add('btn-outline-primary');
+            }
+        }
+
         function toggleRate() {
             document.body.classList.toggle('hide-rate');
             const btn = document.getElementById('toggleRateBtn');
@@ -649,18 +763,39 @@
         function toggleSingleOrTwoCopies() {
             document.body.classList.toggle('single-copy-mode');
             const btnText = document.getElementById('copiesBtnText');
-            const badgeText = document.getElementById('modeBadgeText');
             const dynStyle = document.getElementById('dynamicPageSize');
 
             if (document.body.classList.contains('single-copy-mode')) {
-                btnText.innerText = 'Print 2 Halves (Full A4)';
-                badgeText.innerText = 'A5 Landscape (Single Half)';
-                dynStyle.innerHTML = '@page { size: A5 landscape; margin: 4mm; }';
+                btnText.innerText = 'Paper: Half Sheet';
+                dynStyle.innerHTML = '@page { size: 210mm 148.5mm; margin: 0; }';
             } else {
-                btnText.innerText = 'Print 1 Copy (Half Sheet)';
-                badgeText.innerText = 'A4 Portrait (2 Halves / Copies)';
-                dynStyle.innerHTML = '@page { size: A4 portrait; margin: 4mm 6mm; }';
+                btnText.innerText = 'Paper: Full A4';
+                dynStyle.innerHTML = '@page { size: A4 portrait; margin: 0; }';
             }
+        }
+
+        function toggleRotation() {
+            document.body.classList.toggle('rotate-counter');
+            const btnText = document.getElementById('rotateBtnText');
+            if (document.body.classList.contains('rotate-counter')) {
+                btnText.innerText = 'Rotate: -90°';
+            } else {
+                btnText.innerText = 'Rotate: 90°';
+            }
+        }
+
+        function toggleTitlePill() {
+            const pills = document.querySelectorAll('.pill-title-text');
+            const btnText = document.getElementById('titleBtnText');
+            pills.forEach(p => {
+                if (p.innerText.trim() === 'DELIVERY CHALLAN') {
+                    p.innerText = 'INVOICE / BILL';
+                    btnText.innerText = 'Title: INVOICE / BILL';
+                } else {
+                    p.innerText = 'DELIVERY CHALLAN';
+                    btnText.innerText = 'Title: DELIVERY CHALLAN';
+                }
+            });
         }
     </script>
 </body>
