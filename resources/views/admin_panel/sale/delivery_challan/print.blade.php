@@ -367,10 +367,10 @@
         }
 
         .footer-stamp {
-            width: 52px;
+            width: 62px;
             height: auto;
-            margin-bottom: -4px;
-            margin-right: 8px;
+            margin-bottom: -6px;
+            margin-right: 10px;
             display: inline-block;
             opacity: 0.9;
             transform: rotate(-10deg);
@@ -800,9 +800,11 @@
     @endif
 
     <!-- WhatsApp Upright Portrait Container (Downloaded via html2pdf) -->
-    <div id="whatsappPdfContainer" style="display: none; width: 190mm; background: #ffffff;">
+    <div id="whatsappPdfContainer" style="display: none; width: 210mm; background: #ffffff; margin: 0; padding: 0;">
         @php
-            $whatsappChunks = $dcItemsColl->chunk($itemsPerHalf);
+            // Full A4 capacity: 22 items per page with spacious rows
+            $whatsappItemsPerPage = 22;
+            $whatsappChunks = $dcItemsColl->chunk($whatsappItemsPerPage);
             $totalWhatsappPages = $whatsappChunks->count();
         @endphp
 
@@ -811,31 +813,31 @@
                 $wPartNum = $wIndex + 1;
                 $wIsFirst = ($wIndex === 0);
                 $wIsLast = ($wPartNum === $totalWhatsappPages);
-                $wStartIndex = ($wIndex * $itemsPerHalf) + 1;
+                $wStartIndex = ($wIndex * $whatsappItemsPerPage) + 1;
                 $wCopyTag = ($totalWhatsappPages > 1) ? "PAGE {$wPartNum}/{$totalWhatsappPages}" : '';
             @endphp
-            <div class="whatsapp-page" style="width: 190mm; min-height: 270mm; margin: 0 auto; background: #ffffff; padding: 10mm 12mm; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; color: var(--pad-text); position: relative; display: flex; flex-direction: column; justify-content: space-between; {{ !$wIsLast ? 'page-break-after: always;' : '' }}">
+            <div class="whatsapp-page" style="width: 210mm; height: 295mm; max-height: 295mm; margin: 0 auto; background: #ffffff; padding: 10mm 15mm 10mm 15mm; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; color: var(--pad-text); position: relative; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; {{ !$wIsLast ? 'page-break-after: always; break-after: page;' : 'page-break-after: avoid; break-after: avoid;' }}">
                 <div class="whatsapp-top" style="flex-shrink: 0;">
                     <!-- Header (Upright Portrait) -->
                     <div class="pad-header" style="display: flex; justify-content: space-between; margin-bottom: 6px; border-bottom: 2px solid var(--pad-border); padding-bottom: 6px;">
                         <div class="logo-section" style="width: 44%; display: flex; flex-direction: column; align-items: flex-start;">
                             @if(!empty($companyLogo) && file_exists(public_path($companyLogo)))
-                                <img src="{{ asset($companyLogo) }}" alt="Company Logo" class="logo-img" style="max-height: 48px; width: auto; object-fit: contain; margin-bottom: 4px;">
+                                <img src="{{ asset($companyLogo) }}" alt="Company Logo" class="logo-img" style="max-height: 50px; width: auto; object-fit: contain; margin-bottom: 4px;">
                             @elseif(\App\Models\Setting::get('company_logo') && file_exists(public_path(\App\Models\Setting::get('company_logo'))))
-                                <img src="{{ asset(\App\Models\Setting::get('company_logo')) }}" alt="Company Logo" class="logo-img" style="max-height: 48px; width: auto; object-fit: contain; margin-bottom: 4px;">
+                                <img src="{{ asset(\App\Models\Setting::get('company_logo')) }}" alt="Company Logo" class="logo-img" style="max-height: 50px; width: auto; object-fit: contain; margin-bottom: 4px;">
                             @else
-                                <h2 style="margin:0; font-weight:900; font-size:22px; color: #1e40af;">{{ \App\Models\Setting::get('company_name', 'VAHLA') }}</h2>
-                                <div style="font-size:9px; font-weight:bold; letter-spacing:1px; margin-bottom:4px; color: #1e40af;">INDUSTRIAL SOLUTIONS</div>
+                                <h2 style="margin:0; font-weight:900; font-size:24px; color: #1e40af;">{{ \App\Models\Setting::get('company_name', 'VAHLA') }}</h2>
+                                <div style="font-size:10px; font-weight:bold; letter-spacing:1px; margin-bottom:4px; color: #1e40af;">INDUSTRIAL SOLUTIONS</div>
                             @endif
                             <div class="invoice-badge-wrap" style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
                                 <span class="invoice-badge pill-title-text" style="background-color: #3b82f6 !important; color: #ffffff !important; font-weight: bold; font-size: 11px; padding: 3px 12px; letter-spacing: 1.5px; border-radius: 2px; text-transform: uppercase;">DELIVERY CHALLAN</span>
                                 @if(!empty($wCopyTag))
-                                    <span class="copy-type-tag" style="font-size: 8.5px; font-weight: 700; color: #3b82f6; border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 3px; padding: 1.5px 6px;">{{ $wCopyTag }}</span>
+                                    <span class="copy-type-tag" style="font-size: 9px; font-weight: 700; color: #3b82f6; border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 3px; padding: 1.5px 6px;">{{ $wCopyTag }}</span>
                                 @endif
                             </div>
                         </div>
-                        <div class="company-details-section" style="width: 55%; font-size: 8.5px; line-height: 1.35; color: var(--pad-text); text-align: right;">
-                            <div class="deals-in" style="font-weight: bold; margin-bottom: 3px; font-size: 9px;">
+                        <div class="company-details-section" style="width: 55%; font-size: 9px; line-height: 1.35; color: var(--pad-text); text-align: right;">
+                            <div class="deals-in" style="font-weight: bold; margin-bottom: 3px; font-size: 9.5px;">
                                 <span style="color: #0284c7;">DEALS IN:</span> {{ \App\Models\Setting::get('deals_in') ?: 'Fasteners, Bearing, Lifting Equipments, V-belt, PPE\'s, Hand & Cutting Etc' }}
                             </div>
                             <div class="contact-line" style="margin-bottom: 2px;">
@@ -856,7 +858,7 @@
                     </div>
 
                     <!-- Meta Section -->
-                    <div class="meta-section" style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; font-size: 9px; color: var(--pad-text);">
+                    <div class="meta-section" style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; font-size: 9.5px; color: var(--pad-text);">
                         <div class="meta-left" style="width: 58%;">
                             <div class="meta-row" style="margin-bottom: 4px; display: flex; align-items: flex-end;">
                                 <div class="meta-label" style="width: 48px; flex-shrink: 0;">S. No.</div>
@@ -892,81 +894,179 @@
                     </div>
 
                     <!-- Table -->
-                    <table class="pad-table" style="width: 100%; border-collapse: collapse; margin-bottom: 6px; border: 1.5px solid var(--pad-border); font-size: 8.5px;">
+                    <table class="pad-table" style="width: 100%; border-collapse: collapse; margin-bottom: 4px; border: 1.5px solid var(--pad-border);">
                         <thead>
                             <tr style="background-color: #374151; color: #ffffff;">
-                                <th style="width: 6%; padding: 4px 5px; border: 1px solid var(--pad-border); text-align: center;">S.NO</th>
-                                <th class="desc-col" style="width: 44%; padding: 4px 5px; border: 1px solid var(--pad-border); text-align: left;">DESCRIPTION</th>
-                                <th style="width: 10%; padding: 4px 5px; border: 1px solid var(--pad-border); text-align: center;">QTY</th>
-                                <th class="rate-col" style="width: 13%; padding: 4px 5px; border: 1px solid var(--pad-border); text-align: right;">RATE</th>
-                                <th style="width: 11%; padding: 4px 5px; border: 1px solid var(--pad-border); text-align: center;">UNIT</th>
-                                <th class="rate-col" style="width: 16%; padding: 4px 5px; border: 1px solid var(--pad-border); text-align: right;">AMOUNT</th>
+                                <th style="width: 6%; padding: 6px 6px; border: 1px solid var(--pad-border); text-align: center; font-size: 10px;">S.NO</th>
+                                <th class="desc-col" style="width: 46%; padding: 6px 6px; border: 1px solid var(--pad-border); text-align: left; font-size: 10px;">DESCRIPTION</th>
+                                <th style="width: 10%; padding: 6px 6px; border: 1px solid var(--pad-border); text-align: center; font-size: 10px;">QTY</th>
+                                <th class="rate-col" style="width: 12%; padding: 6px 6px; border: 1px solid var(--pad-border); text-align: right; font-size: 10px;">RATE</th>
+                                <th style="width: 10%; padding: 6px 6px; border: 1px solid var(--pad-border); text-align: center; font-size: 10px;">UNIT</th>
+                                <th class="rate-col" style="width: 16%; padding: 6px 6px; border: 1px solid var(--pad-border); text-align: right; font-size: 10px;">AMOUNT</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($wItems as $wItem)
                                 @php
                                     $wSNo = $wStartIndex + $loop->index;
-                                    $wProdName = 'Item';
-                                    if (is_array($wItem)) {
-                                        $wProdName = $wItem['product_name'] ?? ($wItem['item_name'] ?? 'Item');
-                                        $wQty = $wItem['quantity'] ?? 1;
-                                        $wRate = $wItem['sale_price'] ?? ($wItem['price'] ?? 0);
-                                        $wUnit = $wItem['unit'] ?? 'Pcs';
+                                    $isModel = is_object($wItem) && !($wItem instanceof \Illuminate\Support\Collection) && !is_array($wItem);
+                                    if ($isModel) {
+                                        $saleItem = $wItem->saleItem;
+                                        $wProdName = optional($wItem->product)->item_name ?? (optional($saleItem)->product_name ?? ($wItem->description ?? 'Item'));
+                                        $wQty = (float)($wItem->delivered_qty ?? ($wItem->quantity ?? 1));
+                                        $wRate = $saleItem ? (float)$saleItem->price : (float)($wItem->sale_price ?? ($wItem->price ?? 0));
                                         $wLineTotal = $wQty * $wRate;
+                                        $wUnit = optional(optional($wItem->product)->unit)->name ?? (optional(optional($saleItem)->unit)->name ?? 'Pcs');
+
+                                        $variant = [];
+                                        $colorData = $saleItem ? $saleItem->color : $wItem->color;
+                                        if (!empty($colorData)) {
+                                            $b64 = base64_decode($colorData, true);
+                                            if ($b64 !== false) $variant = json_decode($b64, true) ?: [];
+                                            if (empty($variant)) $variant = json_decode($colorData, true) ?: [];
+                                        }
+                                        $vName = $variant['variant_name'] ?? '';
+                                        $vSize = (!empty($variant['size']) && $variant['size'] !== '-') ? $variant['size'] : '';
+                                        $vColor = (!empty($variant['color']) && $variant['color'] !== '-') ? $variant['color'] : '';
+                                        $vExtra = [];
+                                        if ($vSize) $vExtra[] = $vSize;
+                                        if ($vColor) $vExtra[] = $vColor;
+                                        $vExtraStr = count($vExtra) > 0 ? ' (' . implode(', ', $vExtra) . ')' : '';
+
+                                        if ($vName && strtolower(trim($vName)) !== strtolower(trim($wProdName))) {
+                                            $wProdName .= ' — ' . $vName;
+                                        }
+                                        $wProdName .= $vExtraStr;
+                                        if (!empty($variant['unit'])) {
+                                            $wUnit = ucfirst($variant['unit']);
+                                        } elseif (!empty($variant['variant_unit'])) {
+                                            $wUnit = ucfirst($variant['variant_unit']);
+                                        }
                                     } else {
-                                        $wProdName = $wItem->product ? $wItem->product->item_name : ($wItem->description ?? 'Item');
-                                        $wQty = $wItem->delivered_qty ?? ($wItem->quantity ?? 1);
-                                        $wRate = $wItem->sale_price ?? ($wItem->price ?? 0);
-                                        $wUnit = $wItem->unit ?? 'Kg';
-                                        $wLineTotal = $wQty * $wRate;
+                                        // Array format from _getSaleItems
+                                        $piecesPerBox = (int)($wItem['pieces_per_box'] ?? 1);
+                                        if ($piecesPerBox <= 0) $piecesPerBox = 1;
+                                        
+                                        $totalPieces = (float)($wItem['total_pieces'] ?? 0);
+                                        $rawSoldQty = (float)($wItem['qty_box'] ?? 0);
+                                        $convFactor = (float)($wItem['pieces_per_box'] ?? 1);
+                                        if ($convFactor <= 0) $convFactor = 1;
+                                        $vUnitRaw = trim($wItem['variant_unit'] ?? '');
+                                        $vUnitLower = strtolower($vUnitRaw);
+                                        $sizeMode = $wItem['size_mode'] ?? 'by_size';
+
+                                        $wQty = $totalPieces;
+                                        $wUnit = 'Pcs';
+
+                                        if (!empty($vUnitRaw) && !in_array($vUnitLower, ['standard', 'default', '-'])) {
+                                            if ($rawSoldQty > 0) {
+                                                $wQty = $rawSoldQty;
+                                            } elseif ($convFactor > 0 && abs($convFactor - 1.0) > 0.00001) {
+                                                $wQty = round($totalPieces / $convFactor, 4);
+                                            } else {
+                                                $wQty = $totalPieces;
+                                            }
+                                            $wUnit = ucfirst($vUnitRaw);
+                                        } elseif ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
+                                            $kgWt = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                                            if ($vUnitLower === 'gm' || $vUnitLower === 'g' || $sizeMode === 'by_gm') {
+                                                $wQty = $kgWt * 1000;
+                                                $wUnit = 'Gm';
+                                            } else {
+                                                $wQty = $kgWt;
+                                                $wUnit = 'Kg';
+                                            }
+                                        } elseif ($sizeMode === 'by_meter') {
+                                            $wQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                                            $wUnit = 'Mtr';
+                                        } elseif ($sizeMode === 'by_feet') {
+                                            $wQty = $rawSoldQty > 0 ? $rawSoldQty : $totalPieces;
+                                            $wUnit = 'Ft';
+                                        } elseif ($sizeMode === 'by_pieces') {
+                                            $wQty = $totalPieces;
+                                            $wUnit = 'Pcs';
+                                        } elseif ($sizeMode === 'by_cartons' || $sizeMode === 'by_size') {
+                                            $boxes = floor($totalPieces / $piecesPerBox);
+                                            $loosePieces = fmod($totalPieces, $piecesPerBox);
+                                            if ($boxes > 0 && $loosePieces == 0) {
+                                                $wQty = $boxes;
+                                                $wUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
+                                            } elseif ($boxes == 0 && $loosePieces > 0) {
+                                                $wQty = $loosePieces;
+                                                $wUnit = 'Pcs';
+                                            } elseif ($boxes > 0 && $loosePieces > 0) {
+                                                $wQty = "{$boxes}.{$loosePieces}";
+                                                $wUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
+                                            } else {
+                                                $wQty = $totalPieces;
+                                                $wUnit = 'Pcs';
+                                            }
+                                        } elseif (!empty($wItem['unit'])) {
+                                            $wUnit = ucfirst($wItem['unit']);
+                                        }
+
+                                        $vName = $wItem['variant_name'] ?? '';
+                                        $vSize = (!empty($wItem['size_val']) && $wItem['size_val'] !== '-') ? $wItem['size_val'] : '';
+                                        $vColor = (!empty($wItem['color_val']) && $wItem['color_val'] !== '-') ? $wItem['color_val'] : '';
+                                        $vExtra = [];
+                                        if ($vSize) $vExtra[] = $vSize;
+                                        if ($vColor) $vExtra[] = $vColor;
+                                        $vExtraStr = count($vExtra) > 0 ? ' (' . implode(', ', $vExtra) . ')' : '';
+
+                                        $wProdName = $wItem['item_name'] ?? ($wItem['product_name'] ?? 'Item');
+                                        if ($vName && strtolower(trim($vName)) !== strtolower(trim($wProdName))) {
+                                            $wProdName .= ' — ' . $vName;
+                                        }
+                                        $wProdName .= $vExtraStr;
+                                        $wRate = (float)($wItem['price'] ?? ($wItem['sale_price'] ?? 0));
+                                        $wLineTotal = (float)($wItem['total'] ?? ($wQty * $wRate));
                                     }
                                     $wRowBg = ($loop->index % 2 === 1) ? 'background-color: rgba(224, 242, 254, 0.4);' : '';
                                 @endphp
                                 <tr style="{{ $wRowBg }}">
-                                    <td style="border: 1px solid var(--pad-border); padding: 2.5px 5px; text-align: center;">{{ $wSNo }}</td>
-                                    <td class="desc-col" style="border: 1px solid var(--pad-border); padding: 2.5px 5px; font-weight: 500;">{{ $wProdName }}</td>
-                                    <td style="border: 1px solid var(--pad-border); padding: 2.5px 5px; text-align: center; font-weight: bold;">{{ ($wQty == (int)$wQty) ? (int)$wQty : number_format($wQty, 2) }}</td>
-                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 2.5px 5px; text-align: right;">{{ number_format($wRate, 2) }}</td>
-                                    <td style="border: 1px solid var(--pad-border); padding: 2.5px 5px; text-align: center;">{{ $wUnit }}</td>
-                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 2.5px 5px; text-align: right; font-weight: bold;">{{ number_format($wLineTotal, 2) }}</td>
+                                    <td style="border: 1px solid var(--pad-border); padding: 7px 6px; text-align: center; font-size: 10px; line-height: 1.3;">{{ $wSNo }}</td>
+                                    <td class="desc-col" style="border: 1px solid var(--pad-border); padding: 7px 6px; font-weight: 500; font-size: 10px; line-height: 1.3;">{{ $wProdName }}</td>
+                                    <td style="border: 1px solid var(--pad-border); padding: 7px 6px; text-align: center; font-weight: bold; font-size: 10px; line-height: 1.3;">{{ ($wQty == (int)$wQty) ? (int)$wQty : number_format($wQty, 2) }}</td>
+                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 7px 6px; text-align: right; font-size: 10px; line-height: 1.3;">{{ number_format($wRate, 2) }}</td>
+                                    <td style="border: 1px solid var(--pad-border); padding: 7px 6px; text-align: center; font-size: 10px; line-height: 1.3;">{{ $wUnit }}</td>
+                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 7px 6px; text-align: right; font-weight: bold; font-size: 10px; line-height: 1.3;">{{ number_format($wLineTotal, 2) }}</td>
                                 </tr>
                             @endforeach
 
                             @if ($wIsLast)
                                 @if(optional($sale)->total_extradiscount > 0)
                                 <tr class="rate-col">
-                                    <td colspan="5" style="border: 1px solid var(--pad-border); padding: 2.5px 5px; text-align: right; font-weight: bold; color: #dc2626;">DISCOUNT:</td>
-                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 2.5px 5px; text-align: right; font-weight: bold; color: #dc2626;">-{{ number_format($sale->total_extradiscount, 2) }}</td>
+                                    <td colspan="5" style="border: 1px solid var(--pad-border); padding: 5px 6px; text-align: right; font-weight: bold; font-size: 10px; color: #dc2626;">DISCOUNT:</td>
+                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 5px 6px; text-align: right; font-weight: bold; font-size: 10px; color: #dc2626;">-{{ number_format($sale->total_extradiscount, 2) }}</td>
                                 </tr>
                                 @endif
                                 @if(optional($sale)->shipping_charges > 0)
                                 <tr class="rate-col">
-                                    <td colspan="5" style="border: 1px solid var(--pad-border); padding: 2.5px 5px; text-align: right; font-weight: bold; color: #0284c7;">SHIPPING CHARGES:</td>
-                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 2.5px 5px; text-align: right; font-weight: bold; color: #0284c7;">+{{ number_format($sale->shipping_charges, 2) }}</td>
+                                    <td colspan="5" style="border: 1px solid var(--pad-border); padding: 5px 6px; text-align: right; font-weight: bold; font-size: 10px; color: #0284c7;">SHIPPING CHARGES:</td>
+                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 5px 6px; text-align: right; font-weight: bold; font-size: 10px; color: #0284c7;">+{{ number_format($sale->shipping_charges, 2) }}</td>
                                 </tr>
                                 @endif
                                 @if(optional($sale)->cutting_charges > 0)
                                 <tr class="rate-col">
-                                    <td colspan="5" style="border: 1px solid var(--pad-border); padding: 2.5px 5px; text-align: right; font-weight: bold; color: #d97706;">CUTTING CHARGES:</td>
-                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 2.5px 5px; text-align: right; font-weight: bold; color: #d97706;">+{{ number_format($sale->cutting_charges, 2) }}</td>
+                                    <td colspan="5" style="border: 1px solid var(--pad-border); padding: 5px 6px; text-align: right; font-weight: bold; font-size: 10px; color: #d97706;">CUTTING CHARGES:</td>
+                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 5px 6px; text-align: right; font-weight: bold; font-size: 10px; color: #d97706;">+{{ number_format($sale->cutting_charges, 2) }}</td>
                                 </tr>
                                 @endif
                                 <tr class="rate-col">
-                                    <td colspan="5" style="border: 1px solid var(--pad-border); padding: 3px 5px; text-align: right; font-weight: bold;">TOTAL:</td>
-                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 3px 5px; text-align: right; font-weight: bold; background-color: rgba(224, 242, 254, 0.5);">{{ number_format($finalTotal, 2) }}</td>
+                                    <td colspan="5" style="border: 1px solid var(--pad-border); padding: 6px 6px; text-align: right; font-weight: bold; font-size: 10.5px;">TOTAL:</td>
+                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 6px 6px; text-align: right; font-weight: bold; font-size: 10.5px; background-color: rgba(224, 242, 254, 0.5);">{{ number_format($finalTotal, 2) }}</td>
                                 </tr>
                                 <tr class="rate-col">
-                                    <td colspan="5" style="border: 1px solid var(--pad-border); padding: 3px 5px; text-align: right; font-weight: bold;">PAID:</td>
-                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 3px 5px; text-align: right; font-weight: bold; color: #16a34a;">{{ number_format($paidAmount, 2) }}</td>
+                                    <td colspan="5" style="border: 1px solid var(--pad-border); padding: 6px 6px; text-align: right; font-weight: bold; font-size: 10.5px;">PAID:</td>
+                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 6px 6px; text-align: right; font-weight: bold; font-size: 10.5px; color: #16a34a;">{{ number_format($paidAmount, 2) }}</td>
                                 </tr>
                                 <tr class="rate-col">
-                                    <td colspan="5" style="border: 1px solid var(--pad-border); padding: 3px 5px; text-align: right; font-weight: bold;">DUE:</td>
-                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 3px 5px; text-align: right; font-weight: bold; color: #dc2626;">{{ number_format($dueAmount, 2) }}</td>
+                                    <td colspan="5" style="border: 1px solid var(--pad-border); padding: 6px 6px; text-align: right; font-weight: bold; font-size: 10.5px;">DUE:</td>
+                                    <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 6px 6px; text-align: right; font-weight: bold; font-size: 10.5px; color: #dc2626;">{{ number_format($dueAmount, 2) }}</td>
                                 </tr>
                             @else
                                 <tr>
-                                    <td colspan="6" style="border: 1px solid var(--pad-border); padding: 3px 5px; text-align: center; font-weight: bold; font-size: 8px; color: #1e40af; background: #eff6ff;">
+                                    <td colspan="6" style="border: 1px solid var(--pad-border); padding: 6px 6px; text-align: center; font-weight: bold; font-size: 9.5px; color: #1e40af; background: #eff6ff;">
                                         --- CONTINUED ON NEXT PAGE ---
                                     </td>
                                 </tr>
@@ -976,14 +1076,14 @@
                 </div>
 
                 <!-- Footer -->
-                <div class="pad-footer" style="flex-shrink: 0; display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; padding-top: 6px;">
-                    <div class="footer-note" style="width: 55%; font-size: 8.5px; font-weight: bold; line-height: 1.35; color: var(--pad-text);">
+                <div class="pad-footer" style="flex-shrink: 0; display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; padding-top: 8px;">
+                    <div class="footer-note" style="width: 50%; font-size: 10px; font-weight: bold; line-height: 1.4; color: var(--pad-text);">
                         Goods once sold can not be exchange<br>
                         or taken back without receipt
                     </div>
-                    <div class="footer-sign" style="width: 42%; text-align: right; position: relative;">
-                        <img src="{{ asset('assets/images/stamp.png') }}" class="footer-stamp" alt="Stamp" style="width: 65px; height: auto; margin-bottom: -4px; margin-right: 12px; display: inline-block; transform: rotate(-10deg); mix-blend-mode: multiply;"><br>
-                        <span class="for-company" style="font-size: 9px; font-weight: bold; color: var(--pad-text);">For {{ \App\Models\Setting::get('company_name', 'VAHLA MILL STORE') }}</span>
+                    <div class="footer-sign" style="width: 46%; text-align: right; position: relative;">
+                        <img src="{{ asset('assets/images/stamp.png') }}" class="footer-stamp" alt="Stamp" style="width: 135px; height: auto; margin-bottom: -10px; margin-right: 15px; display: inline-block; transform: rotate(-8deg); mix-blend-mode: multiply;"><br>
+                        <span class="for-company" style="font-size: 11px; font-weight: bold; color: var(--pad-text); letter-spacing: 0.5px;">For {{ \App\Models\Setting::get('company_name', 'VAHLA MILL STORE') }}</span>
                     </div>
                 </div>
             </div>
@@ -1085,15 +1185,25 @@
 
             const filename = '{{ !empty($dc->dc_number) ? $dc->dc_number : "Delivery_Challan" }}_WhatsApp.pdf';
 
+            // Expected pages based on generated page divs
+            const pageElements = element.querySelectorAll('.whatsapp-page');
+            const expectedPages = pageElements.length > 0 ? pageElements.length : 1;
+
             const opt = {
-                margin:       [0, 0, 0, 0],
+                margin:       0,
                 filename:     filename,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak:    { mode: ['css', 'legacy'] }
             };
 
-            html2pdf().set(opt).from(element).save().then(() => {
+            html2pdf().set(opt).from(element).toPdf().get('pdf').then(function(pdf) {
+                // If subpixel rounding caused an extra trailing page, delete it
+                while (pdf.internal.getNumberOfPages() > expectedPages) {
+                    pdf.deletePage(pdf.internal.getNumberOfPages());
+                }
+            }).save().then(() => {
                 element.style.display = 'none';
                 btn.innerHTML = originalHtml;
                 btn.disabled = false;
