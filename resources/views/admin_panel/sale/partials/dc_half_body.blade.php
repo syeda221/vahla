@@ -291,7 +291,7 @@
                 </tr>
             @else
                 <tr>
-                    <td colspan="6" style="text-align: center; font-weight: bold; font-size: 8.5px; color: #1e40af; background: #eff6ff; padding: 3px;">
+                    <td colspan="6" style="text-align: center; font-weight: bold; font-size: 7.5px; color: #1e40af; background: #eff6ff; padding: 1.5px;">
                         --- CONTINUED ON NEXT HALF PAGE ---
                     </td>
                 </tr>

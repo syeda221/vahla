@@ -437,21 +437,41 @@ class WarehouseStockController extends Controller
             ->limit(30)
             ->get();
 
-        return response()->json($products->map(function ($p) {
+        $productIds = $products->pluck('id');
+        $stocks = WarehouseStock::whereIn('product_id', $productIds)
+            ->selectRaw('product_id, warehouse_id, SUM(total_pieces) as total_pieces')
+            ->groupBy('product_id', 'warehouse_id')
+            ->get()
+            ->groupBy('product_id');
+
+        return response()->json($products->map(function ($p) use ($stocks) {
             $unitName = $p->unit_name;
             $wholesale = (float)($p->wholesale_price > 0 ? $p->wholesale_price : ($p->purchase_price_per_piece ?? 0));
             $retail = (float)($p->sale_price_per_piece > 0 ? $p->sale_price_per_piece : 0);
             $alert = (float)($p->alert_quantity ?? 0);
+
+            $stocksMap = [];
+            $totalStock = 0.0;
+            if (isset($stocks[$p->id])) {
+                foreach ($stocks[$p->id] as $st) {
+                    $qty = (float)$st->total_pieces;
+                    $stocksMap[$st->warehouse_id] = $qty;
+                    $totalStock += $qty;
+                }
+            }
+
             return [
-                'id'              => $p->id,
-                'text'            => "{$p->item_code} — {$p->item_name} [{$unitName}]",
-                'item_name'       => $p->item_name,
-                'item_code'       => $p->item_code,
-                'unit_name'       => $unitName,
-                'wholesale_price' => $wholesale > 0 ? rtrim(rtrim(number_format($wholesale, 2, '.', ''), '0'), '.') : '',
-                'retail_price'    => $retail > 0 ? rtrim(rtrim(number_format($retail, 2, '.', ''), '0'), '.') : '',
-                'alert_quantity'  => $alert > 0 ? rtrim(rtrim(number_format($alert, 2, '.', ''), '0'), '.') : '',
-                'image'           => $p->image ? asset('uploads/products/'.$p->image) : null,
+                'id'               => $p->id,
+                'text'             => "{$p->item_code} — {$p->item_name} [{$unitName}]",
+                'item_name'        => $p->item_name,
+                'item_code'        => $p->item_code,
+                'unit_name'        => $unitName,
+                'wholesale_price'  => $wholesale > 0 ? rtrim(rtrim(number_format($wholesale, 2, '.', ''), '0'), '.') : '',
+                'retail_price'     => $retail > 0 ? rtrim(rtrim(number_format($retail, 2, '.', ''), '0'), '.') : '',
+                'alert_quantity'   => $alert > 0 ? rtrim(rtrim(number_format($alert, 2, '.', ''), '0'), '.') : '',
+                'image'            => $p->image ? asset('uploads/products/'.$p->image) : null,
+                'warehouse_stocks' => $stocksMap,
+                'total_stock'      => $totalStock,
             ];
         }));
     }
@@ -463,22 +483,20 @@ class WarehouseStockController extends Controller
             'product_id'   => 'required|exists:products,id',
         ]);
 
-        $stock = WarehouseStock::with('product.unit')
-            ->where('warehouse_id', $request->warehouse_id)
+        $rawQty = (float)WarehouseStock::where('warehouse_id', $request->warehouse_id)
             ->where('product_id', $request->product_id)
-            ->first();
+            ->sum('total_pieces');
 
         $product = Product::with('unit')->find($request->product_id);
-        $unitName = $stock?->product?->unit_name ?? ($product?->unit_name ?? 'Kg');
+        $unitName = $product?->unit_name ?? 'Kg';
 
-        $rawQty = $stock ? (float)$stock->total_pieces : 0.0;
         $formatted = rtrim(rtrim(number_format($rawQty, 2, '.', ''), '0'), '.');
         if ($formatted === '' || $formatted === '-0') {
             $formatted = '0';
         }
 
         return response()->json([
-            'exists'          => (bool)$stock,
+            'exists'          => true,
             'total_pieces'    => $rawQty,
             'formatted_stock' => $formatted,
             'unit_name'       => $unitName,
@@ -493,14 +511,30 @@ class WarehouseStockController extends Controller
         $retail = (float)($product->sale_price_per_piece > 0 ? $product->sale_price_per_piece : 0);
         $alert = (float)($product->alert_quantity ?? 0);
 
+        // Fetch current stocks grouped by warehouse
+        $stocks = WarehouseStock::where('product_id', $product->id)
+            ->selectRaw('warehouse_id, SUM(total_pieces) as total_pieces')
+            ->groupBy('warehouse_id')
+            ->get();
+
+        $stocksMap = [];
+        $totalStock = 0.0;
+        foreach ($stocks as $st) {
+            $qty = (float)$st->total_pieces;
+            $stocksMap[$st->warehouse_id] = $qty;
+            $totalStock += $qty;
+        }
+
         return response()->json([
-            'id'              => $product->id,
-            'item_name'       => $product->item_name,
-            'item_code'       => $product->item_code,
-            'unit_name'       => $unitName,
-            'wholesale_price' => $wholesale > 0 ? rtrim(rtrim(number_format($wholesale, 2, '.', ''), '0'), '.') : '',
-            'retail_price'    => $retail > 0 ? rtrim(rtrim(number_format($retail, 2, '.', ''), '0'), '.') : '',
-            'alert_quantity'  => $alert > 0 ? rtrim(rtrim(number_format($alert, 2, '.', ''), '0'), '.') : '',
+            'id'               => $product->id,
+            'item_name'        => $product->item_name,
+            'item_code'        => $product->item_code,
+            'unit_name'        => $unitName,
+            'wholesale_price'  => $wholesale > 0 ? rtrim(rtrim(number_format($wholesale, 2, '.', ''), '0'), '.') : '',
+            'retail_price'     => $retail > 0 ? rtrim(rtrim(number_format($retail, 2, '.', ''), '0'), '.') : '',
+            'alert_quantity'   => $alert > 0 ? rtrim(rtrim(number_format($alert, 2, '.', ''), '0'), '.') : '',
+            'warehouse_stocks' => $stocksMap,
+            'total_stock'      => $totalStock,
         ]);
     }
 }

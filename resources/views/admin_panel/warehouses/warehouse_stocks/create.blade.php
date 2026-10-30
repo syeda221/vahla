@@ -34,13 +34,21 @@
         background: var(--bg-card);
         border: 1px solid var(--border-color);
         border-radius: var(--radius-md);
-        padding: 4px 6px;
+        padding: 6px 8px;
         margin-bottom: 6px;
         box-shadow: var(--shadow-sm);
         display: flex !important;
-        align-items: center !important;
-        gap: 6px !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
         flex-wrap: nowrap !important;
+    }
+    .wh-select-wrapper {
+        flex: 1 1 auto;
+        min-width: 140px;
+    }
+    .current-stock-tag {
+        font-size: 11px;
+        line-height: 1.2;
     }
     .qty-addon-label {
         background: var(--bg-page);
@@ -346,6 +354,10 @@
                     <select name="rows[${rIndex}][product_id]" class="form-control product-select" id="prod_select_${rIndex}" required style="width: 100%;">
                         <option value="">Search product by name or SKU...</option>
                     </select>
+                    <div class="product-stock-bar mt-1 px-1 d-flex align-items-center justify-content-between" id="prod_stock_bar_${rIndex}" style="display: none !important; font-size: 11px;">
+                        <span class="text-muted fw-medium"><i class="fas fa-cubes me-1 text-primary"></i>All Branches Stock:</span>
+                        <span class="prod-total-stock-badge fw-bold font-tabular">—</span>
+                    </div>
                     <input type="hidden" name="rows[${rIndex}][unit_name]" id="unit_hidden_${rIndex}" value="Kg">
                 </td>
 
@@ -353,20 +365,26 @@
                 <td>
                     <div class="locations-wrapper" id="locations_${rIndex}" data-index="${rIndex}">
                         <div class="location-box" data-loc-index="0">
-                            <select name="rows[${rIndex}][locations][0][warehouse_id]" class="form-select form-select-sm erp-input wh-dropdown" style="height: 40px; font-size: 13px; min-width: 130px; flex: 1 1 auto;">
-                                ${getWarehouseOptionsHtml()}
-                            </select>
-                            <div class="input-group" style="width: 145px; min-width: 145px; flex: 0 0 145px; flex-wrap: nowrap;">
-                                <span class="input-group-text qty-addon-label px-2" style="font-size: 11px;">QTY</span>
+                            <div class="wh-select-wrapper">
+                                <select name="rows[${rIndex}][locations][0][warehouse_id]" class="form-select form-select-sm erp-input wh-dropdown" style="height: 38px; font-size: 13px; width: 100%;">
+                                    ${getWarehouseOptionsHtml()}
+                                </select>
+                                <div class="current-stock-tag mt-1 d-flex align-items-center gap-1">
+                                    <span class="text-muted fw-semibold">Current:</span>
+                                    <span class="loc-current-stock-badge text-muted small">—</span>
+                                </div>
+                            </div>
+                            <div class="input-group" style="width: 145px; min-width: 145px; flex: 0 0 145px; flex-wrap: nowrap; align-self: flex-start;">
+                                <span class="input-group-text qty-addon-label px-2" style="font-size: 11px; height: 38px;">QTY</span>
                                 <input type="number" step="any" min="0" name="rows[${rIndex}][locations][0][quantity]" 
                                        class="form-control erp-input font-tabular qty-input text-end px-2" 
-                                       style="height: 40px; border-left: 0 !important; border-right: 0 !important; font-size: 13px;"
+                                       style="height: 38px; border-left: 0 !important; border-right: 0 !important; font-size: 13px;"
                                        value="0" placeholder="0" oninput="calculateRowTotal(${rIndex})">
-                                <span class="input-group-text qty-addon-label px-2 unit-label-${rIndex}" style="font-size: 11px;">Kg</span>
+                                <span class="input-group-text qty-addon-label px-2 unit-label-${rIndex}" style="font-size: 11px; height: 38px;">Kg</span>
                             </div>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-link btn-sm p-0 text-primary text-decoration-none fw-medium" style="font-size: 12px;" onclick="addLocationSlot(${rIndex})">
+                    <button type="button" class="btn btn-link btn-sm p-0 text-primary text-decoration-none fw-medium mt-1" style="font-size: 12px;" onclick="addLocationSlot(${rIndex})">
                         <i class="fas fa-plus-circle me-1"></i> Add Location
                     </button>
                 </td>
@@ -463,6 +481,11 @@
             $(`#alert_${rIndex}`).val('—');
             $(`#unit_hidden_${rIndex}`).val('Kg');
             $(`.unit-label-${rIndex}`).text('Kg');
+            $(`#row_${rIndex}`).data('warehouse_stocks', null);
+            $(`#prod_stock_bar_${rIndex}`).attr('style', 'display: none !important;');
+            $(`#row_${rIndex} .location-box`).each(function() {
+                updateLocationStockDisplay($(this), rIndex);
+            });
             calculateRowTotal(rIndex);
         });
 
@@ -472,6 +495,47 @@
                 fetchAndPopulateProduct(rIndex, pId);
             }
         });
+    }
+
+    function formatStockValue(val, unit = '') {
+        val = parseFloat(val);
+        if (isNaN(val)) val = 0;
+        let formattedNum = val.toFixed(2).replace(/\.?0+$/, '');
+        if (formattedNum === '' || formattedNum === '-0') formattedNum = '0';
+        let text = formattedNum + (unit ? ' ' + unit : '');
+
+        let badgeHtml = '';
+        if (val < 0) {
+            badgeHtml = `<span class="badge bg-danger-subtle text-danger border border-danger-subtle font-tabular px-2 py-0.5" style="font-size: 11px; font-weight: 700;"><i class="fas fa-arrow-trend-down me-1"></i>${text}</span>`;
+        } else if (val > 0) {
+            badgeHtml = `<span class="badge bg-success-subtle text-success border border-success-subtle font-tabular px-2 py-0.5" style="font-size: 11px; font-weight: 700;"><i class="fas fa-check me-1"></i>${text}</span>`;
+        } else {
+            badgeHtml = `<span class="badge bg-light text-secondary border font-tabular px-2 py-0.5" style="font-size: 11px; font-weight: 600;">${text}</span>`;
+        }
+
+        return { val, text, badgeHtml };
+    }
+
+    function updateLocationStockDisplay($locationBox, rIndex) {
+        const $row = $(`#row_${rIndex}`);
+        const stocksMap = $row.data('warehouse_stocks');
+        const unit = $(`#unit_hidden_${rIndex}`).val() || 'Kg';
+        const whId = $locationBox.find('.wh-dropdown').val();
+        const $badge = $locationBox.find('.loc-current-stock-badge');
+
+        const productId = $(`#prod_select_${rIndex}`).val();
+        if (!productId || stocksMap === undefined || stocksMap === null) {
+            $badge.html('<span class="text-muted small">—</span>');
+            return;
+        }
+
+        let stockVal = 0;
+        if (stocksMap && stocksMap[whId] !== undefined) {
+            stockVal = parseFloat(stocksMap[whId]);
+        }
+
+        const formattedInfo = formatStockValue(stockVal, unit);
+        $badge.html(formattedInfo.badgeHtml);
     }
 
     function fetchAndPopulateProduct(rIndex, productId, preloadedData = null) {
@@ -506,6 +570,25 @@
         const unit = data.unit_name || 'Kg';
         $(`#unit_hidden_${rIndex}`).val(unit);
         $(`.unit-label-${rIndex}`).text(unit);
+
+        // Store warehouse_stocks map on row
+        const $row = $(`#row_${rIndex}`);
+        const stocksMap = data.warehouse_stocks || {};
+        $row.data('warehouse_stocks', stocksMap);
+
+        // Update All Branches Stock bar in Column 2
+        const totalStock = (data.total_stock !== undefined && data.total_stock !== null) 
+            ? parseFloat(data.total_stock) 
+            : 0;
+        const totalInfo = formatStockValue(totalStock, unit);
+        const $totalBar = $(`#prod_stock_bar_${rIndex}`);
+        $totalBar.find('.prod-total-stock-badge').html(totalInfo.badgeHtml);
+        $totalBar.attr('style', 'display: flex !important; font-size: 11px;');
+
+        // Update all location boxes in this row
+        $row.find('.location-box').each(function() {
+            updateLocationStockDisplay($(this), rIndex);
+        });
 
         // 1. Wholesale Price (Unchangeable / Read-only)
         const wholesaleVal = (data.wholesale_price !== undefined && data.wholesale_price !== null && data.wholesale_price !== '') 
@@ -550,24 +633,31 @@
 
         const slotHtml = `
             <div class="location-box" data-loc-index="${locIndex}">
-                <select name="rows[${rIndex}][locations][${locIndex}][warehouse_id]" class="form-select form-select-sm erp-input wh-dropdown" style="height: 40px; font-size: 13px; min-width: 130px; flex: 1 1 auto;">
-                    ${getWarehouseOptionsHtml()}
-                </select>
-                <div class="input-group" style="width: 145px; min-width: 145px; flex: 0 0 145px; flex-wrap: nowrap;">
-                    <span class="input-group-text qty-addon-label px-2" style="font-size: 11px;">QTY</span>
+                <div class="wh-select-wrapper">
+                    <select name="rows[${rIndex}][locations][${locIndex}][warehouse_id]" class="form-select form-select-sm erp-input wh-dropdown" style="height: 38px; font-size: 13px; width: 100%;">
+                        ${getWarehouseOptionsHtml()}
+                    </select>
+                    <div class="current-stock-tag mt-1 d-flex align-items-center gap-1">
+                        <span class="text-muted fw-semibold">Current:</span>
+                        <span class="loc-current-stock-badge text-muted small">—</span>
+                    </div>
+                </div>
+                <div class="input-group" style="width: 145px; min-width: 145px; flex: 0 0 145px; flex-wrap: nowrap; align-self: flex-start;">
+                    <span class="input-group-text qty-addon-label px-2" style="font-size: 11px; height: 38px;">QTY</span>
                     <input type="number" step="any" min="0" name="rows[${rIndex}][locations][${locIndex}][quantity]" 
                            class="form-control erp-input font-tabular qty-input text-end px-2" 
-                           style="height: 40px; border-left: 0 !important; border-right: 0 !important; font-size: 13px;"
+                           style="height: 38px; border-left: 0 !important; border-right: 0 !important; font-size: 13px;"
                            value="0" placeholder="0" oninput="calculateRowTotal(${rIndex})">
-                    <span class="input-group-text qty-addon-label px-2 unit-label-${rIndex}" style="font-size: 11px;">${currentUnit}</span>
+                    <span class="input-group-text qty-addon-label px-2 unit-label-${rIndex}" style="font-size: 11px; height: 38px;">${currentUnit}</span>
                 </div>
-                <button type="button" class="btn btn-sm text-danger p-0 border-0 bg-transparent ms-1" onclick="$(this).closest('.location-box').remove(); calculateRowTotal(${rIndex});" title="Remove Location" style="line-height: 1;">
+                <button type="button" class="btn btn-sm text-danger p-0 border-0 bg-transparent ms-1" style="align-self: flex-start; margin-top: 6px; line-height: 1;" onclick="$(this).closest('.location-box').remove(); calculateRowTotal(${rIndex});" title="Remove Location">
                     <i class="fas fa-times-circle fs-5"></i>
                 </button>
             </div>
         `;
 
         wrapper.append(slotHtml);
+        updateLocationStockDisplay(wrapper.find('.location-box').last(), rIndex);
     }
 
     function calculateRowTotal(rIndex) {
@@ -621,12 +711,22 @@
         $('.wh-dropdown').each(function() {
             if (!$(this).data('user-touched')) {
                 $(this).val(whId);
+                const $locBox = $(this).closest('.location-box');
+                const rIndex = $(this).closest('.product-row').data('index');
+                if (rIndex) {
+                    updateLocationStockDisplay($locBox, rIndex);
+                }
             }
         });
     }
 
     $(document).on('change', '.wh-dropdown', function() {
         $(this).data('user-touched', true);
+        const $locBox = $(this).closest('.location-box');
+        const rIndex = $(this).closest('.product-row').data('index');
+        if (rIndex) {
+            updateLocationStockDisplay($locBox, rIndex);
+        }
     });
 </script>
 @endsection
