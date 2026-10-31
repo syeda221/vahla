@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Recovery Report')
+
 @section('content')
 <style>
     /* Standardized Sale Report Pattern Styling */
@@ -407,7 +409,12 @@
         });
 
         $(".btnPrintReport").click(function() {
+            document.title = 'Recovery Report';
             window.print();
+        });
+
+        window.addEventListener('beforeprint', function() {
+            document.title = 'Recovery Report';
         });
 
         // Load initially

@@ -4,7 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thermal Receipt - {{ $sale->invoice_no }}</title>
+@php
+    $rawCustomerName = $sale->customer_relation?->customer_name ?? ($sale->walkin_name ?? 'Walking Customer');
+    $cleanCustomerName = trim(preg_replace('/[\/\\:*?"<>|]/', ' ', $rawCustomerName));
+    $cleanCustomerName = preg_replace('/\s+/', ' ', $cleanCustomerName);
+    if (empty($cleanCustomerName)) {
+        $cleanCustomerName = 'Customer';
+    }
+    $pageTitle = $cleanCustomerName . ' - ' . $sale->invoice_no;
+@endphp
+    <title>{{ $pageTitle }}</title>
     <style>
         @media print {
             @page {
@@ -397,6 +406,35 @@
                             @if($variantStr && $variantStr !== '{' && trim($variantStr) !== '')
                                 <span class="item-variant">{{ $variantStr }}</span>
                             @endif
+
+                            @php
+                                $rBatchNo = $item['batch_no'] ?? null;
+                                $rSerialsRaw = $item['serials'] ?? null;
+                                $rSerialsList = [];
+                                if (!empty($rSerialsRaw)) {
+                                    if (is_array($rSerialsRaw)) {
+                                        $rSerialsList = $rSerialsRaw;
+                                    } elseif (is_string($rSerialsRaw)) {
+                                        $decodedR = json_decode($rSerialsRaw, true);
+                                        if (is_array($decodedR)) {
+                                            $rSerialsList = $decodedR;
+                                        } else {
+                                            $rSerialsList = array_filter(array_map('trim', explode(',', $rSerialsRaw)));
+                                        }
+                                    }
+                                }
+                            @endphp
+
+                            @if(!empty($rBatchNo))
+                                <span class="item-variant" style="font-weight: 600; color: #000; font-size: 9px; display: block; margin-top: 1px;">
+                                    Batch: {{ $rBatchNo }}
+                                </span>
+                            @endif
+                            @if(!empty($rSerialsList))
+                                <span class="item-variant" style="font-weight: 600; color: #000; font-size: 9px; display: block; word-break: break-all; margin-top: 1px;">
+                                    S/N: {{ implode(', ', $rSerialsList) }}
+                                </span>
+                            @endif
                         </td>
                         <td style="width: 10%;" class="text-center">{{ $qtyDisplay }}</td>
                         <td style="width: 13%;" class="text-end">{{ number_format($item['price'], 0) }}</td>
@@ -536,6 +574,9 @@
     </div>
 
     <script>
+        window.addEventListener('beforeprint', function() {
+            document.title = "{{ addslashes($pageTitle) }}";
+        });
         function triggerPrint() {
             window.print();
         }

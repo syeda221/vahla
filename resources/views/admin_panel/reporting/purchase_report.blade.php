@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Purchase Report')
+
 @section('content')
 <style>
     /* Standardized Sale Report Pattern Styling */
@@ -557,7 +559,12 @@
         });
 
         $(".btnPrintReport").click(function() {
+            document.title = 'Purchase Report';
             window.print();
+        });
+
+        window.addEventListener('beforeprint', function() {
+            document.title = 'Purchase Report';
         });
 
         $(".btnCsvTrigger").click(function() {

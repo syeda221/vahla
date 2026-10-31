@@ -2211,7 +2211,7 @@
                             <tr>
                                 <td colspan="11" class="border-0 pt-3 pb-0 px-0 bg-transparent text-end">
                                     <div class="d-inline-flex align-items-center gap-3 grid-total-container">
-                                        <span class="grid-total-label-custom">GRID TOTAL:</span>
+                                        <span class="grid-total-label-custom">GRAND TOTAL:</span>
                                         <div class="grid-total-badge-custom">
                                             Rs <span id="totalAmount">{{ number_format($sale->total_net ?? 0, 2) }}</span>
                                         </div>

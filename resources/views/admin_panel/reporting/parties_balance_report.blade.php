@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Parties Balance Report')
+
 @section('content')
 <style>
     /* Standardized Sale Report Pattern Styling */
@@ -538,7 +540,12 @@
         });
 
         $(".btnPrintReport").click(function() {
+            document.title = 'Parties Balance Report';
             window.print();
+        });
+
+        window.addEventListener('beforeprint', function() {
+            document.title = 'Parties Balance Report';
         });
 
         $(".btnExcelTrigger").click(function() {

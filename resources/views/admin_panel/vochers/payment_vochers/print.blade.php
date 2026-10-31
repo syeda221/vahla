@@ -4,7 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Voucher - {{ $voucher->pvid }}</title>
+@php
+    $partyName = '';
+    if ($party) {
+        $partyName = $party->customer_name ?? ($party->name ?? '');
+    }
+    $cleanPartyName = trim(preg_replace('/[\/\\:*?"<>|]/', ' ', $partyName));
+    $cleanPartyName = preg_replace('/\s+/', ' ', $cleanPartyName);
+    $pageTitle = $cleanPartyName ? ($cleanPartyName . ' - Payment Voucher - ' . $voucher->pvid) : ('Payment Voucher - ' . $voucher->pvid);
+@endphp
+    <title>{{ $pageTitle }}</title>
     <link rel="stylesheet" href="{{ asset('assets/vendors/font-awesome/css/all.min.css') }}">
     <style>
         /* Base Print Styles */
@@ -331,6 +340,9 @@
                 let amount = parseInt(el.innerText);
                 el.innerText = numberToWords(amount) || el.innerText;
             }
+        });
+        window.addEventListener('beforeprint', function() {
+            document.title = "{{ addslashes($pageTitle) }}";
         });
     </script>
 

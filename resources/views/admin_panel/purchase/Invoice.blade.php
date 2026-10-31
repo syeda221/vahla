@@ -4,7 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Purchase Invoice - {{ $purchase->invoice_no }}</title>
+@php
+    $rawVendorName = $purchase->vendor->name ?? 'Vendor';
+    $cleanVendorName = trim(preg_replace('/[\/\\:*?"<>|]/', ' ', $rawVendorName));
+    $cleanVendorName = preg_replace('/\s+/', ' ', $cleanVendorName);
+    if (empty($cleanVendorName)) {
+        $cleanVendorName = 'Vendor';
+    }
+    $pageTitle = $cleanVendorName . ' - ' . $purchase->invoice_no;
+@endphp
+    <title>{{ $pageTitle }}</title>
     <!-- Bootstrap 5 CSS -->
     <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
     <style>
@@ -800,6 +809,11 @@
         </div>
 
     </div>
+    <script>
+        window.addEventListener('beforeprint', function() {
+            document.title = "{{ addslashes($pageTitle) }}";
+        });
+    </script>
 </body>
 
 </html>

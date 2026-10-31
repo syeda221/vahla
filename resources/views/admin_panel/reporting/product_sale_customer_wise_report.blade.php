@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Customer Wise Product Sale Report')
+
 @section('content')
 <style>
     /* Exact Sale Report Pattern Styling for Web View */
@@ -629,7 +631,13 @@
             });
 
             // Print & Export Buttons
-            $('.btnPrintReport').on('click', () => window.print());
+            $('.btnPrintReport').on('click', () => {
+                document.title = 'Customer Wise Product Sale Report';
+                window.print();
+            });
+            window.addEventListener('beforeprint', function() {
+                document.title = 'Customer Wise Product Sale Report';
+            });
             $('.btnExportExcel').on('click', function() {
                 let csv = [];
                 csv.push(['Customer Code','Customer Name','Product Code','Product Name','Brand / Category','Sold Qty','Avg Price','Gross Amount','Return Qty','Return Amount','Net Qty','Net Amount'].join(','));

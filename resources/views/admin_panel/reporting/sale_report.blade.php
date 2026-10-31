@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Sale Report')
+
 @section('content')
 <style>
     /* Compact Sale Report Terminal Styling */
@@ -547,6 +549,10 @@
                 }
             });
         }
+
+        window.addEventListener('beforeprint', function() {
+            document.title = 'Sale Report';
+        });
 
         // Trigger on Filter Click
         $(document).on('click', '.btnSearchTrigger', function() {

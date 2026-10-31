@@ -1854,13 +1854,187 @@ class ReportingController extends Controller
         });
         $topCustomers = array_slice($customerProfits, 0, 10);
 
+        list($invoiceStats, $totalInvoicesProfit) = $this->calculateInvoiceProfits($start, $end, $customerId, $productId, $products, $avgPriceMap);
+
         return response()->json([
             'products' => $productStats,
+            'invoices' => $invoiceStats,
+            'total_invoices_profit' => round($totalInvoicesProfit, 2),
             'total_gross_profit' => round($totalGrossProfit, 2),
             'total_expenses' => round($totalExpenses, 2),
             'net_profit' => round($totalGrossProfit - $totalExpenses, 2),
             'top_customers' => $topCustomers
         ]);
+    }
+
+    private function calculateInvoiceProfits($start, $end, $customerId, $productId, $categoryId, $products, $avgPriceMap)
+    {
+        $invoiceSalesQuery = \App\Models\Sale::with(['customer_relation', 'items.product', 'returns.items']);
+        if ($start && $end) {
+            $invoiceSalesQuery->whereBetween('created_at', [$start, $end]);
+        }
+        if ($customerId && $customerId !== 'all') {
+            $invoiceSalesQuery->where('customer_id', $customerId);
+        }
+        if ($productId && $productId !== 'all') {
+            $invoiceSalesQuery->whereHas('items', function($q) use ($productId) {
+                $q->where('product_id', $productId);
+            });
+        }
+        if ($categoryId && $categoryId !== 'all') {
+            $invoiceSalesQuery->whereHas('items.product', function($q) use ($categoryId) {
+                $q->where('category_id', $categoryId);
+            });
+        }
+
+        $invoiceSales = $invoiceSalesQuery->orderBy('created_at', 'desc')->get();
+        $invoiceStats = [];
+        $totalInvoicesProfit = 0;
+
+        foreach ($invoiceSales as $sale) {
+            $invRevenue = 0;
+            $invCogs = 0;
+            $itemsDetail = [];
+
+            foreach ($sale->items as $item) {
+                if ($productId && $productId !== 'all' && $item->product_id != $productId) {
+                    continue;
+                }
+                if ($categoryId && $categoryId !== 'all' && $item->product && $item->product->category_id != $categoryId) {
+                    continue;
+                }
+
+                $itemNet = (float) $item->total;
+                if ($sale->total_bill_amount > 0 && $sale->total_extradiscount > 0) {
+                    $proportion = $itemNet / (float) $sale->total_bill_amount;
+                    $itemNet -= ($sale->total_extradiscount * $proportion);
+                }
+
+                $avgPrice = 0;
+                if ($item->is_manual) {
+                    $avgPrice = (float) $item->purchase_price;
+                } else {
+                    $product = $products->firstWhere('id', $item->product_id) ?? $item->product;
+                    if ($product) {
+                        $itemColor = $item->color;
+                        $itemVariant = null;
+                        if (!empty($itemColor)) {
+                            $b64Decoded = base64_decode($itemColor, true);
+                            if ($b64Decoded !== false) {
+                                $itemVariant = json_decode($b64Decoded, true);
+                            }
+                            if (empty($itemVariant)) {
+                                $itemVariant = json_decode($itemColor, true);
+                            }
+                        }
+
+                        if (is_array($itemVariant) && isset($itemVariant['color'])) {
+                            $vColor = strtolower(trim($itemVariant['color'] ?? '-'));
+                            $vSize = strtolower(trim($itemVariant['size'] ?? '-'));
+                            if ($vColor === '') $vColor = '-';
+                            if ($vSize === '') $vSize = '-';
+
+                            $decoded = json_decode($product->color, true);
+                            if (is_array($decoded)) {
+                                foreach ($decoded as $v) {
+                                    $vC = strtolower(trim($v['color'] ?? '-'));
+                                    $vS = strtolower(trim($v['size'] ?? '-'));
+                                    if ($vC === '') $vC = '-';
+                                    if ($vS === '') $vS = '-';
+
+                                    if ($vC === $vColor && $vS === $vSize) {
+                                        $avgPrice = (float) ($v['purch_price'] ?? 0);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        if ($avgPrice <= 0) {
+                            $avgPrice = $avgPriceMap[$item->product_id] ?? 0;
+                            if ($avgPrice <= 0) {
+                                if ($product->size_mode === 'by_size') {
+                                    $m2PerPiece = (float) ($product->pieces_per_m2 ?? 0);
+                                    $purchPerM2 = (float) ($product->purchase_price_per_m2 ?? 0);
+                                    $avgPrice = $m2PerPiece * $purchPerM2;
+                                } else {
+                                    $avgPrice = (float) ($product->purchase_price_per_piece ?? 0);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                $pieces = (float) ($item->total_pieces ?? 0);
+                if ($pieces <= 0) {
+                    $ppb = ($item->product && $item->product->pieces_per_box > 0) ? (float) $item->product->pieces_per_box : 1;
+                    $pieces = (float) $item->qty * $ppb;
+                }
+
+                $itemCogs = $pieces * $avgPrice;
+                $itemProfit = $itemNet - $itemCogs;
+
+                $invRevenue += $itemNet;
+                $invCogs += $itemCogs;
+
+                $itemsDetail[] = [
+                    'product_name' => $item->product ? $item->product->item_name : ($item->product_name ?? 'Manual Item'),
+                    'qty' => $item->qty,
+                    'pieces' => $pieces,
+                    'revenue' => round($itemNet, 2),
+                    'cogs' => round($itemCogs, 2),
+                    'profit' => round($itemProfit, 2),
+                ];
+            }
+
+            if (empty($itemsDetail)) {
+                continue;
+            }
+
+            // Deduct returns for this sale if any
+            if ($sale->returns && $sale->returns->isNotEmpty()) {
+                foreach ($sale->returns as $ret) {
+                    if ($ret->items) {
+                        foreach ($ret->items as $rItem) {
+                            if ($productId && $productId !== 'all' && $rItem->product_id != $productId) {
+                                continue;
+                            }
+                            $retRevenue = (float) ($rItem->line_total ?? 0);
+                            $rAvgPrice = 0;
+                            if ($rItem->is_manual) {
+                                $rAvgPrice = (float) ($rItem->purchase_price ?? 0);
+                            } else {
+                                $rAvgPrice = $avgPriceMap[$rItem->product_id] ?? 0;
+                            }
+                            $retCogs = ((float) $rItem->qty) * $rAvgPrice;
+
+                            $invRevenue -= $retRevenue;
+                            $invCogs -= $retCogs;
+                        }
+                    }
+                }
+            }
+
+            $invProfit = $invRevenue - $invCogs;
+            $totalInvoicesProfit += $invProfit;
+
+            $custName = $sale->customer_relation ? $sale->customer_relation->customer_name : ($sale->walkin_name ?: 'Walk-in Customer');
+
+            $invoiceStats[] = [
+                'id' => $sale->id,
+                'invoice_no' => $sale->invoice_no ?? ('INVSLE-' . $sale->id),
+                'date' => $sale->created_at ? $sale->created_at->format('d/m/Y h:i A') : '-',
+                'customer_name' => $custName,
+                'items_count' => count($itemsDetail),
+                'revenue' => round($invRevenue, 2),
+                'cogs' => round($invCogs, 2),
+                'profit' => round($invProfit, 2),
+                'margin' => $invRevenue > 0 ? round(($invProfit / $invRevenue) * 100, 1) : 0,
+                'items' => $itemsDetail
+            ];
+        }
+
+        return [$invoiceStats, $totalInvoicesProfit];
     }
 
     public function purchase_report()

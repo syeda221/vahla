@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Profit & Loss Report')
+
 @section('content')
 <style>
     /* Standardized Sale Report Pattern Styling */
@@ -123,7 +125,17 @@
                     </div>
 
                     {{-- Mid Dates with Explicit Spacing Gap --}}
-                    <div class="d-flex align-items-center me-auto flex-wrap" style="gap: 16px !important;">
+                    <div class="d-flex align-items-center me-auto flex-wrap" style="gap: 12px !important;">
+                        <div class="d-flex align-items-center gap-1">
+                            <label for="quick_filter_desk" class="sale-filter-label mb-0 ms-1 me-1">Quick Filter:</label>
+                            <select id="quick_filter_desk" class="form-control form-control-sm quickFilterSelect" style="height: 32px !important; width: 140px; font-size: .78rem; border-radius: 6px !important; border: 1px solid #cbd5e1 !important; background-color: #ffffff !important;">
+                                <option value="today">Today (Daily)</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="year">Yearly (This Year)</option>
+                                <option value="custom">Custom Range</option>
+                            </select>
+                        </div>
                         <div class="d-flex align-items-center gap-1">
                             <label for="start_date_desk" class="sale-filter-label mb-0 ms-1 me-1">From:</label>
                             <input type="datetime-local" id="start_date_desk" class="form-control form-control-sm fw-bold startDateInput" value="{{ date('Y-m-d\T00:00') }}" style="height: 32px; width: 175px; font-size: .78rem; border-radius: 6px;">
@@ -192,6 +204,18 @@
                         <span class="fw-bold text-dark fs-6">
                             <i class="fas fa-chart-pie text-primary me-2"></i>Profit & Loss
                         </span>
+                    </div>
+
+                    {{-- Quick Filter Mobile --}}
+                    <div class="col-12 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Quick Filter</label>
+                        <select class="form-control form-control-sm quickFilterSelect" style="font-size: 11px; height: 34px !important; border-radius: 6px !important; border: 1px solid #cbd5e1 !important; background-color: #ffffff !important;">
+                            <option value="today">Today (Daily)</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                            <option value="year">Yearly (This Year)</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
                     </div>
 
                     {{-- 1. Start & End Date --}}
@@ -365,6 +389,60 @@
 
     </div>
 
+    {{-- Bill / Invoice Profit Breakdown Window --}}
+    <div class="card border-0 shadow-sm mb-3 rounded-3 bg-white">
+        <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold text-dark fs-6">
+                    <i class="fas fa-file-invoice-dollar me-2 text-success"></i>Bill / Invoice-wise Profit Breakdown
+                </span>
+                <span class="badge bg-secondary text-white small" id="invoiceCount">0 bills</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="input-group input-group-sm" style="width: 220px;">
+                    <span class="input-group-text bg-white border-end-0 py-0"><i class="fas fa-search text-muted small"></i></span>
+                    <input type="text" id="invoiceSearchInput" class="form-control border-start-0" placeholder="Search bill # or customer..." style="font-size: 11px; height: 28px;">
+                </div>
+                <span class="badge bg-success text-white py-1.5 px-2" style="font-size: 12px; font-weight: 700;" id="invoiceTotalProfitBadge">
+                    Total Invoices Profit: Rs 0
+                </span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            
+            {{-- DESKTOP TABLE VIEW (d-none d-md-block) --}}
+            <div class="d-none d-md-block">
+                <div class="sale-table-wrap border-0 rounded-0" style="height: auto; max-height: 420px; overflow-y: auto;">
+                    <table class="table table-bordered table-hover align-middle mb-0 report-table" id="invoicesTable">
+                        <thead>
+                            <tr>
+                                <th class="text-center" style="width: 40px;">#</th>
+                                <th style="width: 140px;">DATE & TIME</th>
+                                <th style="width: 140px;">INVOICE NO</th>
+                                <th>CUSTOMER</th>
+                                <th class="text-center" style="width: 80px;">ITEMS</th>
+                                <th class="text-end" style="width: 120px;">BILL AMOUNT</th>
+                                <th class="text-end" style="width: 120px;">COST (COGS)</th>
+                                <th class="text-end" style="width: 140px;">TOTAL PROFIT</th>
+                                <th class="text-center" style="width: 75px;">MARGIN</th>
+                                <th class="text-center" style="width: 90px;">DETAILS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoicesBody">
+                            <tr><td colspan="10" class="text-center text-muted py-4 small">Fetch data to see invoice profits</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {{-- MOBILE CARDS CONTAINER (d-md-none) --}}
+            <div class="d-md-none p-2" id="mobInvoicesContainer">
+                <div class="text-center text-muted py-3 small">Fetch data to see invoice profits</div>
+            </div>
+
+        </div>
+    </div>
+
     {{-- Top 10 Customers --}}
     <div class="card border-0 shadow-sm mb-3 rounded-3 bg-white">
         <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center">
@@ -401,6 +479,46 @@
     </div>
 
 </div>
+
+
+    {{-- Invoice Items Breakdown Modal --}}
+    <div class="modal fade" id="invoiceItemsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header py-2 bg-light">
+                    <h6 class="modal-title fw-bold text-dark mb-0" id="invoiceItemsModalTitle">
+                        <i class="fas fa-receipt me-2 text-primary"></i>Bill Profit Breakdown
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm mb-0 align-middle" style="font-size: 12px;">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width: 40px;" class="text-center">#</th>
+                                    <th>Product / Item</th>
+                                    <th class="text-center" style="width: 120px;">Qty / Pcs</th>
+                                    <th class="text-end" style="width: 110px;">Revenue</th>
+                                    <th class="text-end" style="width: 110px;">Cost (COGS)</th>
+                                    <th class="text-end" style="width: 120px;">Profit</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoiceItemsModalBody"></tbody>
+                            <tfoot class="table-light fw-bold" id="invoiceItemsModalFoot"></tfoot>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer py-2 d-flex justify-content-between">
+                    <a href="#" target="_blank" id="modalInvoiceLink" class="btn btn-sm btn-primary">
+                        <i class="fas fa-print me-1"></i> Print / View Full Invoice
+                    </a>
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @section('js')
@@ -417,6 +535,46 @@ $(document).ready(function() {
     $('.categorySelect').on('change', function() { $('.categorySelect').val($(this).val()); });
     $('.customerSelect').on('change', function() { $('.customerSelect').val($(this).val()); });
     $('.productSelect').on('change', function() { $('.productSelect').val($(this).val()); });
+
+    // Quick Filter Logic (Daily/Today, This Week, This Month, Yearly, Custom)
+    $('.quickFilterSelect').on('change', function() {
+        let val = $(this).val();
+        $('.quickFilterSelect').val(val);
+
+        if (val === 'custom') return;
+
+        let now = new Date();
+        let start = new Date();
+        let end = new Date();
+
+        if (val === 'today' || val === 'daily') {
+            // today
+        } else if (val === 'week' || val === 'weekly') {
+            let day = now.getDay();
+            let diff = now.getDate() - day + (day === 0 ? -6 : 1);
+            start.setDate(diff);
+        } else if (val === 'month' || val === 'monthly') {
+            start.setDate(1);
+        } else if (val === 'year' || val === 'yearly') {
+            start.setMonth(0, 1);
+        }
+
+        let pad = (n) => (n < 10 ? '0' + n : n);
+        let formatDT = (d, timeStr) => {
+            let y = d.getFullYear();
+            let m = pad(d.getMonth() + 1);
+            let day = pad(d.getDate());
+            return `${y}-${m}-${day}T${timeStr}`;
+        };
+
+        $('.startDateInput').val(formatDT(start, '00:00'));
+        $('.endDateInput').val(formatDT(end, '23:59'));
+        fetchReport();
+    });
+
+    $('.startDateInput, .endDateInput').on('input', function() {
+        $('.quickFilterSelect').val('custom');
+    });
 
     var profitTable = $('#profitTable').DataTable({
         paging: true,
@@ -447,11 +605,18 @@ $(document).ready(function() {
     $('.btnResetTrigger').on('click', function() {
         $('.startDateInput').val('{{ date("Y-m-d\T00:00") }}');
         $('.endDateInput').val('{{ date("Y-m-d\T23:59") }}');
+        $('.quickFilterSelect').val('today');
         $('.categorySelect, .customerSelect, .productSelect').val('all').trigger('change');
         fetchReport();
     });
 
-    $('.btnPrintReport').on('click', () => window.print());
+    $('.btnPrintReport').on('click', () => {
+        document.title = 'Profit & Loss Report';
+        window.print();
+    });
+    window.addEventListener('beforeprint', function() {
+        document.title = 'Profit & Loss Report';
+    });
 
     function fetchReport() {
         $('#loader').show();
@@ -555,6 +720,7 @@ $(document).ready(function() {
 
         // Top 10 Customers
         renderTopCustomers(data.top_customers || []);
+        renderInvoices(data.invoices || [], data.total_invoices_profit || 0);
     }
 
     function renderTopCustomers(customers) {
@@ -647,8 +813,151 @@ $(document).ready(function() {
         });
     }
 
+    var currentInvoices = [];
+
+    function renderInvoices(invoices, totalProfit) {
+        currentInvoices = invoices || [];
+        $('#invoiceCount').text(currentInvoices.length + ' bills');
+        $('#invoiceTotalProfitBadge').text('Total Invoices Profit: Rs ' + fmt(totalProfit || 0));
+
+        if (currentInvoices.length === 0) {
+            $('#invoicesBody').html('<tr><td colspan="10" class="text-center text-muted py-4 small">No bills found for this period</td></tr>');
+            $('#mobInvoicesContainer').html('<div class="text-center text-muted py-3 small">No bills found</div>');
+            return;
+        }
+
+        drawInvoicesTable(currentInvoices);
+    }
+
+    function drawInvoicesTable(invoices) {
+        let html = '';
+        let mobHtml = '';
+
+        invoices.forEach(function(inv, idx) {
+            let profitColor = parseFloat(inv.profit) >= 0 ? '#059669' : '#dc2626';
+            let marginColor = parseFloat(inv.margin) >= 0 ? 'text-success' : 'text-danger';
+
+            html += `
+                <tr class="invoice-row" data-invoice="${(inv.invoice_no || '').toLowerCase()}" data-customer="${(inv.customer_name || '').toLowerCase()}">
+                    <td class="text-center text-muted small">${idx + 1}</td>
+                    <td class="small text-muted">${inv.date}</td>
+                    <td>
+                        <a href="/sales/${inv.id}/invoice" target="_blank" class="fw-bold text-primary font-monospace text-decoration-none">
+                            <i class="fas fa-file-invoice me-1"></i>${inv.invoice_no}
+                        </a>
+                    </td>
+                    <td class="fw-semibold text-dark">${inv.customer_name}</td>
+                    <td class="text-center">
+                        <span class="badge bg-light text-dark border">${inv.items_count} items</span>
+                    </td>
+                    <td class="text-end fw-semibold">Rs ${fmt(inv.revenue)}</td>
+                    <td class="text-end text-muted">Rs ${fmt(inv.cogs)}</td>
+                    <td class="text-end fw-bold" style="color: ${profitColor}; font-size: 13px;">
+                        Rs ${fmt(inv.profit)}
+                    </td>
+                    <td class="text-center small fw-bold ${marginColor}">${inv.margin}%</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-xs btn-outline-info py-0 px-2 btnViewInvoiceItems" data-index="${idx}" style="font-size: 11px;">
+                            <i class="fas fa-list me-1"></i>Items
+                        </button>
+                    </td>
+                </tr>
+            `;
+
+            mobHtml += `
+                <div class="mob-card p-2.5 p-2 mb-2 mob-invoice-card" data-invoice="${(inv.invoice_no || '').toLowerCase()}" data-customer="${(inv.customer_name || '').toLowerCase()}">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div>
+                            <span class="badge bg-light text-muted border" style="font-size: 10px;">#${idx+1}</span>
+                            <a href="/sales/${inv.id}/invoice" target="_blank" class="fw-bold text-primary font-monospace ms-1 text-decoration-none" style="font-size: 12px;">
+                                ${inv.invoice_no}
+                            </a>
+                        </div>
+                        <strong style="color: ${profitColor}; font-size: 13px;">
+                            Profit: Rs ${fmt(inv.profit)}
+                        </strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div class="fw-semibold text-dark small">${inv.customer_name}</div>
+                        <span class="small text-muted" style="font-size: 10.5px;">${inv.date}</span>
+                    </div>
+                    <div class="border-top pt-2 mt-1">
+                        <div class="row g-1 text-center" style="font-size: 11px;">
+                            <div class="col-3 border-end"><span class="text-muted d-block">Items</span><strong>${inv.items_count}</strong></div>
+                            <div class="col-3 border-end"><span class="text-muted d-block">Bill</span><strong>Rs ${fmt(inv.revenue)}</strong></div>
+                            <div class="col-3 border-end"><span class="text-muted d-block">Cost</span><strong>Rs ${fmt(inv.cogs)}</strong></div>
+                            <div class="col-3">
+                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-1 mt-1 btnViewInvoiceItems" data-index="${idx}" style="font-size: 10px;">
+                                    View Items
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        $('#invoicesBody').html(html);
+        $('#mobInvoicesContainer').html(mobHtml);
+    }
+
+    // Live search filter on invoices
+    $(document).on('input', '#invoiceSearchInput', function() {
+        let query = $(this).val().toLowerCase().trim();
+        if (!query) {
+            $('.invoice-row, .mob-invoice-card').show();
+            return;
+        }
+        $('.invoice-row, .mob-invoice-card').each(function() {
+            let inv = ($(this).attr('data-invoice') || '') + ' ' + ($(this).attr('data-customer') || '');
+            $(this).toggle(inv.indexOf(query) !== -1);
+        });
+    });
+
+    // View items modal click
+    $(document).on('click', '.btnViewInvoiceItems', function() {
+        let idx = $(this).data('index');
+        let inv = currentInvoices[idx];
+        if (!inv) return;
+
+        $('#invoiceItemsModalTitle').html(`<i class="fas fa-file-invoice text-primary me-2"></i>Invoice <strong>${inv.invoice_no}</strong> (${inv.customer_name}) - Items Profit`);
+        $('#modalInvoiceLink').attr('href', '/sales/' + inv.id + '/invoice');
+
+        let rowsHtml = '';
+        (inv.items || []).forEach(function(item, i) {
+            let itemProfitColor = parseFloat(item.profit) >= 0 ? '#059669' : '#dc2626';
+            rowsHtml += `
+                <tr>
+                    <td class="text-center text-muted">${i + 1}</td>
+                    <td class="fw-semibold text-dark">${item.product_name}</td>
+                    <td class="text-center">${item.qty} (${item.pieces} pcs)</td>
+                    <td class="text-end">Rs ${fmt(item.revenue)}</td>
+                    <td class="text-end text-muted">Rs ${fmt(item.cogs)}</td>
+                    <td class="text-end fw-bold" style="color: ${itemProfitColor};">Rs ${fmt(item.profit)}</td>
+                </tr>
+            `;
+        });
+
+        let totalProfitColor = parseFloat(inv.profit) >= 0 ? '#059669' : '#dc2626';
+        let footHtml = `
+            <tr>
+                <td colspan="3" class="text-uppercase">Total Combined For Invoice ${inv.invoice_no}</td>
+                <td class="text-end">Rs ${fmt(inv.revenue)}</td>
+                <td class="text-end text-muted">Rs ${fmt(inv.cogs)}</td>
+                <td class="text-end fw-bold" style="color: ${totalProfitColor}; font-size: 13px;">Rs ${fmt(inv.profit)}</td>
+            </tr>
+        `;
+
+        $('#invoiceItemsModalBody').html(rowsHtml || '<tr><td colspan="6" class="text-center text-muted py-3">No items</td></tr>');
+        $('#invoiceItemsModalFoot').html(footHtml);
+
+        let modal = new bootstrap.Modal(document.getElementById('invoiceItemsModal'));
+        modal.show();
+    });
+
     // Auto load report
     fetchReport();
 });
 </script>
 @endsection
+

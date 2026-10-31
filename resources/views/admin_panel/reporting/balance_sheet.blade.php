@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Balance Sheet')
+
 @section('content')
 <style>
     /* Standardized Sale Report Pattern Styling */
@@ -569,7 +571,12 @@
         });
 
         $(".btnPrintReport").click(function() {
+            document.title = 'Balance Sheet';
             window.print();
+        });
+
+        window.addEventListener('beforeprint', function() {
+            document.title = 'Balance Sheet';
         });
 
         // Load statement on page load

@@ -318,6 +318,9 @@
                 el.innerText = numberToWords(amount) || el.innerText;
             }
         });
+        window.addEventListener('beforeprint', function() {
+            document.title = "Expense Voucher - {{ $voucher->evid }}";
+        });
     </script>
 
 </body>

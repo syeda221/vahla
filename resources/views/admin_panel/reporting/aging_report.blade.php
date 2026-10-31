@@ -1,4 +1,5 @@
 @extends('admin_panel.layout.app')
+@section('title', 'Aging Report')
 @section('content')
 <style>
     .aging-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
@@ -185,6 +186,7 @@ $(document).ready(function() {
         let titleText = (type === 'payable') ? 'Account Payable Aging Report' : 'Account Receivable Aging Report';
         $('#reportTitle').text(titleText);
         $('#printHeaderTitle').text(titleText);
+        document.title = titleText;
 
         $('#loader').show();
         $('#reportContent').hide();
@@ -235,6 +237,11 @@ $(document).ready(function() {
             $('#reportContent').show();
         });
     }
+
+    window.addEventListener('beforeprint', function() {
+        let type = $('#rpt_type').val();
+        document.title = (type === 'payable') ? 'Account Payable Aging Report' : 'Account Receivable Aging Report';
+    });
 
     $('#btnGenerate').click(loadReport);
     loadReport(); // auto-load

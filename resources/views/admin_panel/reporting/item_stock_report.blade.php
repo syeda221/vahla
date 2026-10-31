@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Item Stock Report')
+
 @section('content')
 <style>
     /* ── ERP Item Stock & Movement Ledger System ── */
@@ -249,43 +251,164 @@
 </div>
 
 {{-- ══════════════════════════════════════════════════════════════
-     PRODUCT MOVEMENT HISTORY TIMELINE MODAL
+     PRODUCT MOVEMENT & STOCK AUDIT HISTORY MODAL
 ══════════════════════════════════════════════════════════════ --}}
 <div class="modal fade" id="productHistoryModal" tabindex="-1" aria-labelledby="productHistoryModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius:14px; overflow:hidden;">
             
+            {{-- Modal Header --}}
             <div class="modal-header border-bottom bg-white px-4 py-3">
-                <div>
-                    <h5 class="modal-title fw-bold text-dark mb-0" id="productHistoryModalLabel">
-                        <i class="fas fa-history text-primary me-2"></i>Product Movement Timeline
-                    </h5>
-                    <small class="text-muted" id="historyModalSub">Chronological audit log of all inward, sales, returns &amp; stock adjustments</small>
+                <div class="d-flex align-items-center justify-content-between w-100 me-3 flex-wrap gap-2">
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark mb-0" id="productHistoryModalLabel">
+                            <i class="fas fa-boxes-stacked text-primary me-2"></i>Product Stock Details &amp; History
+                        </h5>
+                        <small class="text-muted" id="historyModalSub">Complete audit breakdown of serial numbers, batches, warehouse distribution &amp; movements timeline</small>
+                    </div>
+                    <div id="modalSummaryBadges" class="d-flex align-items-center gap-2 flex-wrap">
+                        {{-- Populated dynamically --}}
+                    </div>
                 </div>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
 
-            <div class="modal-body p-0" style="max-height:420px; overflow-y:auto; background:#f8fafc;">
-                <table class="table table-hover align-middle mb-0 text-nowrap" style="font-size:.82rem;">
-                    <thead class="bg-white sticky-top">
-                        <tr>
-                            <th class="ps-4">Date &amp; Time</th>
-                            <th>Movement Type</th>
-                            <th>Reference</th>
-                            <th class="text-center">Quantity (Units)</th>
-                            <th>Note / Reason</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyModalBody">
-                        {{-- Dynamically populated --}}
-                    </tbody>
-                </table>
+            {{-- Navigation Tabs --}}
+            <div class="bg-light border-bottom px-4 pt-2">
+                <ul class="nav nav-tabs border-bottom-0" id="historyModalTabs" role="tablist" style="gap:6px;">
+                    <li class="nav-item">
+                        <a class="nav-link active fw-bold py-2 px-3" id="tab-serials-link" data-target="#tab-serials" href="#tab-serials" role="tab" style="border-radius:8px 8px 0 0; font-size:.82rem;">
+                            <i class="fas fa-barcode text-primary me-1"></i> Serial Numbers <span class="badge bg-primary text-white ms-1" id="badgeSerialsCount">0</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-bold py-2 px-3" id="tab-batches-link" data-target="#tab-batches" href="#tab-batches" role="tab" style="border-radius:8px 8px 0 0; font-size:.82rem;">
+                            <i class="fas fa-layer-group text-warning me-1"></i> Batches <span class="badge bg-warning text-dark ms-1" id="badgeBatchesCount">0</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-bold py-2 px-3" id="tab-warehouse-link" data-target="#tab-warehouse" href="#tab-warehouse" role="tab" style="border-radius:8px 8px 0 0; font-size:.82rem;">
+                            <i class="fas fa-warehouse text-info me-1"></i> Warehouse Stock <span class="badge bg-info text-white ms-1" id="badgeWarehouseCount">0</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-bold py-2 px-3" id="tab-movements-link" data-target="#tab-movements" href="#tab-movements" role="tab" style="border-radius:8px 8px 0 0; font-size:.82rem;">
+                            <i class="fas fa-history text-secondary me-1"></i> Movement Timeline <span class="badge bg-secondary text-white ms-1" id="badgeMovementsCount">0</span>
+                        </a>
+                    </li>
+                </ul>
             </div>
 
-            <div class="modal-footer bg-white py-2 px-4 border-top">
-                <button type="button" class="btn btn-secondary btn-sm px-4" data-dismiss="modal">Close</button>
+            {{-- Modal Body with Tab Contents --}}
+            <div class="modal-body p-0" style="max-height:500px; overflow-y:auto; background:#f8fafc;">
+                <div class="tab-content" id="historyModalTabContent">
+                    
+                    {{-- TAB 1: SERIAL NUMBERS --}}
+                    <div class="tab-pane fade show active" id="tab-serials" role="tabpanel">
+                        <div class="p-3 bg-white border-bottom d-flex align-items-center justify-content-between gap-2">
+                            <div class="input-group input-group-sm w-50">
+                                <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                                <input type="text" id="searchSerialsInput" class="form-control border-start-0" placeholder="Filter Serial Number, Batch or Warehouse...">
+                            </div>
+                            <span class="text-muted small" id="serialsCountHelper"></span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 text-nowrap" style="font-size:.82rem;">
+                                <thead class="bg-white sticky-top shadow-sm">
+                                    <tr>
+                                        <th class="ps-4" style="width:40px;">#</th>
+                                        <th>Serial Number</th>
+                                        <th>Batch No</th>
+                                        <th>Expiry Date</th>
+                                        <th>Warehouse</th>
+                                        <th>Cost Price</th>
+                                        <th class="text-center">Status</th>
+                                        <th>Date Registered</th>
+                                        <th>Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="serialsTableBody">
+                                    {{-- Populated via AJAX --}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- TAB 2: BATCHES --}}
+                    <div class="tab-pane fade" id="tab-batches" role="tabpanel" style="display:none;">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 text-nowrap" style="font-size:.82rem;">
+                                <thead class="bg-white sticky-top shadow-sm">
+                                    <tr>
+                                        <th class="ps-4" style="width:40px;">#</th>
+                                        <th>Batch No</th>
+                                        <th>Warehouse</th>
+                                        <th>MFG Date</th>
+                                        <th>Expiry Date</th>
+                                        <th class="text-center">Current Qty</th>
+                                        <th class="text-end">Cost Price (Rs)</th>
+                                        <th class="text-center">Status</th>
+                                        <th>Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="batchesTableBody">
+                                    {{-- Populated via AJAX --}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- TAB 3: WAREHOUSE STOCK --}}
+                    <div class="tab-pane fade" id="tab-warehouse" role="tabpanel" style="display:none;">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 text-nowrap" style="font-size:.82rem;">
+                                <thead class="bg-white sticky-top shadow-sm">
+                                    <tr>
+                                        <th class="ps-4" style="width:40px;">#</th>
+                                        <th>Warehouse Name</th>
+                                        <th class="text-center">Cartons / Boxes Qty</th>
+                                        <th class="text-center fw-bold text-primary">Total Stock / Pieces</th>
+                                        <th>Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="warehouseTableBody">
+                                    {{-- Populated via AJAX --}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {{-- TAB 4: MOVEMENT TIMELINE --}}
+                    <div class="tab-pane fade" id="tab-movements" role="tabpanel" style="display:none;">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 text-nowrap" style="font-size:.82rem;">
+                                <thead class="bg-white sticky-top shadow-sm">
+                                    <tr>
+                                        <th class="ps-4">Date &amp; Time</th>
+                                        <th>Movement Type</th>
+                                        <th>Reference</th>
+                                        <th class="text-center">Quantity (Units)</th>
+                                        <th>Note / Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="historyModalBody">
+                                    {{-- Populated via AJAX --}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            {{-- Modal Footer --}}
+            <div class="modal-footer bg-white py-2 px-4 border-top d-flex align-items-center justify-content-between">
+                <div class="text-muted small" id="modalFooterInfo">
+                    <i class="fas fa-info-circle me-1 text-primary"></i> Click any tab to switch between Serials, Batches, Warehouse Stock and Timeline.
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold" data-dismiss="modal">Close</button>
             </div>
 
         </div>
@@ -302,6 +425,38 @@
 $(document).ready(function() {
 
     let currentReportData = [];
+
+    // Custom Tab Switcher inside Modal
+    $(document).on('click', '#historyModalTabs a', function (e) {
+        e.preventDefault();
+        $('#historyModalTabs a').removeClass('active');
+        $(this).addClass('active');
+
+        let targetId = $(this).attr('href') || $(this).data('target');
+        $('#historyModalTabContent .tab-pane').removeClass('show active').hide();
+        $(targetId).addClass('show active').show();
+    });
+
+    // Real-time Serial Search Filter
+    $(document).on('keyup', '#searchSerialsInput', function () {
+        let query = $(this).val().toLowerCase().trim();
+        let rows = $('#serialsTableBody tr');
+        let matched = 0;
+        rows.each(function () {
+            let text = $(this).text().toLowerCase();
+            if (text.indexOf(query) > -1) {
+                $(this).show();
+                matched++;
+            } else {
+                $(this).hide();
+            }
+        });
+        if (query.length > 0) {
+            $('#serialsCountHelper').text(`Showing ${matched} of ${rows.length} serials`);
+        } else {
+            $('#serialsCountHelper').text('');
+        }
+    });
 
     // Select2 Product Search
     $('#product_id').select2({
@@ -499,7 +654,7 @@ $(document).ready(function() {
             totalValue += parseFloat(row.stock_value) || 0;
 
             let historyBtn = `
-                <button type="button" class="btn btn-outline-primary btn-sm view-history-btn" data-id="${row.id}" data-name="${row.item_name}" style="padding:2px 7px; font-size:.75rem;">
+                <button type="button" class="btn btn-outline-primary btn-sm view-history-btn" data-id="${row.id}" data-name="${row.item_name}" style="padding:2px 7px; font-size:.75rem;" title="View Serial, Batch & Movement History">
                     <i class="fas fa-history"></i>
                 </button>
             `;
@@ -577,36 +732,182 @@ $(document).ready(function() {
         }
     }
 
-    // View Product History Timeline Modal
+    // View Product History & Audit Breakdown Modal
     $(document).on('click', '.view-history-btn', function () {
         let productId = $(this).data('id');
         let productName = $(this).data('name');
 
-        $('#productHistoryModalLabel').html('<i class="fas fa-history text-primary me-2"></i>Movement Timeline: ' + productName);
-        let tbody = $('#historyModalBody');
-        tbody.html('<tr><td colspan="5" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Loading movement history...</td></tr>');
+        $('#productHistoryModalLabel').html('<i class="fas fa-boxes-stacked text-primary me-2"></i>' + productName);
+        $('#searchSerialsInput').val('');
+        $('#serialsCountHelper').text('');
+
+        // Reset tab view
+        $('#historyModalTabs a').removeClass('active');
+        $('#tab-serials-link').addClass('active');
+        $('#historyModalTabContent .tab-pane').removeClass('show active').hide();
+        $('#tab-serials').addClass('show active').show();
+
+        // Loading spinners
+        $('#serialsTableBody').html('<tr><td colspan="8" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Loading serial numbers...</td></tr>');
+        $('#batchesTableBody').html('<tr><td colspan="9" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Loading batch details...</td></tr>');
+        $('#warehouseTableBody').html('<tr><td colspan="5" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Loading warehouse stock...</td></tr>');
+        $('#historyModalBody').html('<tr><td colspan="5" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Loading movement timeline...</td></tr>');
+
         $('#productHistoryModal').modal('show');
 
         $.ajax({
             url: "/report/item-stock-history/" + productId,
             type: "GET",
             success: function (res) {
-                tbody.empty();
-                if (res.success && res.history.length > 0) {
-                    $.each(res.history, function (i, m) {
-                        let row = `
-                        <tr>
-                            <td class="ps-4 text-muted" style="font-size:.78rem;">${m.date}</td>
-                            <td><span class="badge bg-${m.type_badge} px-2 py-1">${m.type}</span></td>
-                            <td><code class="text-dark">${m.ref_type}</code></td>
-                            <td class="text-center fw-bold fs-6">${m.qty > 0 ? '+' : ''}${m.qty}</td>
-                            <td style="font-size:.78rem; color:#475569;">${m.note}</td>
-                        </tr>`;
-                        tbody.append(row);
+                if (!res.success) {
+                    alert('Could not fetch product history.');
+                    return;
+                }
+
+                let serialsCount   = res.serials ? res.serials.length : 0;
+                let batchesCount   = res.batches ? res.batches.length : 0;
+                let warehouseCount = res.warehouse_stocks ? res.warehouse_stocks.length : 0;
+                let movementsCount = res.history ? res.history.length : 0;
+
+                // Badges counts
+                $('#badgeSerialsCount').text(serialsCount);
+                $('#badgeBatchesCount').text(batchesCount);
+                $('#badgeWarehouseCount').text(warehouseCount);
+                $('#badgeMovementsCount').text(movementsCount);
+
+                let expiryList = [];
+                if (res.batches && res.batches.length > 0) {
+                    $.each(res.batches, function(i, b) {
+                        if (b.expiry_date && b.expiry_date !== '-') {
+                            expiryList.push(b.expiry_date);
+                        }
+                    });
+                }
+                let expiryBadgeHtml = '';
+                if (expiryList.length > 0) {
+                    expiryBadgeHtml = `<span class="badge bg-warning text-dark border px-2 py-1"><i class="fas fa-calendar-alt me-1"></i>Expiry: ${expiryList[0]}</span>`;
+                }
+
+                $('#modalSummaryBadges').html(`
+                    <span class="badge bg-light text-dark border px-2 py-1"><i class="fas fa-barcode text-primary me-1"></i>Code: ${res.item_code || '-'}</span>
+                    <span class="badge bg-light text-dark border px-2 py-1"><i class="fas fa-layer-group text-success me-1"></i>Category: ${res.category_name || '-'}</span>
+                    ${expiryBadgeHtml}
+                    <span class="badge bg-primary text-white px-2 py-1"><i class="fas fa-cubes me-1"></i>Total Stock: ${(res.total_stock || 0).toLocaleString()} ${res.unit_name || ''}</span>
+                `);
+
+                // 1. Serials
+                let sTbody = $('#serialsTableBody');
+                sTbody.empty();
+                if (serialsCount > 0) {
+                    $.each(res.serials, function (i, s) {
+                        let stBadge = '<span class="badge bg-success px-2 py-1"><i class="fas fa-check-circle me-1"></i> Available</span>';
+                        if (s.status === 'sold') {
+                            stBadge = '<span class="badge bg-danger px-2 py-1"><i class="fas fa-shopping-cart me-1"></i> Sold</span>';
+                        } else if (s.status === 'returned') {
+                            stBadge = '<span class="badge bg-warning text-dark px-2 py-1"><i class="fas fa-undo me-1"></i> Returned</span>';
+                        } else if (s.status !== 'available') {
+                            stBadge = `<span class="badge bg-secondary px-2 py-1">${s.status.toUpperCase()}</span>`;
+                        }
+
+                        sTbody.append(`
+                            <tr>
+                                <td class="ps-4 text-muted" style="font-size:.75rem;">${i + 1}</td>
+                                <td><code class="fw-bold text-primary px-2 py-1 bg-light border rounded" style="font-size:.84rem;">${s.serial_number}</code></td>
+                                <td><span class="badge bg-light text-dark border">${s.batch_no}</span></td>
+                                <td><span class="badge bg-warning text-dark border">${s.expiry_date || '-'}</span></td>
+                                <td class="fw-semibold text-secondary">${s.warehouse_name}</td>
+                                <td class="fw-bold text-dark">Rs ${s.cost_price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                                <td class="text-center">${stBadge}</td>
+                                <td class="text-muted" style="font-size:.78rem;">${s.created_at}</td>
+                                <td class="text-muted small">${s.remarks}</td>
+                            </tr>
+                        `);
                     });
                 } else {
-                    tbody.html('<tr><td colspan="5" class="text-center py-4 text-muted">No stock movements recorded for this item yet.</td></tr>');
+                    sTbody.html('<tr><td colspan="9" class="text-center py-4 text-muted"><i class="fas fa-info-circle me-1"></i> No serial numbers registered for this item.</td></tr>');
                 }
+
+                // 2. Batches
+                let bTbody = $('#batchesTableBody');
+                bTbody.empty();
+                if (batchesCount > 0) {
+                    $.each(res.batches, function (i, b) {
+                        let bBadge = '<span class="badge bg-success px-2 py-1"><i class="fas fa-check-circle me-1"></i> Active</span>';
+                        if (b.status === 'expired') {
+                            bBadge = '<span class="badge bg-danger px-2 py-1"><i class="fas fa-times-circle me-1"></i> Expired</span>';
+                        } else if (b.status === 'near_expiry') {
+                            bBadge = '<span class="badge bg-warning text-dark px-2 py-1"><i class="fas fa-exclamation-triangle me-1"></i> Near Expiry</span>';
+                        }
+
+                        bTbody.append(`
+                            <tr>
+                                <td class="ps-4 text-muted" style="font-size:.75rem;">${i + 1}</td>
+                                <td><code class="fw-bold text-dark px-2 py-1 bg-light border rounded" style="font-size:.84rem;">${b.batch_no}</code></td>
+                                <td class="fw-semibold text-secondary">${b.warehouse_name}</td>
+                                <td class="text-muted" style="font-size:.78rem;">${b.mfg_date}</td>
+                                <td class="fw-semibold text-dark" style="font-size:.78rem;">${b.expiry_date}</td>
+                                <td class="text-center fw-bold text-primary fs-6">${b.qty}</td>
+                                <td class="text-end fw-bold text-dark">Rs ${b.cost_price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                                <td class="text-center">${bBadge}</td>
+                                <td class="text-muted small">${b.remarks}</td>
+                            </tr>
+                        `);
+                    });
+                } else {
+                    bTbody.html('<tr><td colspan="9" class="text-center py-4 text-muted"><i class="fas fa-info-circle me-1"></i> No batch records found for this item.</td></tr>');
+                }
+
+                // 3. Warehouse Stock
+                let wTbody = $('#warehouseTableBody');
+                wTbody.empty();
+                if (warehouseCount > 0) {
+                    $.each(res.warehouse_stocks, function (i, w) {
+                        wTbody.append(`
+                            <tr>
+                                <td class="ps-4 text-muted" style="font-size:.75rem;">${i + 1}</td>
+                                <td class="fw-bold text-dark"><i class="fas fa-warehouse text-primary me-2"></i>${w.warehouse_name}</td>
+                                <td class="text-center fw-semibold text-secondary">${w.boxes_quantity}</td>
+                                <td class="text-center fw-bold text-primary fs-6">${w.formatted_stock}</td>
+                                <td class="text-muted small">${w.remarks}</td>
+                            </tr>
+                        `);
+                    });
+                } else {
+                    wTbody.html('<tr><td colspan="5" class="text-center py-4 text-muted"><i class="fas fa-info-circle me-1"></i> No warehouse breakdown found for this item.</td></tr>');
+                }
+
+                // 4. Movement Timeline
+                let mTbody = $('#historyModalBody');
+                mTbody.empty();
+                if (movementsCount > 0) {
+                    $.each(res.history, function (i, m) {
+                        mTbody.append(`
+                            <tr>
+                                <td class="ps-4 text-muted" style="font-size:.78rem;">${m.date}</td>
+                                <td><span class="badge bg-${m.type_badge} px-2 py-1">${m.type}</span></td>
+                                <td><code class="text-dark bg-light px-2 py-1 border rounded">${m.ref_type}</code></td>
+                                <td class="text-center fw-bold fs-6">${m.qty > 0 ? '+' : ''}${m.qty}</td>
+                                <td style="font-size:.78rem; color:#475569;">${m.note}</td>
+                            </tr>
+                        `);
+                    });
+                } else {
+                    mTbody.html('<tr><td colspan="5" class="text-center py-4 text-muted"><i class="fas fa-info-circle me-1"></i> No stock movements recorded for this item yet.</td></tr>');
+                }
+
+                // Auto-select tab with data
+                if (serialsCount > 0) {
+                    $('#tab-serials-link').trigger('click');
+                } else if (batchesCount > 0) {
+                    $('#tab-batches-link').trigger('click');
+                } else if (warehouseCount > 0) {
+                    $('#tab-warehouse-link').trigger('click');
+                } else {
+                    $('#tab-movements-link').trigger('click');
+                }
+            },
+            error: function () {
+                alert('Error loading history details.');
             }
         });
     });
@@ -621,6 +922,10 @@ $(document).ready(function() {
         let csv = 'Item Code,Item Name,Category,Unit,Current Stock,Cartons,Avg Price (Rs),Stock Value (Rs)\n';
         $.each(currentReportData, function (i, r) {
             csv += `"${r.item_code || ''}","${r.item_name}","${r.category_name}","${r.unit_name}","${r.balance}","${r.cartons}","${r.average_price}","${r.stock_value}"\n`;
+        });
+
+        window.addEventListener('beforeprint', function() {
+            document.title = 'Item Stock Report';
         });
 
         let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

@@ -4,28 +4,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Delivery Challan - {{ $sale->id }}</title>
+@php
+    $rawCustomerName = $sale->customer_relation?->customer_name ?? ($sale->walkin_name ?? 'Walking Customer');
+    $cleanCustomerName = trim(preg_replace('/[\/\\:*?"<>|]/', ' ', $rawCustomerName));
+    $cleanCustomerName = preg_replace('/\s+/', ' ', $cleanCustomerName);
+    if (empty($cleanCustomerName)) {
+        $cleanCustomerName = 'Customer';
+    }
+    $pageTitle = $cleanCustomerName . ' - Delivery Challan - ' . $sale->invoice_no;
+@endphp
+    <title>{{ $pageTitle }}</title>
     <!-- Use Bootstrap for grid and utilities -->
-   <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
     <style>
-        @font-face {
-            font-family: 'Jameel Noori Nastaleeq';
-            src: url('https://cdn.jsdelivr.net/gh/tariq-abdullah/urdu-web-font-CDN/JameelNooriNastaleeq.woff') format('woff');
-            font-display: swap;
-        }
         :root {
-            --primary-color: #2c3e50;
-            --accent-color: #3498db;
-            --border-color: #bdc3c7;
-            --text-color: #2c3e50;
+            --primary-color: #000;
+            --accent-color: #000;
+            --border-color: #000;
+            --text-color: #000;
         }
 
         body {
             background-color: #f8f9fa;
-            color: var(--text-color);
+            color: #000;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             font-size: 12px;
-            /* Reduced base font size */
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* Pure black override for all text elements */
+        .text-primary, .text-danger, .text-success, .text-warning, .text-info, .text-secondary, .text-muted, .text-dark {
+            color: #000 !important;
         }
 
         .invoice-container {
@@ -33,59 +43,60 @@
             margin: 10px auto;
             background: #fff;
             padding: 20px;
-            /* Reduced padding */
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             min-height: 297mm;
             position: relative;
+            color: #000;
         }
 
         .company-info {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
+            color: #000;
         }
 
         .company-name {
-            font-size: 22px;
-            /* Reduced */
-            font-weight: bold;
-            color: var(--primary-color);
+            font-size: 24px;
+            font-weight: 800;
+            color: #000;
             margin-bottom: 2px;
+            letter-spacing: 0.5px;
         }
 
         .invoice-title {
             text-align: center;
             font-size: 18px;
-            /* Reduced */
-            font-weight: bold;
+            font-weight: 800;
             text-transform: uppercase;
-            color: var(--accent-color);
-            margin: 15px 0 10px 0;
-            letter-spacing: 2px;
+            color: #000;
+            margin: 12px 0 16px 0;
+            letter-spacing: 1.5px;
         }
 
         .info-box {
-            border: 1px solid var(--border-color);
-            padding: 8px;
-            /* Reduced padding */
+            border: 1px solid #cbd5e1;
+            padding: 10px 14px;
             height: 100%;
-            border-radius: 4px;
+            border-radius: 6px;
             background-color: #fff;
+            color: #000;
         }
 
         .info-box-header {
-            font-weight: bold;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 4px;
-            padding-bottom: 2px;
-            color: var(--primary-color);
+            font-weight: 700;
+            border-bottom: 1px solid #cbd5e1;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            color: #000;
             font-size: 11px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .info-label {
             font-weight: 600;
-            color: #555;
-            min-width: 70px;
+            color: #000;
+            min-width: 65px;
             display: inline-block;
         }
 
@@ -96,25 +107,26 @@
         }
 
         .invoice-table th {
-            background-color: var(--primary-color);
-            color: #fff;
-            text-transform: uppercase;
+            background-color: #fff;
+            color: #000;
+            font-weight: 700;
             font-size: 11px;
-            padding: 6px 4px;
-            /* Reduced padding */
-            border: 1px solid var(--primary-color);
+            padding: 6px 6px;
+            border: 1px solid #000;
+            text-align: center;
+            vertical-align: middle;
         }
 
         .invoice-table td {
-            border: 1px solid var(--border-color);
-            padding: 4px 6px;
-            /* Reduced padding */
+            border: 1px solid #000;
+            padding: 6px 8px;
             vertical-align: middle;
-            font-size: 12px;
+            font-size: 11px;
+            color: #000;
         }
 
         .invoice-table tbody tr:nth-of-type(even) {
-            background-color: #f8f9fa;
+            background-color: #fff;
         }
 
         .text-end {
@@ -127,41 +139,24 @@
 
         .footer-section {
             margin-top: 20px;
-            border-top: 2px solid var(--primary-color);
+            border-top: 2px solid #000;
             padding-top: 10px;
         }
 
         .terms-box {
             font-size: 11px;
-            color: #666;
+            color: #000;
         }
 
         .terms-box ul {
             padding-left: 20px;
             margin-bottom: 0;
+            color: #000;
         }
 
         .terms-box li {
             margin-bottom: 2px;
-        }
-
-        .totals-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-        }
-
-        .totals-table td {
-            padding: 4px 8px;
-            /* Reduced padding */
-            border-bottom: 1px solid #eee;
-        }
-
-        .totals-table .total-row td {
-            border-top: 2px solid var(--primary-color);
-            font-weight: bold;
-            font-size: 14px;
-            color: var(--primary-color);
+            color: #000;
         }
 
         .signature-area {
@@ -170,6 +165,7 @@
             width: 180px;
             text-align: center;
             padding-top: 5px;
+            color: #000;
         }
 
         .print-btn-container {
@@ -180,10 +176,17 @@
         }
 
         @media print {
-            body {
+            body, body * {
                 background: #fff;
                 margin: 0;
                 padding: 0;
+                color: #000 !important;
+                -webkit-text-fill-color: #000 !important;
+            }
+
+            .text-primary, .text-danger, .text-success, .text-warning, .text-info, .text-secondary, .text-muted, .text-dark, .info-label, .invoice-title, .company-name, .terms-box {
+                color: #000 !important;
+                -webkit-text-fill-color: #000 !important;
             }
 
             .invoice-container {
@@ -237,6 +240,7 @@
         <div class="company-info">
             <div class="company-name">{{ \App\Models\Setting::get('company_name', 'prowave technogies') }}</div>
             <div style="font-size: 12px;">{{ \App\Models\Setting::get('company_address', 'Hyderabad') }}</div>
+            <p style="margin-bottom:0;">{{ \App\Models\Setting::get('company_phone', '0327-9226901') }}</p>
         </div>
 
         <div class="invoice-title">Delivery Challan</div>
@@ -244,40 +248,40 @@
         <!-- Info Grid -->
         <div class="row g-2 mb-2">
             <!-- Left Box: Customer Info -->
-            <div class="col-4">
+            <div class="col-6">
                 <div class="info-box">
                     <div class="info-box-header">Deliver To</div>
-                    <div
-                        style="font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        {{ $sale->walkin_name ?? ($sale->customer_relation->customer_name ?? 'Walking Customer') }}
+                    @if($sale->customer_relation?->customer_id)
+                        <div style="font-size: 11px; color: #555;">
+                            Code: <strong>{{ $sale->customer_relation->customer_id }}</strong>
+                        </div>
+                    @endif
+                    <div>
+                        <span class="info-label">Name:</span>
+                        <strong>{{ $sale->walkin_name ?? ($sale->customer_relation->customer_name ?? 'Walking Customer') }}</strong>
                     </div>
-                    <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px;">
-                        {{ $sale->customer_relation->address ?? '' }}</div>
-                    <div class="text-muted small" style="font-size: 11px;">
-                        Mob: {{ $sale->customer_relation->mobile ?? '' }}
+                    <div>
+                        <span class="info-label">Address:</span>
+                        <span style="font-size:11px;">{{ $sale->customer_relation->address ?? '—' }}</span>
                     </div>
-                </div>
-            </div>
-
-            <!-- Middle Box: Details -->
-            <div class="col-4">
-                <div class="info-box">
-                    <div class="info-box-header">Details</div>
-                    <div><span class="info-label">Type:</span> {{ $sale->sale_status ?? 'Delivery' }}</div>
+                    <div>
+                        <span class="info-label">Mob:</span>
+                        <span style="font-size:11px;">{{ $sale->customer_relation->mobile ?? '—' }}</span>
+                    </div>
                 </div>
             </div>
 
             <!-- Right Box: Invoice Specifics -->
-            <div class="col-4">
+            <div class="col-6">
                 <div class="info-box">
                     <div class="info-box-header">Reference</div>
                     <div><span class="info-label">DC #:</span> <strong>{{ $sale->invoice_no }}</strong></div>
-                    <div><span class="info-label">Date:</span> {{ $sale->created_at->format('d/m/Y') }}</div>
+                    <div><span class="info-label">Date:</span> {{ $sale->created_at ? $sale->created_at->format('d/m/Y') : date('d/m/Y') }}</div>
                     @if($sale->reference)
-                    <div style="margin-top:4px; padding-top:4px; border-top:1px dashed #ddd;">
-                        <span class="info-label" style="display:block; margin-bottom:2px;">Remarks:</span>
-                        <span style="font-size:11px; color:#333;">{{ $sale->reference }}</span>
-                    </div>
+                        <div style="margin-top:4px; padding-top:4px; border-top:1px dashed #ddd;">
+                            <span class="info-label">Remarks:</span>
+                            <span style="font-size:11px; color:#333;">{{ $sale->reference }}</span>
+                        </div>
                     @endif
                 </div>
             </div>
@@ -299,120 +303,110 @@
         <table class="invoice-table">
             <thead>
                 <tr>
-                    <th class="text-start" style="width: 55%">Description</th>
-                    <th class="text-center" style="width: 20%">Shipped</th>
-                    <th class="text-center" style="width: 25%">UOM</th>
+                    <th class="text-center" style="width: 5%">S.No</th>
+                    <th class="text-start" style="width: 45%">Description of Items</th>
+                    <th class="text-center" style="width: 10%">Qty</th>
+                    <th class="text-center" style="width: 20%">MODEL</th>
+                    <th class="text-center" style="width: 20%">MAKE & ORIGIN</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($saleItems as $item)
                     @php
-                        // Get dimensions from database
-                        $height = $item['height'] ?? 0;
-                        $width = $item['width'] ?? 0;
-
-                        // Calculate m² per piece and per box
-                        $m2PerPiece = $height > 0 && $width > 0 ? ($height * $width) / 10000 : 0;
-                        $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
-                        if ($piecesPerBox <= 0) $piecesPerBox = 1;
-                        $m2PerBox = $m2PerPiece * $piecesPerBox;
-
-                        // Calculate boxes and loose pieces
-                        $totalPieces = (int) $item['total_pieces'];
-                        $boxes = floor($totalPieces / $piecesPerBox);
-                        $loosePieces = $totalPieces % $piecesPerBox;
-
-                        // Total M2 for line
-                        $totalM2Line = $m2PerPiece * $totalPieces;
-                        $sizeMode = $item['size_mode'] ?? 'std';
+                        $vName = $item['variant_name'] ?? '';
+                        $vSize = (!empty($item['size_val']) && $item['size_val'] !== '-') ? $item['size_val'] : '';
+                        $vColor = (!empty($item['color_val']) && $item['color_val'] !== '-') ? $item['color_val'] : '';
                         
-                        $soldInPieces = false;
-                        if (in_array($sizeMode, ['by_cartons', 'by_bandal'])) {
-                            $dbPrice = (float)($item['price'] ?? 0);
-                            $grossIfPieces = $totalPieces * $dbPrice;
-                            $grossIfCartons = (float)($item['qty_box'] ?? 0) * $dbPrice;
-                            $actualGross = (float)($item['total'] ?? 0) + (float)($item['discount_amount'] ?? 0);
-                            
-                            if (abs($actualGross - $grossIfPieces) < 0.1 && abs($actualGross - $grossIfCartons) >= 0.1) {
-                                $soldInPieces = true;
+                        $vExtra = [];
+                        if ($vColor) $vExtra[] = $vColor;
+                        $vExtraStr = count($vExtra) > 0 ? ' (' . implode(', ', $vExtra) . ')' : '';
+
+                        $productTitle = $item['item_name'];
+                        if ($vName && strtolower(trim($vName)) !== strtolower(trim($productTitle))) {
+                            $productTitle .= ' — ' . $vName;
+                        }
+                        $productTitle .= $vExtraStr;
+
+                        $dcBatchNo = $item['batch_no'] ?? null;
+                        $dcSerialsRaw = $item['serials'] ?? null;
+                        $dcSerialsList = [];
+                        if (!empty($dcSerialsRaw)) {
+                            if (is_array($dcSerialsRaw)) {
+                                $dcSerialsList = $dcSerialsRaw;
+                            } elseif (is_string($dcSerialsRaw)) {
+                                $decodedDc = json_decode($dcSerialsRaw, true);
+                                if (is_array($decodedDc)) {
+                                    $dcSerialsList = $decodedDc;
+                                } else {
+                                    $dcSerialsList = array_filter(array_map('trim', explode(',', $dcSerialsRaw)));
+                                }
                             }
                         }
+
+                        $subDescriptions = [];
+                        $rawModel = $item['model'] ?? ($item['product']['model'] ?? null);
+                        if (!empty($rawModel)) {
+                            $decodedModel = json_decode($rawModel, true);
+                            if (is_array($decodedModel)) {
+                                $subDescriptions = $decodedModel;
+                            } else {
+                                $subDescriptions = array_filter(array_map('trim', explode("\n", $rawModel)));
+                            }
+                        }
+
+                        // Model Display value for MODEL column
+                        $modelDisplay = '';
+                        if ($vSize) {
+                            $modelDisplay = $vSize;
+                        } elseif (!empty($subDescriptions) && count($subDescriptions) > 0) {
+                            $modelDisplay = implode(', ', $subDescriptions);
+                        }
+
+                        // Make & Origin value for MAKE & ORIGIN column
+                        $brandName = $item['brand'] ?? ($item['product']['brand']['name'] ?? '');
+                        $originName = $item['origin'] ?? ($item['product']['origin'] ?? ($item['product']['country'] ?? ''));
+                        $makeOriginDisplay = $brandName;
+                        if (!empty($originName) && !str_contains(strtolower($brandName), strtolower($originName))) {
+                            $makeOriginDisplay .= ($makeOriginDisplay ? ', ' : '') . $originName;
+                        }
+
+                        $totalPieces = (int) ($item['total_pieces'] ?? $item['qty'] ?? 0);
+                        $qtyVal = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
+                        $sizeMode = $item['size_mode'] ?? 'std';
                     @endphp
                     <tr>
+                        <td class="text-center">{{ $loop->iteration }}</td>
+
                         <td class="text-start">
-                            <div style="font-weight: bold; font-size: 12px; margin-bottom: 2px;">
-                                {{ $item['item_name'] }}
-                                @if (!empty($item['item_code']))
-                                    <span class="text-muted fw-normal ms-1"
-                                        style="font-size: 11px;">({{ $item['item_code'] }})</span>
-                                @endif
-                            </div>
+                            <div style="font-weight: 700; color: #000; font-size: 11px;">{{ $productTitle }}</div>
 
-                            <div style="font-size: 11px; color: #555; line-height: 1.2;">
-                                @if (!empty($item['color']))
-                                    @php
-                                        $validColors = array_filter($item['color'], function($c) { return $c !== '{' && trim($c) !== ''; });
-                                    @endphp
-                                    @if(count($validColors) > 0)
-                                        <span class="badge bg-light text-dark border p-1"
-                                            style="font-size: 9px; line-height:1;">
-                                            @foreach ($validColors as $clr)
-                                                {{ $clr }}
-                                            @endforeach
-                                        </span>
-                                    @endif
-                                @endif
+                            @if(!empty($dcSerialsList) && count($dcSerialsList) > 0)
+                                <div style="font-size: 11px; color: #000; margin-top: 2px; font-weight: 800;">
+                                    SN #: {{ implode(', ', $dcSerialsList) }}
+                                </div>
+                            @endif
 
-                                @if ($sizeMode == 'by_size')
-                                    <span class='d-inline-block ms-1'>
-                                        @if ($height > 0 && $width > 0)
-                                            Dims: {{ number_format($width, 0) }}x{{ number_format($height, 0) }}
+                            @if(!empty($subDescriptions) && count($subDescriptions) > 0)
+                                <div style="font-size: 10px; color: #1e293b; margin-top: 2px; padding-left: 2px;">
+                                    @foreach($subDescriptions as $sd)
+                                        @if(trim($sd))
+                                            <div style="line-height: 1.4;"><span style="color: #000; margin-right: 4px; font-weight: bold;">•</span>{{ trim($sd) }}</div>
                                         @endif
-                                    </span>
-                                @endif
-
-                                <span class="d-inline-block ms-1">
-                                    PACKTEST: {{ $piecesPerBox }} pcs | {{ number_format($m2PerBox, 4) }} m²
-                                </span>
-                            </div>
+                                    @endforeach
+                                </div>
+                            @endif
                         </td>
 
-                        <td class="text-center" style="vertical-align: middle;">
-                            <div style="font-weight: bold; color: #2c3e50;">
-                                @if ($sizeMode == 'by_pieces' || $soldInPieces)
-                                    {{ $totalPieces }} Pcs
-                                @else
-                                    @if ($boxes > 0 && $loosePieces > 0)
-                                        {{ $boxes }} {{ $sizeMode === 'by_bandal' ? 'Bundal' : (in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Carton' : 'Box') }} +
-                                        {{ $loosePieces }} Pc
-                                    @elseif ($boxes > 0)
-                                        {{ $boxes }} {{ $sizeMode === 'by_bandal' ? 'Bundal' : (in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Carton' : 'Box') }}
-                                    @else
-                                        {{ $loosePieces }} Pcs
-                                    @endif
-                                @endif
-                            </div>
-                            <small class="text-muted" style="font-size: 10px;">({{ $totalPieces }} pcs)</small>
+                        <td class="text-center fw-bold">
+                            {{ $qtyVal == (int)$qtyVal ? (int)$qtyVal : number_format($qtyVal, 2) }}
                         </td>
 
-                        <td class="text-center" style="vertical-align: middle;">
-                            @if ($soldInPieces)
-                            <span class="fw-bold">
-                                Pieces
-                            </span>
-                            @elseif ($sizeMode == 'by_pieces')
-                            <span class="fw-bold">
-                            Pieces
-                        </span> 
-                            @elseif (in_array($sizeMode, ['by_cartons', 'by_bandal']))
-                            <span class="fw-bold">
-                                {{ $sizeMode === 'by_bandal' ? 'Bundals' : 'Cartons' }}
-                            </span> 
-                            @elseif ($sizeMode == 'by_size')
-                            <span class="fw-bold">
-                                    {{ number_format($totalM2Line, 4) }}
-                                </span> m²
-                                @endif
+                        <td class="text-center fw-bold">
+                            {{ $modelDisplay ?: '-' }}
+                        </td>
+
+                        <td class="text-center fw-bold">
+                            {{ $makeOriginDisplay ?: '-' }}
                         </td>
                     </tr>
                 @endforeach
@@ -420,25 +414,25 @@
         </table>
 
         <!-- Footer -->
-        <div class="row mt-2">
+        <div class="row mt-3">
             <div class="col-7">
                 <div class="terms-box pt-2">
                     <p class="fw-bold mb-1">Terms & Conditions:</p>
-                    <ul style="font-size: 13px; font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', 'Jameel Noori Nastaleeq', serif; line-height: 1.5; padding-inline-start: 20px; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased;">
+                    <ul style="font-size: 10px;">
                         @php
                             $dcTerms = \App\Models\Setting::get('invoice_terms', "Please check items upon delivery.\nThis is a Delivery Challan, not a final invoice.\nSign and stamp to confirm receipt of goods in good condition.");
                             $termLines = explode("\n", $dcTerms);
                         @endphp
                         @foreach($termLines as $line)
                             @if(trim($line))
-                                <li><span dir="auto">{{ trim($line) }}</span></li>
+                                <li>{{ trim($line) }}</li>
                             @endif
                         @endforeach
                     </ul>
                 </div>
 
                 <div class="mt-4 pt-2">
-                    <div class="d-flex justify-content-between" style="width: 700px;">
+                    <div class="d-flex justify-content-between" style="max-width: 600px;">
                         <div>
                             <div class="signature-area">
                                 Authorized Signature
@@ -451,7 +445,7 @@
                         </div>
                     </div>
 
-                    <div class="small text-muted mt-1" style="font-size: 10px;">
+                    <div class="small text-muted mt-2" style="font-size: 10px;">
                         Printed on: {{ date('d/m/Y h:i A') }}
                     </div>
                 </div>
@@ -465,6 +459,9 @@
     </div>
 
     <script>
+        window.addEventListener('beforeprint', function() {
+            document.title = "{{ addslashes($pageTitle) }}";
+        });
         function handleGoBack() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('from') === 'pos' || (document.referrer && document.referrer.indexOf('/pos') !== -1)) {

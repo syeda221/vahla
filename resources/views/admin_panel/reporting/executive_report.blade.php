@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Executive Summary Report')
+
 @section('content')
 <style>
     /* Standardized Sale Report Pattern Styling */
@@ -430,7 +432,13 @@ function fetchData() {
 
 $(document).ready(function() {
     $('.btnFetchTrigger').click(fetchData);
-    $('.btnPrintReport').click(() => window.print());
+    $('.btnPrintReport').click(() => {
+        document.title = 'Executive Summary Report';
+        window.print();
+    });
+    window.addEventListener('beforeprint', function() {
+        document.title = 'Executive Summary Report';
+    });
     fetchData();
 });
 </script>

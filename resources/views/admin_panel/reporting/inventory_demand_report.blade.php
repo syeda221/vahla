@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Inventory Demand Report')
+
 @section('content')
 <style>
     :root {
@@ -579,7 +581,7 @@
                 <button type="button" class="btn btn-header-tool" id="btnExportCsv">
                     <i class="fas fa-file-csv text-success"></i> Export CSV
                 </button>
-                <button type="button" class="btn btn-header-tool btn-print" onclick="window.print()">
+                <button type="button" class="btn btn-header-tool btn-print" onclick="document.title='Inventory Demand Report'; window.print()">
                     <i class="fas fa-print"></i> Print Report
                 </button>
             </div>
@@ -804,6 +806,10 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        });
+
+        window.addEventListener('beforeprint', function() {
+            document.title = 'Inventory Demand Report';
         });
 
         // Initial Load

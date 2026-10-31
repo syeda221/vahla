@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Inward Gatepass - #' . $gatepass->id)
+
 @section('content')
 <style>
     /* Print Settings */
@@ -135,3 +137,11 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    window.addEventListener('beforeprint', function() {
+        document.title = "Inward Gatepass - #{{ $gatepass->id }}";
+    });
+</script>
+@endpush
