@@ -907,6 +907,15 @@
                             </tr>
                         @endif
 
+                        @if ((float)($purchase->shipping_charges ?? 0) > 0)
+                            <tr>
+                                <td class="text-secondary">
+                                    <i class="bi bi-truck me-1"></i> Shipping Charges
+                                </td>
+                                <td class="text-end text-dark font-monospace fw-semibold">+Rs. {{ number_format($purchase->shipping_charges, 2) }}</td>
+                            </tr>
+                        @endif
+
                         {{-- Prominent Vendor Net Payable --}}
                         <tr class="highlight-payable">
                             <td>Vendor Net Payable</td>
@@ -915,6 +924,14 @@
 
                         {{-- Settlement & Vendor Balances (Non-PO) --}}
                         @if($purchase->purchase_type !== 'purchase_order')
+                            @if ((float)($purchase->advance_adjusted ?? 0) > 0)
+                                <tr>
+                                    <td class="text-warning-emphasis fw-bold">
+                                        <i class="bi bi-wallet2 me-1 text-warning"></i> Settle From Advance
+                                    </td>
+                                    <td class="text-end text-warning-emphasis fw-bold font-monospace">Rs. {{ number_format($purchase->advance_adjusted, 2) }}</td>
+                                </tr>
+                            @endif
                             <tr>
                                 <td class="text-secondary">Paid to Vendor</td>
                                 <td class="text-end text-success fw-bold font-monospace">Rs. {{ number_format($purchase->paid_amount, 2) }}</td>
@@ -922,7 +939,7 @@
                             <tr>
                                 <td class="fw-bold text-dark">Current Bill Due</td>
                                 <td class="text-end fw-bold font-monospace text-danger">
-                                    Rs. {{ number_format($purchase->net_amount - $purchase->paid_amount, 2) }}
+                                    Rs. {{ number_format($purchase->due_amount, 2) }}
                                 </td>
                             </tr>
                             <tr>
@@ -939,7 +956,7 @@
 
                         {{-- Purchase Expenses & Landed Cost (Expense Voucher - Deducted from Cash, NOT Vendor Ledger) --}}
                         @php
-                            $totalExpenses = (float)($purchase->shipping_charges ?? 0) + (float)($purchase->cutting_charges ?? 0) + (float)($purchase->purchase_expense ?? 0);
+                            $totalExpenses = (float)($purchase->cutting_charges ?? 0) + (float)($purchase->purchase_expense ?? 0);
                         @endphp
                         @if ($totalExpenses > 0)
                             <tr>
@@ -947,16 +964,6 @@
                                     <i class="bi bi-receipt me-1"></i> Expenses (Expense Voucher)
                                 </td>
                             </tr>
-                            @if ((float)($purchase->shipping_charges ?? 0) > 0)
-                                <tr class="expense-row">
-                                    <td class="text-muted" style="font-size: 11px;">
-                                        <i class="bi bi-truck me-1"></i> Shipping Charges
-                                    </td>
-                                    <td class="text-end font-monospace text-muted" style="font-size: 11px;">
-                                        +Rs. {{ number_format($purchase->shipping_charges, 2) }}
-                                    </td>
-                                </tr>
-                            @endif
                             @if ((float)($purchase->cutting_charges ?? 0) > 0)
                                 <tr class="expense-row">
                                     <td class="text-muted" style="font-size: 11px;">

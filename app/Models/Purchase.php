@@ -22,8 +22,19 @@ class Purchase extends Model
         'purchase_expense' => 'decimal:2',
         'net_amount'    => 'decimal:2',
         'paid_amount'   => 'decimal:2',
+        'advance_adjusted' => 'decimal:2',
         'due_amount'    => 'decimal:2',
     ];
+
+    public function getTotalPaidAttribute()
+    {
+        return (float)($this->paid_amount ?? 0) + (float)($this->advance_adjusted ?? 0);
+    }
+
+    public function getDueAmountAttribute()
+    {
+        return max(0, (float)$this->net_amount - $this->total_paid);
+    }
 
     public function branch()   { return $this->belongsTo(Branch::class); }
     public function warehouse(){ return $this->belongsTo(Warehouse::class); }

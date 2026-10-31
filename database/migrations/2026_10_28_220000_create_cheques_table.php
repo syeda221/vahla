@@ -49,8 +49,22 @@ return new class extends Migration
             ->orWhereRaw('LOWER(title) LIKE ?', ['%cheques in hand%'])
             ->first();
         if (!$chqInHand) {
-            $bankHead = DB::table('account_heads')->whereRaw('LOWER(name) LIKE ?', ['%bank%'])->first();
-            $headId = $bankHead ? $bankHead->id : 2;
+            $bankHead = DB::table('account_heads')->whereRaw('LOWER(name) LIKE ?', ['%bank%'])->first()
+                ?? DB::table('account_heads')->whereRaw('LOWER(name) LIKE ?', ['%asset%'])->first()
+                ?? DB::table('account_heads')->first();
+
+            if (!$bankHead) {
+                $headId = DB::table('account_heads')->insertGetId([
+                    'name' => 'Bank',
+                    'type' => 'Asset',
+                    'opening_balance' => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } else {
+                $headId = $bankHead->id;
+            }
+
             DB::table('accounts')->insert([
                 'title' => 'Cheques in Hand',
                 'account_code' => 'CHQ-001',
@@ -67,12 +81,26 @@ return new class extends Migration
             ->orWhereRaw('LOWER(title) LIKE ?', ['%cheques payable%'])
             ->first();
         if (!$chqPayable) {
-            $bankHead = DB::table('account_heads')->whereRaw('LOWER(name) LIKE ?', ['%bank%'])->first();
-            $headId = $bankHead ? $bankHead->id : 2;
+            $liabilityHead = DB::table('account_heads')->whereRaw('LOWER(name) LIKE ?', ['%liability%'])->first()
+                ?? DB::table('account_heads')->whereRaw('LOWER(name) LIKE ?', ['%bank%'])->first()
+                ?? DB::table('account_heads')->first();
+
+            if (!$liabilityHead) {
+                $payHeadId = DB::table('account_heads')->insertGetId([
+                    'name' => 'Liability',
+                    'type' => 'Liability',
+                    'opening_balance' => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } else {
+                $payHeadId = $liabilityHead->id;
+            }
+
             DB::table('accounts')->insert([
                 'title' => 'Cheques Payable',
                 'account_code' => 'CHQ-002',
-                'head_id' => $headId,
+                'head_id' => $payHeadId,
                 'type' => 'Credit',
                 'status' => 1,
                 'created_at' => now(),

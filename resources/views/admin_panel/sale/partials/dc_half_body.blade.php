@@ -249,7 +249,7 @@
             @if ($isLastPart)
                 @if(optional($sale)->total_extradiscount > 0)
                 <tr class="rate-col">
-                    <td colspan="5" style="text-align: right; font-weight: bold; color: #dc2626;">DISCOUNT:</td>
+                    <td colspan="5" class="rate-col" style="text-align: right; font-weight: bold; color: #dc2626;">DISCOUNT:</td>
                     <td class="rate-col" style="text-align: right; font-weight: bold; color: #dc2626;">
                         -{{ number_format($sale->total_extradiscount, 2) }}
                     </td>
@@ -257,7 +257,7 @@
                 @endif
                 @if(optional($sale)->shipping_charges > 0)
                 <tr class="rate-col">
-                    <td colspan="5" style="text-align: right; font-weight: bold; color: #0284c7;">SHIPPING CHARGES:</td>
+                    <td colspan="5" class="rate-col" style="text-align: right; font-weight: bold; color: #0284c7;">SHIPPING CHARGES:</td>
                     <td class="rate-col" style="text-align: right; font-weight: bold; color: #0284c7;">
                         +{{ number_format($sale->shipping_charges, 2) }}
                     </td>
@@ -265,33 +265,33 @@
                 @endif
                 @if(optional($sale)->cutting_charges > 0)
                 <tr class="rate-col">
-                    <td colspan="5" style="text-align: right; font-weight: bold; color: #d97706;">CUTTING CHARGES:</td>
+                    <td colspan="5" class="rate-col" style="text-align: right; font-weight: bold; color: #d97706;">CUTTING CHARGES:</td>
                     <td class="rate-col" style="text-align: right; font-weight: bold; color: #d97706;">
                         +{{ number_format($sale->cutting_charges, 2) }}
                     </td>
                 </tr>
                 @endif
                 <tr class="rate-col">
-                    <td colspan="5" style="text-align: right; font-weight: bold;">TOTAL:</td>
+                    <td colspan="5" class="rate-col" style="text-align: right; font-weight: bold;">TOTAL:</td>
                     <td class="rate-col" style="text-align: right; font-weight: bold; background-color: rgba(224, 242, 254, 0.5);">
                         {{ number_format($finalTotal, 2) }}
                     </td>
                 </tr>
                 <tr class="rate-col">
-                    <td colspan="5" style="text-align: right; font-weight: bold;">PAID:</td>
+                    <td colspan="5" class="rate-col" style="text-align: right; font-weight: bold;">PAID:</td>
                     <td class="rate-col" style="text-align: right; font-weight: bold; color: #16a34a;">
                         {{ number_format($paidAmount, 2) }}
                     </td>
                 </tr>
                 <tr class="rate-col">
-                    <td colspan="5" style="text-align: right; font-weight: bold;">DUE:</td>
+                    <td colspan="5" class="rate-col" style="text-align: right; font-weight: bold;">DUE:</td>
                     <td class="rate-col" style="text-align: right; font-weight: bold; color: #dc2626;">
                         {{ number_format($dueAmount, 2) }}
                     </td>
                 </tr>
             @else
                 <tr>
-                    <td colspan="6" style="text-align: center; font-weight: bold; font-size: 7.5px; color: #1e40af; background: #eff6ff; padding: 1.5px;">
+                    <td colspan="6" style="text-align: center; font-weight: bold; font-size: 8px; color: #1e40af; background: #eff6ff; padding: 4px;">
                         --- CONTINUED ON NEXT HALF PAGE ---
                     </td>
                 </tr>

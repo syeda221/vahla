@@ -481,6 +481,27 @@
                                     <i class="bi bi-plus-lg"></i>
                                 </button>
                             </div>
+                            <!-- Advance Settlement Alert & Toggle (Option 1) -->
+                            <div id="advanceSettleBox" class="mt-2 p-2 rounded-2 border border-warning-subtle shadow-sm d-none" style="background: linear-gradient(135deg, #fffdf2 0%, #fff8db 100%);">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span class="badge bg-warning text-dark fw-bold rounded-pill px-2 py-1" style="font-size: 0.72rem;">
+                                            <i class="fas fa-coins me-1"></i>Advance: Rs. <span id="advAvailableAmtText">0.00</span>
+                                        </span>
+                                    </div>
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="toggleSettleFromAdvance" name="settle_from_advance" value="1" style="cursor: pointer;">
+                                        <label class="form-check-label fw-bold text-dark" for="toggleSettleFromAdvance" style="font-size: 0.75rem; cursor: pointer;">
+                                            Settle from Advance
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="advanceSettleDetailRow" class="d-none mt-1 pt-1 border-top border-warning-subtle text-muted d-flex justify-content-between align-items-center" style="font-size: 0.72rem;">
+                                    <span>Adjusted from Advance:</span>
+                                    <span class="fw-bold text-success font-monospace" id="advSettlingAmtText">Rs. 0.00</span>
+                                </div>
+                            </div>
+                            <input type="hidden" name="advance_adjusted_amount" id="hiddenAdvanceAdjusted" value="0">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label fw-bold mb-1 text-muted small"><i class="bi bi-building me-1 text-primary"></i> Warehouse</label>
@@ -645,6 +666,16 @@
                                 <input type="hidden" name="extra_cost" id="extraCost" value="0">
                                 <div class="row py-1 align-items-center">
                                     <div class="col-6 text-muted fw-medium">
+                                        <i class="bi bi-truck text-primary me-1"></i> Shipping Charges
+                                        <div style="font-size: 10px; color: #16a34a; font-weight: 500;">(Added to Vendor Ledger)</div>
+                                    </div>
+                                    <div class="col-6 text-end">
+                                        <input type="number" class="form-control text-end form-control-sm"
+                                            name="shipping_charges" id="shippingCharges" value="0" step="0.01" min="0" placeholder="0.00">
+                                    </div>
+                                </div>
+                                <div class="row py-1 align-items-center">
+                                    <div class="col-6 text-muted fw-medium">
                                         Purchase Expense
                                         <div style="font-size: 10px; color: #0284c7;">(Freight/Carriage/Landed Cost)</div>
                                     </div>
@@ -696,6 +727,14 @@
                                     <div class="row py-2">
                                         <div class="col-6 fw-bold fs-5 text-primary">Vendor Bill</div>
                                         <div class="col-6 text-end fw-bold fs-5 text-primary"><span id="tPayable">0.00</span></div>
+                                    </div>
+                                    <div class="row py-1 align-items-center" id="advAdjustedSummaryRow" style="display: none; background: #fffdf2; border-radius: 4px; border: 1px dashed #ffe082;">
+                                        <div class="col-7 text-warning-emphasis fw-bold" style="font-size: 0.85rem;">
+                                            <i class="fas fa-coins text-warning me-1"></i>Settle from Advance
+                                        </div>
+                                        <div class="col-5 text-end text-warning-emphasis fw-bold" style="font-size: 0.85rem;">
+                                            -Rs. <span id="summaryAdvanceAdjusted">0.00</span>
+                                        </div>
                                     </div>
                                     <div class="row py-2 bg-warning-subtle rounded-2">
                                         <div class="col-6 fw-bold fs-5 text-dark">Total Vendor Payable</div>
@@ -817,11 +856,42 @@
                 width: '100%'
             });
 
+            window.currentVendorAvailableAdvance = 0;
+
+            window.syncAdvanceSettlementUI = function() {
+                const isChecked = $('#toggleSettleFromAdvance').is(':checked');
+                const availAdv = window.currentVendorAvailableAdvance || 0;
+
+                if (!isChecked || availAdv <= 0) {
+                    $('#hiddenAdvanceAdjusted').val('0');
+                    $('#advAdjustedSummaryRow').hide();
+                    $('#advanceSettleDetailRow').addClass('d-none');
+                    return;
+                }
+
+                const vendorBill = parseFloat($('#netAmountInput').val()) || 0;
+                const settleAmt = Math.min(availAdv, vendorBill);
+
+                $('#hiddenAdvanceAdjusted').val(settleAmt.toFixed(2));
+                $('#advSettlingAmtText').text('Rs. ' + settleAmt.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#summaryAdvanceAdjusted').text(settleAmt.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                $('#advanceSettleDetailRow').removeClass('d-none');
+                $('#advAdjustedSummaryRow').show();
+            };
+
+            $('#toggleSettleFromAdvance').on('change', function() {
+                window.syncAdvanceSettlementUI();
+            });
+
             // Vendor Select Logic
             $('#vendorSelect').on('change', function() {
                 const vendorId = $(this).val();
                 if (!vendorId) {
                     $('#vendorInfoCard').addClass('d-none');
+                    $('#advanceSettleBox').addClass('d-none');
+                    $('#toggleSettleFromAdvance').prop('checked', false);
+                    window.currentVendorAvailableAdvance = 0;
+                    window.syncAdvanceSettlementUI();
                     return;
                 }
 
@@ -833,9 +903,21 @@
                     $('#vi_prev_bal').text(parseFloat(data.current_balance).toFixed(2));
                     $('#vendorInfoCard').removeClass('d-none');
 
+                    // Available Advance Check
+                    const avail = parseFloat(data.available_advance || 0);
+                    window.currentVendorAvailableAdvance = avail;
+                    if (avail > 0.001) {
+                        $('#advAvailableAmtText').text(avail.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                        $('#advanceSettleBox').removeClass('d-none');
+                    } else {
+                        $('#advanceSettleBox').addClass('d-none');
+                        $('#toggleSettleFromAdvance').prop('checked', false);
+                    }
+
                     // Update Summary
                     $('#tPrev').text(parseFloat(data.current_balance).toFixed(2));
                     recalcAll();
+                    window.syncAdvanceSettlementUI();
                 });
             });
 
@@ -892,7 +974,7 @@
             });
             updateExpenseAccountBadge();
 
-            $('#billDiscount, #billDiscountPct, #extraCost, #purchaseExpense').on('input', function() {
+            $('#billDiscount, #billDiscountPct, #extraCost, #purchaseExpense, #shippingCharges').on('input', function() {
                 recalcAll();
             });
 
@@ -1780,8 +1862,9 @@
                 $('#billDiscountPct').val(pct.toFixed(2));
                 $('#discountInput').val(additionalDiscount.toFixed(2));
 
+                const shippingCharges = parseFloat($('#shippingCharges').val()) || 0;
                 const purchaseExpense = parseFloat($('#purchaseExpense').val()) || 0;
-                const totalLandedExtra = purchaseExpense;
+                const totalLandedExtra = purchaseExpense + shippingCharges;
                 $('#extraCost').val('0.00');
                 const extraCost = 0;
 
@@ -1810,7 +1893,7 @@
                     $(this).find('.effective-price').val(effPrice.toFixed(2));
                 });
 
-                const vendorBill = Math.max(0, subtotal - additionalDiscount);
+                const vendorBill = Math.max(0, subtotal - additionalDiscount + shippingCharges);
                 const totalExpenses = purchaseExpense;
                 const totalCost = vendorBill + totalExpenses;
 
@@ -1824,6 +1907,10 @@
                 
                 $('#tTotalPayable').text(totalPayable.toFixed(2));
                 $('#tTotalCost').text(totalCost.toFixed(2));
+
+                if (typeof window.syncAdvanceSettlementUI === 'function') {
+                    window.syncAdvanceSettlementUI();
+                }
             }
         });
     </script>

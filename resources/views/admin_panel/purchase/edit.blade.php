@@ -746,6 +746,16 @@
                             <input type="hidden" name="extra_cost" id="extraCost" value="0">
                             <div class="row py-1 align-items-center">
                                 <div class="col-6 text-muted fw-medium">
+                                    <i class="bi bi-truck text-primary me-1"></i> Shipping Charges
+                                    <div style="font-size: 10px; color: #16a34a; font-weight: 500;">(Added to Vendor Ledger)</div>
+                                </div>
+                                <div class="col-6 text-end">
+                                    <input type="number" class="form-control text-end form-control-sm"
+                                        name="shipping_charges" id="shippingCharges" value="{{ (float) ($purchase->shipping_charges ?? 0) }}" step="0.01" min="0" placeholder="0.00">
+                                </div>
+                            </div>
+                            <div class="row py-1 align-items-center">
+                                <div class="col-6 text-muted fw-medium">
                                     Purchase Expense
                                     <div style="font-size: 10px; color: #0284c7;">(Freight/Carriage/Landed Cost)</div>
                                 </div>
@@ -1146,7 +1156,7 @@
             });
             updateExpenseAccountBadge();
 
-            $('#billDiscount, #billDiscountPct, #extraCost, #purchaseExpense').on('input', function() {
+            $('#billDiscount, #billDiscountPct, #extraCost, #purchaseExpense, #shippingCharges').on('input', function() {
                 recalcAll();
             });
 
@@ -1309,8 +1319,9 @@
 
                 $('#discountInput').val(additionalDiscount.toFixed(2));
 
+                const shippingCharges = parseFloat($('#shippingCharges').val()) || 0;
                 const purchaseExpense = parseFloat($('#purchaseExpense').val()) || 0;
-                const totalLandedExtra = purchaseExpense;
+                const totalLandedExtra = purchaseExpense + shippingCharges;
                 $('#extraCost').val('0.00');
                 const extraCost = 0;
 
@@ -1339,7 +1350,7 @@
                     $(this).find('.effective-price').val(effPrice.toFixed(2));
                 });
 
-                const vendorBill = Math.max(0, subtotal - additionalDiscount);
+                const vendorBill = Math.max(0, subtotal - additionalDiscount + shippingCharges);
                 const totalExpenses = purchaseExpense;
                 const totalCost = vendorBill + totalExpenses;
 

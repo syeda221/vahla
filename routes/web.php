@@ -342,6 +342,8 @@ Route::middleware('auth')->group(function () {
     Route::put('/purchase/{id}', [PurchaseController::class, 'update'])->middleware('permission:purchases.edit|purchase_orders.edit')->name('purchase.update');
     Route::post('/purchases/bulk-additional-discount', [PurchaseController::class, 'bulkAdditionalDiscount'])->middleware('permission:purchases.edit|purchase_orders.edit')->name('purchases.bulk-additional-discount');
     Route::match(['get', 'post'], '/purchase/{id}/confirm', [PurchaseController::class, 'confirm'])->middleware('permission:purchases.create|purchases.edit|purchase_orders.create')->name('purchase.confirm');
+    Route::get('/purchases/{id}/advance-info', [PurchaseController::class, 'getPurchaseAdvanceInfo'])->name('purchases.advance_info');
+    Route::post('/purchases/{id}/settle-advance', [PurchaseController::class, 'settleFromAdvance'])->middleware('permission:purchases.create|purchases.edit')->name('purchases.settle_advance');
     Route::delete('/purchase/{id}', [PurchaseController::class, 'destroy'])->middleware('permission:purchases.delete|purchase_orders.delete')->name('purchase.destroy');
     Route::get('/search-products', [ProductController::class, 'searchProducts'])->name('search-products');
     Route::get('/products/ajax-search', [ProductController::class, 'ajaxSearch'])->name('products.ajax.search');

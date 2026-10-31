@@ -274,12 +274,33 @@ class VendorController extends Controller
         return back()->with('success', 'Vendor bilty saved successfully.');
     }
 
-    // Get vendor balance by vendor id
+    // Get vendor balance by vendor id (including available advance)
     public function getVendorBalance($id)
     {
-        $ledger = VendorLedger::where('vendor_id', $id)->first();
+        $balanceService = app(\App\Services\BalanceService::class);
+        $closingBalance = (float) $balanceService->getVendorBalance($id);
+
+        $allPurchases = Purchase::where("vendor_id", $id)
+            ->whereNull('deleted_at')
+            ->where('purchase_type', '!=', 'purchase_order')
+            ->get();
+        $totalNet = (float) $allPurchases->sum("net_amount");
+        $totalDirectPaid = (float) $allPurchases->sum("paid_amount");
+        $totalAdvAdjusted = (float) $allPurchases->sum(function($p) {
+            return (float)($p->advance_adjusted ?? 0);
+        });
+        $totalInvoicesDue = max(0, $totalNet - ($totalDirectPaid + $totalAdvAdjusted));
+
+        if ($closingBalance <= 0) {
+            $availableAdvance = abs($closingBalance) + max(0, $totalInvoicesDue);
+        } else {
+            $availableAdvance = max(0, $totalInvoicesDue - $closingBalance);
+        }
+        $availableAdvance = max(0, round($availableAdvance, 2));
+
         return response()->json([
-            'closing_balance' => $ledger ? $ledger->closing_balance : 0
+            'closing_balance' => $closingBalance,
+            'available_advance' => $availableAdvance
         ]);
     }
 
@@ -314,7 +335,26 @@ class VendorController extends Controller
         $ledgerData = $balanceService->getVendorLedger($vendorId, $startDate, $endDate);
         
         // Add current balance to response
-        $ledgerData['current_balance'] = $balanceService->getVendorBalance($vendorId);
+        $closingBalance = (float) $balanceService->getVendorBalance($vendorId);
+        $ledgerData['current_balance'] = $closingBalance;
+
+        $allPurchases = Purchase::where("vendor_id", $vendorId)
+            ->whereNull('deleted_at')
+            ->where('purchase_type', '!=', 'purchase_order')
+            ->get();
+        $totalNet = (float) $allPurchases->sum("net_amount");
+        $totalDirectPaid = (float) $allPurchases->sum("paid_amount");
+        $totalAdvAdjusted = (float) $allPurchases->sum(function($p) {
+            return (float)($p->advance_adjusted ?? 0);
+        });
+        $totalInvoicesDue = max(0, $totalNet - ($totalDirectPaid + $totalAdvAdjusted));
+
+        if ($closingBalance <= 0) {
+            $availableAdvance = abs($closingBalance) + max(0, $totalInvoicesDue);
+        } else {
+            $availableAdvance = max(0, $totalInvoicesDue - $closingBalance);
+        }
+        $ledgerData['available_advance'] = max(0, round($availableAdvance, 2));
         
         return response()->json($ledgerData);
     }

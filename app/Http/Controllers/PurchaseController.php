@@ -898,10 +898,10 @@ class PurchaseController extends Controller
                 'status_purchase' => $statusPurchase,
             ]);
 
-            $shippingCharges = 0;
+            $shippingCharges = (float) ($request->shipping_charges ?? 0);
             $cuttingCharges = 0;
             $purchaseExpense = (float) ($request->purchase_expense ?? 0);
-            $totalLandedExtra = $purchaseExpense;
+            $totalLandedExtra = $purchaseExpense + $shippingCharges;
             $extraCost = 0;
 
             $subtotal = 0;
@@ -1122,8 +1122,9 @@ class PurchaseController extends Controller
 
             $discount = (float) ($request->discount ?? 0);
             $purchaseExpense = (float) ($request->purchase_expense ?? 0);
-            // Vendor Net Amount = (subtotal - discount) ONLY (Shipping & cutting are separate expenses)
-            $netAmount = max(0, $subtotal - $discount);
+            $shippingCharges = (float) ($request->shipping_charges ?? 0);
+            // Vendor Net Amount = (subtotal - discount + shipping_charges) included in Vendor Ledger
+            $netAmount = max(0, $subtotal - $discount + $shippingCharges);
 
             $purchase->update([
                 'subtotal' => $subtotal,
@@ -1193,6 +1194,43 @@ class PurchaseController extends Controller
                         }
                     } catch (\Throwable $e) {
                         \Log::error('Purchase Payment Processing Error: ' . $e->getMessage());
+                    }
+                }
+
+                // Handle Settle from Vendor Advance (Option 1)
+                if ($request->filled('settle_from_advance') && in_array($request->input('settle_from_advance'), ['1', 1, 'true', true]) && $purchase->vendor_id) {
+                    $balanceService = app(\App\Services\BalanceService::class);
+                    $closingBalance = (float) $balanceService->getVendorBalance($purchase->vendor_id);
+
+                    $allPurchases = Purchase::where("vendor_id", $purchase->vendor_id)
+                        ->whereNull('deleted_at')
+                        ->where('purchase_type', '!=', 'purchase_order')
+                        ->where('id', '!=', $purchase->id)
+                        ->get();
+                    $totalNet = (float) $allPurchases->sum("net_amount");
+                    $totalDirectPaid = (float) $allPurchases->sum("paid_amount");
+                    $totalAdvAdjusted = (float) $allPurchases->sum(function($p) {
+                        return (float)($p->advance_adjusted ?? 0);
+                    });
+                    $totalInvoicesDue = max(0, $totalNet - ($totalDirectPaid + $totalAdvAdjusted));
+
+                    if ($closingBalance <= 0) {
+                        $availableAdvance = abs($closingBalance) + max(0, $totalInvoicesDue);
+                    } else {
+                        $availableAdvance = max(0, $totalInvoicesDue - $closingBalance);
+                    }
+                    $availableAdvance = max(0, round($availableAdvance, 2));
+
+                    $unpaidDue = max(0, (float) $purchase->net_amount - (float) $purchase->paid_amount);
+                    $reqAdv = $request->filled('advance_adjusted_amount') ? (float) $request->input('advance_adjusted_amount') : null;
+                    $settleAmt = $reqAdv !== null ? min($reqAdv, $availableAdvance, $unpaidDue) : min($availableAdvance, $unpaidDue);
+                    $settleAmt = max(0, round($settleAmt, 2));
+
+                    if ($settleAmt > 0) {
+                        $purchase->advance_adjusted = $settleAmt;
+                        $purchase->advance_settlement_note = 'Settled Rs. ' . number_format($settleAmt, 2) . ' from Vendor Advance upon Purchase Creation';
+                        $purchase->due_amount = max(0, (float)$purchase->net_amount - ((float)$purchase->paid_amount + $settleAmt));
+                        $purchase->save();
                     }
                 }
             }
@@ -1747,10 +1785,10 @@ class PurchaseController extends Controller
             // Delete old items
             $purchase->items()->delete();
 
-            $shippingCharges = 0;
+            $shippingCharges = (float) ($request->shipping_charges ?? 0);
             $cuttingCharges = 0;
             $purchaseExpense = (float) ($request->purchase_expense ?? 0);
-            $totalLandedExtra = $purchaseExpense;
+            $totalLandedExtra = $purchaseExpense + $shippingCharges;
             $extraCost = 0;
 
             $subtotal = 0;
@@ -2027,8 +2065,9 @@ class PurchaseController extends Controller
             // Totals calculation
             $discount = (float) ($request->discount ?? 0);
             $purchaseExpense = (float) ($request->purchase_expense ?? 0);
-            // Vendor Net Amount = (subtotal - discount) ONLY (Shipping & cutting are separate expenses)
-            $netAmount = max(0, $subtotal - $discount);
+            $shippingCharges = (float) ($request->shipping_charges ?? 0);
+            // Vendor Net Amount = (subtotal - discount + shipping_charges) included in Vendor Ledger
+            $netAmount = max(0, $subtotal - $discount + $shippingCharges);
 
             // Payments calculation from request
             $paymentAccountIds = $request->input('payment_account_id', []);
@@ -3159,7 +3198,9 @@ class PurchaseController extends Controller
      */
     public function syncPurchaseExpenseVoucher(Purchase $purchase)
     {
-        $shipping = (float) ($purchase->shipping_charges ?? 0);
+        // Note: Shipping charges are included directly in vendor bill (net_amount) and vendor ledger.
+        // syncPurchaseExpenseVoucher handles only non-vendor expenses (purchase_expense, cutting_charges).
+        $shipping = 0;
         $cutting = (float) ($purchase->cutting_charges ?? 0);
         $otherExpense = (float) ($purchase->purchase_expense ?? 0);
         $totalExpense = $shipping + $cutting + $otherExpense;
@@ -3288,4 +3329,153 @@ class PurchaseController extends Controller
         );
     }
 
+    /**
+     * Get Vendor Advance Info for a specific Purchase Invoice
+     */
+    public function getPurchaseAdvanceInfo($id)
+    {
+        $purchase = Purchase::with('vendor')->findOrFail($id);
+
+        if (!$purchase->vendor_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This purchase does not have a vendor assigned.'
+            ], 422);
+        }
+
+        $vendor = $purchase->vendor;
+        $balanceService = app(\App\Services\BalanceService::class);
+        $closingBalance = (float) $balanceService->getVendorBalance($purchase->vendor_id);
+
+        $allPurchases = Purchase::where('vendor_id', $purchase->vendor_id)
+            ->whereNull('deleted_at')
+            ->where('purchase_type', '!=', 'purchase_order')
+            ->get();
+        $totalNet = (float) $allPurchases->sum('net_amount');
+        $totalDirectPaid = (float) $allPurchases->sum('paid_amount');
+        $totalAdvAdjusted = (float) $allPurchases->sum(function($p) {
+            return (float)($p->advance_adjusted ?? 0);
+        });
+        $totalInvoicesDue = max(0, $totalNet - ($totalDirectPaid + $totalAdvAdjusted));
+
+        if ($closingBalance <= 0) {
+            $availableAdvance = abs($closingBalance) + max(0, $totalInvoicesDue);
+        } else {
+            $availableAdvance = max(0, $totalInvoicesDue - $closingBalance);
+        }
+        $availableAdvance = max(0, round($availableAdvance, 2));
+
+        $due = $purchase->due_amount;
+
+        $displayName = ($vendor && !empty(trim($vendor->name ?? '')))
+            ? trim($vendor->name) . ($vendor->phone ? ' (' . $vendor->phone . ')' : '')
+            : 'Vendor #' . $purchase->vendor_id;
+
+        return response()->json([
+            'success' => true,
+            'purchase_id' => $purchase->id,
+            'invoice_no' => $purchase->invoice_no,
+            'vendor_id' => $purchase->vendor_id,
+            'vendor_name' => $displayName,
+            'net_amount' => (float)$purchase->net_amount,
+            'paid_amount' => (float)$purchase->paid_amount,
+            'advance_already_adjusted' => (float)($purchase->advance_adjusted ?? 0),
+            'due_amount' => round($due, 2),
+            'available_advance' => $availableAdvance,
+            'can_settle' => ($availableAdvance > 0.001 && $due > 0.001),
+            'max_settleable' => round(min($availableAdvance, $due), 2),
+        ]);
+    }
+
+    /**
+     * Settle an existing Unpaid/Partial Purchase Invoice from Vendor Advance
+     */
+    public function settleFromAdvance(Request $request, $id)
+    {
+        $purchase = Purchase::findOrFail($id);
+
+        if (!$purchase->vendor_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No vendor is associated with this purchase invoice.'
+            ], 422);
+        }
+
+        $balanceService = app(\App\Services\BalanceService::class);
+        $closingBalance = (float) $balanceService->getVendorBalance($purchase->vendor_id);
+
+        $allPurchases = Purchase::where('vendor_id', $purchase->vendor_id)
+            ->whereNull('deleted_at')
+            ->where('purchase_type', '!=', 'purchase_order')
+            ->get();
+        $totalNet = (float) $allPurchases->sum('net_amount');
+        $totalDirectPaid = (float) $allPurchases->sum('paid_amount');
+        $totalAdvAdjusted = (float) $allPurchases->sum(function($p) {
+            return (float)($p->advance_adjusted ?? 0);
+        });
+        $totalInvoicesDue = max(0, $totalNet - ($totalDirectPaid + $totalAdvAdjusted));
+
+        if ($closingBalance <= 0) {
+            $availableAdvance = abs($closingBalance) + max(0, $totalInvoicesDue);
+        } else {
+            $availableAdvance = max(0, $totalInvoicesDue - $closingBalance);
+        }
+        $availableAdvance = max(0, round($availableAdvance, 2));
+
+        if ($availableAdvance <= 0.001) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vendor does not have any advance balance available to adjust.'
+            ], 422);
+        }
+
+        $due = $purchase->due_amount;
+        if ($due <= 0.001) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This purchase invoice is already fully paid.'
+            ], 422);
+        }
+
+        $requestedAmount = $request->filled('amount') ? (float)$request->input('amount') : $due;
+        if ($requestedAmount <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Settlement amount must be greater than zero.'
+            ], 422);
+        }
+
+        $settleAmount = min($requestedAmount, $availableAdvance, $due);
+        $settleAmount = round($settleAmount, 2);
+
+        if ($settleAmount <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid settlement amount.'
+            ], 422);
+        }
+
+        // Increment purchase advance_adjusted
+        $purchase->advance_adjusted = round((float)($purchase->advance_adjusted ?? 0) + $settleAmount, 2);
+        $purchase->due_amount = max(0, (float)$purchase->net_amount - ((float)$purchase->paid_amount + (float)$purchase->advance_adjusted));
+
+        $note = 'Settled Rs. ' . number_format($settleAmount, 2) . ' from Vendor Advance on ' . now()->format('d M Y, h:i A');
+        if (!empty($purchase->advance_settlement_note)) {
+            $purchase->advance_settlement_note .= ' | ' . $note;
+        } else {
+            $purchase->advance_settlement_note = $note;
+        }
+
+        $purchase->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Rs. ' . number_format($settleAmount, 2) . ' successfully settled from Vendor Advance for Invoice #' . $purchase->invoice_no . '!',
+            'purchase_id' => $purchase->id,
+            'invoice_no' => $purchase->invoice_no,
+            'advance_adjusted' => (float)$purchase->advance_adjusted,
+            'due_amount' => round($purchase->due_amount, 2),
+            'is_fully_paid' => ($purchase->due_amount <= 0.001)
+        ]);
+    }
 }

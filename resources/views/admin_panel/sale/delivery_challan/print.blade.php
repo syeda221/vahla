@@ -319,8 +319,8 @@
             background-color: #374151 !important;
             color: #ffffff !important;
             text-align: center;
-            padding: 3.5px 4px;
-            font-size: 8px;
+            padding: 4.5px 5px;
+            font-size: 8.5px;
             border: 1px solid var(--pad-border);
             text-transform: uppercase;
             font-weight: bold;
@@ -329,11 +329,11 @@
 
         .pad-table tbody td {
             border: 1px solid var(--pad-border);
-            padding: 3px 4px;
+            padding: 5.5px 5px;
             color: #000;
             vertical-align: middle;
-            font-size: 8.5px;
-            line-height: 1.25;
+            font-size: 9px;
+            line-height: 1.35;
         }
 
         .pad-table tbody tr:nth-child(even) {
@@ -342,8 +342,8 @@
 
         .pad-table tfoot td {
             border: 1px solid var(--pad-border);
-            padding: 2.5px 4px;
-            font-size: 8.5px;
+            padding: 4.5px 5px;
+            font-size: 9px;
             vertical-align: middle;
         }
 
@@ -353,16 +353,16 @@
             justify-content: space-between;
             align-items: flex-end;
             margin-top: auto;
-            padding-top: 2px;
+            padding-top: 6px;
             flex-shrink: 0;
         }
 
         .footer-note {
             width: 55%;
-            font-size: 7.5px;
+            font-size: 8px;
             font-weight: bold;
             color: var(--pad-text);
-            line-height: 1.25;
+            line-height: 1.3;
         }
 
         .footer-sign {
@@ -373,33 +373,37 @@
         }
 
         .footer-stamp {
-            width: 62px;
+            width: 88px;
             height: auto;
-            margin-bottom: -6px;
-            margin-right: 10px;
+            margin-bottom: -10px;
+            margin-right: 8px;
             display: inline-block;
-            opacity: 0.9;
-            transform: rotate(-10deg);
+            opacity: 0.95;
+            transform: rotate(-8deg);
             mix-blend-mode: multiply;
         }
 
         .for-company {
-            font-size: 8px;
+            font-size: 8.5px;
             font-weight: bold;
             color: var(--pad-text);
             position: relative;
             z-index: 5;
         }
-            color: var(--pad-text);
-            position: relative;
-            z-index: 5;
-        }
 
-        /* Hide Rate behavior */
-        .hide-rate .rate-col {
+        /* Hide Rate behavior (Screen and Print) */
+        body.hide-rate .rate-col,
+        .hide-rate .rate-col,
+        body.hide-rate tr.rate-col,
+        .hide-rate tr.rate-col,
+        body.hide-rate th.rate-col,
+        .hide-rate th.rate-col,
+        body.hide-rate td.rate-col,
+        .hide-rate td.rate-col {
             display: none !important;
         }
 
+        body.hide-rate .desc-col,
         .hide-rate .desc-col {
             width: 73% !important;
         }
@@ -432,6 +436,22 @@
 
             .action-bar {
                 display: none !important;
+            }
+
+            /* Hide Rate in Print */
+            body.hide-rate .rate-col,
+            .hide-rate .rate-col,
+            body.hide-rate tr.rate-col,
+            .hide-rate tr.rate-col,
+            body.hide-rate th.rate-col,
+            .hide-rate th.rate-col,
+            body.hide-rate td.rate-col,
+            .hide-rate td.rate-col {
+                display: none !important;
+            }
+            body.hide-rate .desc-col,
+            .hide-rate .desc-col {
+                width: 73% !important;
             }
 
             .no-print {

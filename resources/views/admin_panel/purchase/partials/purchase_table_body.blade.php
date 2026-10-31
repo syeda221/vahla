@@ -100,6 +100,11 @@
         @if (!isset($isOrdersPage) || !$isOrdersPage)
             <td class="text-end text-success text-nowrap">
                 {{ number_format($purchase->paid_amount, 2) }}
+                @if (($purchase->advance_adjusted ?? 0) > 0.001)
+                    <br><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-1 py-0" style="font-size: 10px;" title="{{ $purchase->advance_settlement_note ?? 'Settled from Vendor Advance' }}">
+                        <i class="fas fa-coins me-1 text-warning"></i>Adv: Rs. {{ number_format($purchase->advance_adjusted, 0) }}
+                    </span>
+                @endif
             </td>
             <td class="text-end text-nowrap">
                 @php
@@ -184,6 +189,15 @@
                                         <i class="fas fa-receipt text-secondary fa-fw"></i> View Receipt
                                     </a>
                                 </li>
+                                @if ($displayDue > 0.001 && $purchase->vendor_id && $purchase->purchase_type !== 'purchase_order' && $purchase->status_purchase !== 'draft')
+                                    <li>
+                                        <a href="javascript:void(0)" class="dropdown-item text-warning-emphasis d-flex align-items-center gap-2 py-2 fw-semibold btn-settle-advance-modal"
+                                            data-purchase-id="{{ $purchase->id }}"
+                                            data-invoice-no="{{ $purchase->invoice_no }}">
+                                            <i class="fas fa-coins text-warning fa-fw"></i> Settle from Vendor Advance
+                                        </a>
+                                    </li>
+                                @endif
                             @endcan
                         @endif
                         @can('purchases.create')

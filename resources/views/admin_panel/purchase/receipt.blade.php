@@ -338,6 +338,13 @@
             </div>
         @endif
 
+        @if ((float)($purchase->shipping_charges ?? 0) > 0)
+            <div class="info-row">
+                <span>Shipping Charges:</span>
+                <span>+{{ number_format($purchase->shipping_charges, 2) }}</span>
+            </div>
+        @endif
+
         <div class="total-row" style="font-size: 14px; border-top: 1px dashed #000; margin-top: 5px; padding-top: 2px;">
             <span>Vendor Payable:</span>
             <span>{{ number_format($purchase->net_amount, 2) }}</span>
