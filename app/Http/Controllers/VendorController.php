@@ -138,10 +138,8 @@ class VendorController extends Controller
 
             // 2. Sync VendorLedger
             $obLedger = VendorLedger::where('vendor_id', $vendor->id)
-                ->where(function ($q) {
-                    $q->where('previous_balance', 0)->where('opening_balance', '>', 0)
-                      ->orWhere('description', 'Opening Balance');
-                })
+                ->where('previous_balance', 0)
+                ->where('opening_balance', '>', 0)
                 ->first();
 
             if ($newOpening > 0) {
@@ -157,7 +155,6 @@ class VendorController extends Controller
                         'previous_balance' => 0,
                         'opening_balance' => $newOpening,
                         'closing_balance' => $newOpening,
-                        'description' => 'Opening Balance',
                         'created_at' => $vendor->created_at ?? now(),
                     ]);
                 }

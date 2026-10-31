@@ -535,6 +535,9 @@ class PurchaseController extends Controller
                 // stocks
                 $itemWhId = $item->warehouse_id ?: $warehouseId;
                 $this->upsertStocks($item->product_id, +$baseQty, $branchId, $itemWhId);
+
+                // Update received_qty on purchase item
+                $item->update(['received_qty' => $item->qty]);
             }
 
             if (! empty($movRows)) {
@@ -671,6 +674,7 @@ class PurchaseController extends Controller
             $purchase->update([
                 'status_purchase' => 'approved',
                 'purchase_status' => 'posted',
+                'receiving_status' => 'received',
             ]);
         });
 
@@ -774,20 +778,99 @@ class PurchaseController extends Controller
 
     public function store(Request $request, $gatepassId = null)
     {
-        // (A) Gatepass fetch if provided
-        $gatepass = null;
-        if ($gatepassId) {
-            $gatepass = \App\Models\InwardGatepass::with('purchase')->findOrFail($gatepassId);
-            if ($gatepass->purchase) {
-                if ($request->ajax()) {
-                    return response()->json(['success' => false, 'message' => 'Gatepass already has a bill.'], 422);
-                }
-                return back()->with('error', 'This gatepass already has an associated bill.');
-            }
-        }
-
-        // (B) Validation
         try {
+            // (A) Gatepass fetch if provided
+            $gatepass = null;
+            if ($gatepassId) {
+                $gatepass = \App\Models\InwardGatepass::with('purchase')->findOrFail($gatepassId);
+                if ($gatepass->purchase) {
+                    if ($request->ajax()) {
+                        return response()->json(['success' => false, 'message' => 'Gatepass already has a bill.'], 422);
+                    }
+                    return back()->with('error', 'This gatepass already has an associated bill.');
+                }
+            }
+
+            // Clean array inputs to remove empty/incomplete rows
+            $rawPids = (array) $request->input('product_id', []);
+            $rawQtys = (array) $request->input('qty', []);
+            $rawPrices = (array) $request->input('price', []);
+            $rawUnits = (array) $request->input('unit', []);
+            $rawDiscs = (array) $request->input('item_discount', []);
+            $rawPerCarton = (array) $request->input('price_per_carton', []);
+            $rawSizeModes = (array) $request->input('size_mode', []);
+            $rawPpbs = (array) $request->input('pieces_per_box', []);
+            $rawPpm2 = (array) $request->input('pieces_per_m2', []);
+            $rawBoxesQtys = (array) $request->input('boxes_qty', []);
+            $rawLooseQtys = (array) $request->input('loose_qty', []);
+            $rawLengths = (array) $request->input('length', []);
+            $rawWidths = (array) $request->input('width', []);
+            $rawColors = (array) $request->input('color', []);
+            $rawItemWh = (array) $request->input('item_warehouse_id', []);
+
+            $cleanPids = [];
+            $cleanQtys = [];
+            $cleanPrices = [];
+            $cleanUnits = [];
+            $cleanDiscs = [];
+            $cleanPerCarton = [];
+            $cleanSizeModes = [];
+            $cleanPpbs = [];
+            $cleanPpm2 = [];
+            $cleanBoxesQtys = [];
+            $cleanLooseQtys = [];
+            $cleanLengths = [];
+            $cleanWidths = [];
+            $cleanColors = [];
+            $cleanItemWh = [];
+
+            foreach ($rawPids as $idx => $pid) {
+                $pid = (int) $pid;
+                $qty = (float) ($rawQtys[$idx] ?? 0);
+                if ($pid > 0 && $qty > 0) {
+                    $cleanPids[] = $pid;
+                    $cleanQtys[] = $qty;
+                    $cleanPrices[] = (float) ($rawPrices[$idx] ?? 0);
+                    $cleanUnits[] = $rawUnits[$idx] ?? 'Pcs';
+                    $cleanDiscs[] = (float) ($rawDiscs[$idx] ?? 0);
+                    $cleanPerCarton[] = (float) ($rawPerCarton[$idx] ?? 0);
+                    $cleanSizeModes[] = $rawSizeModes[$idx] ?? null;
+                    $cleanPpbs[] = (float) ($rawPpbs[$idx] ?? 1);
+                    $cleanPpm2[] = (float) ($rawPpm2[$idx] ?? 0);
+                    $cleanBoxesQtys[] = (float) ($rawBoxesQtys[$idx] ?? 0);
+                    $cleanLooseQtys[] = (float) ($rawLooseQtys[$idx] ?? 0);
+                    $cleanLengths[] = $rawLengths[$idx] ?? null;
+                    $cleanWidths[] = $rawWidths[$idx] ?? null;
+                    $cleanColors[] = $rawColors[$idx] ?? null;
+                    $cleanItemWh[] = $rawItemWh[$idx] ?? null;
+                }
+            }
+
+            if (empty($cleanPids)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'product_id' => 'Kripya kam az kam aik product add karein jiski quantity 0 se zyada ho.',
+                ]);
+            }
+
+            $request->merge([
+                'product_id' => $cleanPids,
+                'qty' => $cleanQtys,
+                'price' => $cleanPrices,
+                'unit' => $cleanUnits,
+                'item_discount' => $cleanDiscs,
+                'price_per_carton' => $cleanPerCarton,
+                'size_mode' => $cleanSizeModes,
+                'pieces_per_box' => $cleanPpbs,
+                'pieces_per_m2' => $cleanPpm2,
+                'boxes_qty' => $cleanBoxesQtys,
+                'loose_qty' => $cleanLooseQtys,
+                'length' => $cleanLengths,
+                'width' => $cleanWidths,
+                'color' => $cleanColors,
+                'item_warehouse_id' => $cleanItemWh,
+            ]);
+
+            // (B) Validation
             $validated = $request->validate([
                 'invoice_no' => 'nullable|string',
                 'vendor_id' => 'required|exists:vendors,id',
@@ -800,52 +883,56 @@ class PurchaseController extends Controller
                 'shipping_charges' => 'nullable|numeric|min:0',
                 'purchase_expense' => 'nullable|numeric|min:0',
                 'expense_account_id' => 'nullable|exists:accounts,id',
-                'product_id' => 'array',
-                'product_id.*' => 'nullable|exists:products,id',
-                'qty' => 'array',
-                'qty.*' => 'nullable|required_with:product_id.*|numeric|min:0.01',
-                'price' => 'array',
-                'price.*' => 'nullable|required_with:product_id.*|numeric|min:0',
-                'price_per_carton' => 'array',
+                'product_id' => 'required|array|min:1',
+                'product_id.*' => 'required|exists:products,id',
+                'qty' => 'required|array|min:1',
+                'qty.*' => 'required|numeric|min:0.01',
+                'price' => 'required|array|min:1',
+                'price.*' => 'required|numeric|min:0',
+                'price_per_carton' => 'nullable|array',
                 'price_per_carton.*' => 'nullable|numeric|min:0',
-                'unit' => 'array',
-                'unit.*' => 'nullable|required_with:product_id.*|string',
+                'unit' => 'nullable|array',
+                'unit.*' => 'nullable|string',
                 'item_discount' => 'nullable|array',
                 'item_discount.*' => 'nullable|numeric|min:0',
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            if ($request->ajax()) {
-                return response()->json(['success' => false, 'active' => false, 'errors' => $e->errors(), 'message' => 'Validation Error'], 422);
-            }
-            throw $e;
-        }
 
-        $purchaseType = $request->input('purchase_type') ?: (request('type') === 'purchase_order' ? 'purchase_order' : 'direct_purchase');
+            $purchaseType = $request->input('purchase_type') ?: (request('type') === 'purchase_order' ? 'purchase_order' : 'direct_purchase');
 
-        $purchase = DB::transaction(function () use ($validated, $request, $gatepass, $purchaseType) {
-            $prefix = $request->input('purchase_prefix') ?: ($purchaseType === 'purchase_order' ? 'PO' : 'PINV');
-            $rawInvoiceNo = $validated['invoice_no'] ?? null;
-            $invoiceNo = \App\Models\InvoiceSeries::normalizeNumber($rawInvoiceNo, $prefix);
+            $purchase = DB::transaction(function () use ($validated, $request, $gatepass, $purchaseType) {
+                $prefix = $request->input('purchase_prefix') ?: ($purchaseType === 'purchase_order' ? 'PO' : 'PINV');
+                $rawInvoiceNo = $validated['invoice_no'] ?? null;
+                $invoiceNo = \App\Models\InvoiceSeries::normalizeNumber($rawInvoiceNo, $prefix);
 
-            // Check for duplicates
-            $exists = Purchase::where('invoice_no', $invoiceNo)->exists();
-            if ($exists) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'invoice_no' => "Purchase Number '{$invoiceNo}' already exists. Please choose a different number.",
-                ]);
-            }
+                // Check for duplicates
+                $exists = Purchase::where('invoice_no', $invoiceNo)->exists();
+                if ($exists) {
+                    $defaultNext = \App\Models\InvoiceSeries::generateNextNo($prefix);
+                    if (empty($rawInvoiceNo) || $rawInvoiceNo === $defaultNext) {
+                        $invoiceNo = $defaultNext;
+                        while (Purchase::where('invoice_no', $invoiceNo)->exists()) {
+                            \App\Models\InvoiceSeries::incrementCounterForInvoice($invoiceNo);
+                            $invoiceNo = \App\Models\InvoiceSeries::generateNextNo($prefix);
+                        }
+                    } else {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'invoice_no' => "Purchase Number '{$invoiceNo}' already exists. Please choose a different number.",
+                        ]);
+                    }
+                }
 
             \App\Models\InvoiceSeries::incrementCounterForInvoice($invoiceNo);
 
             $branchId = (int) ($validated['branch_id'] ?? 1);
             $warehouseId = (int) ($validated['warehouse_id'] ?? 1);
 
+            $isDraftAction = in_array($request->action, ['draft', 'save_only']);
             if ($purchaseType === 'purchase_order') {
-                $statusPurchase = ($request->action === 'save_only') ? 'draft' : 'booked';
+                $statusPurchase = $isDraftAction ? 'draft' : 'booked';
                 $receivingStatus = 'pending';
             } else {
-                $statusPurchase = ($request->action === 'save_only') ? 'draft' : 'approved';
-                $receivingStatus = 'received';
+                $statusPurchase = $isDraftAction ? 'draft' : 'approved';
+                $receivingStatus = $isDraftAction ? 'pending' : 'received';
             }
 
             $purchase = Purchase::create([
@@ -1012,82 +1099,84 @@ class PurchaseController extends Controller
                     'width' => $row['width'],
                 ]);
 
-                // Update product price metadata with effective landed cost
-                try {
-                    $prod = Product::find($row['pid']);
-                    if ($prod) {
-                        $updateData = [];
-                        if ($row['size_mode'] === 'by_size') {
-                            $updateData['purchase_price_per_m2'] = $effectivePrice;
-                            if ($curPPM2 > 0) {
-                                $pieceP = round($effectivePrice / $curPPM2, 2);
+                // Update product price metadata with effective landed cost (Only for non-draft purchases)
+                if ($statusPurchase !== 'draft') {
+                    try {
+                        $prod = Product::find($row['pid']);
+                        if ($prod) {
+                            $updateData = [];
+                            if ($row['size_mode'] === 'by_size') {
+                                $updateData['purchase_price_per_m2'] = $effectivePrice;
+                                if ($curPPM2 > 0) {
+                                    $pieceP = round($effectivePrice / $curPPM2, 2);
+                                    $updateData['purchase_price_per_piece'] = $pieceP;
+                                    if ($curPPB > 0) $updateData['purchase_price_per_box'] = round($pieceP * $curPPB, 2);
+                                }
+                            } elseif ($isCarton) {
+                                $updateData['purchase_price_per_box'] = $effectivePrice;
+                                $pieceP = $curPPB > 0 ? round($effectivePrice / $curPPB, 2) : $effectivePrice;
                                 $updateData['purchase_price_per_piece'] = $pieceP;
-                                if ($curPPB > 0) $updateData['purchase_price_per_box'] = round($pieceP * $curPPB, 2);
+                                if ($curPPM2 > 0) $updateData['purchase_price_per_m2'] = round($pieceP * $curPPM2, 2);
+                            } else {
+                                $updateData['purchase_price_per_piece'] = $effectivePrice;
+                                $updateData['purchase_price_per_box'] = $curPPB > 0 ? round($effectivePrice * $curPPB, 2) : $effectivePrice;
+                                if ($curPPM2 > 0) $updateData['purchase_price_per_m2'] = round($effectivePrice * $curPPM2, 2);
                             }
-                        } elseif ($isCarton) {
-                            $updateData['purchase_price_per_box'] = $effectivePrice;
-                            $pieceP = $curPPB > 0 ? round($effectivePrice / $curPPB, 2) : $effectivePrice;
-                            $updateData['purchase_price_per_piece'] = $pieceP;
-                            if ($curPPM2 > 0) $updateData['purchase_price_per_m2'] = round($pieceP * $curPPM2, 2);
-                        } else {
-                            $updateData['purchase_price_per_piece'] = $effectivePrice;
-                            $updateData['purchase_price_per_box'] = $curPPB > 0 ? round($effectivePrice * $curPPB, 2) : $effectivePrice;
-                            if ($curPPM2 > 0) $updateData['purchase_price_per_m2'] = round($effectivePrice * $curPPM2, 2);
-                        }
-                        if ($row['discPercent'] > 0) {
-                            $updateData['purchase_discount_percent'] = $row['discPercent'];
-                        }
-
-                        // Also update JSON variants if they exist
-                        $purchasedVariant = $row['color'];
-                        if (!empty($prod->color)) {
-                            $rawProductVariants = $prod->color;
-                            $b64 = base64_decode($rawProductVariants, true);
-                            if ($b64 !== false && (str_starts_with(trim($b64), '[') || str_starts_with(trim($b64), '{'))) {
-                                $rawProductVariants = $b64;
-                            }
-                            $decodedProdVariants = json_decode($rawProductVariants, true);
-                            if (is_string($decodedProdVariants)) {
-                                $decodedProdVariants = json_decode($decodedProdVariants, true);
-                            }
-                            
-                            $searchName = null; $searchColor = null; $searchSize = null;
-                            if ($purchasedVariant) {
-                                $pv = base64_decode($purchasedVariant, true);
-                                if ($pv !== false && (str_starts_with(trim($pv), '[') || str_starts_with(trim($pv), '{'))) {
-                                    $purchasedVariant = $pv;
-                                }
-                                $decPV = json_decode($purchasedVariant, true);
-                                if (is_string($decPV)) $decPV = json_decode($decPV, true);
-                                if (is_array($decPV)) {
-                                    $searchName = $decPV['name'] ?? null;
-                                    $searchColor = $decPV['color'] ?? null;
-                                    $searchSize = $decPV['size'] ?? null;
-                                }
+                            if ($row['discPercent'] > 0) {
+                                $updateData['purchase_discount_percent'] = $row['discPercent'];
                             }
 
-                            if (is_array($decodedProdVariants)) {
-                                $variantsModified = false;
-                                foreach ($decodedProdVariants as &$v) {
-                                    $match = false;
-                                    if ($searchName && isset($v['name']) && $v['name'] == $searchName) { $match = true; }
-                                    elseif ($searchColor && isset($v['color']) && $v['color'] == $searchColor && isset($v['size']) && $v['size'] == $searchSize) { $match = true; }
-                                    elseif (!$searchName && !$searchColor) { $match = true; }
-                                    
-                                    if ($match) {
-                                        $v['purch_price'] = $effectivePrice;
-                                        $variantsModified = true;
+                            // Also update JSON variants if they exist
+                            $purchasedVariant = $row['color'];
+                            if (!empty($prod->color)) {
+                                $rawProductVariants = $prod->color;
+                                $b64 = base64_decode($rawProductVariants, true);
+                                if ($b64 !== false && (str_starts_with(trim($b64), '[') || str_starts_with(trim($b64), '{'))) {
+                                    $rawProductVariants = $b64;
+                                }
+                                $decodedProdVariants = json_decode($rawProductVariants, true);
+                                if (is_string($decodedProdVariants)) {
+                                    $decodedProdVariants = json_decode($decodedProdVariants, true);
+                                }
+                                
+                                $searchName = null; $searchColor = null; $searchSize = null;
+                                if ($purchasedVariant) {
+                                    $pv = base64_decode($purchasedVariant, true);
+                                    if ($pv !== false && (str_starts_with(trim($pv), '[') || str_starts_with(trim($pv), '{'))) {
+                                        $purchasedVariant = $pv;
+                                    }
+                                    $decPV = json_decode($purchasedVariant, true);
+                                    if (is_string($decPV)) $decPV = json_decode($decPV, true);
+                                    if (is_array($decPV)) {
+                                        $searchName = $decPV['name'] ?? null;
+                                        $searchColor = $decPV['color'] ?? null;
+                                        $searchSize = $decPV['size'] ?? null;
                                     }
                                 }
-                                if ($variantsModified) {
-                                    $updateData['color'] = json_encode($decodedProdVariants);
+
+                                if (is_array($decodedProdVariants)) {
+                                    $variantsModified = false;
+                                    foreach ($decodedProdVariants as &$v) {
+                                        $match = false;
+                                        if ($searchName && isset($v['name']) && $v['name'] == $searchName) { $match = true; }
+                                        elseif ($searchColor && isset($v['color']) && $v['color'] == $searchColor && isset($v['size']) && $v['size'] == $searchSize) { $match = true; }
+                                        elseif (!$searchName && !$searchColor) { $match = true; }
+                                        
+                                        if ($match) {
+                                            $v['purch_price'] = $effectivePrice;
+                                            $variantsModified = true;
+                                        }
+                                    }
+                                    if ($variantsModified) {
+                                        $updateData['color'] = json_encode($decodedProdVariants);
+                                    }
                                 }
                             }
-                        }
 
-                        if (!empty($updateData)) $prod->update($updateData);
-                    }
-                } catch (\Exception $e) {}
+                            if (!empty($updateData)) $prod->update($updateData);
+                        }
+                    } catch (\Exception $e) {}
+                }
             }
 
             $discount = (float) ($request->discount ?? 0);
@@ -1108,8 +1197,10 @@ class PurchaseController extends Controller
                 'due_amount' => $netAmount,
             ]);
 
-            // Sync Auto Expense Voucher for Shipping, Cutting and Freight expenses
-            $this->syncPurchaseExpenseVoucher($purchase);
+            // Sync Auto Expense Voucher for Shipping, Cutting and Freight expenses (Only for non-draft purchases)
+            if ($statusPurchase !== 'draft') {
+                $this->syncPurchaseExpenseVoucher($purchase);
+            }
 
             // Only run approval (stock in + ledger + auto-GRN) if Direct Purchase
             if ($purchaseType === 'direct_purchase' && $statusPurchase === 'approved') {
@@ -1182,19 +1273,49 @@ class PurchaseController extends Controller
             return $purchase;
         });
 
-        $redirectUrl = $purchaseType === 'purchase_order' ? route('purchase_orders.index') : route('Purchase.home');
-        $msg = $purchaseType === 'purchase_order' ? "Purchase Order {$purchase->invoice_no} saved successfully!" : "Purchase {$purchase->invoice_no} saved successfully.";
+        $isDraft = ($purchase->status_purchase === 'draft');
+        if ($isDraft) {
+            $redirectUrl = route('Purchase.home', ['status' => 'draft']);
+            $msg = "Purchase Draft {$purchase->invoice_no} saved successfully! (Stock and ledger are unaffected)";
+        } else {
+            $redirectUrl = $purchaseType === 'purchase_order' ? route('purchase_orders.index') : route('Purchase.home');
+            $msg = $purchaseType === 'purchase_order' ? "Purchase Order {$purchase->invoice_no} saved successfully!" : "Purchase {$purchase->invoice_no} saved successfully.";
+        }
 
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
                 'message' => $msg,
-                'invoice_url' => $purchaseType === 'purchase_order' ? null : route('purchase.invoice', $purchase->id),
+                'invoice_url' => ($purchaseType === 'purchase_order' || $isDraft) ? null : route('purchase.invoice', $purchase->id),
                 'redirect_url' => $redirectUrl,
             ]);
         }
 
         return redirect($redirectUrl)->with('success', $msg);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $msg = $e->validator ? ($e->validator->errors()->first() ?: 'Validation Error') : $e->getMessage();
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'active' => false,
+                    'message' => $msg,
+                    'errors' => $e->errors()
+                ], 422);
+            }
+            return back()->withErrors($e->errors())->withInput();
+        } catch (\Throwable $e) {
+            \Log::error('Purchase store error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'active' => false,
+                    'message' => $e->getMessage(),
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+            return back()->with('error', 'Error: ' . $e->getMessage())->withInput();
+        }
     }
 
     // public function store(Request $request)
@@ -1873,86 +1994,88 @@ class PurchaseController extends Controller
                     'width' => $row['width'],
                 ]);
 
-                // --- Automatically Update Product Purchase Price with Landed Effective Cost ---
-                try {
-                    $prod = Product::find($row['pid']);
-                    if ($prod) {
-                        $updateData = [];
-                        if ($row['size_mode'] === 'by_size') {
-                            $updateData['purchase_price_per_m2'] = $effectivePrice;
-                            if ($curPPM2 > 0) {
-                                $pieceP = round($effectivePrice / $curPPM2, 2);
+                // --- Automatically Update Product Purchase Price with Landed Effective Cost (Only if NOT draft or if confirming) ---
+                if ($purchase->status_purchase !== 'draft' || $request->action === 'confirm') {
+                    try {
+                        $prod = Product::find($row['pid']);
+                        if ($prod) {
+                            $updateData = [];
+                            if ($row['size_mode'] === 'by_size') {
+                                $updateData['purchase_price_per_m2'] = $effectivePrice;
+                                if ($curPPM2 > 0) {
+                                    $pieceP = round($effectivePrice / $curPPM2, 2);
+                                    $updateData['purchase_price_per_piece'] = $pieceP;
+                                    if ($curPPB > 0) $updateData['purchase_price_per_box'] = round($pieceP * $curPPB, 2);
+                                }
+                            } elseif ($isCarton) {
+                                $updateData['purchase_price_per_box'] = $effectivePrice;
+                                $pieceP = $curPPB > 0 ? round($effectivePrice / $curPPB, 2) : $effectivePrice;
                                 $updateData['purchase_price_per_piece'] = $pieceP;
-                                if ($curPPB > 0) $updateData['purchase_price_per_box'] = round($pieceP * $curPPB, 2);
-                            }
-                        } elseif ($isCarton) {
-                            $updateData['purchase_price_per_box'] = $effectivePrice;
-                            $pieceP = $curPPB > 0 ? round($effectivePrice / $curPPB, 2) : $effectivePrice;
-                            $updateData['purchase_price_per_piece'] = $pieceP;
-                            if ($curPPM2 > 0) $updateData['purchase_price_per_m2'] = round($pieceP * $curPPM2, 2);
-                        } else {
-                            $updateData['purchase_price_per_piece'] = $effectivePrice;
-                            $updateData['purchase_price_per_box'] = $curPPB > 0 ? round($effectivePrice * $curPPB, 2) : $effectivePrice;
-                            if ($curPPM2 > 0) $updateData['purchase_price_per_m2'] = round($effectivePrice * $curPPM2, 2);
-                        }
-                        
-                        if ($row['discPercent'] > 0) {
-                            $updateData['purchase_discount_percent'] = $row['discPercent'];
-                        }
-
-                        // --- Also update JSON variants if they exist ---
-                        $purchasedVariant = $row['color'];
-                        if (!empty($prod->color)) {
-                            $rawProductVariants = $prod->color;
-                            $b64 = base64_decode($rawProductVariants, true);
-                            if ($b64 !== false && (str_starts_with(trim($b64), '[') || str_starts_with(trim($b64), '{'))) {
-                                $rawProductVariants = $b64;
-                            }
-                            $decodedProdVariants = json_decode($rawProductVariants, true);
-                            if (is_string($decodedProdVariants)) {
-                                $decodedProdVariants = json_decode($decodedProdVariants, true);
+                                if ($curPPM2 > 0) $updateData['purchase_price_per_m2'] = round($pieceP * $curPPM2, 2);
+                            } else {
+                                $updateData['purchase_price_per_piece'] = $effectivePrice;
+                                $updateData['purchase_price_per_box'] = $curPPB > 0 ? round($effectivePrice * $curPPB, 2) : $effectivePrice;
+                                if ($curPPM2 > 0) $updateData['purchase_price_per_m2'] = round($effectivePrice * $curPPM2, 2);
                             }
                             
-                            $searchName = null; $searchColor = null; $searchSize = null;
-                            if ($purchasedVariant) {
-                                $pv = base64_decode($purchasedVariant, true);
-                                if ($pv !== false && (str_starts_with(trim($pv), '[') || str_starts_with(trim($pv), '{'))) {
-                                    $purchasedVariant = $pv;
-                                }
-                                $decPV = json_decode($purchasedVariant, true);
-                                if (is_string($decPV)) $decPV = json_decode($decPV, true);
-                                if (is_array($decPV)) {
-                                    $searchName = $decPV['name'] ?? null;
-                                    $searchColor = $decPV['color'] ?? null;
-                                    $searchSize = $decPV['size'] ?? null;
-                                }
+                            if ($row['discPercent'] > 0) {
+                                $updateData['purchase_discount_percent'] = $row['discPercent'];
                             }
 
-                            if (is_array($decodedProdVariants)) {
-                                $variantsModified = false;
-                                foreach ($decodedProdVariants as &$v) {
-                                    $match = false;
-                                    if ($searchName && isset($v['name']) && $v['name'] == $searchName) { $match = true; }
-                                    elseif ($searchColor && isset($v['color']) && $v['color'] == $searchColor && isset($v['size']) && $v['size'] == $searchSize) { $match = true; }
-                                    elseif (!$searchName && !$searchColor) { $match = true; } // Update all if no specific variant identified
-                                    
-                                    if ($match) {
-                                        $v['purch_price'] = $effectivePrice;
-                                        $variantsModified = true;
+                            // --- Also update JSON variants if they exist ---
+                            $purchasedVariant = $row['color'];
+                            if (!empty($prod->color)) {
+                                $rawProductVariants = $prod->color;
+                                $b64 = base64_decode($rawProductVariants, true);
+                                if ($b64 !== false && (str_starts_with(trim($b64), '[') || str_starts_with(trim($b64), '{'))) {
+                                    $rawProductVariants = $b64;
+                                }
+                                $decodedProdVariants = json_decode($rawProductVariants, true);
+                                if (is_string($decodedProdVariants)) {
+                                    $decodedProdVariants = json_decode($decodedProdVariants, true);
+                                }
+                                
+                                $searchName = null; $searchColor = null; $searchSize = null;
+                                if ($purchasedVariant) {
+                                    $pv = base64_decode($purchasedVariant, true);
+                                    if ($pv !== false && (str_starts_with(trim($pv), '[') || str_starts_with(trim($pv), '{'))) {
+                                        $purchasedVariant = $pv;
+                                    }
+                                    $decPV = json_decode($purchasedVariant, true);
+                                    if (is_string($decPV)) $decPV = json_decode($decPV, true);
+                                    if (is_array($decPV)) {
+                                        $searchName = $decPV['name'] ?? null;
+                                        $searchColor = $decPV['color'] ?? null;
+                                        $searchSize = $decPV['size'] ?? null;
                                     }
                                 }
-                                if ($variantsModified) {
-                                    $updateData['color'] = json_encode($decodedProdVariants);
+
+                                if (is_array($decodedProdVariants)) {
+                                    $variantsModified = false;
+                                    foreach ($decodedProdVariants as &$v) {
+                                        $match = false;
+                                        if ($searchName && isset($v['name']) && $v['name'] == $searchName) { $match = true; }
+                                        elseif ($searchColor && isset($v['color']) && $v['color'] == $searchColor && isset($v['size']) && $v['size'] == $searchSize) { $match = true; }
+                                        elseif (!$searchName && !$searchColor) { $match = true; } // Update all if no specific variant identified
+                                        
+                                        if ($match) {
+                                            $v['purch_price'] = $effectivePrice;
+                                            $variantsModified = true;
+                                        }
+                                    }
+                                    if ($variantsModified) {
+                                        $updateData['color'] = json_encode($decodedProdVariants);
+                                    }
                                 }
                             }
-                        }
 
-                        if (!empty($updateData)) {
-                            $prod->update($updateData);
+                            if (!empty($updateData)) {
+                                $prod->update($updateData);
+                            }
                         }
+                    } catch (\Exception $e) {
+                        \Log::error("Failed to update product purchase price on edit: " . $e->getMessage());
                     }
-                } catch (\Exception $e) {
-                    \Log::error("Failed to update product purchase price on edit: " . $e->getMessage());
                 }
                 // ---------------------------------------------------
 
@@ -2170,8 +2293,23 @@ class PurchaseController extends Controller
                 $purchase->update([
                     'status_purchase' => 'approved',
                     'purchase_status' => 'posted',
+                    'receiving_status' => 'received',
                 ]);
                 $this->approvePurchase($purchase);
+
+                // If payments entered in edit form upon confirmation, record them
+                if (!empty($validPaymentAccounts) && !empty($validPaymentAmounts)) {
+                    try {
+                        $transactionService = app(\App\Services\TransactionService::class);
+                        $transactionService->createPaymentForPurchase(
+                            $purchase,
+                            $validPaymentAccounts,
+                            $validPaymentAmounts
+                        );
+                    } catch (\Throwable $e) {
+                        \Log::error('Purchase Edit Confirm Payment Error: ' . $e->getMessage());
+                    }
+                }
             }
 
             return $purchase;
@@ -2194,7 +2332,7 @@ class PurchaseController extends Controller
 
     public function destroy($id)
     {
-        $purchase = Purchase::with(['items', 'goodsReceivingNotes.items.product'])->findOrFail($id);
+        $purchase = Purchase::with(['items.product', 'goodsReceivingNotes.items.product'])->findOrFail($id);
         $isPo = $purchase->purchase_type === 'purchase_order';
         $isDraft = $purchase->status_purchase === 'draft';
 
@@ -2213,7 +2351,17 @@ class PurchaseController extends Controller
             }
         }
 
-        // 1. Purchase Order Checks: Block deletion ONLY if an invoice has actually been generated
+        // Safety Check: Cannot delete if Purchase Returns exist for this purchase
+        $hasReturns = \App\Models\PurchaseReturn::where('purchase_id', $purchase->id)->exists();
+        if ($hasReturns) {
+            $msg = 'Cannot delete! Purchase Returns already exist for this purchase. Please delete or handle the returns first.';
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
+
+        // Purchase Order Checks: Block deletion of PO ONLY if a separate child invoice exists that is NOT this purchase
         if ($isPo) {
             $hasInvoicedGrn = $purchase->goodsReceivingNotes->filter(function ($g) {
                 return $g->is_invoiced == 1 || !empty($g->invoice_id);
@@ -2221,7 +2369,7 @@ class PurchaseController extends Controller
             $hasChildInvoice = Purchase::where('parent_po_id', $purchase->id)->exists();
 
             if ($hasInvoicedGrn || $hasChildInvoice) {
-                $msg = 'Cannot delete! A purchase bill/invoice has already been generated for this Purchase Order.';
+                $msg = 'Cannot delete! A purchase bill/invoice has already been generated for this Purchase Order. Please delete the purchase invoice first.';
                 if (request()->ajax() || request()->wantsJson()) {
                     return response()->json(['success' => false, 'message' => $msg], 422);
                 }
@@ -2231,22 +2379,83 @@ class PurchaseController extends Controller
 
         try {
             DB::transaction(function () use ($purchase, $isPo, $isDraft) {
-                $oldNetAmount = $purchase->net_amount;
-
                 $branchId = (int) ($purchase->branch_id ?? 1);
                 $warehouseId = (int) ($purchase->warehouse_id);
+                $now = now();
 
-                // linked to gatepass? then NO stock changes
+                // 1. Linked Gatepass check
                 $isLinkedToGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
 
-                // If PO with uninvoiced GRNs, rollback stock and delete GRNs
+                // 2. Check if this purchase had direct stock movements
+                $hasDirectStockMovements = DB::table('stock_movements')
+                    ->where('ref_id', $purchase->id)
+                    ->whereIn('ref_type', ['PURCHASE', 'PURCHASE_EDIT'])
+                    ->exists();
+
+                // 3. Stock Rollback for Purchase Items (if not draft, not gatepass, and not a standalone PO)
+                if (! $isLinkedToGatepass && ! $isPo && ! $isDraft) {
+                    $movs = [];
+                    foreach ($purchase->items as $it) {
+                        $pid = (int) $it->product_id;
+                        $product = $it->product ?? \App\Models\Product::find($pid);
+                        $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+                        $pSizeMode = $product->size_mode ?? 'by_pieces';
+                        $convFactor = (float) ($it->conv_factor ?? 1);
+                        $unit = strtolower(trim($it->unit ?? ''));
+
+                        $isCartonMode = ($pSizeMode === 'by_cartons' || $pSizeMode === 'by_box');
+                        if ($isCartonMode && $ppb > 1) {
+                            if (isset($it->boxes_qty) && ($it->boxes_qty > 0 || $it->loose_qty > 0)) {
+                                $boxes = (int) $it->boxes_qty;
+                                $loose = (int) $it->loose_qty;
+                            } else {
+                                [$boxes, $loose] = self::parseCartonQty($it->qty);
+                            }
+                            $baseQty = ($boxes * $ppb) + $loose;
+                        } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm' || $pSizeMode === 'by_meter' || $pSizeMode === 'by_feet') {
+                            if ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece' || ($convFactor > 0 && $convFactor != 1.0)) {
+                                $baseQty = ((float) $it->qty) * $convFactor;
+                            } else {
+                                $baseQty = (float) $it->qty;
+                            }
+                        } elseif ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece') {
+                            $baseQty = (float) $it->qty;
+                        } else {
+                            $baseQty = ((float) $it->qty) * ($convFactor > 0 ? $convFactor : 1);
+                        }
+
+                        $itemWhId = (int) ($it->warehouse_id ?: $warehouseId);
+                        if ($baseQty > 0) {
+                            // Deduct exact pieces that were added to stock
+                            $this->upsertStocks($pid, -$baseQty, $branchId, $itemWhId);
+
+                            $movs[] = [
+                                'product_id' => $pid,
+                                'type' => 'out',
+                                'qty' => $baseQty,
+                                'ref_type' => 'PURCHASE_DELETE',
+                                'ref_id' => $purchase->id,
+                                'note' => 'Delete Purchase #' . ($purchase->invoice_no ?? $purchase->id) . ' (Stock reversed)',
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
+                        }
+                    }
+
+                    if (! empty($movs)) {
+                        DB::table('stock_movements')->insert($movs);
+                    }
+                }
+
+                // 4. Case A: Deleting a Purchase Order directly with un-invoiced GRNs
                 if ($isPo && $purchase->goodsReceivingNotes->count() > 0) {
                     foreach ($purchase->goodsReceivingNotes as $grn) {
                         foreach ($grn->items as $gItem) {
                             if ($gItem->product_id) {
                                 $product = $gItem->product;
                                 $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
-                                $stock = WarehouseStock::where('warehouse_id', $gItem->warehouse_id ?? $warehouseId)
+                                $gWhId = (int) ($gItem->warehouse_id ?? $warehouseId);
+                                $stock = \App\Models\WarehouseStock::where('warehouse_id', $gWhId)
                                     ->where('product_id', $gItem->product_id)
                                     ->first();
                                 if ($stock) {
@@ -2256,52 +2465,97 @@ class PurchaseController extends Controller
                                 }
                             }
                         }
-                        StockMovement::where('ref_id', $grn->id)->whereIn('ref_type', ['GRN', 'direct_grn'])->delete();
+                        \App\Models\StockMovement::where('ref_id', $grn->id)->whereIn('ref_type', ['GRN', 'direct_grn'])->delete();
                         $grn->items()->delete();
                         $grn->delete();
                     }
                 }
 
-                if (! $isLinkedToGatepass && ! $isPo && ! $isDraft) {
-                    $movs = [];
-                    $now = now();
+                // 5. Case B: Deleting a Purchase Invoice that was generated from a Purchase Order (parent_po_id)
+                if (! empty($purchase->parent_po_id)) {
+                    $parentPo = Purchase::with(['items', 'goodsReceivingNotes.items.product'])->find($purchase->parent_po_id);
+                    if ($parentPo) {
+                        // Rollback and delete any GRNs linked to this parent PO or this invoice
+                        $grns = \App\Models\GoodsReceivingNote::where('purchase_id', $parentPo->id)
+                            ->orWhere('invoice_id', $purchase->id)
+                            ->get();
 
-                    foreach ($purchase->items as $it) {
-                        $pid = (int) $it->product_id;
-                        $qty = (float) $it->qty;
+                        foreach ($grns as $grn) {
+                            // If stock was not reversed above by direct purchase items, reverse it from GRN items
+                            if (! $hasDirectStockMovements) {
+                                foreach ($grn->items as $gItem) {
+                                    if ($gItem->product_id) {
+                                        $gProduct = $gItem->product;
+                                        $gPpb = (float) ($gProduct && $gProduct->pieces_per_box > 0 ? $gProduct->pieces_per_box : 1);
+                                        $gWhId = (int) ($gItem->warehouse_id ?? $parentPo->warehouse_id ?? $warehouseId);
+                                        $stock = \App\Models\WarehouseStock::where('warehouse_id', $gWhId)
+                                            ->where('product_id', $gItem->product_id)
+                                            ->first();
+                                        if ($stock) {
+                                            $stock->total_pieces -= (float) $gItem->received_qty;
+                                            $stock->quantity = $stock->total_pieces / ($gPpb > 0 ? $gPpb : 1);
+                                            $stock->save();
+                                        }
+                                    }
+                                }
+                            }
+                            \App\Models\StockMovement::where('ref_id', $grn->id)->whereIn('ref_type', ['GRN', 'direct_grn'])->delete();
+                            $grn->items()->delete();
+                            $grn->delete();
+                        }
 
-                        $movs[] = [
-                            'product_id' => $pid,
-                            'type' => 'out',
-                            'qty' => $qty,
-                            'ref_type' => 'PURCHASE_DELETE',
-                            'ref_id' => $purchase->id,
-                            'note' => 'Delete purchase (reverse)',
-                            'created_at' => $now,
-                            'updated_at' => $now,
-                        ];
-
-                        // stocks rollback
-                        $this->upsertStocks($pid, -$qty, $branchId, $warehouseId);
-                    }
-
-                    if (! empty($movs)) {
-                        DB::table('stock_movements')->insert($movs);
+                        // Delete parent PO items and parent PO itself
+                        $parentPo->items()->delete();
+                        $parentPo->delete();
                     }
                 }
 
-                // Clean up linked ExpenseVoucher if any
-                $exp = \App\Models\ExpenseVoucher::where('reference_no', $purchase->invoice_no)->where('type', 'purchase')->first();
-                if ($exp) {
+                // 6. Accounting & Vendor Ledger Reversal:
+                // A. Delete Purchase Journal Voucher & Journal Entries
+                $purchaseVouchers = \App\Models\VoucherMaster::where('remarks', "Purchase Voucher #{$purchase->invoice_no}")
+                    ->orWhere('remarks', 'like', "%Purchase Voucher #{$purchase->invoice_no}%")
+                    ->get();
+                foreach ($purchaseVouchers as $pv) {
+                    $pv->journalEntries()->delete();
+                    $pv->details()->delete();
+                    $pv->delete();
+                }
+
+                // B. Delete Auto-Payment Voucher (restores cash/bank balance & vendor ledger)
+                $paymentVouchers = \App\Models\VoucherMaster::where('remarks', "Auto-Payment for Purchase #{$purchase->invoice_no}")
+                    ->orWhere('remarks', 'like', "%Auto-Payment for Purchase #{$purchase->invoice_no}%")
+                    ->get();
+                foreach ($paymentVouchers as $payV) {
+                    $payV->journalEntries()->delete();
+                    $payV->details()->delete();
+                    $payV->delete();
+                }
+
+                // C. Delete Expense Vouchers linked to this purchase
+                $expVouchers = \App\Models\ExpenseVoucher::where('reference_no', $purchase->invoice_no)->get();
+                foreach ($expVouchers as $exp) {
                     \App\Models\JournalEntry::where('source_type', \App\Models\ExpenseVoucher::class)->where('source_id', $exp->id)->delete();
                     $exp->delete();
                 }
 
+                // D. Delete any orphan journal entries directly referencing this purchase
+                \App\Models\JournalEntry::where('source_type', Purchase::class)->where('source_id', $purchase->id)->delete();
+
+                // E. Adjust VendorLedger closing balance
+                if ($purchase->vendor_id) {
+                    $vendorLedger = \App\Models\VendorLedger::where('vendor_id', $purchase->vendor_id)->first();
+                    if ($vendorLedger) {
+                        $vendorLedger->closing_balance = max(0, (float) $vendorLedger->closing_balance - (float) $purchase->net_amount);
+                        $vendorLedger->save();
+                    }
+                }
+
+                // 7. Delete Purchase Items and Purchase
                 $purchase->items()->delete();
                 $purchase->delete();
             });
 
-            $msg = ($isPo ? 'Purchase Order (and linked GRNs) ' : 'Purchase ') . 'deleted successfully.';
+            $msg = ($isPo ? 'Purchase Order (and linked GRNs) ' : 'Purchase ') . 'deleted successfully, stock reverted, and vendor ledger updated.';
             if (request()->ajax() || request()->wantsJson()) {
                 return response()->json(['success' => true, 'message' => $msg]);
             }
@@ -2972,6 +3226,17 @@ class PurchaseController extends Controller
         // Find existing expense voucher linked to this purchase
         $existing = \App\Models\ExpenseVoucher::where('reference_no', $purchase->invoice_no)
             ->first();
+
+        // Draft purchases must NOT have an active expense voucher
+        if ($purchase->status_purchase === 'draft') {
+            if ($existing) {
+                \App\Models\JournalEntry::where('source_type', \App\Models\ExpenseVoucher::class)
+                    ->where('source_id', $existing->id)
+                    ->delete();
+                $existing->delete();
+            }
+            return;
+        }
 
         if ($totalExpense <= 0) {
             if ($existing) {

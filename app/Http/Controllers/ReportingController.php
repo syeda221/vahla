@@ -272,7 +272,7 @@ class ReportingController extends Controller
 
                     // Fetch all approved/returned purchases
                     $purchasesQuery = DB::table('purchase_items as pi')
-                        ->join('purchases as pur', 'pur.id', '=', 'pi.purchase_id')
+                        ->join('purchases as pur', 'pur.id', '=', 'pi.purchase_id')->whereNull('pur.deleted_at')
                         ->where('pi.product_id', $product->id)
                         ->whereIn('pur.status_purchase', ['approved', 'Returned', 'Partial']);
                     if ($warehouseId && $warehouseId !== 'all') {
@@ -2166,7 +2166,7 @@ class ReportingController extends Controller
                 ->toArray();
 
             // Also include all vendors with purchases
-            $purchVendorIds = DB::table('purchases')
+            $purchVendorIds = DB::table('purchases')->whereNull('deleted_at')
                 ->where('purchase_type', '!=', 'purchase_order')
                 ->where('status_purchase', '!=', 'draft')
                 ->distinct()
@@ -2865,7 +2865,7 @@ class ReportingController extends Controller
                 $totalBalance = $balanceService->getVendorBalance($v->id);
                 if ($totalBalance <= 0) continue; // we owe them
 
-                $invoices = DB::table('purchases')
+                $invoices = DB::table('purchases')->whereNull('deleted_at')
                     ->where('vendor_id', $v->id)
                     ->where('purchase_date', '<=', $asOfDate)
                     ->where('status_purchase', 'approved')
@@ -2955,8 +2955,8 @@ class ReportingController extends Controller
         $salesMonth = DB::table('sales')->whereBetween('created_at', [$startOfMonth . ' 00:00:00', $endOfMonth . ' 23:59:59'])->sum('total_net');
 
         // Purchases
-        $purchasesToday = DB::table('purchases')->whereDate('purchase_date', $today)->sum('net_amount');
-        $purchasesMonth = DB::table('purchases')->whereBetween('purchase_date', [$startOfMonth, $endOfMonth])->sum('net_amount');
+        $purchasesToday = DB::table('purchases')->whereNull('deleted_at')->whereDate('purchase_date', $today)->sum('net_amount');
+        $purchasesMonth = DB::table('purchases')->whereNull('deleted_at')->whereBetween('purchase_date', [$startOfMonth, $endOfMonth])->sum('net_amount');
 
         // Expenses
         $expensesTodayV1 = DB::table('expense_vouchers')->where('entry_date', $today)->sum('total_amount');
@@ -3055,7 +3055,7 @@ class ReportingController extends Controller
     private function getPurchasedQtyAndNetAmount(int $productId, $dateFilter = [], $warehouseId = null): array
     {
         $query = DB::table('purchase_items')
-            ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+            ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')->whereNull('purchases.deleted_at')
             ->where('purchase_items.product_id', $productId)
             ->whereIn('purchases.status_purchase', ['approved', 'posted', 'Returned', 'Partial']);
 

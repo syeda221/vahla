@@ -735,13 +735,13 @@
                             <i class="bi bi-check-circle me-1"></i> Save Purchase Order
                         </button>
                     @else
-                        {{-- New Save Only Button --}}
-                        <!-- <button type="button" class="btn btn-action-primary bg-info border-info text-white" id="btnSaveOnly">
-                            <i class="bi bi-save me-1"></i> Save Purchase
-                        </button> -->
+                        {{-- Save as Draft Button --}}
+                        <button type="button" class="btn btn-warning text-dark fw-bold px-4 shadow-sm d-inline-flex align-items-center" id="btnSaveDraft" style="border-radius: 8px; font-size: 0.95rem; border: 1px solid #d97706;">
+                            <i class="bi bi-file-earmark-text me-2"></i> Save as Draft
+                        </button>
                         {{-- Existing Submit (Confirm) --}}
-                        <button type="button" class="btn btn-action-primary bg-success border-success text-white" id="btnConfirm">
-                            <i class="bi bi-check-circle me-1"></i> Confirm Purchase
+                        <button type="button" class="btn btn-action-primary bg-success border-success text-white px-4 fw-bold shadow-sm d-inline-flex align-items-center" id="btnConfirm" style="border-radius: 8px; font-size: 0.95rem;">
+                            <i class="bi bi-check-circle me-2"></i> Confirm Purchase
                         </button>
                     @endif
                 </div>
@@ -957,44 +957,103 @@
             // --- SAVE ONLY AJAX ---
             // --- Submit Logic (AJAX for both Save & Confirm) ---
 
-            // 1. Save (Draft)
-            $('#btnSaveOnly').click(function(e) {
+            // 1. Save as Draft
+            $('#btnSaveDraft, #btnSaveOnly').click(function(e) {
                 e.preventDefault();
                 normalizeDiscountInput();
-                let $btn = $(this);
-                $btn.prop('disabled', true).html(
-                    '<span class="spinner-border spinner-border-sm me-2"></span>Saving...');
 
-                $('#action').val('save_only'); // Set action
+                let vendorId = $('select[name="vendor_id"]').val();
+                if (!vendorId) {
+                    Swal.fire('Warning', 'Kripya Vendor select karein.', 'warning');
+                    return;
+                }
 
-                $.ajax({
-                    url: "{{ route('store.Purchase') }}",
-                    method: "POST",
-                    data: $('#purchaseForm').serialize(),
-                    success: function(response) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Saved!',
-                            text: 'Purchase saved as draft successfully.',
-                            timer: 1500,
-                            showConfirmButton: false
-                        }).then(() => {
-                            window.location.href = "{{ route('Purchase.home') }}";
+                let hasProduct = false;
+                $('#purchaseTableBody tr').each(function() {
+                    let pid = $(this).find('select.product-select2, select[name="product_id[]"]').val();
+                    let qty = parseFloat($(this).find('.main-qty-input, input[name="qty[]"]').val()) || 0;
+                    if (pid && qty > 0) {
+                        hasProduct = true;
+                        return false;
+                    }
+                });
+                if (!hasProduct) {
+                    Swal.fire('Warning', 'Kripya kam az kam aik product add karein jiski quantity 0 se zyada ho.', 'warning');
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Save as Draft?',
+                    text: 'Yeh purchase draft ke tor par save hogi. Is se stock aur vendor ledger par koi asar nahi parega.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#f59e0b',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, Save as Draft!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        let $btn = $('#btnSaveDraft');
+                        $btn.prop('disabled', true).html(
+                            '<span class="spinner-border spinner-border-sm me-2"></span>Saving Draft...');
+
+                        $('#action').val('draft'); // Set action
+
+                        // Temporarily disable incomplete rows so only valid items are serialized
+                        $('#purchaseTableBody tr').each(function() {
+                            let pid = $(this).find('select.product-select2, select[name="product_id[]"]').val();
+                            let qty = parseFloat($(this).find('.main-qty-input, input[name="qty[]"]').val()) || 0;
+                            if (!pid || qty <= 0) {
+                                $(this).find(':input').prop('disabled', true);
+                            }
                         });
-                    },
-                    error: function(xhr) {
-                        $btn.prop('disabled', false).html(
-                            '<i class="bi bi-save"></i> Save Purchase');
-                        let msg = 'Something went wrong.';
-                        if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON
-                            .message;
-                        // Validation errors
-                        if (xhr.responseJSON && xhr.responseJSON.errors) {
-                            let errors = Object.values(xhr.responseJSON.errors).flat().join(
-                                '\n');
-                            msg += '\n' + errors;
-                        }
-                        Swal.fire('Error', msg, 'error');
+
+                        let formData = $('#purchaseForm').serialize();
+                        $('#purchaseTableBody tr :input').prop('disabled', false);
+
+                        $.ajax({
+                            url: "{{ route('store.Purchase') }}",
+                            method: "POST",
+                            data: formData,
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            dataType: 'json',
+                            success: function(response) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Draft Saved!',
+                                    text: response.message || 'Purchase draft successfully save ho gayi hai. Stock aur ledger effect nahi huye.',
+                                    timer: 1800,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    window.location.href = response.redirect_url || "{{ route('Purchase.home', ['status' => 'draft']) }}";
+                                });
+                            },
+                            error: function(xhr) {
+                                $btn.prop('disabled', false).html(
+                                    '<i class="bi bi-file-earmark-text me-2"></i> Save as Draft');
+                                console.error('Save Draft Error:', xhr);
+                                let msg = 'Something went wrong.';
+                                if (xhr.responseJSON) {
+                                    if (xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                                    if (xhr.responseJSON.errors) {
+                                        let errors = Object.values(xhr.responseJSON.errors).flat().join('\n');
+                                        msg = (msg && msg !== 'Validation Error' ? msg + ':\n' : '') + errors;
+                                    } else if (xhr.responseJSON.error) {
+                                        msg = xhr.responseJSON.error;
+                                    }
+                                } else if (xhr.responseText) {
+                                    try {
+                                        let parsed = JSON.parse(xhr.responseText);
+                                        if (parsed.message) msg = parsed.message;
+                                    } catch(e) {
+                                        msg = 'Server Error (' + xhr.status + '): ' + (xhr.statusText || 'Unknown error');
+                                    }
+                                }
+                                Swal.fire('Error', msg, 'error');
+                            }
+                        });
                     }
                 });
             });
@@ -1030,10 +1089,27 @@
 
                         $('#action').val(isPurchaseOrder ? 'purchase_order' : 'approved');
 
+                        // Temporarily disable incomplete rows so only valid items are serialized
+                        $('#purchaseTableBody tr').each(function() {
+                            let pid = $(this).find('select.product-select2, select[name="product_id[]"]').val();
+                            let qty = parseFloat($(this).find('.main-qty-input, input[name="qty[]"]').val()) || 0;
+                            if (!pid || qty <= 0) {
+                                $(this).find(':input').prop('disabled', true);
+                            }
+                        });
+
+                        let formData = $('#purchaseForm').serialize();
+                        $('#purchaseTableBody tr :input').prop('disabled', false);
+
                         $.ajax({
                             url: "{{ route('store.Purchase') }}",
                             method: "POST",
-                            data: $('#purchaseForm').serialize(),
+                            data: formData,
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            dataType: 'json',
                             success: function(response) {
                                 // Open Invoice in New Tab only if invoice_url is provided
                                 if (response.invoice_url) {
@@ -1057,13 +1133,23 @@
                                         ? '<i class="bi bi-check-circle me-1"></i> Save Purchase Order' 
                                         : '<i class="bi bi-check-circle me-1"></i> Confirm Purchase'
                                 );
+                                console.error('Purchase Confirm Error:', xhr);
                                 let msg = 'Something went wrong.';
-                                if (xhr.responseJSON && xhr.responseJSON.message) msg =
-                                    xhr.responseJSON.message;
-                                if (xhr.responseJSON && xhr.responseJSON.errors) {
-                                    let errors = Object.values(xhr.responseJSON.errors)
-                                        .flat().join('\n');
-                                    msg += '\n' + errors;
+                                if (xhr.responseJSON) {
+                                    if (xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                                    if (xhr.responseJSON.errors) {
+                                        let errors = Object.values(xhr.responseJSON.errors).flat().join('\n');
+                                        msg = (msg && msg !== 'Validation Error' ? msg + ':\n' : '') + errors;
+                                    } else if (xhr.responseJSON.error) {
+                                        msg = xhr.responseJSON.error;
+                                    }
+                                } else if (xhr.responseText) {
+                                    try {
+                                        let parsed = JSON.parse(xhr.responseText);
+                                        if (parsed.message) msg = parsed.message;
+                                    } catch(e) {
+                                        msg = 'Server Error (' + xhr.status + '): ' + (xhr.statusText || 'Unknown error');
+                                    }
                                 }
                                 Swal.fire('Error', msg, 'error');
                             }

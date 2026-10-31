@@ -156,7 +156,8 @@
         .premium-table {
             border: 2px solid #475569 !important; /* Bold outer border */
             border-radius: 8px !important;
-            overflow: visible !important;
+            width: 100% !important;
+            margin-bottom: 0 !important;
         }
         
         .premium-table thead th {
@@ -168,7 +169,8 @@
             letter-spacing: 0.5px;
             border-bottom: 3px solid #475569 !important; /* Thick bottom border under headers */
             border-right: 2px solid #cbd5e1 !important;
-            padding: 12px 10px !important;
+            padding: 9px 8px !important;
+            white-space: nowrap !important;
         }
         
         .premium-table thead th:last-child {
@@ -177,20 +179,72 @@
         
         .premium-table tbody td {
             border: 2px solid #e2e8f0 !important; /* Bold borders between all cells */
-            padding: 12px 10px !important;
+            padding: 9px 8px !important;
             font-size: 13px !important;
             color: #334155 !important;
             background-color: #ffffff;
+            vertical-align: middle !important;
         }
         
         .premium-table tbody tr:hover td {
             background-color: #f8fafc !important; /* Elegant row hover background */
         }
         
-        /* Table Responsive border fix */
+        /* Table Responsive Horizontal Scrolling with Clean Overflow */
+        .premium-card .table-responsive,
         .table-responsive {
             border-radius: 8px !important;
-            overflow: visible !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            min-height: 420px;
+            position: relative;
+        }
+
+        /* Sleek Modern Horizontal Scrollbar */
+        .premium-card .table-responsive::-webkit-scrollbar,
+        .table-responsive::-webkit-scrollbar {
+            height: 8px;
+        }
+        .premium-card .table-responsive::-webkit-scrollbar-track,
+        .table-responsive::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .premium-card .table-responsive::-webkit-scrollbar-thumb,
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 4px;
+        }
+        .premium-card .table-responsive::-webkit-scrollbar-thumb:hover,
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Action Column & Dropdown Stacking Fix */
+        #purchase-table th.col-action,
+        #purchase-table td.col-action,
+        #purchase-table th:last-child,
+        #purchase-table td:last-child {
+            text-align: center !important;
+            white-space: nowrap !important;
+            position: relative;
+            width: 1% !important;
+        }
+
+        /* Elevate the active row when dropdown is opened so it floats cleanly over all other rows */
+        #purchase-table tbody tr:has(.show),
+        #purchase-table tbody tr:focus-within {
+            position: relative;
+            z-index: 30;
+        }
+
+        #purchase-table .dropdown.show {
+            position: relative;
+            z-index: 40;
+        }
+
+        #purchase-table .dropdown-menu {
+            z-index: 1060 !important;
         }
 
         /* Custom styled controls for inline Bulk Discount Card */
@@ -321,7 +375,7 @@
                 </div>
 
                 <div class="card premium-card">
-                    <div class="card-body p-4">
+                    <div class="card-body p-3 p-md-4">
                         @if (session('success'))
                             <div class="alert alert-success d-flex align-items-center gap-2 rounded-3 mb-4">
                                 <i class="fas fa-check-circle"></i>
@@ -410,22 +464,22 @@
                             <table id="purchase-table" class="table table-hover align-middle datanew premium-table" style="width:100%">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th class="py-3 ps-3 rounded-start text-secondary fw-semibold text-uppercase small" style="width: 40px; vertical-align: middle;">
+                                        <th class="py-3 ps-3 rounded-start text-secondary fw-semibold text-uppercase small text-center" style="width: 40px; vertical-align: middle;">
                                             <input type="checkbox" id="selectAllPurchases" style="cursor: pointer; width: 16px; height: 16px; margin: 0 auto !important;">
                                         </th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Bill#</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Date</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Invoice No</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">M.Bill</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Status</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Vendor</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Location</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Inline Disc</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Add. Disc</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Net Amount</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Paid</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Due</th>
-                                        <th class="py-3 pe-3 rounded-end text-secondary fw-semibold text-uppercase small text-center">Action</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-nowrap">Bill#</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-nowrap">Date</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-nowrap">Invoice No</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-nowrap">M.Bill</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-nowrap text-center">Status</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-nowrap">Vendor</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-nowrap">Location</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end text-nowrap">Inline Disc</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end text-nowrap">Add. Disc</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end text-nowrap">Net Amount</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end text-nowrap">Paid</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end text-nowrap">Due</th>
+                                        <th class="py-3 pe-3 rounded-end text-secondary fw-semibold text-uppercase small text-center col-action text-nowrap" style="width: 1%; white-space: nowrap;">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="purchaseTableBody">
@@ -500,28 +554,52 @@
 
     <script>
         $(document).ready(function() {
+            // Elevate row z-index when action dropdown is open to ensure clean layering across all browsers
+            $(document).on('show.bs.dropdown', '#purchase-table .dropdown', function() {
+                $(this).closest('tr').css({
+                    'position': 'relative',
+                    'z-index': 50
+                });
+            });
+            $(document).on('hidden.bs.dropdown', '#purchase-table .dropdown', function() {
+                $(this).closest('tr').css({
+                    'position': '',
+                    'z-index': ''
+                });
+            });
+
             // Function to initialize DataTable
             function initDataTable() {
-                if ($.fn.DataTable.isDataTable('.datanew')) {
-                    $('.datanew').DataTable().destroy();
+                try {
+                    if ($.fn.DataTable && $.fn.DataTable.isDataTable('#purchase-table')) {
+                        $('#purchase-table').DataTable().destroy();
+                    }
+                    if ($.fn.DataTable) {
+                        let selectedLen = parseInt($('#per_page').val()) || 50;
+                        $('#purchase-table').DataTable({
+                            "pageLength": selectedLen,
+                            "lengthMenu": [
+                                [25, 50, 100, 250],
+                                ['25 rows', '50 rows', '100 rows', '250 rows']
+                            ],
+                            "order": [],
+                            "autoWidth": false,
+                            "columnDefs": [
+                                { "orderable": false, "targets": [0, 13] }
+                            ],
+                            "language": {
+                                "search": "",
+                                "searchPlaceholder": "Search purchases...",
+                                "lengthMenu": "_MENU_"
+                            },
+                            "dom": "<'row mb-3 align-items-center'<'col-12 col-md-6 mb-2 mb-md-0'l><'col-12 col-md-6'f>>" +
+                                "<'row'<'col-12'tr>>" +
+                                "<'row mt-3 align-items-center'<'col-12 col-md-5 mb-2 mb-md-0'i><'col-12 col-md-7'p>>",
+                        });
+                    }
+                } catch(e) {
+                    console.error("DataTable initialization error: ", e);
                 }
-                let selectedLen = parseInt($('#per_page').val()) || 50;
-                $('.datanew').DataTable({
-                    "pageLength": selectedLen,
-                    "lengthMenu": [
-                        [25, 50, 100, 250],
-                        ['25 rows', '50 rows', '100 rows', '250 rows']
-                    ],
-                    "order": [],
-                    "language": {
-                        "search": "",
-                        "searchPlaceholder": "Search purchases...",
-                        "lengthMenu": "_MENU_"
-                    },
-                    "dom": "<'row mb-3 align-items-center'<'col-12 col-md-6 mb-2 mb-md-0'l><'col-12 col-md-6'f>>" +
-                        "<'row'<'col-12'tr>>" +
-                        "<'row mt-3 align-items-center'<'col-12 col-md-5 mb-2 mb-md-0'i><'col-12 col-md-7'p>>",
-                });
             }
 
             // Initial call
@@ -530,8 +608,8 @@
             // Sync per_page dropdown
             $(document).on('change', '#per_page', function() {
                 let len = parseInt($(this).val()) || 50;
-                if ($.fn.DataTable && $.fn.DataTable.isDataTable('.datanew')) {
-                    $('.datanew').DataTable().page.len(len).draw();
+                if ($.fn.DataTable && $.fn.DataTable.isDataTable('#purchase-table')) {
+                    $('#purchase-table').DataTable().page.len(len).draw();
                 }
             });
 
@@ -592,8 +670,8 @@
                         $btn.prop('disabled', false).html(origHtml);
                         
                         // 1. Destroy DataTable first to release DOM bindings
-                        if ($.fn.DataTable.isDataTable('.datanew')) {
-                            $('.datanew').DataTable().destroy();
+                        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#purchase-table')) {
+                            $('#purchase-table').DataTable().destroy();
                         }
                         
                         // 2. Safely replace the table body HTML
@@ -665,13 +743,13 @@
                 let form = $(this).closest("form");
 
                 Swal.fire({
-                    title: "Are you sure?",
-                    text: "You won't be able to revert this!",
+                    title: "Delete Purchase?",
+                    text: "Are you sure you want to delete this purchase? Warehouse stock will be cut/reverted, vendor ledger entries will be removed, and any linked Purchase Order will be deleted.",
                     icon: "warning",
                     showCancelButton: true,
                     confirmButtonColor: "#dc3545",
                     cancelButtonColor: "#6c757d",
-                    confirmButtonText: "Yes, delete it!"
+                    confirmButtonText: "Yes, Delete It!"
                 }).then((result) => {
                     if (result.isConfirmed) {
                         form.submit();

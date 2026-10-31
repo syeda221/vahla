@@ -326,7 +326,7 @@ class BalanceService
 
         // Purchases in range (Increase payable - they go in Credit column = money we owe vendor)
         // Include direct purchases, approved/received/posted purchase invoices, while excluding draft purchase orders
-        $purchases = DB::table('purchases')
+        $purchases = DB::table('purchases')->whereNull('deleted_at')
             ->where('vendor_id', $vendorId)
             ->where(function ($q) {
                 $q->whereIn('status_purchase', ['approved', 'Approved', 'posted', 'Posted', 'received', 'Received', 'partial', 'Partial', 'Returned', 'returned'])

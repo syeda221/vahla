@@ -456,6 +456,7 @@ Route::middleware('auth')->group(function () {
     // web.php
     Route::get('/warehouse-stock-quantity', [StockTransferController::class, 'getStockQuantity'])->middleware('permission:stock.transfer.view')->name('warehouse.stock.quantity');
     Route::get('/get-products-by-warehouse', [StockTransferController::class, 'getProductsByWarehouse'])->middleware('permission:stock.transfer.view')->name('get.products.by.warehouse');
+    Route::get('/stock-transfers/search-products', [StockTransferController::class, 'searchProducts'])->middleware('permission:stock.transfer.view|stock.transfer.create')->name('stock_transfers.search_products');
     Route::get('/stock-transfers/product-sources/{productId}', [StockTransferController::class, 'getProductSources'])->middleware('permission:stock.transfer.view')->name('stock_transfers.product_sources');
 
     // narratiions

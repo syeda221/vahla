@@ -4,11 +4,11 @@
         <td class="ps-3 text-center" style="width: 40px; vertical-align: middle;">
             <input type="checkbox" class="select-purchase-row" value="{{ $purchase->id }}" style="cursor: pointer; width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin: 0 auto !important;">
         </td>
-        <td class="fw-bold text-muted">#{{ $purchase->id }}</td>
+        <td class="fw-bold text-muted text-nowrap">#{{ $purchase->id }}</td>
         <td class="text-nowrap">
             {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}
         </td>
-        <td class="font-monospace text-dark">
+        <td class="font-monospace text-dark text-nowrap">
             <span class="fw-bold">{{ $purchase->invoice_no }}</span>
             @if($purchase->goodsReceivingNotes && $purchase->goodsReceivingNotes->count() > 0)
                 <div class="mt-1 d-flex flex-wrap gap-1">
@@ -33,30 +33,30 @@
                 </div>
             @endif
         </td>
-        <td class="font-monospace text-dark small">{{ $purchase->note ?? '-' }}</td>
-        <td>
+        <td class="font-monospace text-dark small text-nowrap">{{ $purchase->note ?? '-' }}</td>
+        <td class="text-center text-nowrap">
             @if ($purchase->status_purchase == 'draft')
-                <span class="badge badge-warning text-dark border border-warning">Draft</span>
+                <span class="badge bg-warning text-dark border border-warning fw-bold px-2 py-1"><i class="fas fa-file-alt me-1"></i> Draft</span>
             @elseif ($purchase->status_purchase == 'Returned')
-                <span class="badge bg-danger text-white border border-danger">Returned</span>
+                <span class="badge bg-danger text-white border border-danger fw-bold px-2 py-1"><i class="fas fa-undo me-1"></i> Returned</span>
             @else
-                <span class="badge badge-success border border-success">Approved</span>
+                <span class="badge bg-success text-white border border-success fw-bold px-2 py-1"><i class="fas fa-check-circle me-1"></i> Approved</span>
             @endif
         </td>
-        <td>
+        <td class="text-nowrap">
             <div class="d-flex align-items-center">
                 <div class="avatar-circle bg-info-subtle text-info me-2 fw-bold d-flex align-items-center justify-content-center rounded-circle"
-                    style="width: 32px; height: 32px; font-size: 14px;">
+                    style="width: 28px; height: 28px; font-size: 12px; flex-shrink: 0;">
                     {{ strtoupper(substr($purchase->vendor->name ?? 'V', 0, 1)) }}
                 </div>
                 <span class="fw-medium text-dark">{{ $purchase->vendor->name ?? 'N/A' }}</span>
             </div>
         </td>
-        <td class="text-muted small">
+        <td class="text-muted small text-nowrap">
             {{ $purchase->warehouse->warehouse_name ?? 'N/A' }}
         </td>
 
-        <td class="text-end text-dark">
+        <td class="text-end text-dark text-nowrap">
             @php
                 $inline_val = $purchase->items->sum('item_discount');
                 $gross_subtotal = $purchase->subtotal + $inline_val;
@@ -68,7 +68,7 @@
             @endif
         </td>
 
-        <td class="text-end text-dark">
+        <td class="text-end text-dark text-nowrap">
             @if ($purchase->additional_discount > 0)
                 @php
                     $add_val = $purchase->additional_discount;
@@ -84,7 +84,7 @@
             @endif
         </td>
 
-        <td class="text-end fw-bold text-dark">
+        <td class="text-end fw-bold text-dark text-nowrap">
             @if ($purchase->total_returned > 0)
                 <div>
                     <small class="text-muted text-decoration-line-through">Rs. {{ number_format($purchase->net_amount, 2) }}</small>
@@ -98,10 +98,10 @@
             @endif
         </td>
         @if (!isset($isOrdersPage) || !$isOrdersPage)
-            <td class="text-end text-success">
+            <td class="text-end text-success text-nowrap">
                 {{ number_format($purchase->paid_amount, 2) }}
             </td>
-            <td class="text-end">
+            <td class="text-end text-nowrap">
                 @php
                     $displayDue = $purchase->total_returned > 0 ? $purchase->updated_due_amount : $purchase->due_amount;
                 @endphp
@@ -119,7 +119,7 @@
             </td>
         @endif
 
-        <td class="pe-3 text-center">
+        <td class="pe-3 text-center col-action text-nowrap" style="width: 1%; white-space: nowrap;">
             <div class="dropdown">
                 <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" data-boundary="window" data-bs-boundary="window" aria-expanded="false">
                     <i class="fas fa-ellipsis-v small me-1"></i> Actions
@@ -127,7 +127,7 @@
                 @php
                     $isPO = ($purchase->purchase_type === 'purchase_order');
                     $canEditPurchase = $isPO ? auth()->user()->can('purchase_orders.edit') : auth()->user()->can('purchases.edit');
-                    $canDeletePurchase = $isPO ? auth()->user()->can('purchase_orders.delete') : auth()->user()->can('purchases.delete');
+                    $canDeletePurchase = $isPO ? (auth()->user()->can('purchase_orders.delete') || auth()->user()->hasRole('Super Admin')) : (auth()->user()->can('purchases.delete') || auth()->user()->hasRole('Super Admin'));
                 @endphp
                 <ul class="dropdown-menu dropdown-menu-right border-0 shadow-lg rounded-3">
                     @if ($canEditPurchase)

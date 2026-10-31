@@ -79,6 +79,92 @@ class StockTransferController extends Controller
         ));
     }
 
+    public function searchProducts(Request $request)
+    {
+        @ini_set('memory_limit', '512M');
+        if (! auth()->user()->can('stock.transfer.create') && ! auth()->user()->can('stock.transfer.view')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $term = trim($request->get('q') ?? $request->get('term') ?? '');
+        $words = array_filter(explode(' ', $term));
+
+        $query = Product::select('id', 'item_name', 'item_code', 'unit_id', 'size_mode', 'pieces_per_box', 'image', 'color', 'barcode_path')
+            ->with('unit:id,name')
+            ->where('is_active', true);
+
+        if (!empty($words)) {
+            $cleanTerm = addslashes($term);
+            $cleanAlphaNum = addslashes(preg_replace('/[^a-zA-Z0-9]/', '', $term));
+            $paddedCode = is_numeric($cleanAlphaNum) ? str_pad($cleanAlphaNum, 4, '0', STR_PAD_LEFT) : $cleanAlphaNum;
+
+            $query->where(function ($q) use ($words) {
+                foreach ($words as $w) {
+                    $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $w);
+                    $q->where(function ($subQ) use ($w, $escaped) {
+                        $subQ->where('item_name', 'like', "%{$w}%")
+                            ->orWhere('item_code', 'like', "%{$w}%")
+                            ->orWhere('barcode_path', 'like', "%{$w}%");
+
+                        if (strlen($w) >= 3) {
+                            $subQ->orWhere('color', 'like', "%\"name\":\"%{$escaped}%\"%")
+                                ->orWhere('color', 'like', "%\"barcode\":\"%{$escaped}%\"%");
+                        }
+                    });
+                }
+            });
+
+            $allWordsCondition = count($words) > 1
+                ? implode(' AND ', array_map(fn($w) => "item_name LIKE '%" . addslashes($w) . "%'", $words))
+                : "item_name LIKE '%{$cleanTerm}%'";
+
+            $query->orderByRaw("
+                CASE
+                    WHEN item_code = '{$cleanTerm}' THEN 1
+                    WHEN item_code = 'ITEM-{$cleanTerm}' THEN 2
+                    WHEN item_code = 'ITEM-{$paddedCode}' THEN 3
+                    WHEN barcode_path = '{$cleanTerm}' THEN 4
+                    WHEN item_code LIKE '%-{$cleanTerm}' THEN 5
+                    WHEN item_code LIKE '%-{$paddedCode}' THEN 6
+                    WHEN item_name = '{$cleanTerm}' THEN 7
+                    WHEN item_name LIKE '{$cleanTerm}%' THEN 8
+                    WHEN ({$allWordsCondition}) THEN 9
+                    WHEN item_code LIKE '%{$cleanTerm}%' THEN 10
+                    ELSE 11
+                END ASC, item_code ASC, item_name ASC
+            ");
+        } else {
+            $query->orderBy('item_code', 'asc');
+        }
+
+        $products = $query->limit(35)->get();
+        $productIds = $products->pluck('id');
+
+        $stocks = WarehouseStock::whereIn('product_id', $productIds)
+            ->selectRaw('product_id, SUM(total_pieces) as total_pieces')
+            ->groupBy('product_id')
+            ->pluck('total_pieces', 'product_id');
+
+        $results = $products->map(function ($p) use ($stocks) {
+            $unitName = $p->unit_name ?? ($p->unit->name ?? 'Pcs');
+            $totalStock = (float)($stocks[$p->id] ?? 0);
+            $fmtStock = rtrim(rtrim(number_format($totalStock, 2, '.', ''), '0'), '.');
+            if ($fmtStock === '' || $fmtStock === '-0') $fmtStock = '0';
+
+            return [
+                'id'          => $p->id,
+                'text'        => "[{$p->item_code}] {$p->item_name} [{$unitName}]",
+                'item_name'   => $p->item_name,
+                'item_code'   => $p->item_code,
+                'unit_name'   => $unitName,
+                'total_stock' => $totalStock,
+                'stock_text'  => "{$fmtStock} {$unitName}",
+            ];
+        });
+
+        return response()->json($results);
+    }
+
     public function getProductSources($productId)
     {
         $product = Product::with('unit')->findOrFail($productId);
