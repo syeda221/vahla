@@ -6,7 +6,13 @@
     <title>Delivery Challan / Invoice - {{ $sale->invoice_no }}</title>
     <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="{{ asset('assets/js/html2pdf.bundle.min.js') }}"></script>
+    <!-- html2pdf library: CDN with local fallback -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        if (typeof html2pdf === 'undefined') {
+            document.write('<script src="{{ asset("assets/js/html2pdf.bundle.min.js") }}"><\/script>');
+        }
+    </script>
     <style id="dynamicPageSize">
         @page {
             size: A4 portrait;
@@ -1173,6 +1179,10 @@
         function downloadWhatsappPdf() {
             const btn = document.getElementById('whatsappDownloadBtn');
             const originalHtml = btn.innerHTML;
+            if (typeof html2pdf === 'undefined') {
+                alert('PDF generator library load nahi ho saki. Barah-e-karam page ko reload kijiye.');
+                return;
+            }
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Generating PDF...';
             btn.disabled = true;
 

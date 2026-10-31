@@ -589,72 +589,13 @@ class PurchaseController extends Controller
         }
 
         // 4. Auto Create GRN if not exists
-        $this->createAutoGrnForPurchase($purchase);
+        // Direct purchase: do not create Auto GRN (GRNs are only for Purchase Orders)
     }
 
     public function createAutoGrnForPurchase(Purchase $purchase)
     {
-        if ($purchase->purchase_type === 'purchase_order') {
-            return null;
-        }
-
-        // Check if gatepass or GRN already exists
-        $hasGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
-        if ($hasGatepass) {
-            return null;
-        }
-
-        $existingGrn = \App\Models\GoodsReceivingNote::where('purchase_id', $purchase->id)->first();
-        if ($existingGrn) {
-            return $existingGrn;
-        }
-
-        $baseGrnNumber = $purchase->invoice_no . '-GRN';
-        $counter = 1;
-        $grnNumber = sprintf('%s%02d', $baseGrnNumber, $counter);
-        while (\App\Models\GoodsReceivingNote::where('grn_number', $grnNumber)->exists()) {
-            $counter++;
-            $grnNumber = sprintf('%s%02d', $baseGrnNumber, $counter);
-        }
-
-        $pDate = $purchase->purchase_date;
-        if ($pDate instanceof \Carbon\Carbon) {
-            $formattedDate = $pDate->format('Y-m-d');
-        } elseif (!empty($pDate)) {
-            $formattedDate = \Carbon\Carbon::parse($pDate)->format('Y-m-d');
-        } else {
-            $formattedDate = now()->format('Y-m-d');
-        }
-
-        $grn = \App\Models\GoodsReceivingNote::create([
-            'purchase_id' => $purchase->id,
-            'vendor_id' => $purchase->vendor_id,
-            'warehouse_id' => $purchase->warehouse_id,
-            'grn_number' => $grnNumber,
-            'grn_date' => $formattedDate,
-            'status' => 'received',
-            'is_invoiced' => 1,
-            'invoice_id' => $purchase->id,
-            'remarks' => 'Auto GRN for Direct Purchase #' . $purchase->invoice_no,
-            'created_by' => auth()->id() ?? 1,
-        ]);
-
-        $purchase->loadMissing('items');
-        foreach ($purchase->items as $pItem) {
-            \App\Models\GoodsReceivingNoteItem::create([
-                'goods_receiving_note_id' => $grn->id,
-                'purchase_item_id' => $pItem->id,
-                'product_id' => $pItem->product_id,
-                'warehouse_id' => $pItem->warehouse_id ?: $purchase->warehouse_id,
-                'received_qty' => $pItem->qty,
-                'boxes' => $pItem->boxes_qty ?: $pItem->qty,
-                'loose_pieces' => $pItem->loose_qty ?: 0,
-                'color' => $pItem->color,
-                'purchase_price' => $pItem->price,
-            ]);
-        }
-
-        return $grn;
+        // Direct purchases do not create GRNs. GRNs are strictly for Purchase Orders.
+        return null;
     }
 
     public function confirm($id)

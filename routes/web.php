@@ -167,7 +167,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/products/{id}', [ProductController::class, 'destroy'])->middleware('permission:products.delete|products.edit')->name('products.destroy');
     Route::delete('/product/delete/{id}', [ProductController::class, 'destroy'])->middleware('permission:products.delete|products.edit')->name('product.destroy');
 
-    // ── Product Sets / Bundles (Pairing) ──
+    // â”€â”€ Product Sets / Bundles (Pairing) â”€â”€
     Route::get('/product-sets', [ProductSetController::class, 'index'])->name('product-sets.index');
     Route::post('/product-sets', [ProductSetController::class, 'store'])->name('product-sets.store');
     Route::get('/product-sets/next-code', [ProductSetController::class, 'nextCode'])->name('product-sets.next_code');
@@ -176,13 +176,13 @@ Route::middleware('auth')->group(function () {
     Route::delete('/product-sets/{id}', [ProductSetController::class, 'destroy'])->name('product-sets.destroy');
     Route::get('/product-sets/check-product/{id}', [ProductSetController::class, 'checkProductSet'])->name('product-sets.check_product');
 
-    // ── Product Links (Complementary / Upsell) ──
+    // â”€â”€ Product Links (Complementary / Upsell) â”€â”€
     Route::get('/product-links/{productId}', [App\Http\Controllers\ProductLinkController::class, 'getLinks'])->name('product-links.get');
     Route::post('/product-links', [App\Http\Controllers\ProductLinkController::class, 'storeLink'])->name('product-links.store');
     Route::delete('/product-links/{id}', [App\Http\Controllers\ProductLinkController::class, 'deleteLink'])->name('product-links.delete');
     Route::get('/sales/check-linked-products/{productId}', [App\Http\Controllers\ProductLinkController::class, 'checkLinkedProducts'])->name('sales.check-linked-products');
 
-    // ── Product Pricing & Valuation (Spreadsheet / Inline Edit) ──
+    // â”€â”€ Product Pricing & Valuation (Spreadsheet / Inline Edit) â”€â”€
     Route::get('/products/pricing-valuation', [App\Http\Controllers\ProductPricingController::class, 'index'])
         ->middleware('permission:products.view')->name('products.pricing_valuation');
     Route::post('/products/pricing/inline-update', [App\Http\Controllers\ProductPricingController::class, 'inlineUpdate'])
@@ -190,7 +190,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/products/pricing/update-item-code', [App\Http\Controllers\ProductPricingController::class, 'updateItemCode'])
         ->middleware('permission:products.edit')->name('products.pricing.update_item_code');
 
-    // ── Product Import / Export ──
+    // â”€â”€ Product Import / Export â”€â”€
     Route::get('/products/export',   [App\Http\Controllers\ProductImportExportController::class, 'export'])
         ->middleware('permission:products.view')->name('products.export');
     Route::get('/products/template', [App\Http\Controllers\ProductImportExportController::class, 'template'])
@@ -366,6 +366,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/direct-grn', [DirectGRNController::class, 'index'])->middleware('permission:direct_grn.view')->name('direct-grn.index');
     Route::get('/direct-grn/create', [DirectGRNController::class, 'create'])->middleware('permission:direct_grn.create')->name('direct-grn.create');
     Route::post('/direct-grn/store', [DirectGRNController::class, 'store'])->middleware('permission:direct_grn.create')->name('direct-grn.store');
+    Route::get('/direct-grn/{id}/edit', [DirectGRNController::class, 'edit'])->middleware('permission:direct_grn.edit|grn.edit')->name('direct-grn.edit');
+    Route::post('/direct-grn/{id}/update', [DirectGRNController::class, 'update'])->middleware('permission:direct_grn.edit|grn.edit')->name('direct-grn.update');
     Route::delete('/direct-grn/{id}', [DirectGRNController::class, 'destroy'])->middleware('permission:direct_grn.delete')->name('direct-grn.destroy');
     Route::match(['get', 'post'], '/direct-grn/consolidate/preview', [DirectGRNController::class, 'consolidatePreview'])->middleware('permission:direct_grn.consolidate')->name('direct-grn.consolidate.preview');
     Route::post('/direct-grn/consolidate/store', [DirectGRNController::class, 'consolidateStore'])->middleware('permission:direct_grn.consolidate')->name('direct-grn.consolidate.store');

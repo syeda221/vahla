@@ -1,0 +1,424 @@
+@extends('admin_panel.layout.app')
+
+@section('content')
+<style>
+    .form-control, .form-select, .select2-container--default .select2-selection--single {
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: none !important;
+        border-radius: 6px !important;
+    }
+    .table-bordered th, .table-bordered td, .table-bordered {
+        border: 1px solid #dee2e6 !important;
+    }
+    .meta-label {
+        font-size: 0.78rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        color: #475569 !important;
+        margin-bottom: 4px !important;
+    }
+</style>
+
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="page-title mb-1 fw-bold text-dark">
+                <i class="fas fa-edit text-primary me-2"></i> Edit Goods Receiving Note (GRN)
+            </h4>
+            <p class="text-muted mb-0 small">Editing GRN <span class="badge bg-light text-primary border font-monospace">{{ $grn->grn_number }}</span></p>
+        </div>
+        <a href="{{ route('direct-grn.index') }}" class="btn btn-outline-secondary btn-sm fw-bold px-3">
+            <i class="fas fa-arrow-left me-1"></i> Back to GRNs
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+            <form action="{{ route('direct-grn.update', $grn->id) }}" method="POST" enctype="multipart/form-data" id="grnEditForm">
+                @csrf
+                @if ($errors->any())
+                    <div class="alert alert-danger rounded-3 mb-3">
+                        <ul class="mb-0">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+                
+                <!-- Basic Information Card -->
+                <div class="bg-light p-3 rounded-3 border mb-3">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="meta-label">Vendor <span class="text-danger">*</span></label>
+                            <select name="vendor_id" class="form-select select2" required>
+                                <option value="">Select Vendor...</option>
+                                @foreach($vendors as $v)
+                                    <option value="{{ $v->id }}" {{ $grn->vendor_id == $v->id ? 'selected' : '' }}>{{ $v->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="meta-label"><i class="fas fa-warehouse text-primary me-1"></i> Warehouse</label>
+                            @php
+                                $selectedWh = $grn->warehouse_id ?: 1;
+                            @endphp
+                            <select class="form-select fw-semibold" name="warehouse_id">
+                                @foreach($warehouses as $wh)
+                                    <option value="{{ $wh->id }}" {{ $selectedWh == $wh->id ? 'selected' : '' }}>
+                                        {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="meta-label">Receiving Date <span class="text-danger">*</span></label>
+                            <input type="date" name="grn_date" class="form-control fw-bold" value="{{ $grn->grn_date ? \Carbon\Carbon::parse($grn->grn_date)->format('Y-m-d') : date('Y-m-d') }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="meta-label">GRN Number</label>
+                            <input type="text" name="grn_number" id="inputGrnNumber" class="form-control font-monospace fw-bold bg-light" value="{{ $grn->grn_number }}" readonly title="GRN Number cannot be changed on edit">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="meta-label">Carrier / Truck / Bilty Info</label>
+                            <input type="text" name="carrier_info" class="form-control" value="{{ $grn->carrier_info }}" placeholder="e.g. Truck # LES-1234 / Driver Aslam">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="meta-label">Remarks / Receiving Notes</label>
+                            <input type="text" name="remarks" class="form-control" value="{{ $grn->remarks }}" placeholder="Any quality check or warehouse note...">
+                        </div>
+                        <div class="col-md-12 mt-2">
+                            <label class="meta-label">Attachment</label>
+                            @if($grn->attachment)
+                                <div class="mb-2">
+                                    <a href="{{ asset('uploads/attachments/' . $grn->attachment) }}" target="_blank" class="btn btn-sm btn-outline-info">
+                                        <i class="fas fa-paperclip me-1"></i> View Current Attachment ({{ $grn->attachment }})
+                                    </a>
+                                </div>
+                            @endif
+                            <input type="file" name="attachment" class="form-control">
+                            <small class="text-muted">Naya attachment upload karein to purana replace ho jayega.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                    <h6 class="fw-bold text-dark mb-0"><i class="fas fa-boxes text-primary me-1"></i> Receiving Items Details</h6>
+                    <button type="button" id="addRow" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">
+                        <i class="fas fa-plus me-1"></i> Add Row
+                    </button>
+                </div>
+                
+                <div class="table-responsive mb-3">
+                    <table class="table table-hover table-bordered align-middle mb-0" id="itemsTable">
+                        <thead class="table-light">
+                            <tr class="text-uppercase small fw-bold text-muted">
+                                <th style="width: 30%;">Product</th>
+                                <th style="width: 14%;">Item Code</th>
+                                <th style="width: 12%;" class="text-center">Current Stock</th>
+                                <th style="width: 12%;" class="text-center">Receiving Qty</th>
+                                <th style="width: 13%;" class="text-end">Purch. Price</th>
+                                <th style="width: 13%;" class="text-end">Amount</th>
+                                <th style="width: 6%;" class="text-center"><i class="fas fa-trash text-danger"></i></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($grn->items as $item)
+                                @php
+                                    $prod = $item->product;
+                                    $itemColor = $item->color;
+                                    $vName = '';
+                                    if (!empty($itemColor)) {
+                                        $b64 = base64_decode($itemColor, true);
+                                        $vd = $b64 !== false ? json_decode($b64, true) : json_decode($itemColor, true);
+                                        if (is_array($vd) && !empty($vd['name'])) {
+                                            $vName = ' — ' . $vd['name'];
+                                        }
+                                    }
+                                    $selectVal = $item->product_id . ($itemColor ? '|variant|' . $itemColor : '');
+                                    $displayName = ($prod->item_name ?? 'Product #' . $item->product_id) . $vName;
+                                    $curStock = \App\Models\WarehouseStock::where('product_id', $item->product_id)->where('warehouse_id', $selectedWh)->value('quantity') ?? 0;
+                                @endphp
+                                <tr>
+                                    <td>
+                                        <select class="form-select product-select" style="width: 100%;">
+                                            <option value="{{ $selectVal }}" selected>{{ $displayName }}</option>
+                                        </select>
+                                        <input type="hidden" name="product_id[]" class="product-id-hidden" value="{{ $item->product_id }}">
+                                        <input type="hidden" name="color[]" class="variant-data-hidden" value="{{ $itemColor }}">
+                                        <input type="hidden" class="size-mode-hidden" value="{{ $prod->size_mode ?? '' }}">
+                                        <input type="hidden" class="pack-qty-hidden" value="{{ $prod->pieces_per_box ?? 1 }}">
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control item-code-display text-center bg-light font-monospace" readonly value="{{ $prod->item_code ?? '—' }}" tabindex="-1">
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control stock-display text-center bg-light" readonly value="{{ (float)$curStock }}" tabindex="-1">
+                                    </td>
+                                    <td>
+                                        <input type="number" step="any" min="0.01" name="qty[]" class="form-control display-qty-input text-center fw-bold" required value="{{ (float)$item->received_qty }}">
+                                    </td>
+                                    <td>
+                                        <input type="number" step="any" min="0" name="price[]" class="form-control price-input text-end fw-bold" required value="{{ (float)$item->purchase_price }}">
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control amount-display text-end bg-light fw-bold text-primary" readonly value="{{ number_format($item->received_qty * $item->purchase_price, 2, '.', '') }}" tabindex="-1">
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-outline-danger btn-sm rounded-circle remove-row" style="width: 28px; height: 28px; padding: 0;">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td>
+                                        <select class="form-select product-select" style="width: 100%;">
+                                            <option value="">Select Product...</option>
+                                        </select>
+                                        <input type="hidden" name="product_id[]" class="product-id-hidden">
+                                        <input type="hidden" name="color[]" class="variant-data-hidden">
+                                        <input type="hidden" class="size-mode-hidden">
+                                        <input type="hidden" class="pack-qty-hidden" value="1">
+                                    </td>
+                                    <td><input type="text" class="form-control item-code-display text-center bg-light font-monospace" readonly placeholder="—" tabindex="-1"></td>
+                                    <td><input type="text" class="form-control stock-display text-center bg-light" readonly tabindex="-1"></td>
+                                    <td>
+                                        <input type="number" step="any" min="0.01" name="qty[]" class="form-control display-qty-input text-center fw-bold" required value="1">
+                                    </td>
+                                    <td>
+                                        <input type="number" step="any" min="0" name="price[]" class="form-control price-input text-end fw-bold" required value="0">
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control amount-display text-end bg-light fw-bold text-primary" readonly tabindex="-1">
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-outline-danger btn-sm rounded-circle remove-row" style="width: 28px; height: 28px; padding: 0;">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="d-flex justify-content-end align-items-center mb-4 p-3 bg-light rounded-2 border">
+                    <h5 class="mb-0 fw-bold text-dark">Total Amount: <span id="gridTotal" class="text-primary ms-2 font-monospace">0.00</span></h5>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="{{ route('direct-grn.index') }}" class="btn btn-outline-secondary px-4 fw-bold">Cancel</a>
+                    <button type="submit" 
+                            class="btn btn-primary px-5 fw-bold shadow-sm"
+                            id="btnSubmitGrn">
+                        <i class="fas fa-save me-1"></i> Update GRN &amp; Adjust Stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endsection
+
+@section('js')
+<script>
+$(document).ready(function() {
+    function formatProduct(repo) {
+        if (repo.loading) return repo.text;
+        let stock = repo.stock !== undefined ? repo.stock : 0;
+        let sku = repo.sku || 'N/A';
+        let stockVal = parseFloat(repo.stock_pieces !== undefined ? repo.stock_pieces : repo.stock) || 0;
+        let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-secondary';
+
+        let whBadges = '';
+        if (repo.warehouses && repo.warehouses.length > 0) {
+            whBadges = repo.warehouses.map(w => {
+                let hasStock = parseFloat(w.stock_pieces) > 0;
+                let badgeStyle = hasStock
+                    ? (w.is_shop ? 'background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc;' : 'background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;')
+                    : 'background:#f8fafc; color:#94a3b8; border:1px dashed #cbd5e1; opacity:0.85;';
+                let icon = w.is_shop 
+                    ? '<i class="fas fa-store me-1 text-primary"></i>' 
+                    : '<i class="fas fa-warehouse me-1 text-secondary"></i>';
+                return `<span class="badge me-1 py-1 px-2" style="font-size:0.68rem; font-weight:600; ${badgeStyle}">${icon}${w.name}: <strong>${w.stock}</strong></span>`;
+            }).join('');
+        }
+
+        return $(`
+        <div class="clearfix py-1">
+            <div class="float-start">
+                <div class="fw-bold">${repo.name || repo.text}</div>
+                <small class="text-muted">SKU: ${sku}</small>
+                <div class="d-flex flex-wrap gap-1 align-items-center mt-1">${whBadges}</div>
+            </div>
+            <div class="float-end text-end">
+                <span class="badge ${badgeClass} rounded-pill px-2 py-1" style="font-size:0.75rem;">Total: ${stock}</span>
+            </div>
+        </div>
+        `);
+    }
+
+    function formatSelection(repo) {
+        return repo.name || repo.text;
+    }
+
+    function initProductSelect2($el) {
+        $el.select2({
+            placeholder: 'Search Product...',
+            allowClear: true,
+            width: '100%',
+            ajax: {
+                url: '{{ route("products.ajax.search") }}',
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    return {
+                        term: params.term,
+                        page: params.page || 1
+                    };
+                },
+                processResults: function(data, params) {
+                    params.page = params.page || 1;
+                    return {
+                        results: data.results,
+                        pagination: {
+                            more: data.pagination.more
+                        }
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 0,
+            escapeMarkup: function(m) { return m; },
+            templateResult: formatProduct,
+            templateSelection: formatSelection
+        });
+    }
+
+    $('.select2').not('.product-select').select2();
+    initProductSelect2($('.product-select'));
+
+    function calculateRow(tr) {
+        var qty = parseFloat(tr.find('.display-qty-input').val()) || 0;
+        var price = parseFloat(tr.find('.price-input').val()) || 0;
+        var amount = qty * price;
+
+        tr.find('.amount-display').val(amount.toFixed(2));
+        calculateTotal();
+    }
+
+    function calculateTotal() {
+        var total = 0;
+        $('.amount-display').each(function() {
+            total += parseFloat($(this).val()) || 0;
+        });
+        $('#gridTotal').text(total.toFixed(2));
+    }
+
+    // Initial total calculation
+    calculateTotal();
+
+    $('#addRow').click(function() {
+        var tr = '<tr>' +
+            '<td><select class="form-select product-select" style="width: 100%;"></select>' +
+            '<input type="hidden" name="product_id[]" class="product-id-hidden">' +
+            '<input type="hidden" name="color[]" class="variant-data-hidden">' +
+            '<input type="hidden" class="size-mode-hidden">' +
+            '<input type="hidden" class="pack-qty-hidden" value="1"></td>' +
+            '<td><input type="text" class="form-control item-code-display text-center bg-light font-monospace" readonly placeholder="—" tabindex="-1"></td>' +
+            '<td><input type="text" class="form-control stock-display text-center bg-light" readonly tabindex="-1"></td>' +
+            '<td><input type="number" step="any" min="0.01" name="qty[]" class="form-control display-qty-input text-center fw-bold" required value="1"></td>' +
+            '<td><input type="number" step="any" min="0" name="price[]" class="form-control price-input text-end fw-bold" required value="0"></td>' +
+            '<td><input type="text" class="form-control amount-display text-end bg-light fw-bold text-primary" readonly tabindex="-1"></td>' +
+            '<td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm rounded-circle remove-row" style="width: 28px; height: 28px; padding: 0;"><i class="fas fa-times"></i></button></td>' +
+            '</tr>';
+        var $tr = $(tr);
+        $('#itemsTable tbody').append($tr);
+        initProductSelect2($tr.find('.product-select'));
+        calculateRow($tr);
+    });
+
+    $(document).on('click', '.remove-row', function() {
+        if ($('#itemsTable tbody tr').length > 1) {
+            $(this).closest('tr').remove();
+            calculateTotal();
+        } else {
+            Swal.fire('Warning', 'Kam az kam aik row hona lazmi hai.', 'warning');
+        }
+    });
+
+    $(document).on('keyup change', '.display-qty-input, .price-input', function() {
+        calculateRow($(this).closest('tr'));
+    });
+
+    $(document).on('select2:select', '.product-select', function(e) {
+        var tr = $(this).closest('tr');
+        var data = e.params.data;
+        
+        tr.find('.item-code-display').val(data.sku || data.item_code || '');
+        tr.find('.stock-display').val(data.stock !== undefined ? data.stock : 0);
+        tr.find('.size-mode-hidden').val(data.size_mode || '');
+        tr.find('.pack-qty-hidden').val(data.pieces_per_box || 1);
+        
+        var val = data.id;
+        
+        if (val && typeof val === 'string' && val.includes('|variant|')) {
+            var parts = val.split('|variant|');
+            var realId = parts[0];
+            var variantB64 = parts[1] || '';
+            
+            tr.find('.product-id-hidden').val(realId);
+            tr.find('.variant-data-hidden').val(variantB64);
+            
+            $.get('{{ route("get-price") }}', { product_id: realId }, function(res) {
+                if (res) {
+                    var price = res.purchase_price || res.retail_price || 0;
+                    if (variantB64) {
+                        try {
+                            var vData = JSON.parse(atob(variantB64));
+                            if (vData.purch_price) price = vData.purch_price;
+                            else if (vData.purchase_price) price = vData.purchase_price;
+                        } catch(err) {}
+                    }
+                    tr.find('.price-input').val(price);
+                    calculateRow(tr);
+                }
+            });
+        } else if (val) {
+            tr.find('.product-id-hidden').val(val);
+            tr.find('.variant-data-hidden').val('');
+            
+            $.get('{{ route("get-price") }}', { product_id: val }, function(res) {
+                if (res) {
+                    var price = res.purchase_price || res.retail_price || 0;
+                    tr.find('.price-input').val(price);
+                    calculateRow(tr);
+                }
+            });
+        }
+    });
+
+    $('#grnEditForm').on('submit', function(e) {
+        e.preventDefault();
+        var form = this;
+        Swal.fire({
+            title: 'Update Goods Receiving Note?',
+            text: 'Is GRN ko update karne se warehouse stock aur records readjust ho jayenge.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-check-circle me-1"></i> Yes, Update GRN!'
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
+    });
+});
+</script>
+@endsection

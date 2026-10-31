@@ -117,13 +117,18 @@
                                                     <i class="fas fa-file-invoice-dollar me-1"></i> Bill
                                                 </a>
                                                 @endcan
+                                                @canany(['grn.edit', 'direct_grn.edit'])
+                                                <a href="{{ route('direct-grn.edit', $grn->id) }}" class="btn btn-sm btn-outline-info fw-bold px-2 py-1" title="Edit GRN">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </a>
+                                                @endcanany
                                                 @can('grn.delete')
                                                 <button type="button" class="btn btn-sm btn-outline-danger fw-bold px-2 py-1 btn-delete-grn" data-id="{{ $grn->id }}" data-no="{{ $grn->grn_number }}" data-url="{{ route('purchases.grn.destroy', $grn->id) }}" title="Delete GRN">
                                                     <i class="fas fa-trash-alt"></i> Delete
                                                 </button>
                                                 @endcan
                                             @else
-                                                <button type="button" class="btn btn-sm btn-outline-secondary fw-bold px-2 py-1 btn-invoiced-grn-alert" title="Already Invoiced">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary fw-bold px-2 py-1 btn-invoiced-grn-alert" data-purchase-id="{{ $purchase->id }}" data-po="{{ $purchase->invoice_no }}" title="Already Invoiced">
                                                     <i class="fas fa-lock"></i> Invoiced
                                                 </button>
                                             @endif
@@ -151,13 +156,35 @@ $(document).ready(function() {
     // Invoiced GRN Alert
     $(document).on('click', '.btn-invoiced-grn-alert', function(e) {
         e.preventDefault();
-        Swal.fire({
-            title: "Cannot Delete!",
-            text: "A purchase bill / invoice has already been generated for this Goods Receiving Note (GRN), so it cannot be deleted.",
-            icon: "warning",
-            confirmButtonColor: "#3085d6",
-            confirmButtonText: "OK"
-        });
+        let poNo = $(this).data('po');
+        let purId = $(this).data('purchase-id');
+        let text = "A purchase bill / invoice has already been generated for this Goods Receiving Note (GRN), so it cannot be directly deleted or edited here.";
+        
+        if (poNo && purId) {
+            text += "\n\nIska Purchase Bill (" + poNo + ") edit karne ke liye neeche button par click karein.";
+            Swal.fire({
+                title: "Already Invoiced!",
+                text: text,
+                icon: "info",
+                showCancelButton: true,
+                confirmButtonColor: "#2563eb",
+                cancelButtonColor: "#6c757d",
+                confirmButtonText: "<i class='fas fa-edit me-1'></i> Edit Purchase Bill (" + poNo + ")",
+                cancelButtonText: "Close"
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    window.location.href = "/Purchase/" + purId + "/edit";
+                }
+            });
+        } else {
+            Swal.fire({
+                title: "Already Invoiced!",
+                text: text,
+                icon: "warning",
+                confirmButtonColor: "#3085d6",
+                confirmButtonText: "OK"
+            });
+        }
     });
 
     // Delete GRN

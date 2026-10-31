@@ -94,49 +94,11 @@ class DirectGRNController extends Controller
                 if ($qty <= 0) continue;
 
                 $product = Product::find($productId);
+                $colorField = $request->input('color')[$index] ?? null;
+                $baseQty = self::calculateBaseQty($product, $qty, $colorField);
+
                 $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
                 if ($ppb <= 0) $ppb = 1;
-
-                $colorField = $request->input('color')[$index] ?? null;
-                $pSizeMode = $product->size_mode ?? '';
-                $unit = strtolower(trim(optional($product->unit)->name ?? ''));
-                $convFactor = 1.0;
-
-                if (!empty($colorField)) {
-                    $b64Decoded = base64_decode($colorField, true);
-                    $json = $b64Decoded !== false ? json_decode($b64Decoded, true) : null;
-                    if (!is_array($json)) {
-                        $json = json_decode($colorField, true);
-                    }
-                    if (is_array($json)) {
-                        if (isset($json['conv_factor']) && (float)$json['conv_factor'] > 0) {
-                            $convFactor = (float) $json['conv_factor'];
-                        } elseif (isset($json['weight_per_piece']) && (float)$json['weight_per_piece'] > 0) {
-                            $convFactor = ($pSizeMode === 'by_feet') ? ((float) $json['weight_per_piece'] / 12.0) : ((float) $json['weight_per_piece'] / 1000.0);
-                        }
-                        if (isset($json['unit']) && $json['unit'] !== '') {
-                            $unit = strtolower(trim($json['unit']));
-                        }
-                    }
-                }
-
-                if ($unit === 'in' || $unit === 'inch' || $unit === 'inches') {
-                    $baseQty = $qty / 12.0;
-                } elseif ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams' || $unit === 'mm' || $unit === 'millimeter' || $unit === 'millimeters') {
-                    $baseQty = $qty / 1000.0;
-                } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box' || ($pSizeMode === 'by_cartons')) {
-                    $baseQty = $qty * $ppb;
-                } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm' || $pSizeMode === 'by_meter' || $pSizeMode === 'by_feet') {
-                    if ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece' || ($convFactor > 0 && $convFactor != 1.0)) {
-                        $baseQty = $qty * $convFactor;
-                    } else {
-                        $baseQty = $qty;
-                    }
-                } elseif ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece') {
-                    $baseQty = $qty;
-                } else {
-                    $baseQty = $qty * $convFactor;
-                }
 
                 // Increase Stock
                 $stock = WarehouseStock::where('warehouse_id', $warehouseId)
@@ -198,6 +160,232 @@ class DirectGRNController extends Controller
             DB::rollBack();
             \Log::error('Direct GRN Store Error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Error creating Direct GRN: ' . $e->getMessage());
+        }
+    }
+
+    public static function calculateBaseQty(?Product $product, float $qty, ?string $colorField = null): float
+    {
+        if ($qty <= 0) return 0;
+        if (!$product) return $qty;
+
+        $ppb = (float) ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+        if ($ppb <= 0) $ppb = 1;
+
+        $pSizeMode = $product->size_mode ?? '';
+        $unit = strtolower(trim(optional($product->unit)->name ?? ''));
+        $convFactor = 1.0;
+
+        if (!empty($colorField)) {
+            $b64Decoded = base64_decode($colorField, true);
+            $json = $b64Decoded !== false ? json_decode($b64Decoded, true) : null;
+            if (!is_array($json)) {
+                $json = json_decode($colorField, true);
+            }
+            if (is_array($json)) {
+                if (isset($json['conv_factor']) && (float)$json['conv_factor'] > 0) {
+                    $convFactor = (float) $json['conv_factor'];
+                } elseif (isset($json['weight_per_piece']) && (float)$json['weight_per_piece'] > 0) {
+                    $convFactor = ($pSizeMode === 'by_feet') ? ((float) $json['weight_per_piece'] / 12.0) : ((float) $json['weight_per_piece'] / 1000.0);
+                }
+                if (isset($json['unit']) && $json['unit'] !== '') {
+                    $unit = strtolower(trim($json['unit']));
+                }
+            }
+        }
+
+        if ($unit === 'in' || $unit === 'inch' || $unit === 'inches') {
+            return $qty / 12.0;
+        } elseif ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams' || $unit === 'mm' || $unit === 'millimeter' || $unit === 'millimeters') {
+            return $qty / 1000.0;
+        } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box' || ($pSizeMode === 'by_cartons')) {
+            return $qty * $ppb;
+        } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm' || $pSizeMode === 'by_meter' || $pSizeMode === 'by_feet') {
+            if ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece' || ($convFactor > 0 && $convFactor != 1.0)) {
+                return $qty * $convFactor;
+            } else {
+                return $qty;
+            }
+        } elseif ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece') {
+            return $qty;
+        } else {
+            return $qty * $convFactor;
+        }
+    }
+
+    public function edit($id)
+    {
+        if (auth()->check() && !auth()->user()->can('direct_grn.edit') && !auth()->user()->can('grn.edit')) {
+            abort(403, 'Unauthorized: You do not have permission to edit Goods Receiving Notes.');
+        }
+
+        $grn = GoodsReceivingNote::with(['items.product', 'vendor', 'warehouse'])->findOrFail($id);
+
+        if ($grn->is_invoiced || !empty($grn->invoice_id)) {
+            $msg = 'Cannot edit an invoiced GRN. Please edit the associated purchase bill instead.';
+            if ($grn->purchase_id || $grn->invoice_id) {
+                return redirect()->route('purchase.edit', $grn->invoice_id ?: $grn->purchase_id)->with('info', 'Yeh GRN already invoiced hai. Aap iska Purchase Bill yahan edit kar sakte hain.');
+            }
+            return redirect()->route('direct-grn.index')->with('error', $msg);
+        }
+
+        $vendors = Vendor::orderBy('name')->get();
+        $warehouses = Warehouse::orderBy('warehouse_name')->get();
+        $products = Product::where('is_active', true)->orderBy('item_code', 'asc')->get();
+
+        return view('admin_panel.direct_grn.edit', compact('grn', 'vendors', 'warehouses', 'products'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        if (auth()->check() && !auth()->user()->can('direct_grn.edit') && !auth()->user()->can('grn.edit')) {
+            abort(403, 'Unauthorized: You do not have permission to edit Goods Receiving Notes.');
+        }
+
+        $grn = GoodsReceivingNote::with(['items.product', 'purchase'])->findOrFail($id);
+
+        if ($grn->is_invoiced || !empty($grn->invoice_id)) {
+            return redirect()->route('direct-grn.index')->with('error', 'Cannot edit an invoiced GRN.');
+        }
+
+        $validated = $request->validate([
+            'vendor_id' => 'required|exists:vendors,id',
+            'grn_date' => 'required|date',
+            'product_id' => 'required|array|min:1',
+            'product_id.*' => 'required|exists:products,id',
+            'qty' => 'required|array',
+            'price' => 'nullable|array',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
+            'remarks' => 'nullable|string',
+            'carrier_info' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $warehouseId = (int) ($validated['warehouse_id'] ?? ($grn->warehouse_id ?? 1));
+
+            // 1. Revert previous stock added by this GRN
+            foreach ($grn->items as $item) {
+                $itemWh = $item->warehouse_id ?? $warehouseId;
+                $product = $item->product ?: Product::find($item->product_id);
+                $oldBaseQty = self::calculateBaseQty($product, (float)$item->received_qty, $item->color);
+
+                if ($product && $oldBaseQty > 0) {
+                    $ppb = (float) ($product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+                    if ($ppb <= 0) $ppb = 1;
+
+                    $stock = WarehouseStock::where('warehouse_id', $itemWh)
+                        ->where('product_id', $item->product_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($stock) {
+                        $stock->total_pieces -= $oldBaseQty;
+                        $stock->quantity = $stock->total_pieces / $ppb;
+                        $stock->save();
+                    }
+                }
+            }
+
+            // Remove previous items and stock movements
+            $grn->items()->delete();
+            StockMovement::where('ref_id', $grn->id)
+                ->whereIn('ref_type', ['GRN', 'direct_grn', 'DIRECT_GRN'])
+                ->delete();
+
+            // 2. Update GRN main details
+            $grn->update([
+                'vendor_id' => $validated['vendor_id'],
+                'warehouse_id' => $warehouseId,
+                'grn_date' => $validated['grn_date'],
+                'remarks' => $validated['remarks'] ?? null,
+                'carrier_info' => $validated['carrier_info'] ?? null,
+            ]);
+
+            // 3. Process new items and add updated stock
+            $movements = [];
+            foreach ($validated['product_id'] as $index => $productId) {
+                $qty = (float) ($validated['qty'][$index] ?? 0);
+                $price = (float) ($validated['price'][$index] ?? 0);
+                if ($qty <= 0) continue;
+
+                $product = Product::find($productId);
+                $colorField = $request->input('color')[$index] ?? null;
+                $baseQty = self::calculateBaseQty($product, $qty, $colorField);
+
+                $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+                if ($ppb <= 0) $ppb = 1;
+
+                // Increase Stock
+                $stock = WarehouseStock::where('warehouse_id', $warehouseId)
+                    ->where('product_id', $productId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($stock) {
+                    $stock->total_pieces += $baseQty;
+                    $stock->quantity = $stock->total_pieces / $ppb;
+                    $stock->save();
+                } else {
+                    WarehouseStock::create([
+                        'warehouse_id' => $warehouseId,
+                        'product_id' => $productId,
+                        'total_pieces' => $baseQty,
+                        'quantity' => $baseQty / $ppb,
+                        'price' => $price,
+                    ]);
+                }
+
+                $movements[] = [
+                    'product_id' => $productId,
+                    'type' => 'in',
+                    'qty' => $baseQty,
+                    'ref_type' => 'DIRECT_GRN',
+                    'ref_id' => $grn->id,
+                    'note' => 'Direct GRN In (Updated): ' . $grn->grn_number,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+
+                GoodsReceivingNoteItem::create([
+                    'goods_receiving_note_id' => $grn->id,
+                    'purchase_item_id' => null,
+                    'product_id' => $productId,
+                    'warehouse_id' => $warehouseId,
+                    'received_qty' => $qty,
+                    'boxes' => $qty,
+                    'loose_pieces' => 0,
+                    'color' => $colorField,
+                    'purchase_price' => $price,
+                ]);
+            }
+
+            if (!empty($movements)) {
+                DB::table('stock_movements')->insert($movements);
+            }
+
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('uploads/attachments'), $filename);
+                $grn->attachment = $filename;
+                $grn->save();
+            }
+
+            // If linked to PO, recalculate receiving status
+            if ($grn->purchase_id) {
+                $parentPo = Purchase::find($grn->purchase_id);
+                if ($parentPo && method_exists($parentPo, 'recalculateReceivingStatus')) {
+                    $parentPo->recalculateReceivingStatus();
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('direct-grn.index')->with('success', "Goods Receiving Note {$grn->grn_number} updated successfully and stock adjusted!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Direct GRN Update Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error updating GRN: ' . $e->getMessage());
         }
     }
 
