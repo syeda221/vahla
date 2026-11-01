@@ -737,6 +737,16 @@
             color: #86198f;
         }
 
+        .perm-action-badge.receive_payment {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .perm-action-badge.make_payment {
+            background: #e0e7ff;
+            color: #4338ca;
+        }
+
         .perm-action-badge.other {
             background: #f1f5f9;
             color: #64748b;
@@ -1126,7 +1136,9 @@
                     'opening.stock': 'fa-dolly-flatbed',
                     'stock.transfer': 'fa-exchange-alt',
                     'stock.adjust': 'fa-sliders-h',
-                    'accounts': 'fa-calculator'
+                    'accounts': 'fa-calculator',
+                    'vouchers': 'fa-clipboard-list',
+                    'cheques': 'fa-money-check-dollar'
                 };
 
                 allPermissions.forEach(function(p) {
@@ -1150,6 +1162,8 @@
                     var order = {
                         'view': 1,
                         'create': 2,
+                        'receive_payment': 2.1,
+                        'make_payment': 2.2,
                         'edit': 3,
                         'delete': 4,
                         'generate_invoice': 5,
@@ -1206,7 +1220,7 @@
                     perms.forEach(function(p) {
                         var checked = assignedPerms.includes(p.name);
                         var action = p.name.split('.').pop();
-                        var knownActions = ['view', 'create', 'edit', 'delete', 'generate_invoice',
+                        var knownActions = ['view', 'create', 'edit', 'delete', 'receive_payment', 'make_payment', 'generate_invoice',
                             'consolidate', 'convert_to_so', 'convert_to_sale', 'approve', 'mark',
                             'print', 'export'
                         ];

@@ -60,6 +60,7 @@ class AllModulesPermissionsSeeder extends Seeder
 
             'chart.of.accounts',
             'vouchers',
+            'cheques',
             'all.vouchers',
             'expense.voucher',
             'receipts.voucher',
@@ -135,6 +136,8 @@ class AllModulesPermissionsSeeder extends Seeder
             'grn.print',
             'direct_grn.consolidate',
             'direct_grn.print',
+            'vouchers.receive_payment',
+            'vouchers.make_payment',
             'website-settings.view',
             'website-settings.create',
             'website-settings.edit',

@@ -1001,7 +1001,7 @@
 
                         <!-- Vouchers Menu -->
                         <li class="nav-item">
-                            @canany(['vouchers.create', 'vouchers.view', 'all.vouchers.view', 'chart.of.accounts.view', 'expense.voucher.view', 'receipts.voucher.view',
+                            @canany(['vouchers.create', 'vouchers.view', 'vouchers.receive_payment', 'vouchers.make_payment', 'cheques.view', 'all.vouchers.view', 'chart.of.accounts.view', 'expense.voucher.view', 'receipts.voucher.view',
                                 'journal.voucher.view', 'payment.voucher.view', 'income.voucher.view'])
                                 <a href="#" class="nav-link">
                                     <i class="menu_icon fas fa-clipboard-list"></i>
@@ -1013,13 +1013,19 @@
                                         @can('vouchers.create')
                                             <li><a href="{{ route('vouchers.create') }}"><i class="fa-solid fa-plus-circle"></i>
                                                     Create Voucher</a></li>
+                                        @endcan
+                                        @canany(['vouchers.receive_payment', 'vouchers.create', 'receipts.voucher.view', 'receipts.voucher.create'])
                                             <li><a href="{{ route('vouchers.receive_payment') }}"><i class="fa-solid fa-file-invoice-dollar text-success"></i>
                                                     Receive Payment</a></li>
+                                        @endcanany
+                                        @canany(['vouchers.make_payment', 'vouchers.create', 'payment.voucher.view', 'payment.voucher.create'])
                                             <li><a href="{{ route('vouchers.make_payment') }}"><i class="fa-solid fa-money-bill-transfer text-primary"></i>
                                                     Make Payment</a></li>
+                                        @endcanany
+                                        @canany(['cheques.view', 'vouchers.create', 'vouchers.view'])
                                             <li><a href="{{ route('cheques.index') }}"><i class="fa-solid fa-money-check-dollar text-warning"></i>
                                                     Cheque Register & Alerts</a></li>
-                                        @endcan
+                                        @endcanany
                                         @can('all.vouchers.view')
                                             <li><a href="{{ route('voucher.history') }}"><i class="fa-solid fa-list-check"></i>
                                                     All Vouchers</a></li>

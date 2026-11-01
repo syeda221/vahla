@@ -507,13 +507,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/narrations', [NarrationController::class, 'store'])->name('narrations.store')->middleware('permission:narrations.create');
     Route::delete('/narrations/{narration}', [NarrationController::class, 'destroy'])->name('narrations.destroy')->middleware('permission:narrations.delete');
     Route::get('/vouchers/create', [VoucherController::class, 'createUnified'])->middleware('permission:vouchers.create')->name('vouchers.create');
-    Route::get('/vouchers/receive-payment', [VoucherController::class, 'receivePayment'])->middleware('permission:vouchers.create|receipts.voucher.view')->name('vouchers.receive_payment');
-    Route::post('/vouchers/receive-payment/store', [VoucherController::class, 'storeReceivePayment'])->middleware('permission:vouchers.create|receipts.voucher.view')->name('vouchers.receive_payment.store');
-    Route::get('/vouchers/make-payment', [VoucherController::class, 'makePayment'])->middleware('permission:vouchers.create|payment.voucher.view')->name('vouchers.make_payment');
-    Route::post('/vouchers/make-payment/store', [VoucherController::class, 'storeMakePayment'])->middleware('permission:vouchers.create|payment.voucher.view')->name('vouchers.make_payment.store');
+    Route::get('/vouchers/receive-payment', [VoucherController::class, 'receivePayment'])->middleware('permission:vouchers.receive_payment|vouchers.create|receipts.voucher.view|receipts.voucher.create')->name('vouchers.receive_payment');
+    Route::post('/vouchers/receive-payment/store', [VoucherController::class, 'storeReceivePayment'])->middleware('permission:vouchers.receive_payment|vouchers.create|receipts.voucher.view|receipts.voucher.create')->name('vouchers.receive_payment.store');
+    Route::get('/vouchers/make-payment', [VoucherController::class, 'makePayment'])->middleware('permission:vouchers.make_payment|vouchers.create|payment.voucher.view|payment.voucher.create')->name('vouchers.make_payment');
+    Route::post('/vouchers/make-payment/store', [VoucherController::class, 'storeMakePayment'])->middleware('permission:vouchers.make_payment|vouchers.create|payment.voucher.view|payment.voucher.create')->name('vouchers.make_payment.store');
     
     // Cheque Management & Clearance (Inward / Outward / Alerts)
-    Route::get('/cheques', [\App\Http\Controllers\ChequeController::class, 'index'])->name('cheques.index');
+    Route::get('/cheques', [\App\Http\Controllers\ChequeController::class, 'index'])->middleware('permission:cheques.view|vouchers.create|vouchers.view')->name('cheques.index');
     Route::post('/cheques/{id}/clear-inward', [\App\Http\Controllers\ChequeController::class, 'clearInward'])->name('cheques.clear_inward');
     Route::post('/cheques/{id}/bounce', [\App\Http\Controllers\ChequeController::class, 'bounce'])->name('cheques.bounce');
     Route::get('/cheques/run-checks', [\App\Http\Controllers\ChequeController::class, 'runChecks'])->name('cheques.run_checks');

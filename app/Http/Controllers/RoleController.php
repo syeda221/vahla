@@ -13,6 +13,19 @@ class RoleController extends Controller
 {
     public function index()
     {
+        // Ensure essential voucher & cheque permissions exist
+        $neededPermissions = [
+            'vouchers.receive_payment',
+            'vouchers.make_payment',
+            'cheques.view',
+            'cheques.create',
+            'cheques.edit',
+            'cheques.delete',
+        ];
+        foreach ($neededPermissions as $perm) {
+            Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
+        }
+
         $currentUser = auth()->user();
         if ($currentUser && $currentUser->isSuperAdmin()) {
             $roles = Role::orderBy('name', "ASC")->get();
