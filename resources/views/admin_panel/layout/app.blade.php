@@ -25,7 +25,7 @@
             border-radius: 8px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.04);
             border: 1px solid #eef2f6;
-            z-index: 1050;
+            z-index: 100005 !important;
         }
 
         .mega-menu .category-heading {
@@ -456,12 +456,16 @@
             }
         }
 
-        /* Fix Navigation Overlapping Page Content Universally */
+        /* Fix Navigation Stacking & Submenu Overlapping Across All Pages */
         .rt_nav_header.horizontal-layout {
             position: relative !important;
-            z-index: 1020 !important;
+            z-index: 100000 !important;
             margin-bottom: 0 !important;
             width: 100% !important;
+        }
+        .rt_nav_header.horizontal-layout .top_nav {
+            position: relative !important;
+            z-index: 100001 !important;
         }
         .rt_nav_header.horizontal-layout .nav-bottom,
         .rt_nav_header.horizontal-layout.fixed-on-scroll .nav-bottom {
@@ -469,8 +473,31 @@
             top: auto !important;
             left: auto !important;
             right: auto !important;
-            z-index: 1020 !important;
+            z-index: 100002 !important;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        /* Ensure dropdown submenus are ALWAYS visible on hover/focus and on top of EVERYTHING */
+        @media (min-width: 992px) {
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:hover > .submenu,
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.show-submenu > .submenu,
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:focus-within > .submenu {
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item .submenu,
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) .submenu,
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.mega-menu .submenu {
+                position: absolute !important;
+                z-index: 100005 !important;
+                background: #ffffff !important;
+                box-shadow: 0 14px 35px rgba(0, 0, 0, 0.16) !important;
+            }
+            .top_nav .dropdown-menu,
+            .top_nav .navbar-dropdown {
+                z-index: 100005 !important;
+            }
         }
 
         /* Universal App Page Body - Generous Top Clearance */
@@ -511,16 +538,19 @@
             margin-bottom: 25px !important;
         }
 
-        /* Modal & Backdrop Stacking Fix */
-        .modal {
-            z-index: 1060 !important;
-        }
+        /* Modal & Backdrop Stacking Fix (above header) */
         .modal-backdrop {
-            z-index: 1040 !important;
+            z-index: 200000 !important;
+        }
+        .modal {
+            z-index: 200005 !important;
         }
         .modal-dialog {
-            z-index: 1061 !important;
+            z-index: 200010 !important;
             position: relative;
+        }
+        .swal2-container {
+            z-index: 300000 !important;
         }
         @media (max-width: 991px) {
             .rt_nav_header.horizontal-layout {
@@ -1531,24 +1561,22 @@
                 }
             });
 
-            // 2. Mobile Submenu Accordion
+            // 2. Submenu Toggle (Hover & Click support for both Desktop & Mobile)
             $(document).on('click', '.page-navigation > .nav-item > .nav-link', function(e) {
-                if (window.innerWidth <= 991) {
-                    var $parent = $(this).closest('.nav-item');
-                    var $submenu = $parent.find('.submenu');
+                var $parent = $(this).closest('.nav-item');
+                var $submenu = $parent.find('.submenu');
 
-                    // If has submenu, prevent navigation and toggle accordion
-                    if ($submenu.length > 0) {
-                        e.preventDefault();
-                        e.stopPropagation();
+                if ($submenu.length > 0) {
+                    e.preventDefault();
+                    e.stopPropagation();
 
-                        // Close all other open submenus
-                        $('.page-navigation > .nav-item').not($parent).removeClass('show-submenu');
+                    // Close all other open submenus
+                    $('.page-navigation > .nav-item').not($parent).removeClass('show-submenu');
 
-                        // Toggle this submenu
-                        $parent.toggleClass('show-submenu');
-                    } else {
-                        // If direct link (e.g. Dashboard), close mobile menu
+                    // Toggle this submenu
+                    $parent.toggleClass('show-submenu');
+                } else {
+                    if (window.innerWidth <= 991) {
                         $('.rt_nav_header.horizontal-layout .nav-bottom').removeClass('header-toggled');
                         $('#mobileMenuIcon, .navbar-toggler i').removeClass('fa-times').addClass('fa-bars');
                         $('body').css('overflow', '');
@@ -1556,8 +1584,9 @@
                 }
             });
 
-            // 3. Close mobile menu when any inner link is tapped
+            // 3. Close submenus when inner link is clicked
             $(document).on('click', '.page-navigation .submenu a', function() {
+                $('.page-navigation > .nav-item').removeClass('show-submenu');
                 if (window.innerWidth <= 991) {
                     $('.rt_nav_header.horizontal-layout .nav-bottom').removeClass('header-toggled');
                     $('#mobileMenuIcon, .navbar-toggler i').removeClass('fa-times').addClass('fa-bars');
@@ -1565,8 +1594,11 @@
                 }
             });
 
-            // 4. Close mobile menu if clicked outside
+            // 4. Close menu if clicked outside
             $(document).on('click', function(e) {
+                if (!$(e.target).closest('.page-navigation').length) {
+                    $('.page-navigation > .nav-item').removeClass('show-submenu');
+                }
                 if (window.innerWidth <= 991) {
                     if (!$(e.target).closest('.rt_nav_header').length) {
                         $('.rt_nav_header.horizontal-layout .nav-bottom').removeClass('header-toggled');
@@ -1575,6 +1607,8 @@
                     }
                 }
             });
+
+            
         });
     </script>
     @stack('scripts')
