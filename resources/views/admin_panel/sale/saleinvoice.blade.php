@@ -413,8 +413,7 @@
 
 <body>
 @php
-    $showTaxColumns = \App\Models\SaleFieldConfiguration::isVisibleInPrint('print_tax_breakdown', true) && 
-        (\App\Models\SaleFieldConfiguration::isEnabled('sales_tax', true) || (float)($sale->total_sales_tax ?? 0) > 0);
+    $showTaxColumns = ((float)($sale->total_sales_tax ?? 0) > 0 || (float)($sale->total_further_tax ?? 0) > 0);
 @endphp
 
 
@@ -693,12 +692,8 @@
                         S.No
                     </th>
 
-                    <th class="text-start" style="width: 32%">
+                    <th class="text-start" style="width: 44%">
                         Description of Product
-                    </th>
-
-                    <th class="text-center" style="width: 12%">
-                        Batch / Sr. No
                     </th>
 
                     <th class="text-center" style="width: 6%">
@@ -834,11 +829,7 @@
                                 }
                             @endphp
 
-                            @if(!empty($itemSerialsList) && count($itemSerialsList) > 0)
-                                <div style="font-size: 11px; color: #000; margin-top: 2px; font-weight: 800;">
-                                    SN #: {{ implode(', ', $itemSerialsList) }}
-                                </div>
-                            @endif
+
 
                             @if(!empty($subDescriptions) && count($subDescriptions) > 0)
                                 <div style="font-size: 10px; color: #1e293b; margin-top: 2px; padding-left: 2px;">
@@ -851,15 +842,7 @@
                             @endif
                         </td>
 
-                        <td class="text-center">
-                            @if(!empty($batchNo))
-                                {{ $batchNo }}
-                            @elseif(!empty($itemSerialsList))
-                                S/N
-                            @else
-                                -
-                            @endif
-                        </td>
+
 
                         <td class="text-center">
                             {{ $itemQty == (int)$itemQty ? (int)$itemQty : number_format($itemQty, 2) }}
@@ -906,7 +889,7 @@
 
                 <tr class="fw-bold" style="border-top: 2px solid #000; border-bottom: 2px solid #000;">
 
-                    <td colspan="3" class="text-end fw-bold">
+                    <td colspan="2" class="text-end fw-bold">
                         TOTAL:
                     </td>
 
@@ -1996,16 +1979,7 @@
                                 }
                             @endphp
 
-                            @if(!empty($tBatchNo))
-                                <span class="item-variant" style="font-weight: 600; color: #000; font-size: 9px; display: block; margin-top: 1px;">
-                                    Batch: {{ $tBatchNo }}
-                                </span>
-                            @endif
-                            @if(!empty($tSerialsList))
-                                <span class="item-variant" style="font-weight: 600; color: #000; font-size: 9px; display: block; word-break: break-all; margin-top: 1px;">
-                                    S/N: {{ implode(', ', $tSerialsList) }}
-                                </span>
-                            @endif
+
 
                             {{-- 
                                 IMPORTANT:
