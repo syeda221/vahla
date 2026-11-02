@@ -1196,8 +1196,12 @@ class ReportingController extends Controller
         $productStats = [];
         $totalGrossProfit = 0;
         $avgPriceMap = [];
+        $variantAvgPriceMap = [];
 
         foreach ($products as $product) {
+            $ppb = (float)($product->pieces_per_box ?? 1);
+            if ($ppb <= 0) $ppb = 1;
+
             // Determine default purchase price per piece
             $productPurchPrice = 0;
             if ($product->size_mode === 'by_size') {
@@ -1207,20 +1211,6 @@ class ReportingController extends Controller
             } else {
                 $productPurchPrice = (float) ($product->purchase_price_per_piece ?? 0);
             }
-
-            // Calculate overall product average price (for fallback)
-            $initial = (float) DB::table('stock_movements')
-                ->where('product_id', $product->id)
-                ->where('ref_type', 'INIT')
-                ->sum('qty');
-
-            [$purchased, $purchaseAmount] = $this->getPurchasedQtyAndNetAmount($product->id);
-
-            $initialAmount = $initial * $productPurchPrice;
-            $totalQtyIn = $initial + $purchased;
-            $totalAmountIn = $initialAmount + $purchaseAmount;
-            $averagePrice = $totalQtyIn > 0 ? ($totalAmountIn / $totalQtyIn) : $productPurchPrice;
-            $avgPriceMap[$product->id] = $averagePrice;
 
             // Check if product has variants
             $parsedVariants = [];
@@ -1232,6 +1222,62 @@ class ReportingController extends Controller
                     }
                 } catch (\Exception $e) {}
             }
+
+            if ($productPurchPrice <= 0 && count($parsedVariants) > 0) {
+                $baseV = collect($parsedVariants)->firstWhere('is_base_variant', 1) ?? $parsedVariants[0];
+                $productPurchPrice = (float) ($baseV['purch_price'] ?? 0);
+            }
+
+            // Calculate overall product average price (for fallback)
+            $initial = (float) DB::table('stock_movements')
+                ->where('product_id', $product->id)
+                ->where('ref_type', 'INIT')
+                ->sum('qty');
+
+            if ($initial <= 0) {
+                $initial = (float) DB::table('stock_movements')
+                    ->where('product_id', $product->id)
+                    ->where(function($q) {
+                        $q->where('ref_type', 'INIT')
+                          ->orWhere('note', 'like', '%Initial Stock%');
+                    })
+                    ->sum('qty');
+            }
+            if ($initial <= 0 && !empty($product->total_stock_qty)) {
+                $initial = (float) $product->total_stock_qty;
+            }
+            if ($initial <= 0 && count($parsedVariants) > 0) {
+                $initial = (float) collect($parsedVariants)->sum(function($pv) use ($product, $ppb) {
+                    $stk = (float)($pv['stock'] ?? 0);
+                    if (in_array($product->size_mode, ['by_cartons', 'by_bandal']) && $ppb > 1) {
+                        return $stk * $ppb;
+                    }
+                    return $stk;
+                });
+            }
+
+            [$purchased, $purchaseAmount] = $this->getPurchasedQtyAndNetAmount($product->id);
+
+            $initialAmount = $initial * $productPurchPrice;
+            $totalQtyIn = $initial + $purchased;
+            $totalAmountIn = $initialAmount + $purchaseAmount;
+            $averagePrice = $totalQtyIn > 0 ? ($totalAmountIn / $totalQtyIn) : $productPurchPrice;
+            $avgPriceMap[$product->id] = $averagePrice;
+
+            // Fetch all purchases for product to distribute to variants
+            $purchasesList = DB::table('purchase_items')
+                ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+                ->where('purchase_items.product_id', $product->id)
+                ->whereIn('purchases.status_purchase', ['approved', 'posted', 'Returned', 'Partial'])
+                ->select(
+                    'purchase_items.qty',
+                    'purchase_items.line_total',
+                    'purchase_items.unit',
+                    'purchase_items.pieces_per_box',
+                    'purchase_items.boxes_qty',
+                    'purchase_items.loose_qty',
+                    'purchase_items.color'
+                )->get();
 
             if (count($parsedVariants) > 0) {
                 // Fetch all sales and returns for this product to distribute
@@ -1389,7 +1435,66 @@ class ReportingController extends Controller
                         }
                     }
 
-                    $vAveragePrice = (float) ($v['purch_price'] ?? $productPurchPrice);
+                    // Calculate variant initial stock in pieces
+                    $vRawStock = (string) ($v['stock'] ?? '0');
+                    if (in_array($product->size_mode, ['by_cartons', 'by_bandal']) && $ppb > 1) {
+                        if (strpos($vRawStock, '.') !== false) {
+                            $parts = explode('.', $vRawStock);
+                            $boxes = (int) ($parts[0] ?? 0);
+                            $looseP = (int) ($parts[1] ?? 0);
+                            $vInitial = ($boxes * $ppb) + $looseP;
+                        } else {
+                            $vInitial = (float) $vRawStock * $ppb;
+                        }
+                    } else {
+                        $vInitial = (float) $vRawStock;
+                    }
+
+                    // Variant purchases
+                    $vPurchased = 0;
+                    $vPurchaseAmount = 0;
+                    foreach ($purchasesList as $pItem) {
+                        if ($this->matchSaleItemToVariant($pItem, $v)) {
+                            $pUnit = strtolower(trim($pItem->unit ?? ''));
+                            $pPPB = (float) ($pItem->pieces_per_box > 0 ? $pItem->pieces_per_box : $ppb);
+                            if ($pPPB <= 0) $pPPB = 1;
+
+                            if (in_array($pUnit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl'])) {
+                                if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
+                                    $pPieces = (((int) $pItem->boxes_qty) * $pPPB) + ((int) $pItem->loose_qty);
+                                } else {
+                                    [$b, $l] = \App\Http\Controllers\PurchaseController::parseCartonQty($pItem->qty);
+                                    $pPieces = ($b * $pPPB) + $l;
+                                }
+                            } elseif (in_array($pUnit, ['gm', 'g'])) {
+                                $pPieces = ((float) $pItem->qty) / 1000.0;
+                            } else {
+                                $pPieces = (float) $pItem->qty;
+                            }
+
+                            $vPurchased += $pPieces;
+                            $vPurchaseAmount += (float) $pItem->line_total;
+                        }
+                    }
+
+                    $vPurchPrice = (float) ($v['purch_price'] ?? $productPurchPrice);
+                    $vInitialAmount = $vInitial * $vPurchPrice;
+                    $vTotalQtyIn = $vInitial + $vPurchased;
+                    $vTotalAmountIn = $vInitialAmount + $vPurchaseAmount;
+
+                    if ($vTotalQtyIn > 0 && $vTotalAmountIn > 0) {
+                        $vAveragePrice = $vTotalAmountIn / $vTotalQtyIn;
+                    } elseif ($vPurchPrice > 0) {
+                        $vAveragePrice = $vPurchPrice;
+                    } elseif ($averagePrice > 0) {
+                        $vAveragePrice = $averagePrice;
+                    } else {
+                        $vAveragePrice = $productPurchPrice;
+                    }
+
+                    $vKey = $product->id . '_' . strtolower(trim($vColor)) . '_' . strtolower(trim($vSize));
+                    $variantAvgPriceMap[$vKey] = $vAveragePrice;
+
                     $netSoldAmount = $soldAmount - $returnedAmount;
                     $netQtyPieces = $soldQtyPieces - $returnedQtyPieces;
                     $costOfGoodsSold = $netQtyPieces * $vAveragePrice;
@@ -1811,7 +1916,8 @@ class ReportingController extends Controller
                                     if ($vS === '') $vS = '-';
 
                                     if ($vC === $vColor && $vS === $vSize) {
-                                        $avgPrice = (float) ($v['purch_price'] ?? 0);
+                                        $vLookupKey = $item->product_id . '_' . $vColor . '_' . $vSize;
+                                        $avgPrice = $variantAvgPriceMap[$vLookupKey] ?? ((float) ($v['purch_price'] ?? 0));
                                         break;
                                     }
                                 }
@@ -1854,7 +1960,7 @@ class ReportingController extends Controller
         });
         $topCustomers = array_slice($customerProfits, 0, 10);
 
-        list($invoiceStats, $totalInvoicesProfit) = $this->calculateInvoiceProfits($start, $end, $customerId, $productId, $products, $avgPriceMap);
+        list($invoiceStats, $totalInvoicesProfit) = $this->calculateInvoiceProfits($start, $end, $customerId, $productId, $categoryId, $products, $avgPriceMap, $variantAvgPriceMap);
 
         return response()->json([
             'products' => $productStats,
@@ -1867,7 +1973,7 @@ class ReportingController extends Controller
         ]);
     }
 
-    private function calculateInvoiceProfits($start, $end, $customerId, $productId, $categoryId, $products, $avgPriceMap)
+    private function calculateInvoiceProfits($start, $end, $customerId, $productId, $categoryId = null, $products = null, $avgPriceMap = [], $variantAvgPriceMap = [])
     {
         $invoiceSalesQuery = \App\Models\Sale::with(['customer_relation', 'items.product', 'returns.items']);
         if ($start && $end) {
@@ -1943,7 +2049,8 @@ class ReportingController extends Controller
                                     if ($vS === '') $vS = '-';
 
                                     if ($vC === $vColor && $vS === $vSize) {
-                                        $avgPrice = (float) ($v['purch_price'] ?? 0);
+                                        $vLookupKey = $item->product_id . '_' . $vColor . '_' . $vSize;
+                                        $avgPrice = $variantAvgPriceMap[$vLookupKey] ?? ((float) ($v['purch_price'] ?? 0));
                                         break;
                                     }
                                 }

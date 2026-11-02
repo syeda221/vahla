@@ -1966,7 +1966,7 @@
                                     <span class="input-group-text bg-white border-0 pe-0 text-muted" style="font-size: 13px;">
                                         <i class="far fa-calendar-alt"></i>
                                     </span>
-                                    <input type="text" name="sale_date" class="form-control border-0 datepicker-custom text-center fw-semibold" id="displayDateInput" value="{{ $sale->created_at ? $sale->created_at->format('d/m/Y') : date('d/m/Y') }}" style="font-size: 13.5px; height: 40px;">
+                                    <input type="text" name="sale_date" class="form-control border-0 datepicker-custom text-center fw-semibold" id="displayDateInput" value="{{ $sale->created_at ? $sale->created_at->format('Y-m-d') : date('Y-m-d') }}" style="font-size: 13.5px; height: 40px;">
                                 </div>
                             </div>
 

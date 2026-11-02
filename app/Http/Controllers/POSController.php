@@ -160,19 +160,22 @@ class POSController extends Controller
                         }
                     }
 
+                    $vNet = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned);
+
                     if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
                         $factor = (float) $v['conv_factor'];
                         $factor = $factor > 0 ? $factor : 1;
                         if ($factor == 1) {
-                            $vBalance = max(0, $totalStockPieces);
+                            $vBalance = $vNet;
+                            $totalStockPieces += $vBalance;
                         } else {
-                            $vBalance = (int) floor(max(0, $totalStockPieces) / $factor);
+                            $baseStock = $totalStockPieces > 0 ? $totalStockPieces : $vNet;
+                            $vBalance = (int) floor($baseStock / $factor);
                         }
                     } else {
-                        $vBalance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned);
+                        $vBalance = $vNet;
                         $totalStockPieces += $vBalance;
                     }
-
                     $vStockDisplay = $vBalance;
                     if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
                         $factor = (float) $v['conv_factor'];
@@ -212,6 +215,9 @@ class POSController extends Controller
                     ];
                 }
 
+                if ($totalStockPieces <= 0 && $p->warehouseStocks && $p->warehouseStocks->sum('total_pieces') > 0) {
+                    $totalStockPieces = (float) $p->warehouseStocks->sum('total_pieces');
+                }
                 $totalStockDisplay = $totalStockPieces;
                 if ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') && $ppb > 1) {
                     $boxes = floor($totalStockPieces / $ppb);

@@ -422,7 +422,7 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label fw-bold mb-1 text-muted small">Date</label>
-                            <input type="text" name="purchase_date" class="form-control datepicker-custom" value="{{ date('Y-m-d') }}">
+                            <input type="text" name="purchase_date" class="form-control datepicker-custom" value="{{ isset($purchase) && $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : date('Y-m-d') }}">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold mb-1 text-muted small">M.Bill / Remarks</label>
@@ -600,7 +600,7 @@
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-light border-bottom-0 pb-2">
                     <h5 class="modal-title fw-bold" id="addVendorModalLabel">Add New Vendor</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; line-height: 1; opacity: 0.7; cursor: pointer;"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <form id="quickAddVendorForm">
                     @csrf
@@ -625,7 +625,7 @@
                         </div>
                     </div>
                     <div class="modal-footer border-top-0 pt-0">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-light" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary px-4 fw-bold" id="btnQuickSaveVendor">Save Vendor</button>
                     </div>
                 </form>

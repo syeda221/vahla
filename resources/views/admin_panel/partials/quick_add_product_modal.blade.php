@@ -6,7 +6,7 @@
                 <h5 class="modal-title fw-bold" id="quickAddProductModalLabel">
                     <i class="fa fa-plus-circle text-primary me-2"></i>Quick Add Product
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; line-height: 1; opacity: 0.7; cursor: pointer;"><span aria-hidden="true">&times;</span></button>
             </div>
             <form id="quickAddProductForm">
                 @csrf
@@ -76,7 +76,7 @@
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-light" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary px-4 fw-bold" id="btnQuickSaveProduct">
                         <i class="fa fa-save me-1"></i>Save Product
                     </button>
@@ -89,6 +89,11 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
+    // Explicit close handler for Cross and Cancel buttons
+    $(document).on('click', '#quickAddProductModal [data-dismiss="modal"], #quickAddProductModal [data-bs-dismiss="modal"], #quickAddProductModal .btn-close, #quickAddProductModal .close', function(e) {
+        e.preventDefault();
+        $('#quickAddProductModal').modal('hide');
+    });
     // Toggle fields based on size mode
     $('#qap_size_mode').on('change', function() {
         if ($(this).val() === 'by_pieces') {

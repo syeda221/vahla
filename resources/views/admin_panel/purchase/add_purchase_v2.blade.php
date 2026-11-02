@@ -605,7 +605,7 @@ a.btn-outline-primary:hover {
                         </div>
                         <div class="col-md-2">
                             <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-calendar3 text-muted fs-6"></i> Date</label>
-                            <input type="text" name="purchase_date" class="form-control datepicker-custom" value="{{ date('d/m/Y') }}" style="border: 1px solid #e2e8f0 !important;">
+                            <input type="text" name="purchase_date" class="form-control datepicker-custom" value="{{ date('Y-m-d') }}" data-default-date="today" style="border: 1px solid #e2e8f0 !important;">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-bold mb-2 text-dark small d-flex align-items-center gap-2"><i class="bi bi-chat-left-text text-muted fs-6"></i> M.BILL / Remarks</label>
@@ -783,7 +783,7 @@ a.btn-outline-primary:hover {
             <div class="modal-content border-0 shadow">
                 <div class="modal-header bg-light border-bottom-0 pb-2">
                     <h5 class="modal-title fw-bold" id="addVendorModalLabel">Add New Vendor</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; line-height: 1; opacity: 0.7; cursor: pointer;"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <form id="quickAddVendorForm">
                     @csrf
@@ -808,7 +808,7 @@ a.btn-outline-primary:hover {
                         </div>
                     </div>
                     <div class="modal-footer border-top-0 pt-0">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-light" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary px-4 fw-bold" id="btnQuickSaveVendor">Save Vendor</button>
                     </div>
                 </form>

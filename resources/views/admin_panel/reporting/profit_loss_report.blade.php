@@ -74,17 +74,36 @@
 
     /* Table Styling with Sticky Header */
     .sale-table-wrap {
-        height: calc(100vh - 250px);
+        height: auto;
         max-height: calc(100vh - 250px);
         min-height: 380px;
         overflow-y: auto;
+        overflow-x: hidden !important;
         border: 1px solid #cbd5e1;
         border-radius: 8px;
         background: #ffffff;
     }
+    .dataTables_wrapper {
+        padding: 10px 12px 6px 12px;
+        width: 100% !important;
+        box-sizing: border-box;
+        overflow-x: hidden !important;
+    }
+    .dataTables_wrapper .row {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    .dataTables_wrapper .col-sm-12 {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    .dataTables_wrapper .dataTables_paginate {
+        margin-top: 6px !important;
+    }
     .report-table {
         font-size: .78rem;
         margin-bottom: 0;
+        width: 100% !important;
     }
     .report-table thead th {
         position: sticky;
@@ -299,9 +318,9 @@
                     <div class="stat-val text-danger" id="cardExpenses">Rs 0.00</div>
                 </div>
 
-                <div class="stat-pill" style="background: #f0f9ff; border-color: #bae6fd;">
-                    <div class="stat-label text-primary">Net Profit / Loss</div>
-                    <div class="stat-val text-primary" id="cardNetProfit">Rs 0.00</div>
+                <div class="stat-pill" id="cardNetProfitPill" style="background: #f0fdf4; border-color: #86efac;">
+                    <div class="stat-label text-success" id="cardNetProfitLabel">Net Profit</div>
+                    <div class="stat-val text-success" id="cardNetProfit">Rs 0.00</div>
                 </div>
 
             </div>
@@ -323,9 +342,9 @@
             </div>
         </div>
         <div class="col-12 mt-2">
-            <div class="mob-metric-card p-2" style="background: #f0f9ff; border-color: #bae6fd;">
-                <span class="mob-metric-label text-primary" style="font-size: 11px;"><i class="fas fa-balance-scale me-1"></i>Net Profit / Loss</span>
-                <div class="mob-metric-val text-primary mt-1" id="mobCardNetProfit" style="font-size: 15px;">Rs 0</div>
+            <div class="mob-metric-card p-2" id="mobCardNetProfitPill" style="background: #f0fdf4; border-color: #86efac;">
+                <span class="mob-metric-label text-success" id="mobCardNetProfitLabel" style="font-size: 11px;"><i class="fas fa-arrow-up text-success me-1"></i>Net Profit</span>
+                <div class="mob-metric-val text-success mt-1" id="mobCardNetProfit" style="font-size: 15px;">Rs 0</div>
             </div>
         </div>
     </div>
@@ -577,6 +596,7 @@ $(document).ready(function() {
     });
 
     var profitTable = $('#profitTable').DataTable({
+        autoWidth: false,
         paging: true,
         pageLength: 15,
         searching: true,
@@ -713,7 +733,25 @@ $(document).ready(function() {
 
         $('#cardGrossProfit, #mobCardGrossProfit').text(formattedGross);
         $('#cardExpenses, #mobCardExpenses').text(formattedExp);
-        $('#cardNetProfit, #mobCardNetProfit').text(formattedNet);
+
+        let netVal = parseFloat(data.net_profit || 0);
+        if (netVal >= 0) {
+            $('#cardNetProfitPill').css({'background': '#f0fdf4', 'border-color': '#86efac'});
+            $('#cardNetProfitLabel').removeClass('text-danger text-primary').addClass('text-success').text('Net Profit');
+            $('#cardNetProfit').removeClass('text-danger text-primary').addClass('text-success').text(formattedNet);
+
+            $('#mobCardNetProfitPill').css({'background': '#f0fdf4', 'border-color': '#86efac'});
+            $('#mobCardNetProfitLabel').removeClass('text-danger text-primary').addClass('text-success').html('<i class="fas fa-arrow-up text-success me-1"></i>Net Profit');
+            $('#mobCardNetProfit').removeClass('text-danger text-primary').addClass('text-success').text(formattedNet);
+        } else {
+            $('#cardNetProfitPill').css({'background': '#fef2f2', 'border-color': '#fca5a5'});
+            $('#cardNetProfitLabel').removeClass('text-success text-primary').addClass('text-danger').text('Net Loss');
+            $('#cardNetProfit').removeClass('text-success text-primary').addClass('text-danger').text(formattedNet);
+
+            $('#mobCardNetProfitPill').css({'background': '#fef2f2', 'border-color': '#fca5a5'});
+            $('#mobCardNetProfitLabel').removeClass('text-success text-primary').addClass('text-danger').html('<i class="fas fa-arrow-down text-danger me-1"></i>Net Loss');
+            $('#mobCardNetProfit').removeClass('text-success text-primary').addClass('text-danger').text(formattedNet);
+        }
 
         // Chart
         updateChart(chartLabels, chartData);

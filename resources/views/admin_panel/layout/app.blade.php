@@ -1480,11 +1480,29 @@
     <!-- <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script> -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            flatpickr('.datepicker-custom', {
-                dateFormat: "Y-m-d", // The value submitted to the server
-                altInput: true,      // Show a secondary visually formatted input
-                altFormat: "d/m/Y",  // Day/Month/Year
-                allowInput: true     // Allow typing
+            document.querySelectorAll('.datepicker-custom').forEach(function(el) {
+                var config = {
+                    dateFormat: "Y-m-d", // The value submitted to the server
+                    altInput: true,      // Show a secondary visually formatted input
+                    altFormat: "d/m/Y",  // Day/Month/Year
+                    allowInput: true,    // Allow typing
+                    parseDate: function(datestr, format) {
+                        if (typeof datestr === 'string') {
+                            var clean = datestr.trim();
+                            if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(clean)) {
+                                var parts = clean.split(/[\/\-]/);
+                                return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+                            }
+                        }
+                        return flatpickr.parseDate(datestr, format);
+                    }
+                };
+
+                if (el.getAttribute('data-default-date') === 'today' || el.classList.contains('default-today')) {
+                    config.defaultDate = "today";
+                }
+
+                flatpickr(el, config);
             });
         });
     </script>
