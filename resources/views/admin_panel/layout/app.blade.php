@@ -1022,6 +1022,10 @@
                                             <li><a href="{{ route('vouchers.make_payment') }}"><i class="fa-solid fa-money-bill-transfer text-primary"></i>
                                                     Make Payment</a></li>
                                         @endcanany
+                                        @can('vouchers.create')
+                                            <li><a href="{{ route('vouchers.create') }}?tab=account_transfer"><i class="fa-solid fa-arrow-right-arrow-left text-info"></i>
+                                                    Account Transfer</a></li>
+                                        @endcan
                                         @canany(['cheques.view', 'vouchers.create', 'vouchers.view'])
                                             <li><a href="{{ route('cheques.index') }}"><i class="fa-solid fa-money-check-dollar text-warning"></i>
                                                     Cheque Register & Alerts</a></li>

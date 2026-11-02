@@ -2643,9 +2643,57 @@ class VoucherController extends Controller
                     'remarks' => $jv->remarks ?: '-',
                     'attachment_url' => !empty($jv->attachment) ? asset('uploads/attachments/' . $jv->attachment) : null,
                     'print_url' => route('journalprint', $jv->id),
-                    'delete_url' => (auth()->user()->can('journal.voucher.delete') || auth()->user()->email === 'admin@admin.com') ? route('journal_vouchers.destroy', $jv->id) : null,
+                    'delete_url' => (auth()->user()->can('journal.voucher.delete') || auth()->user()->can('vouchers.create') || auth()->user()->email === 'admin@admin.com') ? route('journal_vouchers.destroy', $jv->id) : null,
                     'delete_method' => 'DELETE',
                     'created_at' => $jv->created_at ?? $jv->date,
+                ]);
+            }
+        }
+
+        // 5. Contra Vouchers (Account to Account Transfer)
+        if ($type === 'all' || $type === 'contra' || $type === 'account_transfer') {
+            $contraQuery = \App\Models\VoucherMaster::with(['details.account'])->where('voucher_type', 'contra');
+
+            if ($fromDate) {
+                $contraQuery->whereDate('date', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $contraQuery->whereDate('date', '<=', $toDate);
+            }
+
+            $contraList = $contraQuery->orderBy('id', 'desc')->get();
+
+            foreach ($contraList as $cv) {
+                $sourceName = '?';
+                $destName = '?';
+
+                foreach ($cv->details as $d) {
+                    if ((float)$d->credit > 0) {
+                        $sourceName = $d->account->title ?? ('Account #' . $d->account_id);
+                    }
+                    if ((float)$d->debit > 0) {
+                        $destName = $d->account->title ?? ('Account #' . $d->account_id);
+                    }
+                }
+
+                $pairLabel = ($sourceName !== '?' && $destName !== '?') ? "$sourceName ➔ $destName" : 'Internal Accounts';
+
+                $records->push([
+                    'id' => $cv->id,
+                    'voucher_no' => $cv->voucher_no ?: 'CV-' . $cv->id,
+                    'type_label' => 'Account Transfer',
+                    'source' => 'contra',
+                    'date' => $cv->date ? $cv->date->format('Y-m-d') : '-',
+                    'party_name' => $pairLabel,
+                    'party_type_label' => 'Contra',
+                    'detail' => 'Transfer',
+                    'amount' => (float)$cv->total_amount,
+                    'remarks' => $cv->remarks ?: '-',
+                    'attachment_url' => !empty($cv->attachment) ? asset('uploads/attachments/' . $cv->attachment) : null,
+                    'print_url' => route('journalprint', $cv->id),
+                    'delete_url' => (auth()->user()->can('vouchers.create') || auth()->user()->can('journal.voucher.delete') || auth()->user()->email === 'admin@admin.com') ? route('journal_vouchers.destroy', $cv->id) : null,
+                    'delete_method' => 'DELETE',
+                    'created_at' => $cv->created_at ?? $cv->date,
                 ]);
             }
         }
@@ -2668,6 +2716,7 @@ class VoucherController extends Controller
         $totalExpense = $records->where('source', 'expense')->sum('amount');
         $totalPaymentIn = $records->where('source', 'payment_in')->sum('amount');
         $totalPaymentOut = $records->where('source', 'payment_out')->sum('amount');
+        $totalContra = $records->where('source', 'contra')->sum('amount');
 
         // Sort records by date descending
         $sorted = $records->sortByDesc(function($item) {
@@ -2694,6 +2743,7 @@ class VoucherController extends Controller
                 'total_income' => 0,
                 'total_payment_in' => $totalPaymentIn,
                 'total_payment_out' => $totalPaymentOut,
+                'total_contra' => $totalContra,
             ]
         ]);
     }
@@ -2849,6 +2899,151 @@ class VoucherController extends Controller
         }
     }
 
+    public function store_account_transfer(Request $request)
+    {
+        $request->validate([
+            'entry_date' => 'required|date',
+            'source_account_id' => 'required|exists:accounts,id|different:dest_account_id',
+            'dest_account_id' => 'required|exists:accounts,id',
+            'amount' => 'required|numeric|min:0.01',
+            'reference_no' => 'nullable|string|max:100',
+            'remarks' => 'nullable|string|max:500'
+        ], [
+            'source_account_id.different' => 'Source and Destination accounts must be different.',
+            'source_account_id.required' => 'Please select the source account.',
+            'dest_account_id.required' => 'Please select the destination account.',
+            'amount.min' => 'Transfer amount must be greater than zero.'
+        ]);
+
+        \DB::beginTransaction();
+        try {
+            $amount = (float) $request->amount;
+            $sourceAccount = \App\Models\Account::findOrFail($request->source_account_id);
+            $destAccount = \App\Models\Account::findOrFail($request->dest_account_id);
+
+            // Generate Voucher No for Contra
+            $year = date('Y', strtotime($request->entry_date));
+            $last = \App\Models\VoucherMaster::where('voucher_type', \App\Models\VoucherMaster::TYPE_CONTRA)
+                ->where('voucher_no', 'like', "CV-$year-%")
+                ->orderBy('id', 'desc')->first();
+            $index = $last ? (int) substr($last->voucher_no, -4) + 1 : 1;
+            $voucherNo = sprintf("CV-%s-%04d", $year, $index);
+
+            $refText = $request->filled('reference_no') ? " (Ref: " . trim($request->reference_no) . ")" : "";
+            $transferDesc = "Transfer: {$sourceAccount->title} -> {$destAccount->title}" . $refText;
+            $remarks = $request->remarks ? trim($request->remarks) . $refText : $transferDesc;
+
+            // 1. Create Header (VoucherMaster)
+            $voucher = \App\Models\VoucherMaster::create([
+                'voucher_type' => \App\Models\VoucherMaster::TYPE_CONTRA,
+                'voucher_no'   => $voucherNo,
+                'date'         => $request->entry_date,
+                'status'       => \App\Models\VoucherMaster::STATUS_POSTED,
+                'party_type'   => null,
+                'party_id'     => null,
+                'remarks'      => $remarks,
+                'created_by'   => auth()->id(),
+                'fiscal_year'  => $year,
+                'total_amount' => $amount
+            ]);
+
+            $journalService = app(\App\Services\JournalEntryService::class);
+
+            // 2. Destination Entry (Debit: Asset Increases)
+            \App\Models\VoucherDetail::create([
+                'voucher_master_id' => $voucher->id,
+                'account_id' => $destAccount->id,
+                'debit' => $amount,
+                'credit' => 0,
+                'narration' => "Transfer in from {$sourceAccount->title}" . $refText
+            ]);
+            $journalService->recordEntry(
+                $voucher,
+                $destAccount->id,
+                $amount,
+                0,
+                "Transfer in from {$sourceAccount->title}" . $refText,
+                $request->entry_date,
+                null
+            );
+
+            // 3. Source Entry (Credit: Asset Decreases)
+            \App\Models\VoucherDetail::create([
+                'voucher_master_id' => $voucher->id,
+                'account_id' => $sourceAccount->id,
+                'debit' => 0,
+                'credit' => $amount,
+                'narration' => "Transfer out to {$destAccount->title}" . $refText
+            ]);
+            $journalService->recordEntry(
+                $voucher,
+                $sourceAccount->id,
+                0,
+                $amount,
+                "Transfer out to {$destAccount->title}" . $refText,
+                $request->entry_date,
+                null
+            );
+
+            \DB::commit();
+
+            return response()->json([
+                'success' => "Account Transfer (Contra) posted successfully: $voucherNo",
+                'message' => "Transfer of Rs. " . number_format($amount, 2) . " from {$sourceAccount->title} to {$destAccount->title} recorded successfully.",
+                'voucher_id' => $voucher->id,
+                'print_url' => route('journalprint', $voucher->id),
+                'all_vouchers_url' => route('voucher.history')
+            ]);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error("Account Transfer Error: " . $e->getMessage());
+            return response()->json(['error' => 'Failed to process account transfer: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function destroyJournalVoucher($id)
+    {
+        \DB::beginTransaction();
+        try {
+            $voucherMaster = \App\Models\VoucherMaster::where('id', $id)
+                ->whereIn('voucher_type', [
+                    \App\Models\VoucherMaster::TYPE_JOURNAL,
+                    \App\Models\VoucherMaster::TYPE_CONTRA
+                ])
+                ->first();
+
+            if (!$voucherMaster) {
+                if (request()->ajax() || request()->wantsJson()) {
+                    return response()->json(['message' => 'Voucher not found.'], 404);
+                }
+                return back()->with('error', 'Voucher not found.');
+            }
+
+            $journalService = app(\App\Services\JournalEntryService::class);
+            // Reverses the debit & credit entries and restores account balances in general ledger
+            $journalService->reverseEntriesForSource($voucherMaster);
+
+            $voucherMaster->details()->delete();
+            $voucherMaster->delete();
+
+            \DB::commit();
+
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['message' => 'Voucher deleted and accounts balance restored successfully.']);
+            }
+            return back()->with('success', 'Voucher deleted and accounts balance restored successfully.');
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Voucher Delete Error: ' . $e->getMessage());
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['message' => 'Failed to delete voucher: ' . $e->getMessage()], 500);
+            }
+            return back()->with('error', 'Failed to delete voucher: ' . $e->getMessage());
+        }
+    }
+
     public function getPartyBalance(Request $request)
     {
         $type = $request->type;
@@ -2906,7 +3101,9 @@ class VoucherController extends Controller
 
         $party = null;
         $previousBalance = 0;
-        $voucherTitle = 'JOURNAL VOUCHER';
+        $voucherTitle = ($voucherV2->voucher_type === \App\Models\VoucherMaster::TYPE_CONTRA)
+            ? 'CONTRA VOUCHER (ACCOUNT TRANSFER)'
+            : 'JOURNAL VOUCHER';
 
         return view('admin_panel.vochers.print', compact('voucher', 'rows', 'party', 'previousBalance', 'voucherTitle'));
     }

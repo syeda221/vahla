@@ -567,7 +567,12 @@
 
 @media (max-width: 768px) {
     .voucher-types {
-        grid-template-columns: repeat(1, 1fr);
+        grid-template-columns: repeat(1, 1fr) !important;
+    }
+}
+@media (max-width: 1100px) and (min-width: 769px) {
+    .voucher-types {
+        grid-template-columns: repeat(3, 1fr) !important;
         gap: 10px;
     }
     .voucher-form-card {
@@ -593,7 +598,7 @@
         </div>
 
         {{-- Voucher Type Toggle Cards (3 Main Vouchers) --}}
-        <div class="voucher-types" style="grid-template-columns: repeat(4, 1fr);" id="voucherTypeSelector">
+        <div class="voucher-types" style="grid-template-columns: repeat(5, 1fr);" id="voucherTypeSelector">
             <div class="voucher-type-btn active" data-type="expense">
                 <i class="fas fa-file-invoice-dollar v-icon"></i>
                 <span class="v-label">Expense</span>
@@ -609,6 +614,10 @@
             <div class="voucher-type-btn" data-type="party_to_party">
                 <i class="fas fa-exchange-alt v-icon"></i>
                 <span class="v-label">Party to Party</span>
+            </div>
+            <div class="voucher-type-btn" data-type="account_transfer">
+                <i class="fas fa-money-bill-transfer v-icon"></i>
+                <span class="v-label">Account Transfer</span>
             </div>
         </div>
 
@@ -1061,6 +1070,92 @@
                 </form>
             </div>
 
+            {{-- ==================== 5. ACCOUNT TO ACCOUNT TRANSFER ==================== --}}
+            <div class="voucher-form-section" id="form-account_transfer">
+                <form class="voucher-form" data-action="{{ route('store_account_transfer') }}" method="POST" novalidate>
+                    @csrf
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label">Transfer Date <span class="text-danger">*</span></label>
+                            <input type="date" name="entry_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Voucher ID</label>
+                            <input type="text" class="form-control" value="CV-Auto" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Cheque / Reference / Slip No</label>
+                            <input type="text" name="reference_no" class="form-control" placeholder="Optional cheque/ref/slip no">
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mb-4">
+                        {{-- Source Account (From) --}}
+                        <div class="col-md-6">
+                            <div class="p-4" style="border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; border-left:4px solid #dc2626;">
+                                <div class="fw-bold text-danger mb-3" style="font-size:14px;">
+                                    <i class="fas fa-arrow-up-from-bracket me-1"></i> From Account (Source / Deduct From)
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Select Source Account (Cash/Bank) <span class="text-danger">*</span></label>
+                                    <select name="source_account_id" id="src_account_select" class="form-select select2-account" required>
+                                        <option value="">Select source account...</option>
+                                        @foreach($accounts as $acc)
+                                        <option value="{{ $acc->id }}" data-code="{{ $acc->account_code }}" data-balance="{{ $acc->current_balance ?? $acc->opening_balance ?? 0 }}">
+                                            {{ $acc->title }} ({{ $acc->account_code }})
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="mt-2" style="font-size:13px; font-weight:600; background:#e2e8f0; padding:6px 12px; border-radius:6px; width:fit-content; display:none;" id="src_acc_balance_container">
+                                    Current Balance: Rs. <span id="src_acc_balance_display" class="text-danger">0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Destination Account (To) --}}
+                        <div class="col-md-6">
+                            <div class="p-4" style="border-radius:10px; border:1px solid #e2e8f0; background:#f8fafc; border-left:4px solid #16a34a;">
+                                <div class="fw-bold text-success mb-3" style="font-size:14px;">
+                                    <i class="fas fa-arrow-down-to-bracket me-1"></i> To Account (Destination / Deposit Into)
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Select Destination Account (Cash/Bank) <span class="text-danger">*</span></label>
+                                    <select name="dest_account_id" id="dst_account_select" class="form-select select2-account" required>
+                                        <option value="">Select destination account...</option>
+                                        @foreach($accounts as $acc)
+                                        <option value="{{ $acc->id }}" data-code="{{ $acc->account_code }}" data-balance="{{ $acc->current_balance ?? $acc->opening_balance ?? 0 }}">
+                                            {{ $acc->title }} ({{ $acc->account_code }})
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="mt-2" style="font-size:13px; font-weight:600; background:#e2e8f0; padding:6px 12px; border-radius:6px; width:fit-content; display:none;" id="dst_acc_balance_container">
+                                    Current Balance: Rs. <span id="dst_acc_balance_display" class="text-success">0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label">Transfer Amount (Rs.) <span class="text-danger">*</span></label>
+                            <input type="number" name="amount" id="transfer_amount" class="form-control" step="0.01" min="0.01" required placeholder="0.00">
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label">Description / Remarks</label>
+                            <input type="text" name="remarks" id="transfer_remarks" class="form-control" placeholder="e.g. Cash deposited into Bank HBL / Fund transfer from HBL to Meezan">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-2">
+                        <button type="submit" class="btn btn-voucher" style="background:#0284c7;">
+                            <i class="fas fa-check-circle me-1"></i> Post Account Transfer
+                        </button>
+                    </div>
+                </form>
+            </div>
+
         </div>{{-- /voucher-form-card --}}
     </div>
 </div>
@@ -1113,7 +1208,8 @@
             expense:          '<i class="fas fa-file-invoice-dollar text-primary"></i> <span>Expense Voucher</span>',
             payment_in:       '<i class="fas fa-arrow-down text-primary"></i> <span>Payment In Voucher</span>',
             payment_out:      '<i class="fas fa-arrow-up text-danger"></i> <span>Payment Out Voucher</span>',
-            party_to_party:   '<i class="fas fa-exchange-alt text-primary"></i> <span>Party to Party Transfer</span>'
+            party_to_party:   '<i class="fas fa-exchange-alt text-primary"></i> <span>Party to Party Transfer</span>',
+            account_transfer: '<i class="fas fa-money-bill-transfer text-primary"></i> <span>Account to Account Transfer (Contra)</span>'
         };
 
         // ============== VOUCHER TYPE TOGGLE ==============
@@ -1546,6 +1642,61 @@
             var val = $(this).val();
             if(val === 'vendor') { updateP2PBalance('#dst_vendor_select', 'dst_balance_display', 'dst_balance_container', 'vendor'); }
             else { updateP2PBalance('#dst_customer_select', 'dst_balance_display', 'dst_balance_container', 'customer'); }
+        });
+
+        // ============== ACCOUNT TO ACCOUNT: BALANCE DISPLAY & VALIDATION ==============
+        function updateAccountTransferBalance(selectElem, displayId, containerId) {
+            var id = $(selectElem).val();
+            if(id) {
+                var fastBal = $(selectElem).find(':selected').data('balance');
+                if (fastBal !== undefined && fastBal !== '') {
+                    $('#' + displayId).text(Number(fastBal).toLocaleString('en-US', {minimumFractionDigits: 2}));
+                    $('#' + containerId).show();
+                }
+                $.ajax({
+                    url: '{{ route("vouchers.get_party_balance") }}',
+                    method: 'GET',
+                    data: { type: 'account', id: id },
+                    success: function(res) {
+                        var bal = res.balance || 0;
+                        var formatted = Number(bal).toLocaleString('en-US', {minimumFractionDigits: 2});
+                        $('#' + displayId).text(formatted);
+                        $('#' + containerId).show();
+                    }
+                });
+            } else {
+                $('#' + containerId).hide();
+            }
+        }
+
+        $(document).on('change', '#src_account_select', function() {
+            updateAccountTransferBalance(this, 'src_acc_balance_display', 'src_acc_balance_container');
+            var src = $(this).val();
+            var dst = $('#dst_account_select').val();
+            if(src && dst && src === dst) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Same Account Selected',
+                    text: 'Source and Destination accounts cannot be the same. Please select different accounts.'
+                });
+                $(this).val('').trigger('change.select2');
+                $('#src_acc_balance_container').hide();
+            }
+        });
+
+        $(document).on('change', '#dst_account_select', function() {
+            updateAccountTransferBalance(this, 'dst_acc_balance_display', 'dst_acc_balance_container');
+            var dst = $(this).val();
+            var src = $('#src_account_select').val();
+            if(src && dst && src === dst) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Same Account Selected',
+                    text: 'Source and Destination accounts cannot be the same. Please select different accounts.'
+                });
+                $(this).val('').trigger('change.select2');
+                $('#dst_acc_balance_container').hide();
+            }
         });
 
         // ============== FORM SUBMISSION (AJAX) ==============

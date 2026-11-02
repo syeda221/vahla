@@ -518,7 +518,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/cheques/{id}/bounce', [\App\Http\Controllers\ChequeController::class, 'bounce'])->name('cheques.bounce');
     Route::get('/cheques/run-checks', [\App\Http\Controllers\ChequeController::class, 'runChecks'])->name('cheques.run_checks');
     Route::post('/vouchers/store-party-to-party', [VoucherController::class, 'store_party_to_party'])->middleware('permission:vouchers.create')->name('store_party_to_party');
+    Route::post('/vouchers/store-account-transfer', [VoucherController::class, 'store_account_transfer'])->middleware('permission:vouchers.create')->name('store_account_transfer');
     Route::get('/vouchers/get-party-balance', [VoucherController::class, 'getPartyBalance'])->name('vouchers.get_party_balance');
+    Route::delete('/journal-vouchers/{id}', [VoucherController::class, 'destroyJournalVoucher'])->name('journal_vouchers.destroy');
     Route::get('vouchers/{type}', [VoucherController::class, 'index'])->middleware('permission:vouchers.view|all.vouchers.view')->name('vouchers.index');
     Route::post('vouchers/store', [VoucherController::class, 'store'])->middleware('permission:vouchers.create')->name('vouchers.store');
     Route::get('/view_all', [AccountsHeadController::class, 'index'])->name('view_all');

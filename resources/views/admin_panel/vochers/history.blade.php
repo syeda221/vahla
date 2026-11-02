@@ -274,6 +274,9 @@
                 @can('payment.voucher.create')
                     <li><a class="dropdown-item py-2 rounded-2" href="{{ route('Payment_vochers') }}"><i class="fas fa-hand-holding-dollar text-warning me-2"></i> Add Payment Voucher (Payment Out)</a></li>
                 @endcan
+                @can('vouchers.create')
+                    <li><a class="dropdown-item py-2 rounded-2" href="{{ route('vouchers.create') }}?tab=account_transfer"><i class="fas fa-money-bill-transfer text-info me-2"></i> Account Transfer (Contra)</a></li>
+                @endcan
             </ul>
         </div>
     </div>
@@ -316,6 +319,7 @@
         <button class="filter-card-btn" data-type="expense"><i class="fas fa-arrow-up text-danger me-1"></i> Expense</button>
         <button class="filter-card-btn" data-type="payment_in"><i class="fas fa-arrow-right text-success me-1"></i> Payment In (Receipts)</button>
         <button class="filter-card-btn" data-type="payment_out"><i class="fas fa-arrow-left text-warning me-1"></i> Payment Out (Payments)</button>
+        <button class="filter-card-btn" data-type="contra"><i class="fas fa-money-bill-transfer text-info me-1"></i> Account Transfer (Contra)</button>
     </div>
 
     {{-- Advanced Filters --}}
@@ -446,6 +450,8 @@ $(function() {
                     if (r.source === 'expense') badge = 'bg-danger text-white';
                     else if (r.source === 'payment_in') badge = 'bg-success text-white';
                     else if (r.source === 'payment_out') badge = 'bg-warning text-dark';
+                    else if (r.source === 'contra') badge = 'bg-info text-white';
+                    else if (r.source === 'journal') badge = 'bg-primary text-white';
                     return '<span class="badge ' + badge + '">' + (v || '-') + '</span>';
                 }
             },
