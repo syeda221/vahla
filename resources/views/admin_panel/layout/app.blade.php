@@ -500,6 +500,44 @@
             }
         }
 
+        /**
+         * Pages sometimes add `.container-fluid { overflow-x: hidden; }` for
+         * "page overflow protection". An `overflow-x: hidden` also turns the
+         * vertical axis into `auto`, which silently clips the header's
+         * absolutely positioned dropdowns at the navbar's bottom edge.
+         * Keep the whole header chain unclipped so submenus can extend over
+         * the page content on every page.
+         */
+        @media (min-width: 992px) {
+            .rt_nav_header.horizontal-layout,
+            .rt_nav_header.horizontal-layout .top_nav,
+            .rt_nav_header.horizontal-layout .top_nav > .container-fluid,
+            .rt_nav_header.horizontal-layout .nav-bottom,
+            .rt_nav_header.horizontal-layout .nav-bottom > .container-fluid,
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation,
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item {
+                overflow: visible !important;
+            }
+        }
+
+        /* Extra: ensure Purchase / Mega-Menu dropdowns never get clipped by parents */
+        .rt_nav_header .mega-menu .submenu,
+        .rt_nav_header .nav-item .submenu,
+        .rt_nav_header .mega-menu,
+        .rt_nav_header .nav-item.mega-menu {
+            overflow: visible !important;
+        }
+
+        /* Universal: prevent dropdown/action menus from being clipped inside admin tables */
+        .premium-table,
+        .table-responsive,
+        .table-responsive table,
+        .erp-table-wrap {
+            overflow: visible !important;
+            overflow-x: visible !important;
+            overflow-y: visible !important;
+        }
+
         /* Universal App Page Body - Generous Top Clearance */
         .app-page-body {
             position: relative;

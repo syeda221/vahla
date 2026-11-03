@@ -165,6 +165,9 @@
         .table-responsive {
             border-radius: 8px !important;
             overflow: visible !important;
+            overflow-x: visible !important;
+            overflow-y: visible !important;
+            padding-bottom: 120px !important;
         }
 
         /* Custom styled controls for inline Bulk Discount Card */

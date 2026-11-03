@@ -174,6 +174,77 @@
         display: inline-flex; align-items: center; gap: 4px;
     }
 
+    /* ── Quick Update (inline column editing) ── */
+    .quick-update-bar {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 10px;
+        margin-top: 14px; padding: 10px 14px;
+        background: #fff; border: 1px dashed #c7d2fe; border-radius: 10px;
+    }
+    .quick-update-bar .qu-title {
+        font-size: .7rem; font-weight: 800; text-transform: uppercase;
+        letter-spacing: .5px; color: var(--erp-primary);
+        display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+    }
+    .qu-checks { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+    .qu-check {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: .78rem; font-weight: 600; color: var(--erp-text);
+        cursor: pointer; margin: 0; white-space: nowrap; user-select: none;
+    }
+    .qu-check input[type="checkbox"] {
+        width: 15px; height: 15px; accent-color: var(--erp-primary); cursor: pointer; margin: 0;
+    }
+    .qu-actions { display: none; align-items: center; gap: 8px; }
+    .qu-actions.is-visible { display: inline-flex; }
+    .qu-hint { font-size: .74rem; font-weight: 600; color: var(--erp-muted); white-space: nowrap; }
+    .qu-hint.has-changes { color: var(--erp-warning); }
+
+    /* Inline editors: hidden until their checkbox is ticked */
+    .quick-input { display: none; }
+    .quick-input.is-active { display: block; }
+    #productTable .quick-input {
+        width: 105px; height: 30px; padding: 0 8px;
+        border: 1px solid #c7d2fe; border-radius: 6px;
+        font-size: .8rem; font-weight: 600; color: var(--erp-text);
+        background: #fff; outline: none; box-sizing: border-box;
+    }
+    #productTable .quick-input:focus {
+        border-color: var(--erp-primary);
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+    #productTable .quick-input.is-dirty { border-color: var(--erp-warning); background: #fffbeb; }
+    .q-category {
+        width: 100%; max-width: 190px; height: 28px !important;
+        margin-top: 4px; font-size: .72rem !important; padding: 0 6px !important;
+    }
+    #productTable .q-category {
+        width: 190px; max-width: 190px; height: 28px;
+        font-size: .72rem; padding: 0 6px;
+    }
+    .col-discount { display: none !important; white-space: nowrap; }
+    #productTable.edit-discount .col-discount { display: table-cell !important; }
+    .disc-pair { display: flex; align-items: center; gap: 5px; }
+    .disc-mini {
+        display: inline-flex; align-items: center; gap: 3px; margin: 0;
+        font-size: .64rem; font-weight: 800; color: var(--erp-muted);
+    }
+    .disc-mini input {
+        width: 52px; height: 28px; padding: 0 5px;
+        border: 1px solid #c7d2fe; border-radius: 6px;
+        font-size: .76rem; font-weight: 600; text-align: right;
+        outline: none; box-sizing: border-box;
+    }
+    .disc-mini input:focus { border-color: var(--erp-primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+    .disc-mini input.is-dirty { border-color: var(--erp-warning); background: #fffbeb; }
+
+    #productTable tr.row-dirty > td { background: #fffdf5 !important; }
+
+    @media (max-width: 768px) {
+        .quick-update-bar { display: none !important; }
+        .col-discount { display: none !important; }
+    }
+
     /* ── Header action buttons ── */
     .btn-hdr {
         border-radius: 8px; padding: 8px 14px; font-size: .82rem; font-weight: 600;
@@ -580,6 +651,38 @@
 
                 </div>
 
+                {{-- Quick Update: tick a field to edit it directly in the list below --}}
+                @if (auth()->user()->can('products.edit') || auth()->user()->email === 'admin@admin.com')
+                <div class="quick-update-bar" id="quickUpdateBar">
+                    <div class="d-flex align-items-center flex-wrap" style="gap:10px;">
+                        <span class="qu-title"><i class="fas fa-pen-to-square"></i> Quick Update</span>
+                        <div class="qu-checks">
+                            <label class="qu-check" title="Edit category for every row">
+                                <input type="checkbox" class="qu-toggle" data-field="category"> Category
+                            </label>
+                            <label class="qu-check" title="Edit purchase price for every row">
+                                <input type="checkbox" class="qu-toggle" data-field="purchase_price"> Purchase Price
+                            </label>
+                            <label class="qu-check" title="Edit sale price for every row">
+                                <input type="checkbox" class="qu-toggle" data-field="sale_price"> Sale Price
+                            </label>
+                            <label class="qu-check" title="Edit purchase / sale discount % for every row">
+                                <input type="checkbox" class="qu-toggle" data-field="discount"> Discount %
+                            </label>
+                        </div>
+                    </div>
+                    <div class="qu-actions" id="quActions">
+                        <span class="qu-hint" id="quHint">0 change(s)</span>
+                        <button type="button" class="btn-erp-filter" id="quSave" style="height:34px;">
+                            <i class="fas fa-check"></i> Update
+                        </button>
+                        <button type="button" class="btn-erp-clear" id="quReset" style="height:34px;">
+                            <i class="fas fa-rotate-left"></i> Reset
+                        </button>
+                    </div>
+                </div>
+                @endif
+
                 {{-- Active filter chips --}}
                 @if(request()->hasAny(['search','category_id','brand_id','status']))
                 <div class="active-filters" style="margin-top:10px;">
@@ -625,6 +728,7 @@
                             <th>Stock</th>
                             <th>Purchase Price</th>
                             <th>Sale Price</th>
+                            <th class="col-discount" style="width:130px;">Disc % <span style="font-weight:600;font-size:.62rem;color:var(--erp-muted);">(P / S)</span></th>
                             <th style="width:90px;">Status</th>
                             <th class="text-center" style="width:180px;">Actions</th>
                         </tr>
@@ -654,7 +758,7 @@
                                     $retailPrice = (float)$product->sale_price_per_piece ?: (float)$product->sale_price_per_box;
                                 }
                             @endphp
-                            <tr id="product-row-{{ $product->id }}" class="{{ $product->is_active ? '' : 'row-inactive' }}">
+                            <tr id="product-row-{{ $product->id }}" data-product-id="{{ $product->id }}" class="{{ $product->is_active ? '' : 'row-inactive' }}">
                                 <td><input type="checkbox" class="selectProduct row-check" value="{{ $product->id }}"></td>
                                 <td style="color:var(--erp-muted); font-size:.72rem;">{{ $products->firstItem() + $key }}</td>
                                 <td>
@@ -670,12 +774,19 @@
                                     <div class="item-meta">
                                         <span class="item-code">{{ $product->item_code }}</span>
                                         @if($product->category_relation)
-                                            <span class="meta-chip"><i class="fas fa-list" style="font-size:.6rem;"></i> {{ $product->category_relation->name }}</span>
+                                            <span class="meta-chip item-cat-badge"><i class="fas fa-list" style="font-size:.6rem;"></i> {{ $product->category_relation->name }}</span>
                                         @endif
                                         @if($product->brand)
                                             <span class="meta-chip"><i class="fas fa-trademark" style="font-size:.6rem;"></i> {{ $product->brand->name }}</span>
                                         @endif
                                     </div>
+                                    <select class="quick-input q-category"
+                                        data-original="{{ $product->category_id }}">
+                                        <option value="">— No category —</option>
+                                        @foreach ($categories as $cat)
+                                            <option value="{{ $cat->id }}" {{ (string) $product->category_id === (string) $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                                        @endforeach
+                                    </select>
                                 </td>
                                 <td>
                                     <span class="stock-badge {{ $stockClass }}">
@@ -684,8 +795,34 @@
                                         <span class="stock-unit">{{ $stockUnit }}</span>
                                     </span>
                                 </td>
-                                <td class="price-purchase">Rs. {{ number_format($tradePrice, 2) }}</td>
-                                <td class="price-sale">Rs. {{ number_format($retailPrice, 2) }}</td>
+                                <td class="price-purchase">
+                                    <span class="js-price-display">Rs. {{ number_format($tradePrice, 2) }}</span>
+                                    <input type="number" step="0.01" min="0" class="quick-input q-purchase"
+                                        value="{{ number_format($tradePrice, 2, '.', '') }}"
+                                        data-original="{{ number_format($tradePrice, 2, '.', '') }}"
+                                        title="Purchase price">
+                                </td>
+                                <td class="price-sale">
+                                    <span class="js-price-display">Rs. {{ number_format($retailPrice, 2) }}</span>
+                                    <input type="number" step="0.01" min="0" class="quick-input q-sale"
+                                        value="{{ number_format($retailPrice, 2, '.', '') }}"
+                                        data-original="{{ number_format($retailPrice, 2, '.', '') }}"
+                                        title="Sale price">
+                                </td>
+                                <td class="col-discount">
+                                    <div class="disc-pair">
+                                        <label class="disc-mini" title="Purchase discount %">P
+                                            <input type="number" step="0.01" min="0" max="100" class="q-pdisc"
+                                                value="{{ number_format((float) ($product->purchase_discount_percent ?? 0), 2, '.', '') }}"
+                                                data-original="{{ number_format((float) ($product->purchase_discount_percent ?? 0), 2, '.', '') }}">
+                                        </label>
+                                        <label class="disc-mini" title="Sale discount %">S
+                                            <input type="number" step="0.01" min="0" max="100" class="q-sdisc"
+                                                value="{{ number_format((float) ($product->sale_discount_percent ?? 0), 2, '.', '') }}"
+                                                data-original="{{ number_format((float) ($product->sale_discount_percent ?? 0), 2, '.', '') }}">
+                                        </label>
+                                    </div>
+                                </td>
                                 <td>
                                     @if($product->is_active)
                                         <span class="status-active" id="status-badge-{{ $product->id }}">Active</span>
@@ -965,6 +1102,161 @@ $(document).ready(function () {
         $('.selectProduct').prop('checked', this.checked);
     });
 
+    // ── Quick Update: tick a field to edit it inline, then save all changes ──
+    (function quickUpdate() {
+        const $grid = $('#productTable');
+        if (!$grid.length) return;
+
+        const fieldSelector = {
+            category:       '.q-category',
+            purchase_price: '.q-purchase',
+            sale_price:     '.q-sale',
+            discount:       '.q-pdisc, .q-sdisc'
+        };
+
+        function enabledFields() {
+            const on = {};
+            $('.qu-toggle').each(function () {
+                on[$(this).data('field')] = this.checked;
+            });
+            return on;
+        }
+
+        function isChanged($input) {
+            if (!$input.length) return false;
+            return String($input.val() ?? '').trim() !== String($input.attr('data-original') ?? '').trim();
+        }
+
+        function refreshDirty() {
+            let rows = 0;
+            $grid.find('tr[data-product-id]').each(function () {
+                const $tr = $(this);
+                let dirty = false;
+                $tr.find('.q-purchase, .q-sale, .q-pdisc, .q-sdisc, .q-category').each(function () {
+                    const changed = isChanged($(this));
+                    $(this).toggleClass('is-dirty', changed);
+                    if (changed) dirty = true;
+                });
+                $tr.toggleClass('row-dirty', dirty);
+                if (dirty) rows++;
+            });
+            $('#quHint').text(rows + ' row(s) changed').toggleClass('has-changes', rows > 0);
+            return rows;
+        }
+
+        function applyModes() {
+            const on = enabledFields();
+            $grid.toggleClass('edit-category', !!on.category)
+                 .toggleClass('edit-purchase', !!on.purchase_price)
+                 .toggleClass('edit-sale', !!on.sale_price)
+                 .toggleClass('edit-discount', !!on.discount);
+
+            $grid.find('.q-category').toggleClass('is-active', !!on.category);
+            $grid.find('.q-purchase').toggleClass('is-active', !!on.purchase_price);
+            $grid.find('.q-sale').toggleClass('is-active', !!on.sale_price);
+            $grid.find('.item-cat-badge').toggle(!on.category);
+            $grid.find('.price-purchase .js-price-display').toggle(!on.purchase_price);
+            $grid.find('.price-sale .js-price-display').toggle(!on.sale_price);
+
+            const anyActive = Object.keys(on).some(k => on[k]);
+            $('#quActions').toggleClass('is-visible', anyActive);
+            if (anyActive) refreshDirty();
+        }
+
+        function resetField(field) {
+            const selector = fieldSelector[field];
+            if (!selector) return;
+            $grid.find(selector).each(function () {
+                $(this).val($(this).attr('data-original')).removeClass('is-dirty');
+            });
+            $grid.find('tr').removeClass('row-dirty');
+        }
+
+        $('.qu-toggle').on('change', function () {
+            const field = $(this).data('field');
+            if (!this.checked) resetField(field);
+            applyModes();
+        });
+
+        $grid.on('input change', '.q-purchase, .q-sale, .q-pdisc, .q-sdisc, .q-category', function () {
+            refreshDirty();
+        });
+
+        $('#quReset').on('click', function () {
+            $grid.find('.q-purchase, .q-sale, .q-pdisc, .q-sdisc, .q-category').each(function () {
+                $(this).val($(this).attr('data-original')).removeClass('is-dirty');
+            });
+            $grid.find('tr').removeClass('row-dirty');
+            refreshDirty();
+        });
+
+        $('#quSave').on('click', function () {
+            const on = enabledFields();
+            const changedRows = refreshDirty();
+
+            if (!changedRows) {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Pehle koi value change karein.', showConfirmButton: false, timer: 2200 });
+                return;
+            }
+
+            const products = {};
+            $grid.find('tr[data-product-id]').each(function () {
+                const $tr = $(this);
+                const id  = $tr.attr('data-product-id');
+                const row = {};
+
+                if (on.purchase_price) {
+                    const $i = $tr.find('.q-purchase');
+                    if (isChanged($i)) row.purchase_price_per_piece = $i.val();
+                }
+                if (on.sale_price) {
+                    const $i = $tr.find('.q-sale');
+                    if (isChanged($i)) row.sale_price_per_piece = $i.val();
+                }
+                if (on.discount) {
+                    const $p = $tr.find('.q-pdisc');
+                    const $s = $tr.find('.q-sdisc');
+                    if (isChanged($p)) row.purchase_discount_percent = $p.val();
+                    if (isChanged($s)) row.sale_discount_percent = $s.val();
+                }
+                if (on.category) {
+                    const $c = $tr.find('.q-category');
+                    if (isChanged($c) && $c.val() !== '') row.category_id = $c.val();
+                }
+
+                if (Object.keys(row).length) products[id] = row;
+            });
+
+            if (!Object.keys(products).length) {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Koi valid change nahi mila.', showConfirmButton: false, timer: 2200 });
+                return;
+            }
+
+            const $btn = $(this);
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Updating…');
+
+            $.ajax({
+                url:  "{{ route('products.bulk-update') }}",
+                type: 'POST',
+                data: { _token: '{{ csrf_token() }}', products: products },
+                success: function (res) {
+                    if (res.status === 'success') {
+                        Swal.fire({ icon: 'success', title: 'Updated!', text: res.message, timer: 1400, showConfirmButton: false })
+                            .then(function () { window.location.reload(); });
+                    } else {
+                        Swal.fire('Error', res.message || 'Update failed.', 'error');
+                    }
+                },
+                error: function (xhr) {
+                    Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.message) || 'Products update nahi ho sake.', 'error');
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html('<i class="fas fa-check"></i> Update');
+                }
+            });
+        });
+    })();
+
     // ── DataTable init ── (responsive:false – we use CSS horizontal scroll instead)
     if ($.fn.DataTable.isDataTable('#productTable')) {
         $('#productTable').DataTable().destroy();
@@ -977,7 +1269,7 @@ $(document).ready(function () {
         order:      [[3, 'asc']],
         dom:        'rt',
         scrollX:    false,
-        columnDefs: [{ targets: [0, 8], orderable: false, searchable: false }]
+        columnDefs: [{ targets: [0, 9], orderable: false, searchable: false }]
     });   // DataTable closes here
 
     // ── View Product Modal ──
