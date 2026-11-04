@@ -756,24 +756,17 @@ class ProductController extends Controller
             $tokens = !empty($meaningfulTokens) ? $meaningfulTokens : $allTokens;
 
             $query->where(function ($q) use ($s, $tokens) {
-                // 1. Direct match with full search string
+                // 1. Direct match with product name or item code ONLY
                 $q->where('item_name', 'like', "%{$s}%")
-                  ->orWhere('item_code', 'like', "%{$s}%")
-                  ->orWhere('barcode_path', 'like', "%{$s}%")
-                  ->orWhere('color', 'like', "%{$s}%");
+                  ->orWhere('item_code', 'like', "%{$s}%");
 
-                // 2. Multi-token match: all tokens must exist across fields
+                // 2. Multi-token match: all tokens must exist in item_name or item_code
                 if (count($tokens) > 1 || (count($tokens) === 1 && $tokens[0] !== $s)) {
                     $q->orWhere(function ($allTokensQ) use ($tokens) {
                         foreach ($tokens as $token) {
                             $allTokensQ->where(function ($subQ) use ($token) {
                                 $subQ->where('item_name', 'like', "%{$token}%")
-                                     ->orWhere('item_code', 'like', "%{$token}%")
-                                     ->orWhere('barcode_path', 'like', "%{$token}%")
-                                     ->orWhere('model', 'like', "%{$token}%")
-                                     ->orWhere('color', 'like', "%{$token}%")
-                                     ->orWhereHas('category_relation', fn($cq) => $cq->where('name', 'like', "%{$token}%"))
-                                     ->orWhereHas('brand', fn($bq) => $bq->where('name', 'like', "%{$token}%"));
+                                     ->orWhere('item_code', 'like', "%{$token}%");
                             });
                         }
                     });
@@ -799,23 +792,38 @@ class ProductController extends Controller
         }
 
         $sort = $request->input('sort', 'recent');
-        switch ($sort) {
-            case 'oldest':
-                $query->orderBy('id', 'asc');
-                break;
-            case 'name_asc':
-                $query->orderBy('item_name', 'asc');
-                break;
-            case 'name_desc':
-                $query->orderBy('item_name', 'desc');
-                break;
-            case 'code_asc':
-                $query->orderBy('item_code', 'asc');
-                break;
-            case 'recent':
-            default:
-                $query->orderBy('id', 'desc');
-                break;
+        if ($request->filled('search') && (!$request->filled('sort') || $sort === 'recent')) {
+            $cleanS = addslashes($s);
+            $query->orderByRaw("
+                CASE 
+                    WHEN item_code = '{$cleanS}' THEN 1
+                    WHEN item_code = 'ITEM-{$cleanS}' THEN 2
+                    WHEN item_name = '{$cleanS}' THEN 3
+                    WHEN item_name LIKE '{$cleanS}%' THEN 4
+                    WHEN item_code LIKE '{$cleanS}%' THEN 5
+                    WHEN item_code LIKE 'ITEM-{$cleanS}%' THEN 6
+                    ELSE 7
+                END ASC, id DESC
+            ");
+        } else {
+            switch ($sort) {
+                case 'oldest':
+                    $query->orderBy('id', 'asc');
+                    break;
+                case 'name_asc':
+                    $query->orderBy('item_name', 'asc');
+                    break;
+                case 'name_desc':
+                    $query->orderBy('item_name', 'desc');
+                    break;
+                case 'code_asc':
+                    $query->orderBy('item_code', 'asc');
+                    break;
+                case 'recent':
+                default:
+                    $query->orderBy('id', 'desc');
+                    break;
+            }
         }
 
         $products   = $query->paginate($perPage)->withQueryString();

@@ -651,7 +651,7 @@
                         <div class="search-wrap">
                             <i class="fas fa-search search-icon"></i>
                             <input type="text" name="search" value="{{ request('search') }}"
-                                class="erp-finput" placeholder="Item name, code, barcode…">
+                                class="erp-finput" placeholder="Item name or code…">
                         </div>
                     </div>
 
