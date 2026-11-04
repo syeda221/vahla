@@ -142,7 +142,7 @@
                                         $cName = $dc->customer->customer_name ?? ($dc->sale->walkin_name ?? ($dc->sale->customer_relation->customer_name ?? 'N/A'));
                                         $cId = $dc->customer_id ?? ($dc->sale->customer_id ?? '');
                                         $soNo = $dc->sale ? ($dc->sale->invoice_no ?: 'SO-' . $dc->sale->id) : '';
-                                        $isInvoiced = $dc->is_invoiced || !empty($dc->invoice_id) || ($dc->sale && ($dc->sale->sale_type === 'direct_sale' || $dc->sale->sale_status === 'posted'));
+                                        $isInvoiced = $dc->is_invoiced || !empty($dc->invoice_id) || ($dc->sale && $dc->sale->sale_type === 'direct_sale');
                                         $isHighlighted = (request('highlight_dc') == $dc->id) || (request('sale_id') && $dc->sale_id == request('sale_id') && !$isInvoiced);
                                     @endphp
                                     <tr class="{{ $isHighlighted ? 'highlight-uninvoiced-dc' : '' }}" id="dc-row-{{ $dc->id }}">

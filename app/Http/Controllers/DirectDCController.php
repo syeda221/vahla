@@ -477,7 +477,7 @@ class DirectDCController extends Controller
 
     public function consolidatePreview(Request $request)
     {
-        if (auth()->check() && !auth()->user()->can('direct_dc.consolidate')) {
+        if (auth()->check() && !auth()->user()->can('direct_dc.consolidate') && !auth()->user()->can('delivery_challans.generate_invoice')) {
             abort(403, 'Unauthorized: You do not have permission to consolidate Delivery Challans.');
         }
 
@@ -616,7 +616,7 @@ class DirectDCController extends Controller
 
     public function consolidateStore(Request $request)
     {
-        if (auth()->check() && !auth()->user()->can('direct_dc.consolidate')) {
+        if (auth()->check() && !auth()->user()->can('direct_dc.consolidate') && !auth()->user()->can('delivery_challans.generate_invoice')) {
             abort(403, 'Unauthorized: You do not have permission to consolidate Delivery Challans.');
         }
 

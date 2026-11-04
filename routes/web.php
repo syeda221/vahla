@@ -221,8 +221,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/direct-dc/{id}', [App\Http\Controllers\DirectDCController::class, 'destroy'])->middleware('permission:direct_dc.delete')->name('direct-dc.destroy');
     Route::get('/direct-dc-consolidate', [App\Http\Controllers\DirectDCController::class, 'consolidateIndex'])->middleware('permission:direct_dc.consolidate')->name('direct-dc.consolidate');
     Route::get('/direct-dc/api/fetch-dcs/{customer_id}', [App\Http\Controllers\DirectDCController::class, 'fetchCustomerDCs'])->middleware('permission:direct_dc.view');
-    Route::match(['get', 'post'], '/direct-dc-consolidate/preview', [App\Http\Controllers\DirectDCController::class, 'consolidatePreview'])->middleware('permission:direct_dc.consolidate')->name('direct-dc.consolidate.preview');
-    Route::post('/direct-dc-consolidate/store', [App\Http\Controllers\DirectDCController::class, 'consolidateStore'])->middleware('permission:direct_dc.consolidate')->name('direct-dc.consolidate.store');
+    Route::match(['get', 'post'], '/direct-dc-consolidate/preview', [App\Http\Controllers\DirectDCController::class, 'consolidatePreview'])->middleware('permission:direct_dc.consolidate|delivery_challans.generate_invoice')->name('direct-dc.consolidate.preview');
+    Route::post('/direct-dc-consolidate/store', [App\Http\Controllers\DirectDCController::class, 'consolidateStore'])->middleware('permission:direct_dc.consolidate|delivery_challans.generate_invoice')->name('direct-dc.consolidate.store');
 
     Route::prefix('discount')->group(function () {
         Route::get('/', [DiscountController::class, 'index'])->middleware('permission:discount.products.view')->name('discount.index');
