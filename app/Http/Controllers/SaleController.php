@@ -2124,7 +2124,7 @@ class SaleController extends Controller
             }
 
             // 4. Handle Status Logic
-            if ($status === 'posted') {
+            if ($status === 'posted' && !in_array($saleType, ['quotation', 'sales_order'])) {
                 \Log::info('Proceeding to Auto-Receipt & Ledger logic for Sale #'.$sale->invoice_no);
 
                 // 1. DEDUCT STOCK FROM WAREHOUSE
@@ -2767,6 +2767,11 @@ class SaleController extends Controller
     {
         $customer_id = $sale->customer_id;
         if (! $customer_id) {
+            return;
+        }
+
+        // Sales Orders and Quotations must NEVER touch the financial ledger
+        if (in_array($sale->sale_type, ['sales_order', 'quotation'])) {
             return;
         }
 

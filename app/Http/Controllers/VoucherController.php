@@ -3138,12 +3138,9 @@ class VoucherController extends Controller
             ->get();
 
         // Calculate latest closing balance for each customer
+        $balanceService = app(\App\Services\BalanceService::class);
         foreach ($customers as $c) {
-            $latestLedger = DB::table('customer_ledgers')
-                ->where('customer_id', $c->id)
-                ->orderByDesc('id')
-                ->first();
-            $c->current_balance = $latestLedger ? (float)$latestLedger->closing_balance : (float)($c->opening_balance ?? 0);
+            $c->current_balance = $balanceService->getCustomerBalance($c->id);
         }
 
         $lastRec = DB::table('receipts_vouchers')->latest('id')->first();
@@ -3420,11 +3417,8 @@ class VoucherController extends Controller
             }
 
             // 3. Customer Ledger
-            $latestLedger = DB::table('customer_ledgers')
-                ->where('customer_id', $customerId)
-                ->orderByDesc('id')
-                ->first();
-            $prevBal = $latestLedger ? (float)$latestLedger->closing_balance : (float)($customer->opening_balance ?? 0);
+            $balanceService = app(\App\Services\BalanceService::class);
+            $prevBal = $balanceService->getCustomerBalance($customerId);
 
             \App\Models\CustomerLedger::create([
                 'customer_id'      => $customerId,
@@ -3433,6 +3427,10 @@ class VoucherController extends Controller
                 'opening_balance'  => 0,
                 'closing_balance'  => $prevBal - $totalSettlement,
                 'description'      => "Receive Payment {$rvid}: " . $narrationList,
+            ]);
+
+            \App\Models\Customer::where('id', $customerId)->update([
+                'previous_balance' => $prevBal - $totalSettlement
             ]);
 
             // 4. Cheque Tracking for Inward Cheques
@@ -3521,12 +3519,9 @@ class VoucherController extends Controller
                 }
             }
 
-            // Customer total ledger balance
-            $latestLedger = DB::table('customer_ledgers')
-                ->where('customer_id', $customerId)
-                ->orderByDesc('id')
-                ->first();
-            $totalLedgerBalance = $latestLedger ? (float)$latestLedger->closing_balance : (float)($customer->opening_balance ?? 0);
+            // Customer total ledger balance (unified from journal entries via BalanceService)
+            $balanceService = app(\App\Services\BalanceService::class);
+            $totalLedgerBalance = $balanceService->getCustomerBalance($customerId);
 
             // If there are prior balance / opening balance dues beyond sales
             $obDue = max(0, $totalLedgerBalance - $totalSalesDue);
