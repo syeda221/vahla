@@ -13,8 +13,7 @@
                         <p class="page-subtitle">Manage fingerprint attendance devices</p>
                     </div>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-light border" data-bs-toggle="modal"
-                            data-bs-target="#deviceGuideModal">
+                        <button type="button" class="btn btn-light border" data-target="#deviceGuideModal">
                             <i class="fa fa-question-circle text-primary me-1"></i> Setup Guide
                         </button>
                         @can('hr.biometric.devices.create')
@@ -32,8 +31,9 @@
                             <div class="modal-header gradient text-white">
                                 <h5 class="modal-title font-weight-bold"><i class="fa fa-info-circle me-2"></i> Biometric
                                     Device Guide</h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                                    aria-label="Close"></button>
+                                <button type="button" class="close btn-close-white" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
                             </div>
                             <div class="modal-body p-4">
                                 <div class="row g-4">
@@ -213,7 +213,9 @@
                         <i class="fa fa-fingerprint"></i>
                         <span id="modalTitle">Add Device</span>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <form id="deviceForm" data-ajax-validate="true">
                     @csrf
@@ -274,7 +276,7 @@
                     </div>
 
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary">
                             <i class="fa fa-check"></i> Save Device
                         </button>
@@ -286,8 +288,21 @@
 
     <!-- Scripts -->
 
+    <script src="{{ asset('assets/js/jquery.min.js') }}"></script>
     <script>
         $(document).ready(function() {
+            // Cancel / close for biometric modals (supports Bootstrap 4 & 5)
+            $('#deviceGuideModal, #deviceModal').on('click', '.btn-cancel, .close, .btn-secondary', function() {
+                $(this).closest('.modal').modal('hide');
+            });
+
+            // Setup Guide button (Bootstrap 4 data-toggle workaround)
+            $('[data-target="#deviceGuideModal"]').on('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $('#deviceGuideModal').modal('show');
+            });
+
             // Save Global Settings
             $('#globalSettingsForm').submit(function(e) {
                 e.preventDefault();
@@ -313,7 +328,9 @@
             });
 
             // Open Add Modal
-            $('#addDeviceBtn, #addDeviceBtnEmpty').click(function() {
+            $('#addDeviceBtn, #addDeviceBtnEmpty').click(function(e) {
+                e.preventDefault();
+                e.stopPropagation();
                 $('#device_id').val('');
                 $('#_method').val('POST');
                 $('#deviceForm')[0].reset();

@@ -133,7 +133,9 @@
                         <i class="fa fa-building"></i>
                         <span>Add Department</span>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <form id="departmentForm" action="{{ route('hr.departments.store') }}" method="POST"
                     data-ajax-validate="true">
@@ -151,7 +153,7 @@
                         </div>
                     </div>
                     <div class="modal-footer-modern">
-                        <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+                        <button type="button" class="btn btn-cancel" data-dismiss="modal" data-bs-dismiss="modal">
                             <i class="fa fa-times me-2"></i>Cancel
                         </button>
                         <button type="submit" class="btn btn-save">
@@ -170,6 +172,11 @@
    
     <script>
         $(document).ready(function() {
+            // Cancel / close (supports Bootstrap 4 & 5 attributes)
+            $('#departmentModal').on('click', '.btn-cancel, .close', function() {
+                $('#departmentModal').modal('hide');
+            });
+
             // Create
             $('#createBtn').click(function() {
                 $('#edit_id').val('');

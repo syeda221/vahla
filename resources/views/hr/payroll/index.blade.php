@@ -658,7 +658,7 @@
                         @can('hr.payroll.create')
                             <div class="dropdown">
                                 <button class="btn btn-create dropdown-toggle" type="button" id="generateDropdown"
-                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                    data-toggle="dropdown" aria-expanded="false">
                                     <i class="fa fa-plus-circle"></i> Generate Payroll
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="generateDropdown">
@@ -896,7 +896,7 @@
                         <i class="fa fa-plus"></i>
                         <span>Generate Payroll</span>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-dismiss="modal"></button>
                 </div>
                 <form id="generatePayrollForm" action="{{ route('hr.payroll.generate') }}" method="POST"
                     data-ajax-validate="true">
@@ -929,7 +929,7 @@
                         </div>
                     </div>
                     <div class="modal-footer-modern">
-                        <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+                        <button type="button" class="btn btn-cancel" data-dismiss="modal">
                             <i class="fa fa-times me-2"></i>Cancel
                         </button>
                         <button type="submit" class="btn btn-save"
@@ -953,7 +953,7 @@
                         <i class="fa fa-calendar-day"></i>
                         <span>Generate Daily Payrolls</span>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-dismiss="modal"></button>
                 </div>
                 <form id="generateDailyForm" action="{{ route('hr.payroll.generate-daily') }}" method="POST"
                     data-ajax-validate="true">
@@ -969,7 +969,7 @@
                         </div>
                     </div>
                     <div class="modal-footer-modern">
-                        <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+                        <button type="button" class="btn btn-cancel" data-dismiss="modal">
                             <i class="fa fa-times me-2"></i>Cancel
                         </button>
                         <button type="submit" class="btn btn-save"
@@ -993,7 +993,7 @@
                         <i class="fa fa-calendar-alt"></i>
                         <span>Generate Monthly Payrolls</span>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-dismiss="modal"></button>
                 </div>
                 <form id="generateMonthlyForm" action="{{ route('hr.payroll.generate-monthly') }}" method="POST"
                     data-ajax-validate="true">
@@ -1009,7 +1009,7 @@
                         </div>
                     </div>
                     <div class="modal-footer-modern">
-                        <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+                        <button type="button" class="btn btn-cancel" data-dismiss="modal">
                             <i class="fa fa-times me-2"></i>Cancel
                         </button>
                         <button type="submit" class="btn btn-save"
@@ -1033,7 +1033,7 @@
                         <i class="fa fa-file-invoice"></i>
                         <span>Payroll Details</span>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" id="detailsContent">
                     <div class="text-center py-4">
@@ -1056,7 +1056,7 @@
                         <i class="fa fa-edit"></i>
                         <span>Edit Payroll</span>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-dismiss="modal"></button>
                 </div>
                 <form id="editPayrollForm" method="POST" data-ajax-validate="true">
                     @csrf
@@ -1080,7 +1080,7 @@
                         </div>
                     </div>
                     <div class="modal-footer-modern">
-                        <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+                        <button type="button" class="btn btn-cancel" data-dismiss="modal">
                             <i class="fa fa-times me-2"></i>Cancel
                         </button>
                         <button type="submit" class="btn btn-save"
@@ -1098,6 +1098,10 @@
 
     <script>
         $(document).ready(function() {
+            // Cancel / close for all payroll modals (supports Bootstrap 4 & 5)
+            $('#generatePayrollModal, #generateDailyModal, #generateMonthlyModal, #detailsModal, #editPayrollModal').on('click', '.btn-cancel, .close', function() {
+                $(this).closest('.modal').modal('hide');
+            });
             // Tab switching
             $('.payroll-tab').click(function() {
                 $(this).addClass('active').siblings().removeClass('active');

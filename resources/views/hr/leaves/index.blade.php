@@ -201,7 +201,9 @@
                         <i class="fa fa-calendar-minus"></i>
                         <span>Request Leave</span>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <form id="leaveForm" action="{{ route('hr.leaves.store') }}" method="POST" data-ajax-validate="true">
                     @csrf
@@ -243,7 +245,7 @@
                         </div>
                     </div>
                     <div class="modal-footer-modern">
-                        <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+                        <button type="button" class="btn btn-cancel" data-dismiss="modal" data-bs-dismiss="modal">
                             <i class="fa fa-times me-2"></i>Cancel
                         </button>
                         <button type="submit" class="btn btn-save">
@@ -260,6 +262,11 @@
    
     <script>
         $(document).ready(function() {
+            // Cancel / close for leave modal (supports Bootstrap 4 & 5)
+            $('#leaveModal').on('click', '.btn-cancel, .close', function() {
+                $('#leaveModal').modal('hide');
+            });
+
             $('#createBtn').click(function() {
                 $('#leaveForm')[0].reset();
                 $('#leaveModal').modal('show');
