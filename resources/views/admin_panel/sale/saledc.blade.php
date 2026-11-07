@@ -1023,7 +1023,8 @@
                                         } elseif (in_array($sizeMode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll', 'by_size'])) {
                                             $boxes = floor($totalPieces / $piecesPerBox);
                                             $loosePieces = fmod($totalPieces, $piecesPerBox);
-                                            $unitLabel = match($sizeMode) {
+                                            $customUnit = !empty($wItem['unit']) && !in_array(strtolower($wItem['unit']), ['pcs', 'piece']) ? ucfirst($wItem['unit']) : '';
+                                            $unitLabel = $customUnit ?: match($sizeMode) {
                                                 'by_exr'    => 'EXR',
                                                 'by_set'    => 'Set',
                                                 'by_pack'   => 'Pack',

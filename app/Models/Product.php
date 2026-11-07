@@ -88,6 +88,7 @@ class Product extends Model
     }
     public function isMultiplierUnit(): bool
     {
+        if ((float)($this->pieces_per_box ?? 0) > 1) return true;
         return in_array($this->size_mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll']);
     }
 

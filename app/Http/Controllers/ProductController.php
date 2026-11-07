@@ -1570,6 +1570,16 @@ class ProductController extends Controller
         }
 
         $mode = $request->size_mode;
+        $productUnitId = null;
+        if (str_starts_with($mode, 'by_custom_')) {
+            $customUnitId = (int)str_replace('by_custom_', '', $mode);
+            if ($customUnitId > 0) {
+                $productUnitId = $customUnitId;
+                $mode = ((int)($request->pieces_per_box ?? 1) > 1) ? 'by_cartons' : 'by_pieces';
+            }
+        } elseif (!empty($request->unit_id)) {
+            $productUnitId = (int)$request->unit_id;
+        }
 
         // Initialize variables
         $height = 0;
@@ -1623,7 +1633,7 @@ class ProductController extends Controller
             $purchasePricePerPiece = $m2PerPiece * $purchasePricePerM2;
             $purchasePricePerBox = $m2PerBox * $purchasePricePerM2;
 
-        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'])) {
+        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll']) || str_starts_with($mode, 'by_custom') || (int)($request->pieces_per_box ?? 1) > 1) {
             // By Cartons Mode
             $piecesPerBox = (int) $request->pieces_per_box;
             if ($piecesPerBox <= 0) $piecesPerBox = 1;
@@ -1782,7 +1792,7 @@ class ProductController extends Controller
                             if ($isBase === 1) {
                                 $variantStockSum += $vStock;
                             }
-                        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'])) {
+                        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll']) || str_starts_with($mode, 'by_custom') || (int)($request->pieces_per_box ?? 1) > 1) {
                             if ($isBase === 1 || $baseConvForCarton === null) {
                                 $baseConvForCarton = $vConvFactor;
                             }
@@ -1838,7 +1848,15 @@ class ProductController extends Controller
             }
 
             $productUnitId = null;
-            if (is_numeric($request->unit)) {
+            if (str_starts_with($mode, 'by_custom_')) {
+                $customUnitId = (int)str_replace('by_custom_', '', $mode);
+                if ($customUnitId > 0) {
+                    $productUnitId = $customUnitId;
+                    $mode = ((int)($request->pieces_per_box ?? 1) > 1) ? 'by_cartons' : 'by_pieces';
+                }
+            } elseif (!empty($request->unit_id)) {
+                $productUnitId = (int)$request->unit_id;
+            } elseif (is_numeric($request->unit)) {
                 $productUnitId = (int)$request->unit;
             } elseif (!empty($request->unit)) {
                 $unitRec = \App\Models\Unit::where('name', $request->unit)->first();
@@ -2020,6 +2038,16 @@ class ProductController extends Controller
         }
 
         $mode = $request->size_mode;
+        $productUnitId = null;
+        if (str_starts_with($mode, 'by_custom_')) {
+            $customUnitId = (int)str_replace('by_custom_', '', $mode);
+            if ($customUnitId > 0) {
+                $productUnitId = $customUnitId;
+                $mode = ((int)($request->pieces_per_box ?? 1) > 1) ? 'by_cartons' : 'by_pieces';
+            }
+        } elseif (!empty($request->unit_id)) {
+            $productUnitId = (int)$request->unit_id;
+        }
 
         // Initialize variables (defaults)
         $height = 0;
@@ -2086,7 +2114,7 @@ class ProductController extends Controller
             $totalPrice = $totalStockQty * $salePricePerBox;
             $totalPurchasePrice = $totalStockQty * $purchasePricePerPiece;
 
-        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'])) {
+        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll']) || str_starts_with($mode, 'by_custom') || (int)($request->pieces_per_box ?? 1) > 1) {
             // By Cartons Mode
             $piecesPerBox = (int) $request->pieces_per_box;
             if ($piecesPerBox <= 0) $piecesPerBox = 1;
@@ -2211,7 +2239,7 @@ class ProductController extends Controller
                             if ($isBase === 1) {
                                 $variantStockSum += $vStock;
                             }
-                        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'])) {
+                        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll']) || str_starts_with($mode, 'by_custom') || (int)($request->pieces_per_box ?? 1) > 1) {
                             if ($isBase === 1 || $baseConvForCarton === null) {
                                 $baseConvForCarton = $vConvFactor;
                             }
@@ -2311,7 +2339,7 @@ class ProductController extends Controller
                 'item_code' => $item_code,
                 'item_name' => $request->product_name,
                 'barcode_path' => $request->barcode_path ?? rand(100000000000, 999999999999),
-                'unit_id' => $request->unit,
+                'unit_id' => $productUnitId ?? ($request->unit_id ?? $request->unit),
                 'brand_id' => $request->brand_id,
                 'model' => $request->model,
                 'image' => $imagePath,
@@ -2683,8 +2711,9 @@ class ProductController extends Controller
 
 
 
+        $units = Unit::select('id', 'name')->orderBy('name')->get();
         $itemCodeSeries = \App\Models\ItemCodeSeries::all();
-        return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'variants', 'itemCodeSeries'));
+        return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'units', 'variants', 'itemCodeSeries'));
     }
 
     // ===== Barcode view =====
@@ -2706,7 +2735,7 @@ class ProductController extends Controller
             'branch_id' => 'nullable',
             'unit' => 'nullable',
             'model' => 'nullable', // Made nullable
-            'size_mode' => 'required|in:by_size,by_cartons,by_box,by_pieces,by_kg,by_meter,by_gm,by_feet,by_ton,by_exr,by_set,by_pack,by_dozen,by_bundle,by_roll',
+            'size_mode' => 'required|string',
             'purchase_discount_percent' => 'nullable|numeric|min:0|max:100',
             'sale_discount_percent' => 'nullable|numeric|min:0|max:100',
             'alert_quantity' => 'nullable|integer|min:0',
@@ -2715,6 +2744,16 @@ class ProductController extends Controller
 
         // Conditional rules logic
         $mode = $request->size_mode;
+        $productUnitId = null;
+        if (str_starts_with($mode, 'by_custom_')) {
+            $customUnitId = (int)str_replace('by_custom_', '', $mode);
+            if ($customUnitId > 0) {
+                $productUnitId = $customUnitId;
+                $mode = ((int)($request->pieces_per_box ?? 1) > 1) ? 'by_cartons' : 'by_pieces';
+            }
+        } elseif (!empty($request->unit_id)) {
+            $productUnitId = (int)$request->unit_id;
+        }
 
         if ($mode === 'by_size') {
             $rules = array_merge($rules, [
@@ -2725,7 +2764,7 @@ class ProductController extends Controller
                 'price_per_m2' => 'required|numeric|min:0', // Allowed 0 price
                 'purchase_price_per_m2' => 'required|numeric|min:0',
             ]);
-        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'])) {
+        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll']) || str_starts_with($mode, 'by_custom') || (int)($request->pieces_per_box ?? 1) > 1) {
             $rules = array_merge($rules, [
                 'pieces_per_box' => 'nullable|integer|min:1',
                 'boxes_quantity' => 'nullable|numeric|min:0',
