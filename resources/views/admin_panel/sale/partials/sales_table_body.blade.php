@@ -327,6 +327,13 @@
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
+                        @else
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-muted" href="{{ route('sales.edit', $sale->id) }}" title="Click to upload attachment in Edit">
+                                    <i class="fas fa-paperclip text-muted fa-fw"></i> No Attachment (Attach in Edit)
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
                         @endif
                     @if ($sale->sale_type === 'quotation')
                         @can('quotations.edit')

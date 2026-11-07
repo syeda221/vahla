@@ -420,7 +420,7 @@
 
             <div id="alertBox" class="alert d-none mb-3" role="alert"></div>
 
-            <form id="purchaseForm" action="{{ route('store.Purchase') }}" method="POST" autocomplete="off">
+            <form id="purchaseForm" action="{{ route('store.Purchase') }}" method="POST" enctype="multipart/form-data" autocomplete="off">
                 @csrf
                 <input type="hidden" id="action" name="action" value="{{ request('type') == 'purchase_order' ? 'purchase_order' : 'purchase' }}">
                 <input type="hidden" id="purchase_type" name="purchase_type" value="{{ request('type') == 'purchase_order' ? 'purchase_order' : 'direct_purchase' }}">
@@ -523,9 +523,13 @@
                     </div>
 
                     <div class="row g-2 align-items-end mt-1">
-                        <div class="col-12">
+                        <div class="col-md-8">
                             <label class="form-label fw-bold mb-1 text-muted small">M.Bill / Remarks</label>
                             <input type="text" class="form-control" name="note" id="remarks" placeholder="Optional notes / manual bill details..." style="height: 36px; font-size: 0.85rem;">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold mb-1 text-muted small"><i class="fas fa-paperclip me-1 text-primary"></i> Attachment (Slip / Bill / PDF)</label>
+                            <input type="file" name="attachment" id="attachment" class="form-control" accept="image/*,.pdf,.doc,.docx" style="height: 36px; font-size: 0.85rem; padding: 4px 8px;">
                         </div>
                     </div>
 
@@ -1089,13 +1093,16 @@
                             }
                         });
 
-                        let formData = $('#purchaseForm').serialize();
+                        let formEl = document.getElementById('purchaseForm');
+                        let formData = new FormData(formEl);
                         $('#purchaseTableBody tr :input').prop('disabled', false);
 
                         $.ajax({
                             url: "{{ route('store.Purchase') }}",
                             method: "POST",
                             data: formData,
+                            processData: false,
+                            contentType: false,
                             headers: {
                                 'Accept': 'application/json',
                                 'X-Requested-With': 'XMLHttpRequest'
@@ -1180,13 +1187,16 @@
                             }
                         });
 
-                        let formData = $('#purchaseForm').serialize();
+                        let formEl = document.getElementById('purchaseForm');
+                        let formData = new FormData(formEl);
                         $('#purchaseTableBody tr :input').prop('disabled', false);
 
                         $.ajax({
                             url: "{{ route('store.Purchase') }}",
                             method: "POST",
                             data: formData,
+                            processData: false,
+                            contentType: false,
                             headers: {
                                 'Accept': 'application/json',
                                 'X-Requested-With': 'XMLHttpRequest'
