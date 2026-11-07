@@ -308,11 +308,26 @@
         </td>
         <td class="text-center" style="white-space: nowrap;">{!! $statusBadge !!}</td>
         <td class="pe-3 text-center col-action" style="width: 1%; white-space: nowrap;">
-            <div class="dropdown">
-                <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" data-boundary="window" data-bs-boundary="window" aria-expanded="false">
-                    <i class="fas fa-ellipsis-v small me-1"></i> Actions
-                </button>
-                <ul class="dropdown-menu dropdown-menu-right border-0 shadow-lg rounded-3">
+            <div class="d-inline-flex align-items-center justify-content-center gap-1">
+                @if (!empty($sale->attachment))
+                    <a href="{{ asset('uploads/attachments/' . $sale->attachment) }}" target="_blank"
+                        class="btn btn-sm btn-outline-info shadow-sm" title="View Attachment / Document" style="padding: 4px 8px; border-radius: 6px;">
+                        <i class="fas fa-paperclip"></i>
+                    </a>
+                @endif
+                <div class="dropdown">
+                    <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" data-boundary="window" data-bs-boundary="window" aria-expanded="false">
+                        <i class="fas fa-ellipsis-v small me-1"></i> Actions
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-right border-0 shadow-lg rounded-3">
+                        @if (!empty($sale->attachment))
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-info fw-semibold" href="{{ asset('uploads/attachments/' . $sale->attachment) }}" target="_blank">
+                                    <i class="fas fa-paperclip text-info fa-fw"></i> View Attachment
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                        @endif
                     @if ($sale->sale_type === 'quotation')
                         @can('quotations.edit')
                             <li>
@@ -538,6 +553,7 @@
                         </li>
                     @endif
                 </ul>
+            </div>
             </div>
         </td>
     </tr>

@@ -611,6 +611,11 @@
             <button type="button" onclick="toggleRate()" class="btn btn-warning shadow-sm" id="toggleRateBtn">
                 <i class="fa-solid fa-eye-slash me-1"></i> Hide Rate
             </button>
+            @if(!empty($dc->attachment))
+            <a href="{{ asset('uploads/attachments/' . $dc->attachment) }}" target="_blank" class="btn btn-info text-white shadow-sm">
+                <i class="fa-solid fa-paperclip me-1"></i> View Attachment
+            </a>
+            @endif
             <button type="button" onclick="downloadWhatsappPdf()" class="btn btn-success shadow-sm" id="whatsappDownloadBtn">
                 <i class="fa-brands fa-whatsapp me-1"></i> WhatsApp PDF
             </button>

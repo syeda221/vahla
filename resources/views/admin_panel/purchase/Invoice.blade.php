@@ -411,6 +411,11 @@
                 </span>
             </div>
             <div class="d-flex align-items-center gap-2">
+                @if(!empty($purchase->attachment))
+                <a href="{{ asset('uploads/attachments/' . $purchase->attachment) }}" target="_blank" class="btn btn-info btn-sm text-white px-3 fw-bold shadow-sm d-flex align-items-center gap-1" style="border-radius: 6px; font-size: 0.82rem; white-space: nowrap;">
+                    <i class="bi bi-paperclip me-1"></i> View Attachment
+                </a>
+                @endif
                 <button onclick="window.print()" class="btn btn-primary btn-sm px-3 fw-bold shadow-sm d-flex align-items-center gap-1" style="border-radius: 6px; font-size: 0.82rem; white-space: nowrap;">
                     <i class="bi bi-printer-fill me-1"></i> Print
                 </button>

@@ -244,6 +244,11 @@
             </span>
         </div>
         <div class="d-flex align-items-center gap-2">
+            @if(!empty($sale->attachment))
+            <a href="{{ asset('uploads/attachments/' . $sale->attachment) }}" target="_blank" class="btn btn-info text-white shadow-sm">
+                <i class="fa-solid fa-paperclip me-1"></i> View Attachment
+            </a>
+            @endif
             <a href="{{ route('sales.dc', $sale->id) }}" class="btn btn-outline-primary shadow-sm">
                 <i class="fa-solid fa-copy me-1"></i> Print 2-Copy (A4 Rotated)
             </a>

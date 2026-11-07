@@ -131,6 +131,11 @@
                                         </td>
                                         <td class="text-end">
                                             <div class="d-inline-flex align-items-center gap-1">
+                                                @if(!empty($dc->attachment))
+                                                <a href="{{ asset('uploads/attachments/' . $dc->attachment) }}" target="_blank" class="btn btn-sm btn-outline-info fw-bold shadow-sm" title="View Attachment">
+                                                    <i class="fas fa-paperclip me-1"></i> Attachment
+                                                </a>
+                                                @endif
                                                 @can('delivery_challans.print')
                                                 <a href="{{ route('sales.dc_print', $dc->id) }}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold shadow-sm">
                                                     <i class="fas fa-print me-1"></i> Print

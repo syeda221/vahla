@@ -125,16 +125,31 @@
         @endif
 
         <td class="pe-3 text-center col-action text-nowrap" style="width: 1%; white-space: nowrap;">
-            <div class="dropdown">
-                <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" data-boundary="window" data-bs-boundary="window" aria-expanded="false">
-                    <i class="fas fa-ellipsis-v small me-1"></i> Actions
-                </button>
+            <div class="d-inline-flex align-items-center justify-content-center gap-1">
+                @if (!empty($purchase->attachment))
+                    <a href="{{ asset('uploads/attachments/' . $purchase->attachment) }}" target="_blank"
+                        class="btn btn-sm btn-outline-info shadow-sm" title="View Attachment / Bill" style="padding: 4px 8px; border-radius: 6px;">
+                        <i class="fas fa-paperclip"></i>
+                    </a>
+                @endif
+                <div class="dropdown">
+                    <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" data-boundary="window" data-bs-boundary="window" aria-expanded="false">
+                        <i class="fas fa-ellipsis-v small me-1"></i> Actions
+                    </button>
                 @php
                     $isPO = ($purchase->purchase_type === 'purchase_order');
                     $canEditPurchase = $isPO ? auth()->user()->can('purchase_orders.edit') : auth()->user()->can('purchases.edit');
                     $canDeletePurchase = $isPO ? (auth()->user()->can('purchase_orders.delete') || auth()->user()->hasRole('Super Admin')) : (auth()->user()->can('purchases.delete') || auth()->user()->hasRole('Super Admin'));
                 @endphp
                 <ul class="dropdown-menu dropdown-menu-right border-0 shadow-lg rounded-3">
+                    @if (!empty($purchase->attachment))
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-info fw-semibold" href="{{ asset('uploads/attachments/' . $purchase->attachment) }}" target="_blank">
+                                <i class="fas fa-paperclip text-info fa-fw"></i> View Attachment
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                    @endif
                     @if ($canEditPurchase)
                         <li>
                             <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('purchase.edit', $purchase->id) }}">
@@ -224,6 +239,7 @@
                         @endif
                     @endif
                 </ul>
+            </div>
             </div>
         </td>
     </tr>

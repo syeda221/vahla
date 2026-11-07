@@ -177,6 +177,11 @@
                                         </td>
                                         <td class="text-center">
                                             <div class="d-flex align-items-center justify-content-center gap-2">
+                                                @if(!empty($dc->attachment))
+                                                <a href="{{ asset('uploads/attachments/' . $dc->attachment) }}" class="btn btn-sm btn-outline-info rounded-pill px-2 shadow-sm" target="_blank" title="View Attachment">
+                                                    <i class="fas fa-paperclip"></i>
+                                                </a>
+                                                @endif
                                                 @if(!$isInvoiced)
                                                     @can('direct_dc.edit')
                                                     <a href="{{ route('direct-dc.edit', $dc->id) }}" class="btn btn-sm btn-outline-info rounded-pill px-3 shadow-sm"><i class="fas fa-edit"></i> Edit</a>

@@ -8,7 +8,7 @@
         <div class="col-12 grid-margin stretch-card">
             <div class="card">
                 <div class="card-body">
-                    <form action="{{ route('direct-dc.update', $dc->id) }}" method="POST" id="dcEditForm">
+                    <form action="{{ route('direct-dc.update', $dc->id) }}" method="POST" id="dcEditForm" enctype="multipart/form-data">
                         @csrf
                         @if ($errors->any())
                             <div class="alert alert-danger">
@@ -56,9 +56,20 @@
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-8 form-group">
+                            <div class="col-md-5 form-group">
                                 <label>Remarks</label>
                                 <input type="text" name="remarks" class="form-control" value="{{ $dc->remarks }}">
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label>Attachment (Optional)</label>
+                                @if(!empty($dc->attachment))
+                                    <div class="mb-1">
+                                        <a href="{{ asset('uploads/attachments/' . $dc->attachment) }}" target="_blank" class="small text-info fw-bold">
+                                            <i class="fas fa-paperclip me-1"></i> View Current File ({{ $dc->attachment }})
+                                        </a>
+                                    </div>
+                                @endif
+                                <input type="file" name="attachment" class="form-control">
                             </div>
                         </div>
 
