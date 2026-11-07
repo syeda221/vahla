@@ -876,6 +876,25 @@ class PurchaseController extends Controller
                 $receivingStatus = $isDraftAction ? 'pending' : 'received';
             }
 
+            $attachmentFilename = null;
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $attachmentFilename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
+                $publicDest = public_path('uploads/attachments');
+                if (!file_exists($publicDest)) {
+                    @mkdir($publicDest, 0777, true);
+                }
+                $file->move($publicDest, $attachmentFilename);
+
+                $rootDest = base_path('uploads/attachments');
+                if ($rootDest !== $publicDest && file_exists(base_path('uploads'))) {
+                    if (!file_exists($rootDest)) {
+                        @mkdir($rootDest, 0777, true);
+                    }
+                    @copy($publicDest . '/' . $attachmentFilename, $rootDest . '/' . $attachmentFilename);
+                }
+            }
+
             $purchase = Purchase::create([
                 'purchase_type' => $purchaseType,
                 'purchase_status' => $statusPurchase === 'draft' ? 'draft' : 'posted',
@@ -889,6 +908,7 @@ class PurchaseController extends Controller
                 'purchase_prefix' => $prefix,
                 'vendor_bill_no' => $request->vendor_bill_no ?? null,
                 'note' => $validated['note'] ?? null,
+                'attachment' => $attachmentFilename,
                 'subtotal' => 0,
                 'discount' => 0,
                 'extra_cost' => 0,
@@ -2089,8 +2109,26 @@ class PurchaseController extends Controller
 
             $dueAmount = max(0, $netAmount - $newPaidAmount);
 
-            // Header update
-            $purchase->update([
+            $attachmentFilename = null;
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $attachmentFilename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
+                $publicDest = public_path('uploads/attachments');
+                if (!file_exists($publicDest)) {
+                    @mkdir($publicDest, 0777, true);
+                }
+                $file->move($publicDest, $attachmentFilename);
+
+                $rootDest = base_path('uploads/attachments');
+                if ($rootDest !== $publicDest && file_exists(base_path('uploads'))) {
+                    if (!file_exists($rootDest)) {
+                        @mkdir($rootDest, 0777, true);
+                    }
+                    @copy($publicDest . '/' . $attachmentFilename, $rootDest . '/' . $attachmentFilename);
+                }
+            }
+
+            $updateHeaderData = [
                 'vendor_id' => $validated['vendor_id'] ?? $purchase->vendor_id,
                 'branch_id' => $branchId,
                 'warehouse_id' => $warehouseId,
@@ -2108,7 +2146,11 @@ class PurchaseController extends Controller
                 'net_amount' => $netAmount,
                 'paid_amount' => $newPaidAmount,
                 'due_amount' => $dueAmount,
-            ]);
+            ];
+            if ($attachmentFilename) {
+                $updateHeaderData['attachment'] = $attachmentFilename;
+            }
+            $purchase->update($updateHeaderData);
 
             // Stock movements & Warehouse stock updates and Accounting (Only for Direct Purchase / Invoices that are NOT drafts)
             if ($purchase->purchase_type !== 'purchase_order' && $purchase->status_purchase !== 'draft') {
@@ -3485,5 +3527,45 @@ class PurchaseController extends Controller
             'due_amount' => round($purchase->due_amount, 2),
             'is_fully_paid' => ($purchase->due_amount <= 0.001)
         ]);
+    }
+
+    public function uploadAttachment(Request $request, $id)
+    {
+        $request->validate([
+            'attachment' => 'required|file|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx,xlsx,xls,txt|max:20480',
+        ]);
+
+        $purchase = Purchase::findOrFail($id);
+
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
+
+            $publicDest = public_path('uploads/attachments');
+            if (!file_exists($publicDest)) {
+                @mkdir($publicDest, 0777, true);
+            }
+            $file->move($publicDest, $filename);
+
+            $rootDest = base_path('uploads/attachments');
+            if ($rootDest !== $publicDest && file_exists(base_path('uploads'))) {
+                if (!file_exists($rootDest)) {
+                    @mkdir($rootDest, 0777, true);
+                }
+                @copy($publicDest . '/' . $filename, $rootDest . '/' . $filename);
+            }
+
+            $purchase->attachment = $filename;
+            $purchase->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Attachment uploaded successfully!',
+                'attachment' => $filename,
+                'attachment_url' => asset('uploads/attachments/' . $filename),
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'No file provided.'], 400);
     }
 }

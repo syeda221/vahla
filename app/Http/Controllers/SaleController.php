@@ -3944,7 +3944,44 @@ class SaleController extends Controller
         ]);
     }
 
+
+    public function uploadAttachment(Request $request, $id)
+    {
+        $request->validate([
+            'attachment' => 'required|file|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx,xlsx,xls,txt|max:20480',
+        ]);
+
+        $sale = Sale::findOrFail($id);
+
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
+
+            $publicDest = public_path('uploads/attachments');
+            if (!file_exists($publicDest)) {
+                @mkdir($publicDest, 0777, true);
+            }
+            $file->move($publicDest, $filename);
+
+            $rootDest = base_path('uploads/attachments');
+            if ($rootDest !== $publicDest && file_exists(base_path('uploads'))) {
+                if (!file_exists($rootDest)) {
+                    @mkdir($rootDest, 0777, true);
+                }
+                @copy($publicDest . '/' . $filename, $rootDest . '/' . $filename);
+            }
+
+            $sale->attachment = $filename;
+            $sale->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Attachment uploaded successfully!',
+                'attachment' => $filename,
+                'attachment_url' => asset('uploads/attachments/' . $filename),
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'No file provided.'], 400);
+    }
 }
-
-
-

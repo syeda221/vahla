@@ -326,15 +326,20 @@
                                     <i class="fas fa-paperclip text-info fa-fw"></i> View Attachment
                                 </a>
                             </li>
-                            <li><hr class="dropdown-divider"></li>
-                        @else
+                        @endif
+                        @can('sales.edit')
                             <li>
-                                <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-muted" href="{{ route('sales.edit', $sale->id) }}" title="Click to upload attachment in Edit">
-                                    <i class="fas fa-paperclip text-muted fa-fw"></i> No Attachment (Attach in Edit)
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-primary btn-quick-attach-sale" href="javascript:void(0)"
+                                   data-id="{{ $sale->id }}"
+                                   data-invoice="{{ $sale->invoice_no ?? $sale->id }}"
+                                   data-has-attachment="{{ !empty($sale->attachment) ? '1' : '0' }}"
+                                   data-existing-url="{{ !empty($sale->attachment) ? asset('uploads/attachments/' . $sale->attachment) : '' }}"
+                                   data-url="{{ route('sales.upload_attachment', $sale->id) }}">
+                                    <i class="fas fa-file-upload text-primary fa-fw"></i> {{ !empty($sale->attachment) ? 'Change Attachment' : 'Upload Attachment' }}
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
-                        @endif
+                        @endcan
                     @if ($sale->sale_type === 'quotation')
                         @can('quotations.edit')
                             <li>

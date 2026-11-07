@@ -343,6 +343,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/purchases/bulk-additional-discount', [PurchaseController::class, 'bulkAdditionalDiscount'])->middleware('permission:purchases.edit|purchase_orders.edit')->name('purchases.bulk-additional-discount');
     Route::match(['get', 'post'], '/purchase/{id}/confirm', [PurchaseController::class, 'confirm'])->middleware('permission:purchases.create|purchases.edit|purchase_orders.create')->name('purchase.confirm');
     Route::get('/purchases/{id}/advance-info', [PurchaseController::class, 'getPurchaseAdvanceInfo'])->name('purchases.advance_info');
+    Route::post('/purchases/{id}/upload-attachment', [PurchaseController::class, 'uploadAttachment'])->middleware('permission:purchases.edit|purchase_orders.edit')->name('purchase.upload_attachment');
     Route::post('/purchases/{id}/settle-advance', [PurchaseController::class, 'settleFromAdvance'])->middleware('permission:purchases.create|purchases.edit')->name('purchases.settle_advance');
     Route::delete('/purchase/{id}', [PurchaseController::class, 'destroy'])->middleware('permission:purchases.delete|purchase_orders.delete')->name('purchase.destroy');
     Route::get('/search-products', [ProductController::class, 'searchProducts'])->name('search-products');
@@ -443,6 +444,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/sales/from-booking/{id}', [SaleController::class, 'convertFromBooking'])->name('sales.from.booking');
     Route::post('/sales/{id}/confirm', [SaleController::class, 'confirmBooking'])->middleware('permission:sales.create|sales_orders.create')->name('sales.confirm');
     Route::get('/sales/{id}/advance-info', [SaleController::class, 'getSaleAdvanceInfo'])->name('sales.advance_info');
+    Route::post('/sales/{id}/upload-attachment', [SaleController::class, 'uploadAttachment'])->middleware('permission:sales.edit|sales_orders.edit|quotations.edit')->name('sales.upload_attachment');
     Route::post('/sales/{id}/settle-advance', [SaleController::class, 'settleFromAdvance'])->middleware('permission:sales.create|sales.edit')->name('sales.settle_advance');
 
     // Quotation to Sales Order

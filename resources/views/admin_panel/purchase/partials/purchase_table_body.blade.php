@@ -148,11 +148,16 @@
                                 <i class="fas fa-paperclip text-info fa-fw"></i> View Attachment
                             </a>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
-                    @else
+                    @endif
+                    @if ($canEditPurchase)
                         <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-muted" href="{{ route('purchase.edit', $purchase->id) }}" title="Click to upload attachment in Edit">
-                                <i class="fas fa-paperclip text-muted fa-fw"></i> No Attachment (Attach in Edit)
+                            <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-primary btn-quick-attach" href="javascript:void(0)"
+                               data-id="{{ $purchase->id }}"
+                               data-invoice="{{ $purchase->invoice_no ?? $purchase->id }}"
+                               data-has-attachment="{{ !empty($purchase->attachment) ? '1' : '0' }}"
+                               data-existing-url="{{ !empty($purchase->attachment) ? asset('uploads/attachments/' . $purchase->attachment) : '' }}"
+                               data-url="{{ route('purchase.upload_attachment', $purchase->id) }}">
+                                <i class="fas fa-file-upload text-primary fa-fw"></i> {{ !empty($purchase->attachment) ? 'Change Attachment' : 'Upload Attachment' }}
                             </a>
                         </li>
                         <li><hr class="dropdown-divider"></li>

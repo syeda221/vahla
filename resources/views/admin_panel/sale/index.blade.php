@@ -742,6 +742,53 @@
             </div>
         </div>
     </div>
+
+    <!-- Quick Attachment Upload Modal for Sales -->
+    <div class="modal fade" id="modalQuickAttachmentSale" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 99999;">
+        <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 440px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+                <div class="modal-header border-0 px-3 py-3 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background: #bfdbfe; color: #1d4ed8;">
+                            <i class="fas fa-paperclip"></i>
+                        </div>
+                        <div>
+                            <h6 class="modal-title fw-bold text-dark mb-0">Attach Sale Document / Slip</h6>
+                            <small class="text-muted" id="quickAttachSaleInvoiceLabel" style="font-size: 11px;">Invoice #...</small>
+                        </div>
+                    </div>
+                    <button type="button" class="close text-dark" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="font-size: 1.5rem; line-height: 1; opacity: 0.7;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-3">
+                    <form id="quickAttachmentSaleForm" enctype="multipart/form-data">
+                        @csrf
+                        <input type="hidden" id="quickAttachSaleId" name="sale_id">
+                        
+                        <div id="quickAttachSaleExistingAlert" class="alert alert-info py-2 px-3 small d-none align-items-center justify-content-between mb-3">
+                            <span><i class="fas fa-check-circle me-1"></i> File already attached</span>
+                            <a href="#" id="quickAttachSaleExistingLink" target="_blank" class="fw-bold text-decoration-underline">View Current File</a>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark small mb-1">Select File (Image / PDF / Doc)</label>
+                            <input type="file" class="form-control" id="quickAttachSaleFileInput" name="attachment" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" required>
+                            <small class="text-muted" style="font-size: 11px;">Supports JPG, PNG, PDF, Word documents up to 20MB</small>
+                        </div>
+
+                        <div class="d-flex gap-2 justify-content-end pt-2 border-top">
+                            <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary btn-sm fw-bold px-3 shadow-sm" id="btnSubmitQuickAttachSale">
+                                <i class="fas fa-cloud-upload-alt me-1"></i> Upload File
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @section('js')
@@ -1298,7 +1345,100 @@
                 });
             });
         });
-    </script>
+    
+            // Quick Attachment Modal Opener for Sales
+            $(document).on("click", ".btn-quick-attach-sale", function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                var $btn = $(this);
+                var saleId = $btn.attr("data-id") || $btn.data("id");
+                var invoiceNo = $btn.attr("data-invoice") || $btn.data("invoice") || ("#" + saleId);
+                var hasAttachment = ($btn.attr("data-has-attachment") || $btn.data("has-attachment")) == "1";
+                var existingUrl = $btn.attr("data-existing-url") || $btn.data("existing-url") || "";
+                var uploadUrl = $btn.attr("data-url") || $btn.data("url");
+
+                $("#quickAttachSaleId").val(saleId);
+                $("#quickAttachmentSaleForm").attr("action", uploadUrl);
+                $("#quickAttachSaleInvoiceLabel").text("Sale Invoice: " + invoiceNo);
+                $("#quickAttachSaleFileInput").val("");
+
+                if (hasAttachment && existingUrl) {
+                    $("#quickAttachSaleExistingLink").attr("href", existingUrl);
+                    $("#quickAttachSaleExistingAlert").removeClass("d-none").addClass("d-flex");
+                    $("#btnSubmitQuickAttachSale").html('<i class="fas fa-cloud-upload-alt me-1"></i> Replace File');
+                } else {
+                    $("#quickAttachSaleExistingAlert").addClass("d-none").removeClass("d-flex");
+                    $("#btnSubmitQuickAttachSale").html('<i class="fas fa-cloud-upload-alt me-1"></i> Upload File');
+                }
+
+                $("#modalQuickAttachmentSale").modal("show");
+            });
+
+            // Quick Attachment Form Submit for Sales
+            $("#quickAttachmentSaleForm").on("submit", function(e) {
+                e.preventDefault();
+                var form = this;
+                var url = $(form).attr("action");
+                var formData = new FormData(form);
+                var $btn = $("#btnSubmitQuickAttachSale");
+                var origText = $btn.html();
+
+                $btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-1"></span>Uploading...');
+
+                $.ajax({
+                    url: url,
+                    type: "POST",
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    },
+                    success: function(res) {
+                        $btn.prop("disabled", false).html(origText);
+                        if (res.success) {
+                            $("#modalQuickAttachmentSale").modal("hide");
+                            if (typeof Swal !== "undefined") {
+                                Swal.fire({
+                                    icon: "success",
+                                    title: "Attached!",
+                                    text: res.message || "File attached successfully.",
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+                            } else {
+                                alert(res.message || "File attached successfully.");
+                            }
+
+                            if ($("#filterSubmit").length) {
+                                $("#filterSubmit").trigger("click");
+                            } else if ($("#btnSearch").length) {
+                                $("#btnSearch").trigger("click");
+                            } else {
+                                setTimeout(function() { window.location.reload(); }, 1000);
+                            }
+                        } else {
+                            if (typeof Swal !== "undefined") {
+                                Swal.fire({ icon: "error", title: "Error", text: res.message || "Upload failed." });
+                            } else {
+                                alert(res.message || "Upload failed.");
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        $btn.prop("disabled", false).html(origText);
+                        var msg = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "Error uploading file.";
+                        if (typeof Swal !== "undefined") {
+                            Swal.fire({ icon: "error", title: "Upload Failed", text: msg });
+                        } else {
+                            alert(msg);
+                        }
+                    }
+                });
+            });
+
+</script>
 
     <!-- Modal: Choose Invoice Series & Date for Sales Order Invoice -->
     <div class="modal fade" id="modalGenerateOrderInvoice" tabindex="-1" aria-labelledby="modalGenerateOrderInvoiceLabel" aria-hidden="true">
