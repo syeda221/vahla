@@ -184,6 +184,13 @@
                             <select class="form-select fw-semibold" name="size_mode" id="qap_unit" required style="height: 36px;">
                                 <option value="by_pieces" data-unit-name="Pcs" selected>Pcs</option>
                                 <option value="by_cartons" data-unit-name="Carton">Carton</option>
+                                <option value="by_box" data-unit-name="Box">Box</option>
+                                <option value="by_exr" data-unit-name="EXR">EXR (Set/Pack)</option>
+                                <option value="by_set" data-unit-name="Set">Set</option>
+                                <option value="by_pack" data-unit-name="Pack">Pack</option>
+                                <option value="by_dozen" data-unit-name="Dozen">Dozen</option>
+                                <option value="by_bundle" data-unit-name="Bundle">Bundle</option>
+                                <option value="by_roll" data-unit-name="Roll">Roll</option>
                                 <option value="by_meter" data-unit-name="Meter">Meter</option>
                                 <option value="by_feet" data-unit-name="Ft">Ft (Feet)</option>
                                 <option value="by_kg" data-unit-name="Kg">Kg</option>

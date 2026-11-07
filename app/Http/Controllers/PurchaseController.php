@@ -962,7 +962,7 @@ class PurchaseController extends Controller
                 $curSizeMode = $sizeModes[$i] ?? null;
                 $curPPM2 = (float) ($ppm2[$i] ?? 0);
                 $rawQtyStr = (string) ($qtys[$i] ?? '0');
-                $isCarton = in_array($u, ['carton', 'ctn', 'box']) || ($curSizeMode === 'by_cartons' || $curSizeMode === 'by_box');
+                $isCarton = in_array($u, ['carton', 'ctn', 'box', 'exr', 'set', 'pack', 'dozen', 'dzn', 'bundle', 'roll']) || in_array($curSizeMode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll']);
 
                 if ($curSizeMode === 'by_size') {
                     $grossTotal = $curPPM2 * $qty * $price;
@@ -1867,7 +1867,7 @@ class PurchaseController extends Controller
                 }
                 $curPPM2 = (float) ($ppm2[$i] ?? 0);
                 $rawQtyStr = (string) ($qtys[$i] ?? '0');
-                $isCarton = in_array($u, ['carton', 'ctn', 'box']) || ($curSizeMode === 'by_cartons' || $curSizeMode === 'by_box');
+                $isCarton = in_array($u, ['carton', 'ctn', 'box', 'exr', 'set', 'pack', 'dozen', 'dzn', 'bundle', 'roll']) || in_array($curSizeMode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll']);
 
                 if ($curSizeMode === 'by_size') {
                     $grossTotal = $curPPM2 * $qty * $price;

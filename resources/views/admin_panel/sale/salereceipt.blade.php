@@ -380,18 +380,29 @@
                         } elseif ($sizeMode === 'by_pieces') {
                             $dispQty = $totalPieces;
                             $dispUnit = 'Pcs';
-                        } elseif ($sizeMode === 'by_cartons' || $sizeMode === 'by_size') {
+                        } elseif (in_array($sizeMode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll', 'by_size'])) {
                             $piecesPerBox = (int)$convFactor;
                             if ($piecesPerBox <= 0) $piecesPerBox = 1;
                             $boxes = floor($totalPieces / $piecesPerBox);
                             $loose = fmod($totalPieces, $piecesPerBox);
 
+                            $unitLabel = match($sizeMode) {
+                                'by_exr'    => 'EXR',
+                                'by_set'    => 'Set',
+                                'by_pack'   => 'Pack',
+                                'by_dozen'  => 'Dzn',
+                                'by_bundle' => 'Bndl',
+                                'by_roll'   => 'Roll',
+                                'by_box'    => 'Box',
+                                default     => 'Ctn',
+                            };
+
                             if ($boxes > 0 && $loose > 0) {
                                 $dispQty = "$boxes.$loose";
-                                $dispUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
+                                $dispUnit = $unitLabel;
                             } elseif ($boxes > 0) {
                                 $dispQty = $boxes;
-                                $dispUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
+                                $dispUnit = $unitLabel;
                             } else {
                                 $dispQty = $loose;
                                 $dispUnit = 'Pcs';

@@ -430,7 +430,7 @@
                                         @forelse($wh->warehouseStocks as $stock)
                                             @php
                                                 $qtyVal = (float)$stock->total_pieces;
-                                                $isCartonMode = ($stock->product && ($stock->product->size_mode === 'by_cartons' || $stock->product->size_mode === 'by_box'));
+                                                $isCartonMode = ($stock->product && (in_array($stock->product->size_mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'])));
                                                 $ppb = ($stock->product && $stock->product->pieces_per_box > 0) ? (float)$stock->product->pieces_per_box : 1;
                                                 if ($isCartonMode && $ppb > 1) {
                                                     $boxes = (int) floor($qtyVal / $ppb);
@@ -563,7 +563,7 @@
                         @forelse($stocks as $stock)
                             @php
                                 $qtyVal = (float)$stock->total_pieces;
-                                $isCartonMode = ($stock->product && ($stock->product->size_mode === 'by_cartons' || $stock->product->size_mode === 'by_box'));
+                                $isCartonMode = ($stock->product && (in_array($stock->product->size_mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'])));
                                 $ppb = ($stock->product && $stock->product->pieces_per_box > 0) ? (float)$stock->product->pieces_per_box : 1;
                                 if ($isCartonMode && $ppb > 1) {
                                     $boxes = (int) floor($qtyVal / $ppb);

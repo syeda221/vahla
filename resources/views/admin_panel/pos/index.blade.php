@@ -1674,7 +1674,7 @@
                     } else if (item.sizeMode === 'by_feet') {
                         totalPieces = item.qty * (factor / 12);
                     }
-                } else if (item.sizeMode === 'by_cartons') {
+                } else if (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(item.sizeMode)) {
                     let ppb = parseFloat(item.piecesPerBox) || 1;
                     let qtyStr = (item.qty || '').toString().trim();
                     if (qtyStr.includes('.')) {

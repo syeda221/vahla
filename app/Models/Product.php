@@ -70,13 +70,27 @@ class Product extends Model
 
         return match ($this->size_mode) {
             'by_kg'      => 'Kg',
+            'by_gm'      => 'Gm',
+            'by_ton'     => 'Ton',
             'by_meter'   => 'Mtr',
             'by_feet'    => 'Ft',
-            'by_cartons' => 'Box',
+            'by_cartons' => 'Carton',
+            'by_box'     => 'Box',
+            'by_exr'     => 'EXR',
+            'by_set'     => 'Set',
+            'by_pack'    => 'Pack',
+            'by_dozen'   => 'Dozen',
+            'by_bundle'  => 'Bundle',
+            'by_roll'    => 'Roll',
             'by_pieces'  => 'Pcs',
             default      => 'Pcs',
         };
     }
+    public function isMultiplierUnit(): bool
+    {
+        return in_array($this->size_mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll']);
+    }
+
 
     public function brand()
     {
