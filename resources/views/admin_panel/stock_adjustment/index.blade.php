@@ -87,6 +87,8 @@
     .erp-flabel { display: block; font-size: .69rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--erp-muted); margin-bottom: 5px; white-space: nowrap; }
     .erp-finput { width: 100%; height: 35px; padding: 0 10px; border: 1px solid var(--erp-border); border-radius: 7px; font-size: .82rem; color: var(--erp-text); background: #fff; outline: none; transition: border-color .15s, box-shadow .15s; box-sizing: border-box; }
     .erp-finput:focus { border-color: var(--erp-primary); box-shadow: 0 0 0 3px rgba(79,70,229,.12); }
+    .erp-finput[type="date"] { cursor: pointer; }
+    .erp-finput[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; }
 
     .search-wrap { position: relative; }
     .search-wrap .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--erp-muted); font-size: 12px; pointer-events: none; z-index: 1; }
@@ -270,14 +272,14 @@
 
                     {{-- Date From --}}
                     <div class="erp-filter-field" style="min-width:130px;">
-                        <label class="erp-flabel">From Date</label>
-                        <input type="date" name="date_from" value="{{ request('date_from') }}" class="erp-finput">
+                        <label class="erp-flabel" for="date_from" style="cursor:pointer;" onclick="try{document.getElementById('date_from').showPicker()}catch(e){}">From Date</label>
+                        <input type="date" name="date_from" id="date_from" value="{{ request('date_from') }}" class="erp-finput" onclick="try{this.showPicker()}catch(e){}">
                     </div>
 
                     {{-- Date To --}}
                     <div class="erp-filter-field" style="min-width:130px;">
-                        <label class="erp-flabel">To Date</label>
-                        <input type="date" name="date_to" value="{{ request('date_to') }}" class="erp-finput">
+                        <label class="erp-flabel" for="date_to" style="cursor:pointer;" onclick="try{document.getElementById('date_to').showPicker()}catch(e){}">To Date</label>
+                        <input type="date" name="date_to" id="date_to" value="{{ request('date_to') }}" class="erp-finput" onclick="try{this.showPicker()}catch(e){}">
                     </div>
 
                     {{-- Buttons --}}
