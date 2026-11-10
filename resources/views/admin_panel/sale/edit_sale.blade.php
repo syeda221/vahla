@@ -2609,17 +2609,36 @@
                 if (typeof updateGrandTotals === 'function') updateGrandTotals();
             });
 
+            function getSaleIdFromRes(res) {
+                if (res && typeof res === 'object') {
+                    return res.booking_id || res.sale_id || res.id || $('#booking_id').val();
+                }
+                return res || $('#booking_id').val();
+            }
+
             $('#btnPrint').on('click', function() {
-                ensureSaved().then(id => window.open('{{ url('sales') }}/' + id + '/invoice', '_blank'));
+                ensureSaved().then(res => {
+                    const id = getSaleIdFromRes(res);
+                    if (id) window.open('{{ url('sales') }}/' + id + '/invoice', '_blank');
+                });
             });
             $('#btnEstimate').on('click', function() {
-                ensureSaved().then(id => window.open('{{ url('sales') }}/' + id + '/invoice?type=estimate', '_blank'));
+                ensureSaved().then(res => {
+                    const id = getSaleIdFromRes(res);
+                    if (id) window.open('{{ url('sales') }}/' + id + '/invoice?type=estimate', '_blank');
+                });
             });
             $('#btnPrint2').on('click', function() {
-                ensureSaved().then(id => window.open('{{ url('sales') }}/' + id + '/recepit', '_blank'));
+                ensureSaved().then(res => {
+                    const id = getSaleIdFromRes(res);
+                    if (id) window.open('{{ url('sales') }}/' + id + '/recepit', '_blank');
+                });
             });
             $('#btnDcThermal').on('click', function() {
-                ensureSaved().then(id => window.open('{{ url('sales') }}/' + id + '/dc-thermal', '_blank'));
+                ensureSaved().then(res => {
+                    const id = getSaleIdFromRes(res);
+                    if (id) window.open('{{ url('sales') }}/' + id + '/dc-thermal', '_blank');
+                });
             });
 
             // ══════════════════════════════════════════════════════════════

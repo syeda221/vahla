@@ -264,13 +264,13 @@
                             </div>
                             <div class="col-md-2">
                                 <label class="pv-label">Receipt Date</label>
-                                <input type="date" name="receipt_date" class="pv-input"
-                                    value="{{ now()->toDateString() }}">
+                                <input type="text" name="receipt_date" class="pv-input datepicker-custom"
+                                    value="{{ now()->toDateString() }}" data-default-date="today" placeholder="dd/mm/yyyy">
                             </div>
                             <div class="col-md-2">
                                 <label class="pv-label">Entry Date</label>
-                                <input type="date" name="entry_date" class="pv-input"
-                                    value="{{ now()->toDateString() }}">
+                                <input type="text" name="entry_date" class="pv-input datepicker-custom"
+                                    value="{{ now()->toDateString() }}" data-default-date="today" placeholder="dd/mm/yyyy">
                             </div>
                             <div class="col-md-6">
                                 <label class="pv-label">Remarks <small class="text-muted fw-normal">(Optional)</small></label>

@@ -632,6 +632,8 @@
                         if ($('#action').val() === 'booking') {
                             Swal.fire('Saved', 'Sale saved as booking successfully', 'success');
                         }
+                        res.id = bid;
+                        res.booking_id = bid;
                         resolve(res);
                     } else {
                         Swal.fire('Error', res.msg || 'Save failed', 'error');

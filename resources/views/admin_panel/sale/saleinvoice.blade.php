@@ -844,8 +844,41 @@
 
 
 
-                        <td class="text-center">
-                            {{ $itemQty == (int)$itemQty ? (int)$itemQty : number_format($itemQty, 2) }}
+                        @php
+                            $ppb = (float)($item['pieces_per_box'] ?? 1);
+                            if ($ppb <= 0) $ppb = 1;
+                            $totalPieces = (int) ($item['total_pieces'] ?? ($ppb > 1 ? round(($item['qty_box'] ?? $item['qty'] ?? 0) * $ppb) : ($item['qty'] ?? 0)));
+                            $sizeMode = $item['size_mode'] ?? 'std';
+
+                            $cLabel = ($sizeMode === 'by_bandal') ? 'Bndl' : 'Ctn';
+                            if (in_array($sizeMode, ['by_cartons', 'by_bandal']) || ($ppb > 1 && $sizeMode !== 'by_pieces')) {
+                                $boxes = floor($totalPieces / $ppb);
+                                $loose = $totalPieces % $ppb;
+                                if ($boxes > 0 && $loose > 0) {
+                                    $itemQtyDisplay = "{$boxes} {$cLabel} + {$loose} Pcs";
+                                } elseif ($boxes > 0) {
+                                    $itemQtyDisplay = "{$boxes} {$cLabel}";
+                                } else {
+                                    $itemQtyDisplay = "{$loose} Pcs";
+                                }
+                            } elseif ($sizeMode === 'by_pieces') {
+                                $itemQtyDisplay = "{$totalPieces} Pcs";
+                            } elseif (in_array($sizeMode, ['by_kg', 'by_gm', 'by_feet', 'by_meter'])) {
+                                $uomLabel = match($sizeMode) {
+                                    'by_kg' => 'Kg',
+                                    'by_gm' => 'Gm',
+                                    'by_feet' => 'Ft',
+                                    'by_meter' => 'Mtr',
+                                    default => '',
+                                };
+                                $qVal = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
+                                $itemQtyDisplay = ($qVal == (int)$qVal ? (int)$qVal : number_format($qVal, 2)) . ' ' . $uomLabel;
+                            } else {
+                                $itemQtyDisplay = $totalPieces > 0 ? "{$totalPieces} Pcs" : ($item['qty_box'] ?? $item['qty'] ?? 0);
+                            }
+                        @endphp
+                        <td class="text-center fw-bold">
+                            {{ $itemQtyDisplay }}
                         </td>
 
                         <td class="text-end">
@@ -1295,7 +1328,7 @@
                         @endphp
 
 
-                        @if ($totalCartonsCount > 0)
+                        @if ($totalCartonsCount > 0 || $totalLooseCount > 0)
 
                             <tr>
 
@@ -1305,10 +1338,12 @@
 
                                 <td class="text-end fw-bold" style="color: var(--primary-color);">
 
-                                    @if ($totalLooseCount > 0)
+                                    @if ($totalCartonsCount > 0 && $totalLooseCount > 0)
                                         {{ $totalCartonsCount }} Ctn/Bndl + {{ $totalLooseCount }} Pcs
-                                    @else
+                                    @elseif ($totalCartonsCount > 0)
                                         {{ $totalCartonsCount }} Ctn/Bndl
+                                    @else
+                                        {{ $totalLooseCount }} Pcs (Loose)
                                     @endif
 
                                 </td>
@@ -1901,6 +1936,7 @@
                                 $piecesPerBox;
 
 
+                            $cLabel = ($sizeMode === 'by_bandal') ? 'Bndl' : 'Ctn';
                             if (
                                 $boxes > 0
                                 &&
@@ -1908,21 +1944,21 @@
                             ) {
 
                                 $qtyDisplay =
-                                    "$boxes.$loose";
+                                    "{$boxes} {$cLabel} + {$loose} Pcs";
 
                             }
 
                             elseif ($boxes > 0) {
 
                                 $qtyDisplay =
-                                    $boxes;
+                                    "{$boxes} {$cLabel}";
 
                             }
 
                             else {
 
                                 $qtyDisplay =
-                                    $loose;
+                                    "{$loose} Pcs";
 
                             }
 

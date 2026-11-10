@@ -387,7 +387,7 @@
                             </div>
                             <div class="col-6 col-md-2 col-lg-2">
                                 <label class="ex-label">Date</label>
-                                <input type="date" name="entry_date" class="ex-input" value="{{ now()->toDateString() }}" required>
+                                <input type="text" name="entry_date" class="ex-input datepicker-custom" value="{{ now()->toDateString() }}" data-default-date="today" placeholder="dd/mm/yyyy" required>
                             </div>
                             <div class="col-6 col-md-2 col-lg-2">
                                 <label class="ex-label">Ref / Cheque #</label>

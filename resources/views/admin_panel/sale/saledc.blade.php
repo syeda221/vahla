@@ -370,9 +370,37 @@
                             $makeOriginDisplay .= ($makeOriginDisplay ? ', ' : '') . $originName;
                         }
 
-                        $totalPieces = (int) ($item['total_pieces'] ?? $item['qty'] ?? 0);
-                        $qtyVal = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
+                        $ppb = (float)($item['pieces_per_box'] ?? 1);
+                        if ($ppb <= 0) $ppb = 1;
+                        $totalPieces = (int) ($item['total_pieces'] ?? ($ppb > 1 ? round(($item['qty_box'] ?? $item['qty'] ?? 0) * $ppb) : ($item['qty'] ?? 0)));
                         $sizeMode = $item['size_mode'] ?? 'std';
+
+                        $cLabel = ($sizeMode === 'by_bandal') ? 'Bndl' : 'Ctn';
+                        if (in_array($sizeMode, ['by_cartons', 'by_bandal']) || ($ppb > 1 && $sizeMode !== 'by_pieces')) {
+                            $boxes = floor($totalPieces / $ppb);
+                            $loose = $totalPieces % $ppb;
+                            if ($boxes > 0 && $loose > 0) {
+                                $dcQtyDisplay = "{$boxes} {$cLabel} + {$loose} Pcs";
+                            } elseif ($boxes > 0) {
+                                $dcQtyDisplay = "{$boxes} {$cLabel}";
+                            } else {
+                                $dcQtyDisplay = "{$loose} Pcs";
+                            }
+                        } elseif ($sizeMode === 'by_pieces') {
+                            $dcQtyDisplay = "{$totalPieces} Pcs";
+                        } elseif (in_array($sizeMode, ['by_kg', 'by_gm', 'by_feet', 'by_meter'])) {
+                            $uomLabel = match($sizeMode) {
+                                'by_kg' => 'Kg',
+                                'by_gm' => 'Gm',
+                                'by_feet' => 'Ft',
+                                'by_meter' => 'Mtr',
+                                default => '',
+                            };
+                            $qVal = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
+                            $dcQtyDisplay = ($qVal == (int)$qVal ? (int)$qVal : number_format($qVal, 2)) . ' ' . $uomLabel;
+                        } else {
+                            $dcQtyDisplay = $totalPieces > 0 ? "{$totalPieces} Pcs" : ($item['qty_box'] ?? $item['qty'] ?? 0);
+                        }
                     @endphp
                     <tr>
                         <td class="text-center">{{ $loop->iteration }}</td>
@@ -398,7 +426,7 @@
                         </td>
 
                         <td class="text-center fw-bold">
-                            {{ $qtyVal == (int)$qtyVal ? (int)$qtyVal : number_format($qtyVal, 2) }}
+                            {{ $dcQtyDisplay }}
                         </td>
 
                         <td class="text-center fw-bold">

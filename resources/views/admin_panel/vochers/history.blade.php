@@ -327,11 +327,11 @@
         <div class="row g-2 align-items-end">
             <div class="col-md-2">
                 <label class="form-label">From Date</label>
-                <input type="date" class="form-control" id="filterFromDate">
+                <input type="date" class="form-control" id="filterFromDate" onclick="this.showPicker()" style="cursor: pointer;">
             </div>
             <div class="col-md-2">
                 <label class="form-label">To Date</label>
-                <input type="date" class="form-control" id="filterToDate">
+                <input type="date" class="form-control" id="filterToDate" onclick="this.showPicker()" style="cursor: pointer;">
             </div>
             <div class="col-md-2">
                 <label class="form-label">Party Type</label>

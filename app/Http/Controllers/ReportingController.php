@@ -700,7 +700,11 @@ class ReportingController extends Controller
                     }
                     if ($dateFrom) $purchasesQuery->whereDate('pur.created_at', '>=', $dateFrom);
                     if ($dateTo)   $purchasesQuery->whereDate('pur.created_at', '<=', $dateTo);
-                    $purchasesList = $purchasesQuery->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.line_total', 'pi.color')->get();
+                    $purchasesList = $purchasesQuery->select(
+                        'pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.line_total', 'pi.color',
+                        'pur.subtotal as pur_subtotal', 'pur.net_amount as pur_net_amount',
+                        'pur.additional_discount as pur_add_discount', 'pur.discount as pur_discount'
+                    )->get();
 
                     // Fetch all purchase returns
                     $pReturnsQuery = DB::table('purchase_return_items as pri')->where('pri.product_id', $product->id);
@@ -811,8 +815,20 @@ class ReportingController extends Controller
                                     $pPieces = (float) $pItem->qty;
                                 }
 
+                                $lineTot = (float) $pItem->line_total;
+                                $purSub = (float) ($pItem->pur_subtotal ?? 0);
+                                $purNet = (float) ($pItem->pur_net_amount ?? 0);
+                                $purAddDisc = max((float)($pItem->pur_add_discount ?? 0), (float)($pItem->pur_discount ?? 0));
+                                if ($purSub > 0) {
+                                    if ($purNet > 0 && $purNet < $purSub) {
+                                        $lineTot = $lineTot * ($purNet / $purSub);
+                                    } elseif ($purAddDisc > 0) {
+                                        $lineTot = max(0, $lineTot - ($lineTot / $purSub * $purAddDisc));
+                                    }
+                                }
+
                                 $purchased += $pPieces;
-                                $purchaseAmount += (float) $pItem->line_total;
+                                $purchaseAmount += $lineTot;
                             }
                         }
 
@@ -853,6 +869,18 @@ class ReportingController extends Controller
                         foreach ($adjList as $adjItem) {
                             if ($this->matchAdjustmentToVariant($adjItem, $v)) {
                                 $adjustments += (float) $adjItem->qty;
+                            }
+                        }
+
+                        // Variant stock in JSON may have had adjustments added to it. Deduct adjustments to recover true initial stock.
+                        $initial = max(0, $initial - $adjustments);
+                        if (count($parsedVariants) === 1) {
+                            $initMov = (float) DB::table('stock_movements')
+                                ->where('product_id', $product->id)
+                                ->where('ref_type', 'INIT')
+                                ->sum('qty');
+                            if ($initMov > 0 || DB::table('stock_movements')->where('product_id', $product->id)->where('ref_type', 'INIT')->exists()) {
+                                $initial = $initMov;
                             }
                         }
 
@@ -1276,8 +1304,22 @@ class ReportingController extends Controller
                     'purchase_items.pieces_per_box',
                     'purchase_items.boxes_qty',
                     'purchase_items.loose_qty',
-                    'purchase_items.color'
+                    'purchase_items.color',
+                    'purchases.subtotal as pur_subtotal',
+                    'purchases.net_amount as pur_net_amount',
+                    'purchases.additional_discount as pur_add_discount',
+                    'purchases.discount as pur_discount'
                 )->get();
+
+            // Fetch adjustments for this product
+            $adjList = DB::table('stock_movements')
+                ->where('product_id', $product->id)
+                ->where('type', 'adjustment')
+                ->where(function($q) {
+                    $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT');
+                })
+                ->select('qty', 'note', 'ref_type')
+                ->get();
 
             if (count($parsedVariants) > 0) {
                 // Fetch all sales and returns for this product to distribute
@@ -1435,6 +1477,14 @@ class ReportingController extends Controller
                         }
                     }
 
+                    // Adjustments for variant
+                    $vAdjustments = 0;
+                    foreach ($adjList as $adjItem) {
+                        if ($this->matchAdjustmentToVariant($adjItem, $v)) {
+                            $vAdjustments += (float) $adjItem->qty;
+                        }
+                    }
+
                     // Calculate variant initial stock in pieces
                     $vRawStock = (string) ($v['stock'] ?? '0');
                     if (in_array($product->size_mode, ['by_cartons', 'by_bandal']) && $ppb > 1) {
@@ -1448,6 +1498,14 @@ class ReportingController extends Controller
                         }
                     } else {
                         $vInitial = (float) $vRawStock;
+                    }
+
+                    // Variant stock in JSON may have had adjustments added to it. Deduct adjustments to recover true initial stock.
+                    $vInitial = max(0, $vInitial - $vAdjustments);
+                    if (count($parsedVariants) === 1 && $initial >= 0) {
+                        $vInitial = $initial;
+                    } elseif ($initial >= 0 && $vInitial > $initial) {
+                        $vInitial = $initial;
                     }
 
                     // Variant purchases
@@ -1472,8 +1530,20 @@ class ReportingController extends Controller
                                 $pPieces = (float) $pItem->qty;
                             }
 
+                            $lineTot = (float) $pItem->line_total;
+                            $purSub = (float) ($pItem->pur_subtotal ?? 0);
+                            $purNet = (float) ($pItem->pur_net_amount ?? 0);
+                            $purAddDisc = max((float)($pItem->pur_add_discount ?? 0), (float)($pItem->pur_discount ?? 0));
+                            if ($purSub > 0) {
+                                if ($purNet > 0 && $purNet < $purSub) {
+                                    $lineTot = $lineTot * ($purNet / $purSub);
+                                } elseif ($purAddDisc > 0) {
+                                    $lineTot = max(0, $lineTot - ($lineTot / $purSub * $purAddDisc));
+                                }
+                            }
+
                             $vPurchased += $pPieces;
-                            $vPurchaseAmount += (float) $pItem->line_total;
+                            $vPurchaseAmount += $lineTot;
                         }
                     }
 
@@ -3658,8 +3728,12 @@ class ReportingController extends Controller
             ), 0) as total_qty,
             COALESCE(SUM(
                 CASE
-                    WHEN COALESCE(purchases.subtotal, 0) > 0
+                    WHEN COALESCE(purchases.subtotal, 0) > 0 AND COALESCE(purchases.net_amount, 0) > 0 AND purchases.net_amount < purchases.subtotal
                     THEN purchase_items.line_total / purchases.subtotal * purchases.net_amount
+                    WHEN COALESCE(purchases.subtotal, 0) > 0 AND (COALESCE(purchases.additional_discount, 0) > 0 OR COALESCE(purchases.discount, 0) > 0)
+                    THEN GREATEST(0, purchase_items.line_total - (purchase_items.line_total / purchases.subtotal * GREATEST(COALESCE(purchases.additional_discount, 0), COALESCE(purchases.discount, 0))))
+                    WHEN COALESCE(purchases.subtotal, 0) > 0 AND purchases.net_amount = 0
+                    THEN 0
                     ELSE purchase_items.line_total
                 END
             ), 0) as total_net_amount

@@ -265,27 +265,37 @@
                     @php
                         // Size mode logic for display
                         $sizeMode = $item['size_mode'] ?? 'std';
-                        $totalPieces = (int) $item['total_pieces'];
-
-                        // Same layout logic from existing saledc formatting
                         $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
                         if ($piecesPerBox <= 0) $piecesPerBox = 1;
+                        $totalPieces = (int) ($item['total_pieces'] ?? ($piecesPerBox > 1 ? round(($item['qty_box'] ?? $item['qty'] ?? 0) * $piecesPerBox) : ($item['qty'] ?? 0)));
+
                         $boxes = floor($totalPieces / $piecesPerBox);
                         $loosePieces = $totalPieces % $piecesPerBox;
 
                         $qtyStr = "";
+                        $cStr = ($sizeMode === 'by_bandal') ? 'Bndl' : 'Ctn';
                         if ($sizeMode == 'by_pieces') {
                             $qtyStr = "{$totalPieces} Pcs";
-                        } else {
+                        } elseif (in_array($sizeMode, ['by_cartons', 'by_bandal']) || $piecesPerBox > 1) {
                             if ($boxes > 0 && $loosePieces > 0) {
-                                $cStr = in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Crtn' : 'Box';
-                                $qtyStr = "{$boxes} {$cStr} + {$loosePieces} Pc";
+                                $qtyStr = "{$boxes} {$cStr} + {$loosePieces} Pcs";
                             } elseif ($boxes > 0) {
-                                $cStr = in_array($sizeMode, ['by_cartons', 'by_bandal']) ? 'Cartons' : 'Boxes';
                                 $qtyStr = "{$boxes} {$cStr}";
                             } else {
                                 $qtyStr = "{$loosePieces} Pcs";
                             }
+                        } elseif (in_array($sizeMode, ['by_kg', 'by_gm', 'by_feet', 'by_meter'])) {
+                            $uomLabel = match($sizeMode) {
+                                'by_kg' => 'Kg',
+                                'by_gm' => 'Gm',
+                                'by_feet' => 'Ft',
+                                'by_meter' => 'Mtr',
+                                default => '',
+                            };
+                            $qVal = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
+                            $qtyStr = ($qVal == (int)$qVal ? (int)$qVal : number_format($qVal, 2)) . ' ' . $uomLabel;
+                        } else {
+                            $qtyStr = "{$totalPieces} Pcs";
                         }
 
                         $sizeStr = '';

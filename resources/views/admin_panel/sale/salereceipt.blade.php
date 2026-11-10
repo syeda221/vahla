@@ -378,12 +378,13 @@
                             $boxes = floor($totalPieces / $piecesPerBox);
                             $loose = $totalPieces % $piecesPerBox;
 
+                            $cLabel = ($sizeMode === 'by_bandal') ? 'Bndl' : 'Ctn';
                             if ($boxes > 0 && $loose > 0) {
-                                $qtyDisplay = "$boxes.$loose";
+                                $qtyDisplay = "{$boxes} {$cLabel} + {$loose} Pcs";
                             } elseif ($boxes > 0) {
-                                $qtyDisplay = $boxes;
+                                $qtyDisplay = "{$boxes} {$cLabel}";
                             } else {
-                                $qtyDisplay = $loose;
+                                $qtyDisplay = "{$loose} Pcs";
                             }
                         }
 

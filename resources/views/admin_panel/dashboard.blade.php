@@ -1230,12 +1230,26 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
 
-    // Live Clock
-    setInterval(function () {
+    // Live Clock & Date
+    function updateLiveClock() {
         const n = new Date();
-        const el = document.getElementById('db-live-time');
-        if (el) el.innerText = n.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true });
-    }, 1000);
+        const timeEl = document.getElementById('db-live-time');
+        const dateEl = document.getElementById('db-live-date');
+        if (timeEl) {
+            timeEl.innerText = n.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+        }
+        if (dateEl) {
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const dayName = dayNames[n.getDay()];
+            const dayNum = String(n.getDate()).padStart(2, '0');
+            const monthName = monthNames[n.getMonth()];
+            const yearNum = n.getFullYear();
+            dateEl.innerText = dayName + ', ' + dayNum + ' ' + monthName + ' ' + yearNum;
+        }
+    }
+    updateLiveClock();
+    setInterval(updateLiveClock, 1000);
 
     const salesStats  = @json($salesChartStats);
     const catData     = @json($salesByCategory ?? []);

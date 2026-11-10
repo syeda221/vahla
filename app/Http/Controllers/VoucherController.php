@@ -464,6 +464,13 @@ class VoucherController extends Controller
 
     public function store_rec_vochers(Request $request)
     {
+        $normalizedReceiptDate = $this->normalizeVoucherDate($request->receipt_date ?: $request->payment_date);
+        $normalizedEntryDate = $this->normalizeVoucherDate($request->entry_date ?: $normalizedReceiptDate);
+        $request->merge([
+            'receipt_date' => $normalizedReceiptDate,
+            'entry_date' => $normalizedEntryDate
+        ]);
+
         DB::beginTransaction();
         try {
             $rvid = $request->rvid ?: \App\Models\ReceiptsVoucher::generateRVID(auth()->id());
@@ -654,6 +661,13 @@ class VoucherController extends Controller
 
     public function store_Pay_vochers(Request $request)
     {
+        $normalizedReceiptDate = $this->normalizeVoucherDate($request->receipt_date ?: $request->payment_date);
+        $normalizedEntryDate = $this->normalizeVoucherDate($request->entry_date ?: $normalizedReceiptDate);
+        $request->merge([
+            'receipt_date' => $normalizedReceiptDate,
+            'entry_date' => $normalizedEntryDate
+        ]);
+
         DB::beginTransaction();
         try {
             $pvid = PaymentVoucher::generateInvoiceNo();
@@ -1204,6 +1218,11 @@ class VoucherController extends Controller
 
     public function store_expense_vochers(Request $request)
     {
+        $normalizedEntryDate = $this->normalizeVoucherDate($request->entry_date);
+        $request->merge([
+            'entry_date' => $normalizedEntryDate
+        ]);
+
         DB::beginTransaction();
         try {
             $evid = ExpenseVoucher::generateInvoiceNo();
@@ -1748,6 +1767,10 @@ class VoucherController extends Controller
      */
     public function store_party_transfer(Request $request)
     {
+        if ($request->has('transfer_date')) {
+            $request->merge(['transfer_date' => $this->normalizeVoucherDate($request->transfer_date)]);
+        }
+
         $request->validate([
             'transfer_date' => 'required|date',
             'source_party_type' => 'required|in:customer,vendor',
@@ -2019,6 +2042,10 @@ class VoucherController extends Controller
      */
     public function storeInternalTransfer(Request $request)
     {
+        if ($request->has('transfer_date')) {
+            $request->merge(['transfer_date' => $this->normalizeVoucherDate($request->transfer_date)]);
+        }
+
         $request->validate([
             'transfer_date'   => 'required|date',
             'from_account_id' => 'required|exists:accounts,id',
@@ -2678,6 +2705,20 @@ class VoucherController extends Controller
                 'total_internal_transfer' => $totalInternalTransfer,
             ]
         ]);
+    }
+
+    /**
+     * Normalize date string (handling both d/m/Y and Y-m-d) to Y-m-d for database storage
+     */
+    private function normalizeVoucherDate($dateStr)
+    {
+        if (empty($dateStr)) return date('Y-m-d');
+        $clean = trim($dateStr);
+        if (preg_match('/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/', $clean, $m)) {
+            return sprintf('%04d-%02d-%02d', (int)$m[3], (int)$m[2], (int)$m[1]);
+        }
+        $ts = strtotime($clean);
+        return $ts ? date('Y-m-d', $ts) : date('Y-m-d');
     }
 }
 

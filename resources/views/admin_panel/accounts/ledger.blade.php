@@ -101,7 +101,7 @@
                                         <th width="10%">Date</th>
                                         <th width="12%">Voucher No</th>
                                         <th width="25%" class="text-start">Description</th>
-                                        <th width="18%">Party</th>
+                                        <th width="18%">Party / Source</th>
                                         <th width="10%">Debit</th>
                                         <th width="10%">Credit</th>
                                         <th width="15%">Balance</th>
@@ -125,31 +125,20 @@
                                             $runningBalance = $runningBalance + $debit - $credit;
 
                                             $voucherNo = '-';
-                                            if ($entry->source && $entry->source->voucher_no) {
-                                                $voucherNo = $entry->source->voucher_no;
-                                            } elseif ($entry->source && $entry->source->invoice_no) {
-                                                $voucherNo = $entry->source->invoice_no;
+                                            if ($entry->source) {
+                                                $voucherNo = $entry->source->voucher_no 
+                                                    ?? $entry->source->invoice_no 
+                                                    ?? $entry->source->evid 
+                                                    ?? $entry->source->rvid 
+                                                    ?? $entry->source->pvid 
+                                                    ?? '-';
                                             }
 
-                                            // Resolve party name and type
-                                            $partyName = '';
-                                            $partyType = '';
-                                            $partyBadgeClass = 'bg-secondary';
-                                            if ($entry->party) {
-                                                if ($entry->party_type === 'App\\Models\\Customer') {
-                                                    $partyName = $entry->party->customer_name ?? 'Unknown';
-                                                    $partyType = 'Customer';
-                                                    $partyBadgeClass = 'bg-primary';
-                                                } elseif ($entry->party_type === 'App\\Models\\Vendor') {
-                                                    $partyName = $entry->party->name ?? 'Unknown';
-                                                    $partyType = 'Vendor';
-                                                    $partyBadgeClass = 'bg-warning text-dark';
-                                                } else {
-                                                    $partyName = $entry->party->title ?? $entry->party->name ?? 'Account';
-                                                    $partyType = 'Account';
-                                                    $partyBadgeClass = 'bg-info text-dark';
-                                                }
-                                            }
+                                            // Resolve party / source name and type
+                                            $resolved = $entry->resolved_party;
+                                            $partyName = $resolved['name'] ?? '';
+                                            $partyType = $resolved['type'] ?? '';
+                                            $partyBadgeClass = $resolved['badge'] ?? 'bg-secondary';
                                         @endphp
                                         <tr>
                                             <td class="text-center">{{ $entry->entry_date->format('d/m/Y') }}</td>

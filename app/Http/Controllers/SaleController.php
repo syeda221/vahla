@@ -2356,6 +2356,15 @@ class SaleController extends Controller
 
             $variantUnit = $variant['unit'] ?? ($liveVariant['unit'] ?? ($item->product->unit->name ?? ''));
 
+            $totalPcs = (float) $item->total_pieces;
+            if ($totalPcs <= 0 && (float) $item->qty > 0) {
+                if (in_array($item->size_mode ?? '', ['by_cartons', 'by_bandal']) || $ppb > 1) {
+                    $totalPcs = round((float) $item->qty * $ppb);
+                } else {
+                    $totalPcs = (float) $item->qty;
+                }
+            }
+
             return [
                 'is_manual' => $item->is_manual,
                 'product_id' => $item->product_id,
@@ -2363,10 +2372,10 @@ class SaleController extends Controller
                 'item_code' => $item->product->item_code ?? '',
                 'brand' => $item->product->brand->name ?? '',
                 'unit' => $item->product->unit->name ?? '', // Access name if relation exists
-                'qty' => (int) $item->total_pieces, // Use Pieces for Return Logic (Matches Price-Per-Piece)
+                'qty' => (int) $totalPcs, // Use Pieces for Return Logic (Matches Price-Per-Piece)
                 'qty_box' => (float) $item->qty, // Store Box Count separately
-                'total_pieces' => (int) $item->total_pieces,
-                'loose_pieces' => (int) $item->loose_pieces,
+                'total_pieces' => (int) $totalPcs,
+                'loose_pieces' => (int) ($item->loose_pieces ?: ($ppb > 1 ? ((int)$totalPcs % (int)$ppb) : 0)),
                 'price' => (float) $item->price, // Price Per Piece / Unit
                 'discount' => (float) $item->discount_percent, // Legacy
                 'discount_percent' => (float) $item->discount_percent,

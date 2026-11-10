@@ -478,7 +478,7 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Date <span class="text-danger">*</span></label>
-                            <input type="date" name="entry_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                            <input type="text" name="entry_date" class="form-control datepicker-custom" value="{{ date('Y-m-d') }}" data-default-date="today" placeholder="dd/mm/yyyy" required>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Source Account (Cash/Bank) <span class="text-danger">*</span></label>
@@ -560,13 +560,13 @@
             <div class="voucher-form-section" id="form-payment_in">
                 <form class="voucher-form" data-action="{{ route('store_rec_vochers') }}" method="POST" novalidate>
                     @csrf
-                    <input type="hidden" name="receipt_date" id="pi_receipt_date" value="{{ date('Y-m-d') }}">
-                    <input type="hidden" name="entry_date" value="{{ date('Y-m-d') }}">
+                    <input type="hidden" name="entry_date" id="pi_entry_date" value="{{ date('Y-m-d') }}">
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-3">
                             <label class="form-label">Payment Date <span class="text-danger">*</span></label>
-                            <input type="date" name="payment_date" class="form-control" value="{{ date('Y-m-d') }}" onchange="$('#pi_receipt_date').val(this.value)" required>
+                            <input type="text" name="receipt_date" id="pi_receipt_date" class="form-control datepicker-custom" value="{{ date('Y-m-d') }}" data-default-date="today" placeholder="dd/mm/yyyy" onchange="$('#pi_entry_date').val(this.value); $('#pi_payment_date').val(this.value);" required>
+                            <input type="hidden" name="payment_date" id="pi_payment_date" value="{{ date('Y-m-d') }}">
                         </div>
                     </div>
 
@@ -650,13 +650,13 @@
             <div class="voucher-form-section" id="form-payment_out">
                 <form class="voucher-form" data-action="{{ route('store_Pay_vochers') }}" method="POST" novalidate>
                     @csrf
-                    <input type="hidden" name="receipt_date" id="po_receipt_date" value="{{ date('Y-m-d') }}">
-                    <input type="hidden" name="entry_date" value="{{ date('Y-m-d') }}">
+                    <input type="hidden" name="entry_date" id="po_entry_date" value="{{ date('Y-m-d') }}">
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-3">
                             <label class="form-label">Payment Date <span class="text-danger">*</span></label>
-                            <input type="date" name="payment_date" class="form-control" value="{{ date('Y-m-d') }}" onchange="$('#po_receipt_date').val(this.value)" required>
+                            <input type="text" name="receipt_date" id="po_receipt_date" class="form-control datepicker-custom" value="{{ date('Y-m-d') }}" data-default-date="today" placeholder="dd/mm/yyyy" onchange="$('#po_entry_date').val(this.value); $('#po_payment_date').val(this.value);" required>
+                            <input type="hidden" name="payment_date" id="po_payment_date" value="{{ date('Y-m-d') }}">
                         </div>
                     </div>
 
@@ -745,7 +745,7 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-3">
                             <label class="form-label">Transfer Date <span class="text-danger">*</span></label>
-                            <input type="date" name="transfer_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                            <input type="text" name="transfer_date" class="form-control datepicker-custom" value="{{ date('Y-m-d') }}" data-default-date="today" placeholder="dd/mm/yyyy" required>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Voucher ID</label>
@@ -880,7 +880,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Transfer Date <span class="text-danger">*</span></label>
-                            <input type="date" name="transfer_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                            <input type="text" name="transfer_date" class="form-control datepicker-custom" value="{{ date('Y-m-d') }}" data-default-date="today" placeholder="dd/mm/yyyy" required>
                         </div>
                     </div>
 
@@ -1019,6 +1019,7 @@
 
             $('#formTitle').html(formTitles[type] || '');
             initSelect2();
+            initDatepickers();
         });
 
         // ============== SELECT2 INITIALIZE ==============
@@ -1397,8 +1398,38 @@
             });
         });
 
+        function initDatepickers() {
+            if (typeof flatpickr !== 'undefined') {
+                document.querySelectorAll('.datepicker-custom').forEach(function(el) {
+                    if (!el._flatpickr) {
+                        var config = {
+                            dateFormat: "Y-m-d",
+                            altInput: true,
+                            altFormat: "d/m/Y",
+                            allowInput: true,
+                            parseDate: function(datestr, format) {
+                                if (typeof datestr === 'string') {
+                                    var clean = datestr.trim();
+                                    if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(clean)) {
+                                        var parts = clean.split(/[\/\-]/);
+                                        return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+                                    }
+                                }
+                                return flatpickr.parseDate(datestr, format);
+                            }
+                        };
+                        if (el.getAttribute('data-default-date') === 'today' || el.classList.contains('default-today')) {
+                            config.defaultDate = "today";
+                        }
+                        flatpickr(el, config);
+                    }
+                });
+            }
+        }
+
         // Initialize on load
         initSelect2();
+        initDatepickers();
         calcExpenseTotal();
         $('#form-expense select[name="vendor_id"]').trigger('change');
 

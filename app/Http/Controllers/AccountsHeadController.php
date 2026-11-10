@@ -138,12 +138,28 @@ class AccountsHeadController extends Controller
         $account = Account::findOrFail($id);
 
         $query = JournalEntry::where('account_id', $id)
-            ->with('party')
+            ->with(['party', 'source'])
             ->orderBy('entry_date', 'asc')
             ->orderBy('id', 'asc');
 
-        if ($request->has('from_date') && $request->has('to_date')) {
-            $query->whereBetween('entry_date', [$request->from_date, $request->to_date]);
+        $fromDate = $request->from_date;
+        $toDate = $request->to_date;
+
+        if ($fromDate && preg_match('/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/', trim($fromDate))) {
+            $parts = preg_split('/[\/\-]/', trim($fromDate));
+            $fromDate = sprintf('%04d-%02d-%02d', $parts[2], $parts[1], $parts[0]);
+        }
+        if ($toDate && preg_match('/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/', trim($toDate))) {
+            $parts = preg_split('/[\/\-]/', trim($toDate));
+            $toDate = sprintf('%04d-%02d-%02d', $parts[2], $parts[1], $parts[0]);
+        }
+
+        if ($fromDate && $toDate) {
+            $query->whereBetween('entry_date', [$fromDate, $toDate]);
+        } elseif ($fromDate) {
+            $query->whereDate('entry_date', '>=', $fromDate);
+        } elseif ($toDate) {
+            $query->whereDate('entry_date', '<=', $toDate);
         }
 
         $entries = $query->get();

@@ -1443,14 +1443,30 @@
           $('#btnSave').on('click', function() {
               ensureSaved();
           });
+          function getBookingSaleId(res) {
+              if (res && typeof res === 'object') {
+                  return res.booking_id || res.sale_id || res.id || $('#booking_id').val();
+              }
+              return res || $('#booking_id').val();
+          }
+
           $('#btnPrint').on('click', function() {
-              ensureSaved().then(id => window.open('{{ url('booking/print') }}/' + id, '_blank'));
+              ensureSaved().then(res => {
+                  const id = getBookingSaleId(res);
+                  if (id) window.open('{{ url('sales') }}/' + id + '/invoice', '_blank');
+              });
           });
           $('#btnPrint2').on('click', function() {
-              ensureSaved().then(id => window.open('{{ url('booking/print2') }}/' + id, '_blank'));
+              ensureSaved().then(res => {
+                  const id = getBookingSaleId(res);
+                  if (id) window.open('{{ url('sales') }}/' + id + '/recepit', '_blank');
+              });
           });
           $('#btnDCPrint').on('click', function() {
-              ensureSaved().then(id => window.open('{{ url('booking/dc') }}/' + id, '_blank'));
+              ensureSaved().then(res => {
+                  const id = getBookingSaleId(res);
+                  if (id) window.open('{{ url('sales') }}/' + id + '/dc', '_blank');
+              });
           });
           $('#btnExit').on('click', function() {
               ensureSaved().finally(() => {
