@@ -1529,6 +1529,13 @@
                                     </tfoot>
                                 </table>
                             </div>
+                            <!-- Comments / Notes Field -->
+                            <div class="mt-2 p-2 bg-light rounded border border-light-subtle">
+                                <label for="saleComment" class="form-label fw-bold text-dark mb-1" style="font-size:0.78rem;">
+                                    <i class="fas fa-comment-alt me-1 text-primary"></i> Comments / Notes <span class="text-muted fw-normal">(Printed at the bottom of Invoice / Quotation / Receipt)</span>
+                                </label>
+                                <textarea class="form-control form-control-sm bg-white" name="comment" id="saleComment" rows="2" placeholder="Write any special notes, instructions, delivery terms or comments here..." style="font-size:0.8rem; resize:vertical;">{{ $sale->comment ?? '' }}</textarea>
+                            </div>
                         </div>
                     </div>
 

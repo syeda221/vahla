@@ -585,6 +585,13 @@
             @endif
         </div>
 
+        @if(!empty($sale->comment))
+        <div style="margin-top: 8px; margin-bottom: 8px; padding: 4px 6px; border: 1px dashed #64748b; font-size: 11px; text-align: left; background: #fafafa;">
+            <strong>Note/Comment:</strong>
+            <div style="white-space: pre-line; margin-top: 2px;">{{ $sale->comment }}</div>
+        </div>
+        @endif
+
         <!-- Footer -->
         <div class="footer">
             <p>Thank you for shopping with us!</p>

@@ -72,7 +72,8 @@ class DirectDCController extends Controller
                 'dc_date' => $validated['dc_date'],
                 'status' => 'confirmed',
                 'is_invoiced' => 0,
-                'remarks' => $validated['remarks'] ?? null,
+                'remarks' => $validated['remarks'] ?? ($request->comment ?? null),
+                'comment' => $request->comment ?? ($validated['remarks'] ?? null),
                 'created_by' => auth()->id()
             ]);
 
@@ -237,7 +238,8 @@ class DirectDCController extends Controller
                 'customer_id' => $validated['customer_id'],
                 'dc_date' => $validated['dc_date'],
                 'reference_no' => $validated['reference_no'] ?? null,
-                'remarks' => $validated['remarks'] ?? null
+                'remarks' => $validated['remarks'] ?? ($request->comment ?? null),
+                'comment' => $request->comment ?? ($validated['remarks'] ?? null)
             ]);
 
             $warehouseId = $validated['warehouse_id'];

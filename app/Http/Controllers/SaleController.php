@@ -1462,6 +1462,7 @@ class SaleController extends Controller
             $sale->customer_id = $request->customer;
             $sale->walkin_name = $isWalkin ? $request->walkin_name : null;
             $sale->reference = $request->reference;
+            $sale->comment = $request->input('comment') ?? ($request->input('notes') ?? null);
             $rawWh = $request->input('warehouse_id');
             $headerWhId = $request->input('header_warehouse_id') ?: (is_array($rawWh) ? ($rawWh[0] ?? 1) : ($rawWh ?: 1));
             $sale->warehouse_id = $headerWhId;
@@ -1860,6 +1861,9 @@ class SaleController extends Controller
             $sale->total_extradiscount = $calculatedExtraDiscount;
             $sale->shipping_charges = $shippingCharges;
             $sale->cutting_charges = $cuttingCharges;
+            if ($request->has('comment') || $request->has('notes')) {
+                $sale->comment = $request->input('comment') ?? ($request->input('notes') ?? $sale->comment);
+            }
             $sale->total_net = max(0, round(($total_bill - $sale->total_extradiscount) + $shippingCharges + $cuttingCharges, 2));
             $sale->total_items = $total_items;
 

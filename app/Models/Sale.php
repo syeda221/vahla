@@ -13,7 +13,7 @@ class Sale extends Model
         'total_extradiscount', 'shipping_charges', 'cutting_charges', 'total_net', 'cash', 'card', 'change', 'change_account_id',
         'advance_adjusted', 'advance_settlement_note',
         'total_items', 'discount_type', 'sale_status', 'invoice_no', 'is_booking',
-        'sale_type', 'delivery_status', 'parent_quotation_id', 'attachment'
+        'sale_type', 'delivery_status', 'parent_quotation_id', 'attachment', 'comment'
     ];
 
     public function warehouse()

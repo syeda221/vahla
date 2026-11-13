@@ -364,6 +364,15 @@
             </div>
         </div>
 
+        @php
+            $dcCommentToPrint = !empty($sale->comment) ? $sale->comment : '';
+        @endphp
+        @if(!empty($dcCommentToPrint))
+        <div class="remarks-box" style="margin-top: 6px; font-weight: bold; background: #f3f4f6; padding: 4px;">
+            Note/Comment: {{ $dcCommentToPrint }}
+        </div>
+        @endif
+
         <!-- Footer -->
         <div class="footer">
             <p>Please check items upon delivery.</p>

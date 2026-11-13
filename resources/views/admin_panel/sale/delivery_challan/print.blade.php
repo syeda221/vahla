@@ -1106,6 +1106,15 @@
                     </table>
                 </div>
 
+                @php
+                    $challanComment = $dc->comment ?: ($dc->remarks ?: optional($dc->sale)->comment);
+                @endphp
+                @if(!empty($challanComment) && $loop->last)
+                <div style="margin-top: 6px; margin-bottom: 6px; padding: 5px 8px; background: rgba(224, 242, 254, 0.45); border: 1px dashed var(--pad-border); border-radius: 4px; font-size: 9.5px;">
+                    <strong>Comments / Notes:</strong> {{ $challanComment }}
+                </div>
+                @endif
+
                 <!-- Footer -->
                 <div class="pad-footer" style="flex-shrink: 0; display: flex; justify-content: space-between; align-items: flex-end; margin-top: auto; padding-top: 8px;">
                     <div class="footer-note" style="width: 50%; font-size: 10px; font-weight: bold; line-height: 1.4; color: var(--pad-text);">

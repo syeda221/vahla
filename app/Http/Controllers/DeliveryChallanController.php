@@ -116,7 +116,8 @@ class DeliveryChallanController extends Controller
                 'status' => 'confirmed', // We confirm it immediately as per plan
                 'is_invoiced' => $isAlreadyInvoiced,
                 'invoice_id' => $isAlreadyInvoiced ? $sale->id : null,
-                'remarks' => $request->input('remarks'),
+                'remarks' => $request->input('remarks') ?: $request->input('comment'),
+                'comment' => $request->input('comment') ?: $request->input('remarks'),
                 'created_by' => auth()->id()
             ]);
 

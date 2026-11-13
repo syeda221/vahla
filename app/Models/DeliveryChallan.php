@@ -18,6 +18,7 @@ class DeliveryChallan extends Model
         'is_invoiced',
         'invoice_id',
         'remarks',
+        'comment',
         'created_by',
         'attachment',
     ];
