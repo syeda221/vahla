@@ -359,12 +359,6 @@
                                                 <option value="by_pieces" {{ $product->size_mode == 'by_pieces' ? 'selected' : '' }}>Pcs</option>
                                                 <option value="by_cartons" {{ $product->size_mode == 'by_cartons' ? 'selected' : '' }}>Carton</option>
                                                 <option value="by_box" {{ $product->size_mode == 'by_box' ? 'selected' : '' }}>Box</option>
-                                                <option value="by_exr" {{ $product->size_mode == 'by_exr' ? 'selected' : '' }}>EXR (Set/Pack)</option>
-                                                <option value="by_set" {{ $product->size_mode == 'by_set' ? 'selected' : '' }}>Set</option>
-                                                <option value="by_pack" {{ $product->size_mode == 'by_pack' ? 'selected' : '' }}>Pack</option>
-                                                <option value="by_dozen" {{ $product->size_mode == 'by_dozen' ? 'selected' : '' }}>Dozen</option>
-                                                <option value="by_bundle" {{ $product->size_mode == 'by_bundle' ? 'selected' : '' }}>Bundle</option>
-                                                <option value="by_roll" {{ $product->size_mode == 'by_roll' ? 'selected' : '' }}>Roll</option>
                                                 <option value="by_meter" {{ $product->size_mode == 'by_meter' ? 'selected' : '' }}>Meter</option>
                                                 <option value="by_feet" {{ $product->size_mode == 'by_feet' ? 'selected' : '' }}>Ft (Feet)</option>
                                                 <option value="by_kg" {{ $product->size_mode == 'by_kg' ? 'selected' : '' }}>Kg</option>
@@ -792,7 +786,7 @@
                 const tr = document.createElement('tr');
                 const productName = productNameInput ? productNameInput.value || '' : '';
                 const baseUnitName = unitDropdown && unitDropdown.selectedIndex >= 0 ? unitDropdown.options[unitDropdown.selectedIndex].text : 'Kg';
-                const isCartonMode = unitDropdown && (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(unitDropdown.value));
+                const isCartonMode = unitDropdown && (unitDropdown.value === 'by_cartons' || unitDropdown.value === 'by_box');
                 const isBoxMode = unitDropdown && unitDropdown.value === 'by_box';
                 const isMeterMode = unitDropdown && unitDropdown.value === 'by_meter';
                 const isFeetMode = unitDropdown && unitDropdown.value === 'by_feet';
@@ -826,12 +820,6 @@
                         <select class="form-select form-select-sm fw-bold text-primary px-1" name="variant_unit[]" style="font-size:11px;">
                             <option value="Carton" ${unitDropdown && unitDropdown.value==='by_cartons'?'selected':(uNorm==='carton'?'selected':'')}>Carton</option>
                             <option value="Box" ${unitDropdown && unitDropdown.value==='by_box'?'selected':(uNorm==='box'?'selected':'')}>Box</option>
-                            <option value="EXR" ${uNorm==='exr'?'selected':''}>EXR</option>
-                            <option value="Set" ${uNorm==='set'?'selected':''}>Set</option>
-                            <option value="Pack" ${uNorm==='pack'?'selected':''}>Pack</option>
-                            <option value="Dozen" ${uNorm==='dozen'||uNorm==='dzn'?'selected':''}>Dzn</option>
-                            <option value="Bundle" ${uNorm==='bundle'?'selected':''}>Bundle</option>
-                            <option value="Roll" ${uNorm==='roll'?'selected':''}>Roll</option>
                             <option value="Pcs" ${(!isCartonMode && !isMeterMode && !isFeetMode && (uNorm==='pcs'||uNorm==='piece'||uNorm==='pieces'||uNorm==='pc'))?'selected':''}>Pcs</option>
                             <option value="Kg" ${uNorm==='kg'?'selected':''}>Kg</option>
                             <option value="Gm" ${uNorm==='gm'||uNorm==='g'?'selected':''}>Gm</option>
@@ -890,7 +878,7 @@
             }
 
             function addLoosePieceVariantRow() {
-                const isCarton = unitDropdown && (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(unitDropdown.value));
+                const isCarton = unitDropdown && (unitDropdown.value === 'by_cartons' || unitDropdown.value === 'by_box');
                 if (!isCarton) return;
 
                 const existingPcs = variantsBody.querySelector('tr[data-is-loose="1"]');
@@ -988,7 +976,7 @@
             }
 
             function updateVariantStocksFromBase() {
-                const isCartonMode = unitDropdown && (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(unitDropdown.value));
+                const isCartonMode = unitDropdown && (unitDropdown.value === 'by_cartons' || unitDropdown.value === 'by_box');
                 if (variantMode !== 'weight' && !isCartonMode) return;
                 if (!variantsBody) return;
 
@@ -1026,7 +1014,7 @@
                 const baseRow = variantsBody.querySelector('tr');
                 if (!baseRow) return;
 
-                const isCartonMode = unitDropdown && (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(unitDropdown.value));
+                const isCartonMode = unitDropdown && (unitDropdown.value === 'by_cartons' || unitDropdown.value === 'by_box');
                 const baseSale = parseFloat(baseRow.querySelector('.base-sale-input')?.value || 0);
                 const basePurch = parseFloat(baseRow.querySelector('.base-purch-input')?.value || 0);
                 const baseWholesale = parseFloat(baseRow.querySelector('input[name="variant_wholesale_price[]"]')?.value || 0);
@@ -1087,7 +1075,7 @@
                 const vid = 'var_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
                 tr.dataset.vid = vid;
                 
-                const isCartonMode = unitDropdown && (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(unitDropdown.value));
+                const isCartonMode = unitDropdown && (unitDropdown.value === 'by_cartons' || unitDropdown.value === 'by_box');
                 const isBoxMode = unitDropdown && unitDropdown.value === 'by_box';
                 const isMeterMode = unitDropdown && unitDropdown.value === 'by_meter';
                 const isFeetMode = unitDropdown && unitDropdown.value === 'by_feet';
@@ -1259,19 +1247,7 @@
 
                 const headerEl = document.getElementById('convFactorHeader');
                 if (headerEl) {
-                    if (mode === 'by_exr') {
-                        headerEl.textContent = 'Pcs / EXR';
-                    } else if (mode === 'by_set') {
-                        headerEl.textContent = 'Pcs / Set';
-                    } else if (mode === 'by_pack') {
-                        headerEl.textContent = 'Pcs / Pack';
-                    } else if (mode === 'by_dozen') {
-                        headerEl.textContent = 'Pcs / Dozen';
-                    } else if (mode === 'by_bundle') {
-                        headerEl.textContent = 'Pcs / Bundle';
-                    } else if (mode === 'by_roll') {
-                        headerEl.textContent = 'Pcs / Roll';
-                    } else if (isBox) {
+                    if (isBox) {
                         headerEl.textContent = 'Pcs / Box';
                     } else if (isCarton) {
                         headerEl.textContent = 'Pcs / Carton';
@@ -1473,7 +1449,7 @@
                 $(unitDropdown).on('change', function() {
                     updateVariantMode();
                     toggleFactorColumns();
-                    const isCtn = (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(unitDropdown.value));
+                    const isCtn = (unitDropdown.value === 'by_cartons' || unitDropdown.value === 'by_box');
                     if (isCtn && !variantsBody.querySelector('tr[data-is-loose="1"]')) {
                         addLoosePieceVariantRow();
                     }
@@ -1523,7 +1499,7 @@
                             addVariantRow(null, v);
                         }
                     });
-                    const isCartonModeInit = unitDropdown && (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(unitDropdown.value));
+                    const isCartonModeInit = unitDropdown && (unitDropdown.value === 'by_cartons' || unitDropdown.value === 'by_box');
                     if (isCartonModeInit && !variantsBody.querySelector('tr[data-is-loose="1"]')) {
                         addLoosePieceVariantRow();
                     }
@@ -1832,7 +1808,7 @@
                         <input type="number" class="mob-input mob-sync ${!isBase && isWeightMode ? 'auto-field mob-stock-auto' : ''}" data-field="variant_stock[]" value="${escapeHtml(stockVal)}" placeholder="${!isBase && isWeightMode ? 'Auto' : '0'}" ${!isBase && isWeightMode ? 'readonly' : ''} step="any">
                     </div>
 
-                    ${unitDropdown && (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(unitDropdown.value)) ? `
+                    ${unitDropdown && (unitDropdown.value === 'by_cartons' || unitDropdown.value === 'by_box') ? `
                     <div class="mob-field-group">
                         <div class="mob-label" style="color:#0284c7;font-weight:700;">📦 Pieces Per ${unitDropdown.value === 'by_box' ? 'Box' : 'Carton'}</div>
                         <input type="number" class="mob-input conv-field mob-sync mob-conv-inp" data-field="variant_conv_factor[]" value="${escapeHtml(convVal || '0')}" placeholder="0" autocomplete="off" style="border:1.5px solid #0284c7;">

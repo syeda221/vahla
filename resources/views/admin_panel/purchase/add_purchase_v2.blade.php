@@ -1405,9 +1405,7 @@
 
                     let unitName = data.unit_name || 'Pcs';
                     const ppb = parseFloat(data.pieces_per_box) || 1;
-                    const multiplierModes = ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'];
-                    const multiplierUnits = ['carton', 'ctn', 'box', 'exr', 'set', 'pack', 'dozen', 'dzn', 'bundle', 'roll'];
-                    const isCartonMode = (multiplierModes.includes(data.size_mode) || multiplierUnits.includes(unitName.toLowerCase()) || ppb > 1);
+                    const isCartonMode = (data.size_mode === 'by_cartons' || unitName.toLowerCase() === 'carton' || unitName.toLowerCase() === 'ctn' || ppb > 1);
 
                     // Dynamic Unit & Style
                     let vUnit = data.unit_name || null;
@@ -1419,15 +1417,14 @@
                     }
                     const vUnitNorm = (vUnit || '').toLowerCase().trim();
 
-                    if (isCartonMode || multiplierUnits.includes(vUnitNorm)) {
-                        const targetUnit = (vUnit && vUnit.toLowerCase() !== 'pcs') ? vUnit : (data.unit_name && data.unit_name.toLowerCase() !== 'pcs' ? data.unit_name : 'Carton');
-                        unitName = targetUnit;
+                    if (isCartonMode || vUnitNorm === 'carton' || vUnitNorm === 'ctn') {
+                        unitName = 'Carton';
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-primary btn-outline-info')
                             .addClass('btn-outline-success')
-                            .attr('data-unit', unitName)
-                            .text(unitName);
-                        $row.find('.unit-input-val').val(unitName);
+                            .attr('data-unit', 'Carton')
+                            .text('Carton');
+                        $row.find('.unit-input-val').val('Carton');
                     } else if (data.size_mode === 'by_kg' || data.size_mode === 'by_gm') {
                         if (vUnitNorm === 'pcs' || vUnitNorm === 'pc' || vUnitNorm === 'piece') {
                             unitName = 'Pcs';
@@ -1612,23 +1609,11 @@
                 const $priceInp = $row.find('.price');
                 let curPrice = parseFloat($priceInp.val()) || 0;
 
-                const multiplierModes = ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'];
-                const multiplierUnits = ['carton', 'ctn', 'box', 'exr', 'set', 'pack', 'dozen', 'dzn', 'bundle', 'roll'];
-                const isCartonOrPcs = (multiplierModes.includes(sizeMode) || packQty > 1 || multiplierUnits.includes(currentUnit.toLowerCase()));
+                const isCartonOrPcs = (sizeMode === 'by_cartons' || packQty > 1 || ['carton', 'ctn'].includes(currentUnit.toLowerCase()));
 
                 if (isCartonOrPcs) {
-                    let multiUnitName = 'Carton';
-                    if (sizeMode === 'by_exr') multiUnitName = 'EXR';
-                    else if (sizeMode === 'by_set') multiUnitName = 'Set';
-                    else if (sizeMode === 'by_pack') multiUnitName = 'Pack';
-                    else if (sizeMode === 'by_dozen') multiUnitName = 'Dozen';
-                    else if (sizeMode === 'by_bundle') multiUnitName = 'Bundle';
-                    else if (sizeMode === 'by_roll') multiUnitName = 'Roll';
-                    else if (sizeMode === 'by_box') multiUnitName = 'Box';
-                    else if (multiplierUnits.includes(currentUnit.toLowerCase())) multiUnitName = currentUnit;
-
-                    if (multiplierUnits.includes(currentUnit.toLowerCase())) {
-                        // Switch to Pcs
+                    if (currentUnit.toLowerCase() === 'carton' || currentUnit.toLowerCase() === 'ctn') {
+                        // Switch from Carton to Pcs
                         currentUnit = 'Pcs';
                         $btn.text('Pcs')
                             .removeClass('btn-outline-success btn-outline-primary')
@@ -1641,17 +1626,17 @@
                             $priceInp.val(piecePrice % 1 === 0 ? piecePrice : piecePrice.toFixed(2));
                         }
                     } else {
-                        // Switch from Pcs to Multiplier Unit
-                        currentUnit = multiUnitName;
-                        $btn.text(multiUnitName)
+                        // Switch from Pcs to Carton
+                        currentUnit = 'Carton';
+                        $btn.text('Carton')
                             .removeClass('btn-outline-info btn-outline-primary')
                             .addClass('btn-outline-success')
-                            .attr('data-unit', multiUnitName);
-                        $row.find('.unit-input-val').val(multiUnitName);
+                            .attr('data-unit', 'Carton');
+                        $row.find('.unit-input-val').val('Carton');
 
                         if (packQty > 1 && curPrice > 0) {
-                            let multiPrice = curPrice * packQty;
-                            $priceInp.val(multiPrice % 1 === 0 ? multiPrice : multiPrice.toFixed(2));
+                            let cartonPrice = curPrice * packQty;
+                            $priceInp.val(cartonPrice % 1 === 0 ? cartonPrice : cartonPrice.toFixed(2));
                         }
                     }
                     recalcRow($row);

@@ -547,7 +547,7 @@
 
             const ppb = parseFloat(pRes.pieces_per_box) || 1;
             const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
-            if (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(pRes.size_mode)) {
+            if (pRes.size_mode == "by_cartons" || pRes.size_mode == "by_box") {
                 let piecePrice = parseFloat(pRes.sale_price_per_piece || rate || 0);
                 let cartonPrice = ppb > 1 ? (piecePrice * ppb) : piecePrice;
                 $row.find('.visible-price').val(unitMode === 'pcs' ? piecePrice : cartonPrice);
@@ -638,7 +638,7 @@
                     let disp;
                     const ppb = parseFloat(matched.ppb) || 1;
 
-                    if ((['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll', 'by_size'].includes(matched.size_mode)) && ppb > 1) {
+                    if ((matched.size_mode === 'by_cartons' || matched.size_mode === 'by_box' || matched.size_mode === 'by_size') && ppb > 1) {
                         if (unitMode === 'pcs' || unitMode === 'pc') {
                             disp = matched.stock;
                         } else {
@@ -696,13 +696,12 @@
                             } else {
                                 labelVal = `${sVal.toFixed(2)} Kg`;
                             }
-                        } else if (matched && ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(matched.size_mode) && (parseFloat(matched.ppb) || 1) > 1) {
+                        } else if (matched && (matched.size_mode === 'by_cartons' || matched.size_mode === 'by_box') && (parseFloat(matched.ppb) || 1) > 1) {
                             let ppb = parseFloat(matched.ppb) || 1;
-                            let uLbl = matched.size_mode === 'by_box' ? 'Box' : (matched.size_mode === 'by_exr' ? 'EXR' : (matched.size_mode === 'by_set' ? 'Set' : (matched.size_mode === 'by_pack' ? 'Pack' : (matched.size_mode === 'by_dozen' ? 'Dzn' : (matched.size_mode === 'by_bundle' ? 'Bndl' : (matched.size_mode === 'by_roll' ? 'Roll' : 'Ctn'))))));
-                            if (unitMode !== 'pcs' && unitMode !== 'pc') {
+                            if (unitMode === 'ctn') {
                                 let boxes = Math.floor(sVal / ppb);
                                 let loose = sVal % ppb;
-                                let ctnStr = loose > 0 ? `${boxes}.${loose} ${uLbl}` : `${boxes} ${uLbl}`;
+                                let ctnStr = loose > 0 ? `${boxes}.${loose} Ctn` : `${boxes} Ctn`;
                                 labelVal = `${ctnStr} <small class="text-muted">(${sVal} Pcs)</small>`;
                             } else {
                                 labelVal = `${sVal} Pcs`;
@@ -884,17 +883,16 @@
                 var ppb = parseFloat(w.ppb) || rowPpb || 1;
                 var stockDisplay = '';
 
-                if (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(sizeMode) && ppb > 1) {
-                    let uLbl = sizeMode === 'by_box' ? 'Box' : (sizeMode === 'by_exr' ? 'EXR' : (sizeMode === 'by_set' ? 'Set' : (sizeMode === 'by_pack' ? 'Pack' : (sizeMode === 'by_dozen' ? 'Dzn' : (sizeMode === 'by_bundle' ? 'Bndl' : (sizeMode === 'by_roll' ? 'Roll' : 'Ctn'))))));
+                if ((sizeMode === 'by_cartons' || sizeMode === 'by_box') && ppb > 1) {
                     if (unitMode === 'pcs' || unitMode === 'pc') {
                         stockDisplay = `${rawPieces} Pcs`;
                     } else {
                         var boxes = Math.floor(w.boxes !== undefined ? w.boxes : (rawPieces / ppb));
                         var loose = Math.round(rawPieces - (boxes * ppb));
                         if (boxes > 0 && loose > 0) {
-                            stockDisplay = `${boxes}.${loose} ${uLbl} (${rawPieces} Pcs)`;
+                            stockDisplay = `${boxes}.${loose} Ctn (${rawPieces} Pcs)`;
                         } else if (boxes > 0) {
-                            stockDisplay = `${boxes} ${uLbl} (${rawPieces} Pcs)`;
+                            stockDisplay = `${boxes} Ctn (${rawPieces} Pcs)`;
                         } else {
                             stockDisplay = `${loose} Pcs`;
                         }
@@ -965,16 +963,15 @@
 
             $('#modalStockList').html(html);
 
-            if (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(rowSizeMode) && rowPpb > 1) {
-                let uLbl = rowSizeMode === 'by_box' ? 'Box' : (rowSizeMode === 'by_exr' ? 'EXR' : (rowSizeMode === 'by_set' ? 'Set' : (rowSizeMode === 'by_pack' ? 'Pack' : (rowSizeMode === 'by_dozen' ? 'Dzn' : (rowSizeMode === 'by_bundle' ? 'Bndl' : (rowSizeMode === 'by_roll' ? 'Roll' : 'Ctn'))))));
+            if ((rowSizeMode === 'by_cartons' || rowSizeMode === 'by_box') && rowPpb > 1) {
                 var totalBoxes = Math.floor(totalPieces / rowPpb);
                 var totalLoose = Math.round(totalPieces - (totalBoxes * rowPpb));
                 if (unitMode === 'pcs' || unitMode === 'pc') {
                     $('#modalTotalStockBadge').text(`${totalPieces} Pcs`);
                 } else {
                     var totalDisp = (totalBoxes > 0 && totalLoose > 0) 
-                        ? `${totalBoxes}.${totalLoose} ${uLbl} (${totalPieces} Pcs)` 
-                        : (totalBoxes > 0 ? `${totalBoxes} ${uLbl} (${totalPieces} Pcs)` : `${totalLoose} Pcs`);
+                        ? `${totalBoxes}.${totalLoose} Ctn (${totalPieces} Pcs)` 
+                        : (totalBoxes > 0 ? `${totalBoxes} Ctn (${totalPieces} Pcs)` : `${totalLoose} Pcs`);
                     $('#modalTotalStockBadge').text(totalDisp);
                 }
             } else if (rowSizeMode === 'by_kg' && (unitMode === 'pcs' || unitMode === 'pc') && convFactor > 0) {
@@ -1042,7 +1039,7 @@
         let pcsDisplay = rawQty;
         let gross = 0;
 
-        if (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(sizeMode)) {
+        if (sizeMode === 'by_cartons' || sizeMode === 'by_box') {
             if (unitMode === 'pcs') {
                 // Selling in Pieces: unitPrice is price per piece
                 pcsDisplay = rawQty;
@@ -2187,7 +2184,7 @@
 
             const ppb = parseFloat(data.pieces_per_box) || 1;
             const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
-            if (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(data.size_mode)) {
+            if (data.size_mode === 'by_cartons' || data.size_mode === 'by_box') {
                 let cartonPrice = ppb > 1 ? (rate * ppb) : rate;
                 $row.find('.visible-price').val(unitMode === 'pcs' ? rate : cartonPrice);
                 $row.find('.price-per-piece').val(unitMode === 'pcs' ? rate : cartonPrice);
@@ -2232,7 +2229,7 @@
     function setupRowQtyToggle($row, sizeMode, variantUnit = null) {
         const $toggleBtn = $row.find('.qty-unit-toggle');
         const vUnitNorm = (variantUnit || '').toLowerCase().trim();
-        if (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(sizeMode)) {
+        if (sizeMode === 'by_cartons' || sizeMode === 'by_box') {
             const isPcs = (vUnitNorm === 'pcs' || vUnitNorm === 'pc' || vUnitNorm === 'piece');
             $toggleBtn.removeClass('d-none')
                       .attr('data-unit-mode', isPcs ? 'pcs' : 'ctn')
@@ -2408,7 +2405,7 @@
         const sizeMode = $row.data('size_mode') || $row.find('.size-mode-text').val();
         let currentMode = $btn.attr('data-unit-mode');
 
-        if (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(sizeMode)) {
+        if (sizeMode === 'by_cartons' || sizeMode === 'by_box') {
             const packQty = parseFloat($row.find('.pack-qty').val()) || 1;
             const $priceInp = $row.find('.visible-price');
             let curPrice = parseFloat($priceInp.val()) || 0;
@@ -2752,7 +2749,7 @@
             const sizeMode = $row.data('size_mode');
             const ppb = parseFloat($row.find('.pack-qty').val()) || 1;
 
-            if (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll', 'by_size'].includes(sizeMode) && ppb > 1 && val.includes('.')) {
+            if ((sizeMode === 'by_cartons' || sizeMode === 'by_box' || sizeMode === 'by_size') && ppb > 1 && val.includes('.')) {
                 const parts = val.split('.');
                 const boxes = parseInt(parts[0]) || 0;
                 const looseStr = parts[1];
@@ -2793,7 +2790,7 @@
                     const rowMode = $row.find('.price-mode-row-toggle').attr('data-mode') || 'retail';
 
                     let baseRate = newPrice;
-                    if (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(sizeMode)) {
+                    if (sizeMode === 'by_cartons' || sizeMode === 'by_box') {
                         baseRate = (unitMode === 'pcs' || packQty <= 1) ? newPrice : (newPrice / packQty);
                     } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
                         baseRate = (unitMode === 'gm') ? (newPrice * 1000) : newPrice;
@@ -2885,7 +2882,7 @@
             const packQty = parseFloat($row.find('.pack-qty').val()) || 1;
             const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
 
-            if (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(sizeMode)) {
+            if (sizeMode === 'by_cartons' || sizeMode === 'by_box') {
                 let cartonPrice = packQty > 1 ? (pieceRate * packQty) : pieceRate;
                 let finalPrice = (unitMode === 'pcs') ? pieceRate : cartonPrice;
                 $row.find('.visible-price').val(finalPrice % 1 === 0 ? finalPrice : finalPrice.toFixed(2));
@@ -4102,16 +4099,15 @@
                         </span>
                     `;
                 }
-            } else if (['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'].includes(whSizeMode) && whPpb > 1) {
-                let uLbl = whSizeMode === 'by_box' ? 'BOX' : (whSizeMode === 'by_exr' ? 'EXR' : (whSizeMode === 'by_set' ? 'SET' : (whSizeMode === 'by_pack' ? 'PACK' : (whSizeMode === 'by_dozen' ? 'DZN' : (whSizeMode === 'by_bundle' ? 'BNDL' : (whSizeMode === 'by_roll' ? 'ROLL' : 'CTN'))))));
-                if (uModeLower !== 'pcs' && uModeLower !== 'pc') {
+            } else if ((whSizeMode === 'by_cartons' || whSizeMode === 'by_box') && whPpb > 1) {
+                if (uModeLower === 'ctn') {
                     const boxes = Math.floor(wh.boxes !== undefined ? wh.boxes : (rawStock / whPpb));
                     const loose = rawStock % whPpb;
                     allocStock = boxes;
                     const ctnDisp = loose > 0 ? `${boxes}.${loose}` : boxes;
                     stockBadgeHtml = `
                         <span class="badge ${rawStock > 0 ? 'bg-success' : 'bg-danger'} text-white fw-bold px-2 py-1" style="font-size: 0.78rem;">
-                            ${ctnDisp} ${uLbl}
+                            ${ctnDisp} CTN
                         </span>
                         <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">(${rawStock} Pcs)</small>
                     `;

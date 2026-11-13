@@ -263,18 +263,12 @@ class ProductController extends Controller
                 'by_feet' => 'Ft',
                 'by_cartons' => 'Carton',
                 'by_box' => 'Box',
-                'by_exr' => 'EXR',
-                'by_set' => 'Set',
-                'by_pack' => 'Pack',
-                'by_dozen' => 'Dozen',
-                'by_bundle' => 'Bundle',
-                'by_roll' => 'Roll',
                 'by_size' => 'M²',
                 default => 'Pcs',
             };
 
             $stockDisplay = $stockPieces;
-            if ((in_array($p->size_mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll', 'by_size'])) && $ppb > 1) {
+            if (($p->size_mode === 'by_cartons' || $p->size_mode === 'by_box' || $p->size_mode === 'by_size') && $ppb > 1) {
                 $boxes = floor($stockPieces / $ppb);
                 $loose = $stockPieces % $ppb;
                 $stockDisplay = $loose > 0 ? "$boxes.$loose" : $boxes;
@@ -454,7 +448,7 @@ class ProductController extends Controller
                                 $itemPPB = (float) ($pItem->pieces_per_box > 0 ? $pItem->pieces_per_box : $vPpb);
                                 if ($itemPPB <= 0) $itemPPB = 1;
 
-                                if (in_array($pUnit, ['carton', 'ctn', 'box', 'exr', 'set', 'pack', 'dozen', 'dzn', 'bundle', 'roll'])) {
+                                if (in_array($pUnit, ['carton', 'ctn', 'box'])) {
                                     if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
                                         $pPieces = (((int) $pItem->boxes_qty) * $itemPPB) + ((int) $pItem->loose_qty);
                                     } else {
@@ -891,12 +885,6 @@ class ProductController extends Controller
             'by_feet' => 'Ft',
             'by_cartons' => 'Carton',
             'by_box' => 'Box',
-            'by_exr' => 'EXR',
-            'by_set' => 'Set',
-            'by_pack' => 'Pack',
-            'by_dozen' => 'Dozen',
-            'by_bundle' => 'Bundle',
-            'by_roll' => 'Roll',
             'by_size' => 'M²',
             default => 'Pcs',
         };
@@ -1221,18 +1209,11 @@ class ProductController extends Controller
                 'by_meter' => 'Mtr',
                 'by_feet' => 'Ft',
                 'by_cartons' => 'Carton',
-                'by_box' => 'Box',
-                'by_exr' => 'EXR',
-                'by_set' => 'Set',
-                'by_pack' => 'Pack',
-                'by_dozen' => 'Dozen',
-                'by_bundle' => 'Bundle',
-                'by_roll' => 'Roll',
                 'by_size' => 'M²',
                 default => 'Pcs',
             };
 
-            if ((in_array($product->size_mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll', 'by_size'])) && $ppb > 1) {
+            if (($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box' || $product->size_mode === 'by_size') && $ppb > 1) {
                 $boxes = floor($stockPieces / $ppb);
                 $loose = $stockPieces % $ppb;
                 $stockDisplay = $loose > 0 ? "{$boxes}.{$loose}" : "{$boxes}";
@@ -1623,7 +1604,7 @@ class ProductController extends Controller
             $purchasePricePerPiece = $m2PerPiece * $purchasePricePerM2;
             $purchasePricePerBox = $m2PerBox * $purchasePricePerM2;
 
-        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'])) {
+        } elseif ($mode === 'by_cartons' || $mode === 'by_box') {
             // By Cartons Mode
             $piecesPerBox = (int) $request->pieces_per_box;
             if ($piecesPerBox <= 0) $piecesPerBox = 1;
@@ -1782,7 +1763,7 @@ class ProductController extends Controller
                             if ($isBase === 1) {
                                 $variantStockSum += $vStock;
                             }
-                        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'])) {
+                        } elseif ($mode === 'by_cartons' || $mode === 'by_box') {
                             if ($isBase === 1 || $baseConvForCarton === null) {
                                 $baseConvForCarton = $vConvFactor;
                             }
@@ -2086,7 +2067,7 @@ class ProductController extends Controller
             $totalPrice = $totalStockQty * $salePricePerBox;
             $totalPurchasePrice = $totalStockQty * $purchasePricePerPiece;
 
-        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'])) {
+        } elseif ($mode === 'by_cartons' || $mode === 'by_box') {
             // By Cartons Mode
             $piecesPerBox = (int) $request->pieces_per_box;
             if ($piecesPerBox <= 0) $piecesPerBox = 1;
@@ -2211,7 +2192,7 @@ class ProductController extends Controller
                             if ($isBase === 1) {
                                 $variantStockSum += $vStock;
                             }
-                        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'])) {
+                        } elseif ($mode === 'by_cartons' || $mode === 'by_box') {
                             if ($isBase === 1 || $baseConvForCarton === null) {
                                 $baseConvForCarton = $vConvFactor;
                             }
@@ -2706,7 +2687,7 @@ class ProductController extends Controller
             'branch_id' => 'nullable',
             'unit' => 'nullable',
             'model' => 'nullable', // Made nullable
-            'size_mode' => 'required|in:by_size,by_cartons,by_box,by_pieces,by_kg,by_meter,by_gm,by_feet,by_ton,by_exr,by_set,by_pack,by_dozen,by_bundle,by_roll',
+            'size_mode' => 'required|in:by_size,by_cartons,by_box,by_pieces,by_kg,by_meter,by_gm,by_feet,by_ton',
             'purchase_discount_percent' => 'nullable|numeric|min:0|max:100',
             'sale_discount_percent' => 'nullable|numeric|min:0|max:100',
             'alert_quantity' => 'nullable|integer|min:0',
@@ -2725,7 +2706,7 @@ class ProductController extends Controller
                 'price_per_m2' => 'required|numeric|min:0', // Allowed 0 price
                 'purchase_price_per_m2' => 'required|numeric|min:0',
             ]);
-        } elseif (in_array($mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'])) {
+        } elseif ($mode === 'by_cartons' || $mode === 'by_box') {
             $rules = array_merge($rules, [
                 'pieces_per_box' => 'nullable|integer|min:1',
                 'boxes_quantity' => 'nullable|numeric|min:0',
@@ -2895,7 +2876,7 @@ class ProductController extends Controller
 
         foreach ($rawVariants as $idx => $v) {
             $vUnitName = $v['unit'] ?? ($product->unit->name ?? 'Pcs');
-            $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll']) || in_array(strtolower($vUnitName), ['carton', 'box', 'exr', 'set', 'pack', 'dozen', 'dzn', 'bundle', 'roll']));
+            $isCartonMode = ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box' || strtolower($vUnitName) === 'carton' || strtolower($vUnitName) === 'box');
             $vPpb = $ppb;
             if ($isCartonMode) {
                 $vConv = (float)($v['conv_factor'] ?? 0);
@@ -2921,7 +2902,7 @@ class ProductController extends Controller
                     $itemPPB = (float)($pItem->pieces_per_box > 0 ? $pItem->pieces_per_box : $vPpb);
                     if ($itemPPB <= 0) $itemPPB = 1;
 
-                    if (in_array($pUnit, ['carton', 'ctn', 'box', 'exr', 'set', 'pack', 'dozen', 'dzn', 'bundle', 'roll'])) {
+                    if (in_array($pUnit, ['carton', 'ctn', 'box'])) {
                         if (isset($pItem->boxes_qty) && ($pItem->boxes_qty > 0 || $pItem->loose_qty > 0)) {
                             $pPieces = (((int)$pItem->boxes_qty) * $itemPPB) + (int)$pItem->loose_qty;
                         } else {

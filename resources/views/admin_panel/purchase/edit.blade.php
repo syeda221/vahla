@@ -1399,9 +1399,7 @@
 
                     let unitName = data.unit_name || 'Pcs';
                     const ppb = parseFloat(data.pieces_per_box || data.ppb) || 1;
-                    const multiplierModes = ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'];
-                    const multiplierUnits = ['carton', 'ctn', 'box', 'exr', 'set', 'pack', 'dozen', 'dzn', 'bundle', 'roll'];
-                    const isCartonMode = (multiplierModes.includes(data.size_mode) || multiplierUnits.includes(unitName.toLowerCase()) || ppb > 1);
+                    const isCartonMode = (data.size_mode === 'by_cartons' || unitName.toLowerCase() === 'carton' || unitName.toLowerCase() === 'ctn' || ppb > 1);
 
                     let vUnit = data.unit_name || null;
                     if (data.variant_data) {
@@ -1413,15 +1411,14 @@
                     const vUnitNorm = (vUnit || '').toLowerCase().trim();
 
                     // Dynamic Unit & Style
-                    if (isCartonMode || multiplierUnits.includes(vUnitNorm)) {
-                        const targetUnit = (vUnit && vUnit.toLowerCase() !== 'pcs') ? vUnit : (data.unit_name && data.unit_name.toLowerCase() !== 'pcs' ? data.unit_name : 'Carton');
-                        unitName = targetUnit;
+                    if (isCartonMode || vUnitNorm === 'carton' || vUnitNorm === 'ctn') {
+                        unitName = 'Carton';
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-primary btn-outline-info')
                             .addClass('btn-outline-success')
-                            .attr('data-unit', unitName)
-                            .text(unitName);
-                        $row.find('.unit-input-val').val(unitName);
+                            .attr('data-unit', 'Carton')
+                            .text('Carton');
+                        $row.find('.unit-input-val').val('Carton');
                     } else if (data.size_mode === 'by_kg' || data.size_mode === 'by_gm') {
                         if (vUnitNorm === 'pcs' || vUnitNorm === 'pc' || vUnitNorm === 'piece') {
                             unitName = 'Pcs';

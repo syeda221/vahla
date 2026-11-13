@@ -71,7 +71,7 @@
                         </div>
 
                         @php
-                            $isCartonMode = ($stock->product && (in_array($stock->product->size_mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll'])));
+                            $isCartonMode = ($stock->product && ($stock->product->size_mode === 'by_cartons' || $stock->product->size_mode === 'by_box'));
                             $ppb = ($stock->product && $stock->product->pieces_per_box > 0) ? (float)$stock->product->pieces_per_box : 1;
                             $qtyVal = (float)$stock->total_pieces;
                             if ($isCartonMode && $ppb > 1) {

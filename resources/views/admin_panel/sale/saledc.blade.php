@@ -1020,28 +1020,18 @@
                                         } elseif ($sizeMode === 'by_pieces') {
                                             $wQty = $totalPieces;
                                             $wUnit = 'Pcs';
-                                        } elseif (in_array($sizeMode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll', 'by_size'])) {
+                                        } elseif ($sizeMode === 'by_cartons' || $sizeMode === 'by_size') {
                                             $boxes = floor($totalPieces / $piecesPerBox);
                                             $loosePieces = fmod($totalPieces, $piecesPerBox);
-                                            $unitLabel = match($sizeMode) {
-                                                'by_exr'    => 'EXR',
-                                                'by_set'    => 'Set',
-                                                'by_pack'   => 'Pack',
-                                                'by_dozen'  => 'Dzn',
-                                                'by_bundle' => 'Bndl',
-                                                'by_roll'   => 'Roll',
-                                                'by_box'    => 'Box',
-                                                default     => 'Ctn',
-                                            };
                                             if ($boxes > 0 && $loosePieces == 0) {
                                                 $wQty = $boxes;
-                                                $wUnit = $unitLabel;
+                                                $wUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
                                             } elseif ($boxes == 0 && $loosePieces > 0) {
                                                 $wQty = $loosePieces;
                                                 $wUnit = 'Pcs';
                                             } elseif ($boxes > 0 && $loosePieces > 0) {
                                                 $wQty = "{$boxes}.{$loosePieces}";
-                                                $wUnit = $unitLabel;
+                                                $wUnit = $sizeMode == 'by_cartons' ? 'Ctn' : 'Box';
                                             } else {
                                                 $wQty = $totalPieces;
                                                 $wUnit = 'Pcs';

@@ -293,26 +293,17 @@
                         } elseif ($sizeMode === 'by_pieces') {
                             $dispQty = $totalPieces;
                             $dispUnit = 'Pcs';
-                        } elseif (in_array($sizeMode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll', 'by_size'])) {
+                        } elseif ($sizeMode === 'by_cartons' || $sizeMode === 'by_size') {
                             $piecesPerBox = (int)$convFactor;
                             if ($piecesPerBox <= 0) $piecesPerBox = 1;
                             $boxes = floor($totalPieces / $piecesPerBox);
                             $loosePieces = fmod($totalPieces, $piecesPerBox);
 
-                            $cStr = match($sizeMode) {
-                                'by_exr'    => 'EXR',
-                                'by_set'    => 'Set',
-                                'by_pack'   => 'Pack',
-                                'by_dozen'  => 'Dzn',
-                                'by_bundle' => 'Bndl',
-                                'by_roll'   => 'Roll',
-                                'by_box'    => 'Box',
-                                default     => 'Ctn',
-                            };
-
                             if ($boxes > 0 && $loosePieces > 0) {
+                                $cStr = $sizeMode == 'by_cartons' ? 'Crtn' : 'Box';
                                 $qtyStr = "{$boxes} {$cStr} + {$loosePieces} Pc";
                             } elseif ($boxes > 0) {
+                                $cStr = $sizeMode == 'by_cartons' ? 'Cartons' : 'Boxes';
                                 $qtyStr = "{$boxes} {$cStr}";
                             } else {
                                 $qtyStr = "{$loosePieces} Pcs";

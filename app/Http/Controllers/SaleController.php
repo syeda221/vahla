@@ -1678,7 +1678,7 @@ class SaleController extends Controller
                     $loose = (float) ($request->loose_pieces[$index] ?? 0); // Legacy/Fallback
 
                     // Quantity Logic based on Size Mode
-                    if (in_array($product->size_mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll', 'by_size'])) {
+                    if ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box' || $product->size_mode === 'by_size') {
                         // For Carton/Size modes, Frontend sends 'total_pieces' (Calculated Pieces)
                         // and 'qty' contains "Box.Loose" string.
                         $reqTotal = (float) ($request->total_pieces[$index] ?? 0);
@@ -1713,7 +1713,7 @@ class SaleController extends Controller
                     // For measurement/unit modes (kg/meter/feet/pieces), qty stores the exact sold quantity
                     // in that variant's unit (e.g. 1.5 Mtr, 20 Ft, 50 Pcs), while total_pieces holds
                     // converted base units for warehouse stock deduction.
-                    if (in_array($product->size_mode, ['by_cartons', 'by_box', 'by_exr', 'by_set', 'by_pack', 'by_dozen', 'by_bundle', 'by_roll', 'by_size'])) {
+                    if (in_array($product->size_mode, ['by_cartons', 'by_box', 'by_size'])) {
                         $storedQtyBox = $ppb > 0 ? ($totalPieces / $ppb) : $totalPieces;
                     } else {
                         $rawSold = (float) ($quantities[$index] ?? 0);
