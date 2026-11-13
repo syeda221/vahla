@@ -585,10 +585,15 @@
             @endif
         </div>
 
-        @if(!empty($sale->comment))
+        @php
+            $recRemarks = [];
+            if (!empty($sale->reference)) $recRemarks[] = "Remarks: " . $sale->reference;
+            if (!empty($sale->comment) && $sale->comment !== $sale->reference) $recRemarks[] = $sale->comment;
+        @endphp
+        @if(count($recRemarks) > 0)
         <div style="margin-top: 8px; margin-bottom: 8px; padding: 4px 6px; border: 1px dashed #64748b; font-size: 11px; text-align: left; background: #fafafa;">
-            <strong>Note/Comment:</strong>
-            <div style="white-space: pre-line; margin-top: 2px;">{{ $sale->comment }}</div>
+            <strong>Remarks / Note:</strong>
+            <div style="white-space: pre-line; margin-top: 2px;">{{ implode("\n", $recRemarks) }}</div>
         </div>
         @endif
 
