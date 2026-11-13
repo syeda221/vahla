@@ -695,40 +695,22 @@
                                         </div>
                                         <div class="col-md-3">
                                             <label class="form-label-pro">Unit</label>
-                                            <div class="d-flex gap-1">
-                                                <select class="form-select form-control-pro form-select-pro fw-bold" name="size_mode" id="unit-dropdown">
-                                                    <optgroup label="Standard Units">
-                                                        <option value="by_pieces" data-unit-name="Pcs">Pcs</option>
-                                                        <option value="by_cartons" data-unit-name="Carton">Carton</option>
-                                                        <option value="by_box" data-unit-name="Box">Box</option>
-                                                        <option value="by_exr" data-unit-name="EXR">EXR (Set/Pack)</option>
-                                                        <option value="by_set" data-unit-name="Set">Set</option>
-                                                        <option value="by_pack" data-unit-name="Pack">Pack</option>
-                                                        <option value="by_dozen" data-unit-name="Dozen">Dozen</option>
-                                                        <option value="by_bundle" data-unit-name="Bundle">Bundle</option>
-                                                        <option value="by_roll" data-unit-name="Roll">Roll</option>
-                                                        <option value="by_meter" data-unit-name="Meter">Meter</option>
-                                                        <option value="by_feet" data-unit-name="Ft">Ft (Feet)</option>
-                                                        <option value="by_kg" data-unit-name="Kg">Kg</option>
-                                                        <option value="by_gm" data-unit-name="Gm">Gm</option>
-                                                        <option value="by_ton" data-unit-name="Ton">Ton</option>
-                                                    </optgroup>
-                                                    <optgroup label="Custom Units" id="dynamic-units-group">
-                                                        @if(isset($units))
-                                                            @foreach ($units as $u)
-                                                                @php
-                                                                    $uLow = strtolower(trim($u->name));
-                                                                    if (in_array($uLow, ['pcs', 'piece', 'carton', 'box', 'exr', 'set', 'pack', 'dozen', 'dzn', 'bundle', 'roll', 'meter', 'mtr', 'ft', 'feet', 'kg', 'kilogram', 'gm', 'ton'])) continue;
-                                                                @endphp
-                                                                <option value="by_custom_{{ $u->id }}" data-unit-id="{{ $u->id }}" data-unit-name="{{ $u->name }}">{{ $u->name }}</option>
-                                                            @endforeach
-                                                        @endif
-                                                    </optgroup>
-                                                </select>
-                                                <button type="button" class="btn btn-light border px-2 shadow-sm d-flex align-items-center justify-content-center" data-toggle="modal" data-target="#unitModal" data-bs-toggle="modal" data-bs-target="#unitModal" style="height: 40px; min-width: 38px;" title="Add Custom Unit">+</button>
-                                            </div>
-                                            <input type="hidden" name="unit_id" id="selected_unit_id" value="">
-                                            <input type="hidden" name="unit" id="selected_unit_name" value="">
+                                            <select class="form-select form-control-pro form-select-pro fw-bold" name="size_mode" id="unit-dropdown">
+                                                <option value="by_pieces">Pcs</option>
+                                                <option value="by_cartons">Carton</option>
+                                                <option value="by_box">Box</option>
+                                                <option value="by_exr">EXR (Set/Pack)</option>
+                                                <option value="by_set">Set</option>
+                                                <option value="by_pack">Pack</option>
+                                                <option value="by_dozen">Dozen</option>
+                                                <option value="by_bundle">Bundle</option>
+                                                <option value="by_roll">Roll</option>
+                                                <option value="by_meter">Meter</option>
+                                                <option value="by_feet">Ft (Feet)</option>
+                                                <option value="by_kg">Kg</option>
+                                                <option value="by_gm">Gm</option>
+                                                <option value="by_ton">Ton</option>
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
@@ -858,27 +840,6 @@
             </div>
         </div>
 
-        <div id="unitModal" class="modal fade" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-sm">
-                <div class="modal-content border-0 shadow-lg" style="border-radius: var(--radius-md);">
-                    <form action="{{ route('store.Unit') }}" method="POST">
-                        @csrf
-                        <div class="modal-header border-0 pb-0">
-                            <h6 class="modal-title fw-bold">New Custom Unit</h6>
-                            <button type="button" class="btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label class="form-label-pro">Unit Name / Title</label>
-                                <input type="text" name="name" class="form-control-pro" required placeholder="e.g. Bora, Peti, Strip, Pack">
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100 rounded-pill">Create Unit</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
         <div id="subcategoryModal" class="modal fade" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered modal-sm">
                 <div class="modal-content border-0 shadow-lg" style="border-radius: var(--radius-md);">
@@ -909,27 +870,6 @@
             </div>
         </div>
 
-        <div id="unitModal" class="modal fade" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-sm">
-                <div class="modal-content border-0 shadow-lg" style="border-radius: var(--radius-md);">
-                    <form action="{{ route('store.Unit') }}" method="POST">
-                        @csrf
-                        <div class="modal-header border-0 pb-0">
-                            <h6 class="modal-title fw-bold">New Custom Unit</h6>
-                            <button type="button" class="btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label class="form-label-pro">Unit Name / Title</label>
-                                <input type="text" name="name" class="form-control-pro" required placeholder="e.g. Bora, Peti, Strip, Pack">
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100 rounded-pill">Create Unit</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
         {{-- Brand Modal --}}
         <div id="brandModal" class="modal fade" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered modal-sm">
@@ -947,27 +887,6 @@
                                 <input type="text" name="name" class="form-control-pro" required placeholder="e.g. Johnson">
                             </div>
                             <button type="submit" class="btn btn-primary w-100 rounded-pill">Create Brand</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div id="unitModal" class="modal fade" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-sm">
-                <div class="modal-content border-0 shadow-lg" style="border-radius: var(--radius-md);">
-                    <form action="{{ route('store.Unit') }}" method="POST">
-                        @csrf
-                        <div class="modal-header border-0 pb-0">
-                            <h6 class="modal-title fw-bold">New Custom Unit</h6>
-                            <button type="button" class="btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label class="form-label-pro">Unit Name / Title</label>
-                                <input type="text" name="name" class="form-control-pro" required placeholder="e.g. Bora, Peti, Strip, Pack">
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100 rounded-pill">Create Unit</button>
                         </div>
                     </form>
                 </div>
@@ -1200,23 +1119,7 @@
                         headers: { 'X-Requested-With': 'XMLHttpRequest' },
                         success: function(res) {
                             if(res.success) {
-                                if (modalId === 'unitModal') {
-                                    const customVal = 'by_custom_' + res.id;
-                                    const opt = $('<option>', {
-                                        value: customVal,
-                                        text: res.name,
-                                        'data-unit-id': res.id,
-                                        'data-unit-name': res.name
-                                    });
-                                    let group = $('#dynamic-units-group');
-                                    if (!group.length) group = $(selectSelector);
-                                    group.append(opt);
-                                    $(selectSelector).val(customVal).trigger('change');
-                                    $('#selected_unit_id').val(res.id);
-                                    $('#selected_unit_name').val(res.name);
-                                } else {
-                                    $(selectSelector).append(new Option(res.name, res.id, true, true)).trigger('change');
-                                }
+                                $(selectSelector).append(new Option(res.name, res.id, true, true)).trigger('change');
                                 $('#' + modalId).modal('hide');
                                 form[0].reset();
                                 Swal.fire({icon: 'success', title: 'Added successfully', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500});
@@ -1235,7 +1138,6 @@
             handleQuickAdd('categoryModal', '#category-dropdown, #subcategoryModal select[name="category_id"]');
             handleQuickAdd('subcategoryModal', '#subcategory-dropdown');
             handleQuickAdd('brandModal', 'select[name="brand_id"]');
-            handleQuickAdd('unitModal', '#unit-dropdown', true);
 
             const enableVariantsBtn = document.getElementById('enableVariantsBtn');
             const variantsContainer = document.getElementById('variantsContainer');
@@ -1747,9 +1649,7 @@
 
                 const headerEl = document.getElementById('convFactorHeader');
                 if (headerEl) {
-                    if (isCustom) {
-                        headerEl.textContent = 'Pcs / ' + customUnitName;
-                    } else if (mode === 'by_exr') {
+                    if (mode === 'by_exr') {
                         headerEl.textContent = 'Pcs / EXR';
                     } else if (mode === 'by_set') {
                         headerEl.textContent = 'Pcs / Set';

@@ -196,20 +196,6 @@
                                 <option value="by_kg" data-unit-name="Kg">Kg</option>
                                 <option value="by_gm" data-unit-name="Gm">Gm</option>
                                 <option value="by_ton" data-unit-name="Ton">Ton</option>
-                                @php
-                                    $allDbUnits = \App\Models\Unit::orderBy('name')->get();
-                                @endphp
-                                @if($allDbUnits->count())
-                                    <optgroup label="Custom Units">
-                                        @foreach($allDbUnits as $dbU)
-                                            @php
-                                                $uLow = strtolower(trim($dbU->name));
-                                                if (in_array($uLow, ['pcs', 'piece', 'carton', 'box', 'exr', 'set', 'pack', 'dozen', 'dzn', 'bundle', 'roll', 'meter', 'mtr', 'ft', 'feet', 'kg', 'kilogram', 'gm', 'ton'])) continue;
-                                            @endphp
-                                            <option value="by_custom_{{ $dbU->id }}" data-unit-name="{{ $dbU->name }}">{{ $dbU->name }}</option>
-                                        @endforeach
-                                    </optgroup>
-                                @endif
                             </select>
                             <input type="hidden" name="unit" id="qap_unit_text" value="Pcs">
                         </div>

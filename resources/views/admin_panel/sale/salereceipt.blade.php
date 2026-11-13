@@ -386,8 +386,7 @@
                             $boxes = floor($totalPieces / $piecesPerBox);
                             $loose = fmod($totalPieces, $piecesPerBox);
 
-                            $customUnit = !empty($item['unit']) && !in_array(strtolower($item['unit']), ['pcs', 'piece']) ? ucfirst($item['unit']) : '';
-                            $unitLabel = $customUnit ?: match($sizeMode) {
+                            $unitLabel = match($sizeMode) {
                                 'by_exr'    => 'EXR',
                                 'by_set'    => 'Set',
                                 'by_pack'   => 'Pack',
