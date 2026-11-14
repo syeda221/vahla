@@ -1111,18 +1111,17 @@
                 </div>
 
                 @php
-                    $dcRemarksList = [];
-                    if (!empty($sale->reference)) $dcRemarksList[] = $sale->reference;
-                    if (!empty($sale->comment) && $sale->comment !== $sale->reference) $dcRemarksList[] = $sale->comment;
+                    $dcCommentList = [];
+                    if (!empty($sale->comment)) $dcCommentList[] = $sale->comment;
                     if (!empty($linkedDcs)) {
-                        $linkedRem = $linkedDcs->pluck('remarks')->filter()->implode(', ');
-                        if (!empty($linkedRem) && !in_array($linkedRem, $dcRemarksList)) $dcRemarksList[] = $linkedRem;
+                        $linkedComms = $linkedDcs->pluck('comment')->filter()->implode(', ');
+                        if (!empty($linkedComms) && !in_array($linkedComms, $dcCommentList)) $dcCommentList[] = $linkedComms;
                     }
-                    $dcCommentToPrint = implode(" | ", $dcRemarksList);
+                    $dcCommentToPrint = implode(" | ", $dcCommentList);
                 @endphp
                 @if(!empty($dcCommentToPrint) && $loop->last)
                 <div style="margin-top: 6px; margin-bottom: 6px; padding: 5px 8px; background: rgba(224, 242, 254, 0.45); border: 1px dashed var(--pad-border); border-radius: 4px; font-size: 9.5px;">
-                    <strong>Remarks / Comments:</strong> {{ $dcCommentToPrint }}
+                    <strong>Comments / Notes:</strong> {{ $dcCommentToPrint }}
                 </div>
                 @endif
 

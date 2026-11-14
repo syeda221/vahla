@@ -321,7 +321,7 @@
                 </div>
                 @if(!empty($sale->reference))
                 <div class="meta-row mt-1">
-                    <div class="meta-label" style="font-weight: bold;">Remarks:</div>
+                    <div class="meta-label" style="font-weight: bold; width: 70px;">Remarks:</div>
                     <div class="meta-value" style="color: #1e40af; font-weight: 600;">{{ $sale->reference }}</div>
                 </div>
                 @endif
@@ -476,20 +476,11 @@
             </tbody>
         </table>
 
-        <!-- Special Notes / Remarks -->
-        @php
-            $displayRemarks = [];
-            if (!empty($sale->reference)) {
-                $displayRemarks[] = "Remarks: " . $sale->reference;
-            }
-            if (!empty($sale->comment) && $sale->comment !== $sale->reference) {
-                $displayRemarks[] = $sale->comment;
-            }
-        @endphp
-        @if(count($displayRemarks) > 0)
+        <!-- Special Notes / Comments -->
+        @if(!empty($sale->comment))
         <div style="margin-top: 14px; margin-bottom: 8px; padding: 7px 12px; background: #f8fafc; border: 1px dashed #94a3b8; border-radius: 6px; font-size: 11px;">
-            <strong style="color: #1e293b;"><i class="fa-solid fa-comment-dots me-1"></i> Remarks / Notes:</strong>
-            <div style="color: #334155; margin-top: 3px; font-size: 11.5px; white-space: pre-line;">{{ implode("\n", $displayRemarks) }}</div>
+            <strong style="color: #1e293b;"><i class="fa-solid fa-comment-dots me-1"></i> Comments / Notes:</strong>
+            <div style="color: #334155; margin-top: 3px; font-size: 11.5px; white-space: pre-line;">{{ $sale->comment }}</div>
         </div>
         @endif
 

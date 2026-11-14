@@ -1107,7 +1107,7 @@
                 </div>
 
                 @php
-                    $challanComment = $dc->comment ?: ($dc->remarks ?: optional($dc->sale)->comment);
+                    $challanComment = !empty($dc->comment) ? $dc->comment : (!empty(optional($dc->sale)->comment) ? optional($dc->sale)->comment : "");
                 @endphp
                 @if(!empty($challanComment) && $loop->last)
                 <div style="margin-top: 6px; margin-bottom: 6px; padding: 5px 8px; background: rgba(224, 242, 254, 0.45); border: 1px dashed var(--pad-border); border-radius: 4px; font-size: 9.5px;">
