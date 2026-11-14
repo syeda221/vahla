@@ -130,6 +130,9 @@
         <div class="company-name">{{ \App\Models\Setting::get('company_name', 'prowave technogies') }}</div>
         <div class="sub-header">{{ \App\Models\Setting::get('company_address', 'Hyderabad') }}</div>
         <div class="sub-header">{{ \App\Models\Setting::get('company_phone', '0327-9226901') }}</div>
+        @if(\App\Models\Setting::get('company_ntn'))
+            <div class="sub-header">NTN: {{ \App\Models\Setting::get('company_ntn') }}</div>
+        @endif
     </div>
 
     <div class="divider"></div>

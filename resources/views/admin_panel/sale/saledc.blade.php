@@ -889,6 +889,12 @@
                                 <i class="fa-solid fa-envelope" style="color: #0ea5e9; margin-left: 5px;"></i>
                             </div>
                             @endif
+                            @if(\App\Models\Setting::get('company_ntn'))
+                            <div class="contact-line" style="margin-top: 1px;">
+                                <span dir="ltr"><strong>NTN:</strong> {{ \App\Models\Setting::get('company_ntn') }}</span>
+                                <i class="fa-solid fa-id-card" style="color: #0ea5e9; margin-left: 5px;"></i>
+                            </div>
+                            @endif
                         </div>
                     </div>
 

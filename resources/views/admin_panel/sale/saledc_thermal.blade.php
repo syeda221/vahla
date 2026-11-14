@@ -207,6 +207,9 @@
         <div class="company-info">
             <div>{{ \App\Models\Setting::get('company_address', 'Hyderabad') }}</div>
             <div>Ph: {{ \App\Models\Setting::get('company_phone', '0327-9226901') }}</div>
+            @if(\App\Models\Setting::get('company_ntn'))
+                <div>NTN: {{ \App\Models\Setting::get('company_ntn') }}</div>
+            @endif
         </div>
 
         <div class="dc-title">DELIVERY CHALLAN</div>

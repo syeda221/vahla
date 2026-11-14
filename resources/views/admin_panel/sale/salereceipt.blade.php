@@ -271,6 +271,9 @@
         <div class="company-info">
             <div>{{ \App\Models\Setting::get('company_address', 'Hyderabad') }}</div>
             <div>Ph: {{ \App\Models\Setting::get('company_phone', '0327-9226901') }}</div>
+            @if(\App\Models\Setting::get('company_ntn'))
+                <div>NTN: {{ \App\Models\Setting::get('company_ntn') }}</div>
+            @endif
         </div>
         @if(\App\Models\Setting::get('facebook_link') || \App\Models\Setting::get('tiktok_link') || \App\Models\Setting::get('instagram_link') || \App\Models\Setting::get('website_link'))
         <div style="text-align: left; font-size: 10px; line-height: 1.4; word-wrap: break-word; overflow-wrap: break-word; margin-top: 4px;">

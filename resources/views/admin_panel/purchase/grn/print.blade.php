@@ -91,8 +91,11 @@
                 <span class="badge bg-primary fs-6 mt-1 font-monospace">{{ $grn->grn_number }}</span>
             </div>
             <div class="text-end">
-                <h5 class="fw-bold text-primary mb-1">VAHLA TRADERS</h5>
+                <h5 class="fw-bold text-primary mb-1">{{ \App\Models\Setting::get('company_name', 'VAHLA TRADERS') }}</h5>
                 <p class="text-muted small mb-0">Warehouse Inward Receiving Slip</p>
+                @if(\App\Models\Setting::get('company_ntn'))
+                    <small class="text-muted d-block"><strong>NTN:</strong> {{ \App\Models\Setting::get('company_ntn') }}</small>
+                @endif
             </div>
         </div>
 

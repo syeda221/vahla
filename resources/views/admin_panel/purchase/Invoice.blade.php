@@ -436,6 +436,9 @@
                     @if(\App\Models\Setting::get('company_phone'))
                         <div><i class="bi bi-telephone me-1 text-muted"></i>{{ \App\Models\Setting::get('company_phone') }}</div>
                     @endif
+                    @if(\App\Models\Setting::get('company_ntn'))
+                        <div><i class="bi bi-card-heading me-1 text-muted"></i><strong>NTN:</strong> {{ \App\Models\Setting::get('company_ntn') }}</div>
+                    @endif
                 </div>
             </div>
             <div class="invoice-badge-wrap">
