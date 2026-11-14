@@ -66,7 +66,26 @@
                                 <!-- Company Tab -->
                                 <div class="tab-pane fade show active" id="company" role="tabpanel">
                                     @if (isset($settings['company']))
-                                        @foreach ($settings['company'] as $setting)
+                                        @php
+                                            $orderedCompany = collect($settings['company'])->sortBy(function($item) {
+                                                $priority = [
+                                                    'company_name' => 1,
+                                                    'company_ntn' => 2,
+                                                    'company_phone' => 3,
+                                                    'company_email' => 4,
+                                                    'company_address' => 5,
+                                                    'deals_in' => 6,
+                                                    'currency_symbol' => 7,
+                                                    'company_logo' => 8,
+                                                    'facebook_link' => 9,
+                                                    'tiktok_link' => 10,
+                                                    'instagram_link' => 11,
+                                                    'website_link' => 12,
+                                                ];
+                                                return $priority[$item['key']] ?? 99;
+                                            });
+                                        @endphp
+                                        @foreach ($orderedCompany as $setting)
                                             <div class="form-group">
                                                 <label>{{ $setting['label'] }}</label>
                                                 @if ($setting['type'] === 'text')

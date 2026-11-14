@@ -297,6 +297,12 @@
                     <i class="fa-solid fa-envelope"></i>
                 </div>
                 @endif
+                @if(\App\Models\Setting::get('company_ntn'))
+                <div class="contact-line">
+                    <span dir="ltr"><strong>NTN:</strong> {{ \App\Models\Setting::get('company_ntn') }}</span>
+                    <i class="fa-solid fa-id-card"></i>
+                </div>
+                @endif
             </div>
         </div>
 

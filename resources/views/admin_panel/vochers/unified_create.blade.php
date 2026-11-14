@@ -1231,22 +1231,20 @@
         function initSelect2() {
             var $active = $('.voucher-form-section.active');
             $active.find('.select2-account, .select2-vendor, .select2-customer, .select2-cat').each(function() {
-                if ($(this).hasClass('select2-hidden-accessible')) {
-                    $(this).select2('destroy');
+                if (!$(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2({ width: '100%' });
                 }
-                $(this).select2({ width: '100%' });
             });
 
             $active.find('.select2-multi').each(function() {
-                if ($(this).hasClass('select2-hidden-accessible')) {
-                    $(this).select2('destroy');
+                if (!$(this).hasClass('select2-hidden-accessible')) {
+                    var ph = $(this).data('placeholder') || 'Choose options...';
+                    $(this).select2({
+                        width: '100%',
+                        placeholder: ph,
+                        allowClear: true
+                    });
                 }
-                var ph = $(this).data('placeholder') || 'Choose options...';
-                $(this).select2({
-                    width: '100%',
-                    placeholder: ph,
-                    allowClear: true
-                });
             });
         }
 
@@ -1505,8 +1503,17 @@
         $(document).on('input', '#expenseTable .exp-amount', calcExpenseTotal);
 
         $('.add-expense-row').on('click', function() {
-            var options = $('#expenseTable tbody tr:first select.rowAccountSub').html();
-            var row = `<tr>
+            var $firstSelect = $('#expenseTable tbody tr:first select.rowAccountSub');
+            var options = '<option value="">Select Expense Category</option>';
+            $firstSelect.find('option').each(function() {
+                var val = $(this).val();
+                var txt = $(this).text();
+                if (val !== '' && val !== null) {
+                    options += '<option value="' + val + '">' + txt + '</option>';
+                }
+            });
+
+            var $row = $(`<tr>
                 <td>
                     <select name="row_account_id[]" class="form-select rowAccountSub select2-cat" required>
                         ${options}
@@ -1516,9 +1523,9 @@
                 </td>
                 <td><input name="amount[]" type="number" step="0.01" class="form-control text-end exp-amount" placeholder="0.00" required></td>
                 <td><button type="button" class="btn btn-outline-danger btn-sm removeRow"><i class="fas fa-trash"></i></button></td>
-            </tr>`;
-            $('#expenseTable tbody').append(row);
-            initSelect2();
+            </tr>`);
+            $('#expenseTable tbody').append($row);
+            $row.find('select.select2-cat').select2({ width: '100%' });
         });
 
         $(document).on('click', '.removeRow', function() {
@@ -1545,7 +1552,10 @@
                 success: function(resp) {
                     var catName = $form.find('input[name="name"]').val();
                     var catId = resp.id || (resp.category ? resp.category.id : '');
-                    $('.rowAccountSub').append('<option value="' + catId + '">' + catName + '</option>');
+                    $('.rowAccountSub').each(function() {
+                        $(this).append(new Option(catName, catId, false, false));
+                        $(this).trigger('change.select2');
+                    });
                     $('#expenseCategoryModal').modal('hide');
                     $form[0].reset();
                     Swal.fire({ icon: 'success', title: 'Added!', text: 'Expense category created successfully.', timer: 1500, showConfirmButton: false });

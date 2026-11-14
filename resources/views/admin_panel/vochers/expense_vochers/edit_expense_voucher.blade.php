@@ -600,7 +600,7 @@
                 $elem.select2({
                     placeholder: "-- Select Category --",
                     allowClear: true,
-                    width: 'resolve'
+                    width: '100%'
                 });
             }
 
@@ -704,14 +704,23 @@
 
             // Add Row
             $('#addNewRow').on('click', function() {
-                let optionsHtml = $('.rowAccountCategory').first().html();
+                let $firstSelect = $('.rowAccountCategory').first();
+                let cleanOptions = '<option value="" disabled selected>-- Select Category --</option>';
+                $firstSelect.find('option').each(function() {
+                    let val = $(this).val();
+                    let txt = $(this).text();
+                    if (val !== '' && val !== null) {
+                        cleanOptions += `<option value="${val}">${txt}</option>`;
+                    }
+                });
+
                 let $newRow = $(`
                 <tr>
                     <td class="row-number">1</td>
                     <td>
                         <div class="d-flex align-items-center gap-1">
                             <select name="row_account_id[]" class="cell-input rowAccountCategory" required>
-                                ${optionsHtml}
+                                ${cleanOptions}
                             </select>
                             <a href="javascript:void(0)" data-toggle="modal" data-target="#newExpenseCategoryModal" class="btn-mini-add" title="Quick Add Category">
                                 <i class="bi bi-plus-lg"></i>
@@ -732,7 +741,6 @@
                 `);
                 $('#voucherTable tbody').append($newRow);
                 let $catSelect = $newRow.find('.rowAccountCategory');
-                $catSelect.val('');
                 initCategorySelect2($catSelect);
                 updateRowIndices();
             });
@@ -778,12 +786,12 @@
                             $('#newExpenseCategoryForm')[0].reset();
                             
                             let newCat = response.category;
-                            let newOption = new Option(newCat.name, newCat.id, false, false);
                             $('.rowAccountCategory').each(function() {
-                                $(this).append(newOption.cloneNode(true));
+                                $(this).append(new Option(newCat.name, newCat.id, false, false));
                                 if (!$(this).val()) {
-                                    $(this).val(newCat.id).trigger('change');
+                                    $(this).val(newCat.id);
                                 }
+                                $(this).trigger('change.select2');
                             });
                         } else {
                             Swal.fire('Error', response.message || 'Failed to create Category.', 'error');
