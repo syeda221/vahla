@@ -10,134 +10,33 @@ use App\Models\ProductBooking;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\SaleReturn;
+use App\Models\DeliveryChallan;
+use App\Models\DeliveryChallanItem;
 use App\Models\Stock;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class SaleController extends Controller
 {
-    public function index(Request $request)
+    private function applySalesFilters($query, Request $request, $ignoreStatus = false)
     {
-        // ========================================================
-        // PERSISTENT SALES FILTER PREFERENCES (DB + Cookie + Session)
-        // Survives re-login, Edit Sale redirect, Add Sale redirect
-        // ========================================================
-        $userId = auth()->id();
-        $prefKey = $userId ? "sale_filter_prefs_user_{$userId}" : null;
-
-        if ($request->has('reset') || $request->has('clear_filter')) {
-            // User explicitly reset/cleared filters
-            session()->forget('sale_filter_prefs');
-            \Illuminate\Support\Facades\Cookie::queue(\Illuminate\Support\Facades\Cookie::forget('sales_filter_prefs'));
-            if ($prefKey) {
-                try {
-                    \Illuminate\Support\Facades\DB::table('settings')->where('key', $prefKey)->delete();
-                } catch (\Exception $e) {}
-            }
-            // Strip filter parameters from current request
-            $request->request->remove('from_date');
-            $request->request->remove('to_date');
-            $request->request->remove('customer_id');
-            $request->request->remove('customer_type');
-            $request->request->remove('zone_id');
-            $request->request->remove('bill_no');
-            $request->request->remove('invoice_no');
-            $request->request->remove('reference');
-            $request->request->remove('status');
-            $request->request->remove('quick_filter');
-            $request->query->remove('from_date');
-            $request->query->remove('to_date');
-            $request->query->remove('customer_id');
-            $request->query->remove('customer_type');
-            $request->query->remove('zone_id');
-            $request->query->remove('bill_no');
-            $request->query->remove('invoice_no');
-            $request->query->remove('reference');
-            $request->query->remove('status');
-            $request->query->remove('quick_filter');
-        } else {
-            $filterFields = ['from_date', 'to_date', 'customer_id', 'customer_type', 'zone_id', 'bill_no', 'invoice_no', 'reference', 'status', 'quick_filter'];
-
-            $isExplicitFilterAction = $request->ajax() || $request->hasAny(['from_date', 'to_date', 'customer_id', 'customer_type', 'zone_id', 'bill_no', 'reference', 'quick_filter']);
-
-            if ($isExplicitFilterAction) {
-                // User actively applied/changed a filter: save to Session, Cookie (1 yr) & DB settings
-                $activePrefs = [];
-                foreach ($filterFields as $f) {
-                    if ($request->filled($f) && $request->input($f) !== 'all') {
-                        $activePrefs[$f] = $request->input($f);
-                    }
-                }
-
-                if (!empty($activePrefs)) {
-                    session(['sale_filter_prefs' => $activePrefs]);
-                    \Illuminate\Support\Facades\Cookie::queue('sales_filter_prefs', json_encode($activePrefs), 60 * 24 * 365);
-                    if ($prefKey) {
-                        try {
-                            \Illuminate\Support\Facades\DB::table('settings')->updateOrInsert(
-                                ['key' => $prefKey],
-                                [
-                                    'value' => json_encode($activePrefs),
-                                    'type' => 'json',
-                                    'group' => 'user_preference',
-                                    'label' => 'Sales Filter Preferences',
-                                    'description' => 'Persistent filters for Sales Management screen',
-                                    'updated_at' => now(),
-                                ]
-                            );
-                        } catch (\Exception $e) {}
-                    }
-                } else {
-                    // All filters cleared in form
-                    session()->forget('sale_filter_prefs');
-                    \Illuminate\Support\Facades\Cookie::queue(\Illuminate\Support\Facades\Cookie::forget('sales_filter_prefs'));
-                    if ($prefKey) {
-                        try {
-                            \Illuminate\Support\Facades\DB::table('settings')->where('key', $prefKey)->delete();
-                        } catch (\Exception $e) {}
-                    }
-                }
-            } else {
-                // Plain navigation (visiting /sales directly or redirected after Add Sale, Edit Sale, or fresh login)
-                // Load saved preferences: Session -> Cookie -> DB
-                $savedPrefs = session('sale_filter_prefs');
-
-                if (empty($savedPrefs) && $request->hasCookie('sales_filter_prefs')) {
-                    $cVal = $request->cookie('sales_filter_prefs');
-                    $decoded = is_string($cVal) ? json_decode($cVal, true) : null;
-                    if (is_array($decoded) && !empty($decoded)) {
-                        $savedPrefs = $decoded;
-                    }
-                }
-
-                if (empty($savedPrefs) && $prefKey) {
-                    try {
-                        $dbVal = \Illuminate\Support\Facades\DB::table('settings')->where('key', $prefKey)->value('value');
-                        if ($dbVal) {
-                            $decoded = is_string($dbVal) ? json_decode($dbVal, true) : null;
-                            if (is_array($decoded) && !empty($decoded)) {
-                                $savedPrefs = $decoded;
-                            }
-                        }
-                    } catch (\Exception $e) {}
-                }
-
-                if (!empty($savedPrefs) && is_array($savedPrefs)) {
-                    session(['sale_filter_prefs' => $savedPrefs]);
-                    \Illuminate\Support\Facades\Cookie::queue('sales_filter_prefs', json_encode($savedPrefs), 60 * 24 * 365);
-                    $request->merge($savedPrefs);
-                }
-            }
-        }
-
-        $query = Sale::with(['customer_relation', 'items.product', 'returns.items'])
-            ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned']);
-
         // Apply Status Filter
-        if ($request->has('status') && $request->status != 'all') {
-            $query->where('sale_status', $request->status);
+        if (!$ignoreStatus && $request->has('status') && $request->status != 'all') {
+            if ($request->status === 'returned') {
+                $query->where(function($q) {
+                    $q->whereIn('sale_status', ['returned', '1', 1])
+                      ->orWhereHas('returns', function($rq) {
+                          $rq->whereIn('status', ['posted', 'approved', 'completed', 'returned'])
+                             ->orWhereNull('status');
+                      });
+                });
+            } else {
+                $query->where('sale_status', $request->status);
+            }
         }
 
         // Helper for flexible date parsing
@@ -185,13 +84,31 @@ class SaleController extends Controller
             $query->where(function ($q) use ($billNo) {
                 $q->where('invoice_no', 'like', "%{$billNo}%")
                   ->orWhere('reference', 'like', "%{$billNo}%")
-                  ->orWhere('id', 'like', "%{$billNo}%");
+                  ->orWhere('id', 'like', "%{$billNo}%")
+                  ->orWhereHas('deliveryChallans', function($dq) use ($billNo) {
+                      $dq->where('reference_no', 'like', "%{$billNo}%");
+                  });
             });
         }
 
-        // Apply M.Bill # (Reference) Filter
+        // Apply Ref No / M.Bill # (Reference) Filter
         if ($request->filled('reference')) {
-            $query->where('reference', 'like', "%{$request->reference}%");
+            $ref = trim($request->reference);
+            $query->where(function($q) use ($ref) {
+                $q->where('reference', 'like', "%{$ref}%")
+                  ->orWhereHas('deliveryChallans', function($dq) use ($ref) {
+                      $dq->where('reference_no', 'like', "%{$ref}%");
+                  })
+                  ->orWhereHas('quotation', function($qq) use ($ref) {
+                      $qq->where('reference', 'like', "%{$ref}%");
+                  })
+                  ->orWhereIn('id', function($sub) use ($ref) {
+                      $sub->select('invoice_id')
+                          ->from('delivery_challans')
+                          ->whereNotNull('invoice_id')
+                          ->where('reference_no', 'like', "%{$ref}%");
+                  });
+            });
         }
 
         // Apply Customer Filter
@@ -199,570 +116,63 @@ class SaleController extends Controller
             $query->where('customer_id', $request->customer_id);
         }
 
-        // Apply Customer Type Filter
-        if ($request->filled('customer_type')) {
-            $cType = trim($request->customer_type);
-            $query->whereHas('customer_relation', function($q) use ($cType) {
-                $q->where(function($sub) use ($cType) {
-                    $sub->where('customer_type', $cType)
-                        ->orWhere('customer_type', 'like', "%{$cType}%");
-                });
-            });
-        }
-
-        // Apply Zone Filter
-        if ($request->filled('zone_id')) {
-            $query->whereHas('customer_relation', function($q) use ($request) {
-                $q->where('zone', $request->zone_id);
-            });
-        }
-
-        // Order By (Most recent / newest on top)
+        // Order By
         $orderBy = $request->input('order_by', 'id');
         if ($orderBy === 'invoice_no') {
             $query->orderBy('invoice_no', 'desc')->orderBy('id', 'desc');
         } else {
             $query->orderBy('id', 'desc');
         }
+    }
 
-        $sales = $query->get();
-
-        // Calculate actual net amount, gross amount, inline discounts, and actual sold qty per sale (excluding returns)
-        $sales->each(function ($sale) {
-            $isExchange = \Illuminate\Support\Str::startsWith($sale->reference, 'Exchange for');
-
-            // Sum of returned net amounts from sale_returns
-            $returnedAmount = $sale->returns ? (float) $sale->returns->sum('net_amount') : 0;
-            $sale->total_returned = $returnedAmount;
-
-            // Sum of returned quantity (pieces)
-            $returnedQty = 0;
-            if ($sale->returns && $sale->returns->count() > 0) {
-                foreach ($sale->returns as $ret) {
-                    if ($ret->items) {
-                        $returnedQty += (float) $ret->items->sum('qty');
-                    }
-                }
-            }
-            $sale->returned_qty = $returnedQty;
-
-            $saleBonus = 0;
-            $saleBonusAmount = 0;
-            $saleCogs = 0;
-            if ($sale->items && $sale->items->count() > 0) {
-                foreach ($sale->items as $item) {
-                    $bQty = (float)($item->bonus_qty ?? 0);
-                    $vData = null;
-                    if (!empty($item->color)) {
-                        $b64 = base64_decode($item->color, true);
-                        $vData = ($b64 !== false) ? json_decode($b64, true) : json_decode($item->color, true);
-                    }
-                    if ($bQty <= 0 && is_array($vData) && !empty($vData['bonus']) && is_numeric($vData['bonus'])) {
-                        $bQty = (float)$vData['bonus'];
-                    }
-
-                    // Base Price (purch_price / purchase_price / base_price)
-                    $basePrice = 0;
-                    if (!empty($item->purchase_price) && (float)$item->purchase_price > 0) {
-                        $basePrice = (float)$item->purchase_price;
-                    } elseif (is_array($vData) && isset($vData['purch_price']) && is_numeric($vData['purch_price']) && (float)$vData['purch_price'] > 0) {
-                        $basePrice = (float)$vData['purch_price'];
-                    } elseif (is_array($vData) && isset($vData['purchase_price']) && is_numeric($vData['purchase_price']) && (float)$vData['purchase_price'] > 0) {
-                        $basePrice = (float)$vData['purchase_price'];
-                    } elseif (is_array($vData) && isset($vData['base_price']) && is_numeric($vData['base_price']) && (float)$vData['base_price'] > 0) {
-                        $basePrice = (float)$vData['base_price'];
-                    } elseif ($item->product) {
-                        if (!empty($item->product->color)) {
-                            $prodVariants = json_decode($item->product->color, true);
-                            if (is_array($prodVariants)) {
-                                $matchedVar = null;
-                                if (!empty($vData['barcode'])) {
-                                    $matchedVar = collect($prodVariants)->firstWhere('barcode', $vData['barcode']);
-                                }
-                                if (!$matchedVar && !empty($vData['name'])) {
-                                    $matchedVar = collect($prodVariants)->firstWhere('name', $vData['name']);
-                                }
-                                if (!$matchedVar && count($prodVariants) === 1) {
-                                    $matchedVar = $prodVariants[0];
-                                }
-                                if ($matchedVar && isset($matchedVar['purch_price']) && (float)$matchedVar['purch_price'] > 0) {
-                                    $basePrice = (float)$matchedVar['purch_price'];
-                                } elseif ($matchedVar && isset($matchedVar['purchase_price']) && (float)$matchedVar['purchase_price'] > 0) {
-                                    $basePrice = (float)$matchedVar['purchase_price'];
-                                }
-                            }
-                        }
-                        if ($basePrice <= 0 && (float)($item->product->purchase_price_per_piece ?? 0) > 0) {
-                            $basePrice = (float)$item->product->purchase_price_per_piece;
-                        } elseif ($basePrice <= 0 && (float)($item->product->purchase_price_per_box ?? 0) > 0) {
-                            $basePrice = (float)$item->product->purchase_price_per_box;
-                        }
-                    }
-
-                    // Fallback to sale price if base price is not defined anywhere
-                    if ($basePrice <= 0) {
-                        $basePrice = (float)($item->price ?? 0);
-                        if ($basePrice <= 0 && is_array($vData) && !empty($vData['sale_price']) && is_numeric($vData['sale_price'])) {
-                            $basePrice = (float)$vData['sale_price'];
-                        }
-                        if ($basePrice <= 0 && $item->product) {
-                            $basePrice = (float)($item->product->sale_price_per_piece ?? 0);
-                        }
-                    }
-
-                    $saleBonus += $bQty;
-                    $saleBonusAmount += ($bQty * $basePrice);
-
-                    $rawTotal = (float)($item->total_pieces ?? 0);
-                    $rawBilled = (float)($item->qty ?? 0);
-                    if ($rawTotal >= ($rawBilled + $bQty) && $rawTotal > 0) {
-                        $soldPieces = $rawTotal - $bQty;
-                    } else {
-                        $soldPieces = $rawBilled > 0 ? $rawBilled : max(0, $rawTotal - $bQty);
-                    }
-                    $saleCogs += ($soldPieces * $basePrice);
-                }
-            }
-            $sale->bonus_qty = $saleBonus;
-            $sale->bonus_amount = $saleBonusAmount;
-
-            $returnCogs = 0;
-            if ($sale->returns && $sale->returns->count() > 0) {
-                foreach ($sale->returns as $ret) {
-                    if ($ret->items) {
-                        foreach ($ret->items as $rItem) {
-                            $rPrice = (float)($rItem->purchase_price ?? 0);
-                            $rvData = null;
-                            if (!empty($rItem->color)) {
-                                $b64 = base64_decode($rItem->color, true);
-                                $rvData = ($b64 !== false) ? json_decode($b64, true) : json_decode($rItem->color, true);
-                            }
-                            if ($rPrice <= 0 && is_array($rvData) && isset($rvData['purch_price']) && (float)$rvData['purch_price'] > 0) {
-                                $rPrice = (float)$rvData['purch_price'];
-                            }
-                            if ($rPrice <= 0 && $rItem->product) {
-                                if (!empty($rItem->product->color)) {
-                                    $prodVariants = json_decode($rItem->product->color, true);
-                                    if (is_array($prodVariants)) {
-                                        $matchedVar = null;
-                                        if (!empty($rvData['barcode'])) $matchedVar = collect($prodVariants)->firstWhere('barcode', $rvData['barcode']);
-                                        if (!$matchedVar && !empty($rvData['name'])) $matchedVar = collect($prodVariants)->firstWhere('name', $rvData['name']);
-                                        if (!$matchedVar && count($prodVariants) === 1) $matchedVar = $prodVariants[0];
-                                        if ($matchedVar && isset($matchedVar['purch_price']) && (float)$matchedVar['purch_price'] > 0) {
-                                            $rPrice = (float)$matchedVar['purch_price'];
-                                        }
-                                    }
-                                }
-                                if ($rPrice <= 0 && (float)($rItem->product->purchase_price_per_piece ?? 0) > 0) {
-                                    $rPrice = (float)$rItem->product->purchase_price_per_piece;
-                                }
-                            }
-                            $returnCogs += ((float)$rItem->qty * $rPrice);
-                        }
-                    }
-                }
-            }
-            $sale->sale_cogs = ($sale->sale_status === 'returned' || $sale->sale_status == 1) ? 0 : $saleCogs;
-            $sale->return_cogs = ($sale->sale_status === 'returned' || $sale->sale_status == 1) ? 0 : $returnCogs;
-            $sale->effective_cogs = ($sale->sale_status === 'returned' || $sale->sale_status == 1) ? 0 : max(0, $saleCogs - $returnCogs);
-
-            $origQty = $sale->items && $sale->items->count() > 0 ? (float) $sale->items->sum('total_pieces') : ($sale->total_items > 0 ? (float) $sale->total_items : (float) $sale->qty);
-            $sumBilled = $sale->items ? (float) $sale->items->sum('qty') : 0;
-            if ($origQty < ($saleBonus + $sumBilled) && $sumBilled > 0) {
-                $origQty = $sumBilled + $saleBonus;
-            }
-            $effTotalPieces = max(0, $origQty - $returnedQty);
-            $sale->effective_qty = $effTotalPieces;
-
-            if ($sale->sale_status === 'returned' || $sale->sale_status == 1) {
-                $sale->effective_bonus_qty = 0;
-                $sale->effective_bonus_amount = 0;
-                $sale->effective_sold_qty = 0;
-            } else {
-                $sale->effective_bonus_qty = $saleBonus;
-                $sale->effective_bonus_amount = $saleBonusAmount;
-                $sale->effective_sold_qty = max(0, $effTotalPieces - $saleBonus);
-            }
-
-            // Gross & Discount calculations
-            $inlineVal = $sale->items ? (float) $sale->items->sum('discount_amount') : 0;
-            $billAmount = $sale->total_bill_amount > 0 ? (float) $sale->total_bill_amount : (float) $sale->per_total;
-            $grossSubtotal = $billAmount + $inlineVal;
-            $additionalDiscount = (float) ($sale->total_extradiscount ?? 0);
-
-            $isFullyReturned = ($sale->sale_status === 'returned' || $sale->sale_status == 1) && ($returnedAmount <= 0 || (float)$sale->total_net <= $returnedAmount);
-
-            if ($isFullyReturned) {
-                $sale->effective_gross = 0;
-                $sale->effective_inline_discount = 0;
-                $sale->effective_additional_discount = 0;
-                $sale->effective_total_discount = 0;
-            } else {
-                // If there is a return on this sale, reduce the effective gross by the returned gross amount
-                $returnedGross = $returnedAmount;
-                // If the sale had discounts, calculate proportional gross returned
-                if ($grossSubtotal > 0 && (float)$sale->total_net > 0 && $returnedAmount > 0) {
-                    $ratio = $grossSubtotal / (float)$sale->total_net;
-                    $returnedGross = $returnedAmount * $ratio;
-                }
-                $sale->effective_gross = max(0, $grossSubtotal - $returnedGross);
-
-                // Reduce discount proportionally if return occurred
-                if ($grossSubtotal > 0 && $sale->effective_gross < $grossSubtotal) {
-                    $remainingRatio = $sale->effective_gross / $grossSubtotal;
-                    $sale->effective_inline_discount = $inlineVal * $remainingRatio;
-                    $sale->effective_additional_discount = $additionalDiscount * $remainingRatio;
-                } else {
-                    $sale->effective_inline_discount = $inlineVal;
-                    $sale->effective_additional_discount = $additionalDiscount;
-                }
-                $sale->effective_total_discount = $sale->effective_inline_discount + $sale->effective_additional_discount;
-            }
-
-            // Tier specific discount totals
-            $tierMedicalDisc = 0;
-            $tierDoctorDisc = 0;
-            $tierDistributionDisc = 0;
-
-            if (!$isFullyReturned && $grossSubtotal > 0 && $inlineVal > 0) {
-                $tiers = optional($sale->customer_relation)->discount_tiers ?? [];
-                $savedTierStr = $sale->discount_tier ?? '';
-                $activeTiersArray = !empty($savedTierStr) ? array_map('trim', explode(',', $savedTierStr)) : [];
-
-                if (empty($activeTiersArray) && !empty($tiers)) {
-                    $mVal = (float)($tiers['medical'] ?? 0);
-                    $dVal = (float)($tiers['doctor'] ?? 0);
-                    $distVal = (float)($tiers['distribution'] ?? 0);
-                    $inlinePct = $grossSubtotal > 0 ? ($inlineVal / $grossSubtotal) * 100 : 0;
-                    $targetDisc = round($inlinePct, 2);
-
-                    if (round($mVal + $dVal + $distVal, 2) === $targetDisc && $mVal > 0 && $dVal > 0 && $distVal > 0) {
-                        $activeTiersArray = ['medical', 'doctor', 'distribution'];
-                    } elseif (round($mVal + $distVal, 2) === $targetDisc && $mVal > 0 && $distVal > 0) {
-                        $activeTiersArray = ['medical', 'distribution'];
-                    } elseif (round($mVal + $dVal, 2) === $targetDisc && $mVal > 0 && $dVal > 0) {
-                        $activeTiersArray = ['medical', 'doctor'];
-                    } elseif (round($dVal + $distVal, 2) === $targetDisc && $dVal > 0 && $distVal > 0) {
-                        $activeTiersArray = ['doctor', 'distribution'];
-                    } elseif (round($dVal, 2) === $targetDisc && $dVal > 0) {
-                        $activeTiersArray = ['doctor'];
-                    } elseif (round($mVal, 2) === $targetDisc && $mVal > 0) {
-                        $activeTiersArray = ['medical'];
-                    } elseif (round($distVal, 2) === $targetDisc && $distVal > 0) {
-                        $activeTiersArray = ['distribution'];
-                    }
-                }
-
-                if (!empty($activeTiersArray)) {
-                    foreach ($activeTiersArray as $t) {
-                        $pct = (float)($tiers[$t] ?? 0);
-                        if ($pct > 0) {
-                            $amt = round(($sale->effective_gross * $pct) / 100, 2);
-                            if ($t === 'medical') $tierMedicalDisc += $amt;
-                            elseif ($t === 'doctor') $tierDoctorDisc += $amt;
-                            elseif ($t === 'distribution') $tierDistributionDisc += $amt;
-                        }
-                    }
-                } else {
-                    // Fallback: assign remaining inline discount to doctor tier (standard)
-                    $tierDoctorDisc += ($sale->effective_inline_discount ?? $inlineVal);
-                }
-            }
-
-            $sale->tier_medical_discount = $tierMedicalDisc;
-            $sale->tier_doctor_discount = $tierDoctorDisc;
-            $sale->tier_distribution_discount = $tierDistributionDisc;
-
-            if ($isExchange) {
-                $collected = (float)$sale->cash - (float)$sale->change;
-                $refunded = 0;
-                if ($collected <= 0) {
-                    $refundPayment = \App\Models\CustomerPayment::where('note', 'Refund Paid for POS Exchange #'.$sale->invoice_no)->first();
-                    if ($refundPayment) {
-                        $refunded = (float)$refundPayment->amount;
-                    }
-                }
-                $sale->effective_net = $collected > 0 ? $collected : ($refunded > 0 ? -$refunded : 0);
-            } else {
-                if ($sale->sale_status === 'returned' || $sale->sale_status == 1) {
-                    if ($returnedAmount > 0) {
-                        $sale->effective_net = max(0, (float)$sale->total_net - $returnedAmount);
-                    } else {
-                        // Fully returned
-                        $sale->effective_net = 0;
-                        $sale->effective_qty = 0;
-                        $sale->total_returned = (float)$sale->total_net;
-                    }
-                } else {
-                    $sale->effective_net = max(0, (float)$sale->total_net - $returnedAmount);
-                }
-            }
-        });
-
-        $totDisc = (float) $sales->sum('effective_total_discount');
-        $medDisc = (float) $sales->sum('tier_medical_discount');
-        $docDisc = (float) $sales->sum('tier_doctor_discount');
-        $distDisc = (float) $sales->sum('tier_distribution_discount');
-        $otherDisc = max(0, $totDisc - ($medDisc + $docDisc + $distDisc));
-
-        $rawInvoiceNet = (float) $sales->sum(function($s) {
-            return ($s->sale_status === 'returned' || $s->sale_status == 1) ? 0 : (float) $s->total_net;
-        });
-        $totalReturned = (float) $sales->sum('total_returned');
-        $effectiveGross = (float) $sales->sum('effective_gross');
-        $rawGross = (float) $sales->sum(function($s) {
-            $inlineVal = $s->items ? (float) $s->items->sum('discount_amount') : 0;
-            $billAmount = $s->total_bill_amount > 0 ? (float) $s->total_bill_amount : (float) $s->per_total;
-            return $billAmount + $inlineVal;
-        });
-
-        $directReturnGross = 0;
-        foreach ($sales as $s) {
-            if ($s->returns && $s->returns->count() > 0) {
-                foreach ($s->returns as $ret) {
-                    $retTP = (float) ($ret->bill_amount > 0 ? $ret->bill_amount : ($ret->items ? $ret->items->sum(function($i) { return (float)($i->price ?? 0) * (float)($i->qty ?? 0); }) : (float)($ret->net_amount ?? 0)));
-                    $directReturnGross += $retTP;
-                }
-            }
-        }
-        
-        // Include standalone direct returns (where sale_id IS NULL)
-        $standaloneRetQuery = \App\Models\SaleReturn::whereNull("sale_id")->with(["items.product", "customer"]);
-        if ($request->customer_id && $request->customer_id !== "all") {
-            $standaloneRetQuery->where("customer_id", $request->customer_id);
-        } elseif ($request->filled("zone_id") && $request->zone_id !== "all") {
-            $zCustIds = \App\Models\Customer::where("zone", $request->zone_id)->pluck("id")->toArray();
-            $standaloneRetQuery->whereIn("customer_id", $zCustIds);
-        }
-        $startDate = $request->start_date ? $request->start_date : ($request->from_date ? $parseDate($request->from_date) : null);
-        $endDate = $request->end_date ? $request->end_date : ($request->to_date ? $parseDate($request->to_date) : null);
-        if ($startDate && $endDate) {
-            $standaloneRetQuery->where(function($q) use ($startDate, $endDate) {
-                $q->whereBetween("return_date", [$startDate, $endDate])
-                  ->orWhereBetween("created_at", [$startDate . " 00:00:00", $endDate . " 23:59:59"]);
-            });
-        }
-        $standaloneReturns = $standaloneRetQuery->get();
-        $standaloneReturnCogs = 0;
-        foreach ($standaloneReturns as $sr) {
-            $srGross = (float) ($sr->bill_amount > 0 ? $sr->bill_amount : ($sr->items ? $sr->items->sum(fn($i) => (float)($i->price ?? 0) * (float)($i->qty ?? 0)) : (float)($sr->net_amount ?? 0)));
-            $directReturnGross += $srGross;
-            $totalReturned += (float) $sr->net_amount;
-            foreach ($sr->items as $sri) {
-                $pPurchPrice = (float) (\App\Models\Product::where("id", $sri->product_id)->value("purchase_price_per_piece") ?? 0);
-                $standaloneReturnCogs += ((float)$sri->qty * $pPurchPrice);
-            }
-        }
-
-        $returnGross = $directReturnGross > 0 ? $directReturnGross : max(0, $rawGross - $effectiveGross);
-
-        $rawSaleCogs = (float) $sales->sum('sale_cogs');
-        $rawReturnCogs = (float) $sales->sum('return_cogs');
-        $totalCogs = max(0, $rawSaleCogs - $rawReturnCogs - $standaloneReturnCogs);
-
-        $totalItemsPieces = (float) $sales->sum(function($s) {
-            return $s->items ? (float)$s->items->sum('total_pieces') : 0;
-        });
-        $totalBonusPieces = (float) $sales->sum('effective_bonus_qty');
-        $allReturnQuery = DB::table('sale_return_items as sri')
-            ->join('sale_returns as sr', 'sr.id', '=', 'sri.sale_return_id');
-        if ($request->customer_id && $request->customer_id !== 'all') {
-            $allReturnQuery->where('sr.customer_id', $request->customer_id);
-        }
-        if ($startDate && $endDate) {
-            $allReturnQuery->whereBetween('sr.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
-        }
-        $totalReturnPieces = (float) $allReturnQuery->sum('sri.qty');
-        $effectiveSoldPieces = max(0, $totalItemsPieces - $totalBonusPieces - $totalReturnPieces);
-
-        $rawDiscount = (float) $sales->sum(function($s) {
-            $inlineVal = $s->items ? (float) $s->items->sum('discount_amount') : 0;
-            $extra = (float)($s->total_extradiscount ?? 0);
-            return $inlineVal + $extra;
-        });
-        $invoicedNet = (float) $sales->sum('total_net');
-        $realizedNet = round(max(0, $rawGross - $totalReturned - $rawDiscount), 2);
-
-        $auditNet = max(0, $rawGross - $returnGross);
+    private function getSalesDataAndRespond($baseQuery, Request $request, $pageType)
+    {
+        // 1. Calculate status pill counts from the base query (ignoring status filter so all tab badges show correct numbers)
+        $statsQuery = clone $baseQuery;
+        $this->applySalesFilters($statsQuery, $request, true);
+        $allStatsSales = $statsQuery->get();
 
         $stats = [
-            'total_count' => $sales->count(),
-            'total_qty' => $effectiveSoldPieces > 0 ? $effectiveSoldPieces : (float) $sales->sum('effective_sold_qty'),
-            'total_bonus_qty' => $totalBonusPieces,
-            'total_bonus_amount' => (float) $sales->sum('effective_bonus_amount'),
-            'total_all_qty' => (float) $sales->sum('effective_qty'),
-            'raw_gross' => $rawGross,
-            'raw_discount' => $rawDiscount,
-            'invoiced_net' => $invoicedNet,
-            'return_gross' => $returnGross,
-            'audit_net' => $auditNet,
-            'effective_gross' => $effectiveGross,
-            'raw_invoice_net' => $rawInvoiceNet,
-            'total_returned' => $totalReturned,
-            'total_gross' => $realizedNet,
-            'total_cogs' => $totalCogs,
-            'total_gross_profit' => round($realizedNet - $totalCogs - (float) $sales->sum('effective_bonus_amount'), 2),
-            'total_net' => $realizedNet,
-            'inline_discount' => (float) $sales->sum('effective_inline_discount'),
-            'additional_discount' => (float) $sales->sum('effective_additional_discount'),
-            'total_discount' => $totDisc,
-            'discount_medical' => $medDisc,
-            'discount_doctor' => $docDisc,
-            'discount_distribution' => $distDisc,
-            'discount_other' => $otherDisc,
-            'posted_count' => $sales->where('sale_status', 'posted')->count(),
-            'draft_count' => $sales->where('sale_status', 'draft')->count(),
-            'booked_count' => $sales->where('sale_status', 'booked')->count(),
-            'returned_count' => $sales->whereIn('sale_status', ['returned', 1])->count(),
+            'total_count' => $allStatsSales->count(),
+            'total_net' => (float) $allStatsSales->sum('total_net'),
+            'total_paid' => 0,
+            'total_due' => 0,
+            'total_discount' => (float) $allStatsSales->sum('total_extradiscount'),
+            'posted_count' => $allStatsSales->where('sale_status', 'posted')->count(),
+            'draft_count' => $allStatsSales->where('sale_status', 'draft')->count(),
+            'booked_count' => $allStatsSales->where('sale_status', 'booked')->count(),
+            'returned_count' => $allStatsSales->filter(function($s) {
+                return in_array($s->sale_status, ['returned', 1, '1']) || ($s->returns && $s->returns->count() > 0);
+            })->count(),
         ];
 
-        // Transform standalone direct returns into row objects for the sales table
-        $directReturnRows = collect();
-        foreach ($standaloneReturns as $sr) {
-            $srItemsPieces = (float)$sr->items->sum('qty');
-            $srBonusPieces = (float)$sr->items->sum('bonus_qty');
-            $srGross = (float) ($sr->bill_amount > 0 ? $sr->bill_amount : ($sr->items ? $sr->items->sum(fn($i) => (float)($i->price ?? 0) * (float)($i->qty ?? 0)) : (float)($sr->net_amount ?? 0)));
-            $srNet = (float) $sr->net_amount;
+        // 2. Main query with status filter applied
+        $query = clone $baseQuery;
+        $this->applySalesFilters($query, $request, false);
+        $sales = $query->get();
 
-            $directSale = new \App\Models\Sale();
-            $directSale->id = $sr->id;
-            $directSale->is_direct_return = true;
-            $directSale->return_id = $sr->id;
-            $directSale->invoice_no = $sr->return_invoice ?: ('SR-' . str_pad($sr->id, 4, '0', STR_PAD_LEFT));
-            $directSale->customer_id = $sr->customer_id;
-            $directSale->customer_relation = $sr->customer;
-            $directSale->reference = $sr->remarks ?: 'Direct Return';
-            $directSale->sale_status = 'direct_return';
-            $directSale->created_at = $sr->return_date ? \Carbon\Carbon::parse($sr->return_date) : $sr->created_at;
-            $directSale->total_items = -$srItemsPieces;
-            $directSale->qty = -$srItemsPieces;
-            $directSale->effective_qty = -$srItemsPieces;
-            $directSale->returned_qty = $srItemsPieces;
-            $directSale->effective_sold_qty = -max(0, $srItemsPieces - $srBonusPieces);
-            $directSale->bonus_qty = -$srBonusPieces;
-            $directSale->effective_gross = -$srGross;
-            $directSale->total_bill_amount = -$srGross;
-            $directSale->per_total = -$srGross;
-            $directSale->total_net = -$srNet;
-            $directSale->effective_net = -$srNet;
-            $directSale->total_returned = $srNet;
-            $directSale->total_extradiscount = $sr->extra_discount ?? 0;
-            $directSale->tier_medical_discount = 0;
-            $directSale->tier_doctor_discount = 0;
-            $directSale->tier_distribution_discount = 0;
-            $directSale->items = $sr->items->map(function($sri) {
-                $itemObj = new \stdClass();
-                $itemObj->product = $sri->product;
-                $itemObj->product_name = $sri->product ? $sri->product->item_name : ($sri->product_name ?: 'Product');
-                $itemObj->qty = -$sri->qty;
-                $itemObj->price = (float)$sri->price;
-                $itemObj->discount_amount = 0;
-                return $itemObj;
-            });
+        $totalPaid = 0;
+        $totalDue = 0;
+        foreach ($sales as $s) {
+            if ($s->sale_type !== 'quotation') {
+                $sNet = (float) $s->total_net;
+                $sPaid = max(0, (float) ($s->cash ?? 0) + (float) ($s->card ?? 0));
+                if ((float) ($s->change ?? 0) > 0) {
+                    $sPaid = max(0, $sPaid - (float) $s->change);
+                }
+                $sPaid = min($sNet, $sPaid);
+                $totalPaid += $sPaid;
+                $totalDue += max(0, $sNet - $sPaid);
+            }
+        }
+        $stats['total_paid'] = (float) $totalPaid;
+        $stats['total_due'] = (float) $totalDue;
 
-            $directReturnRows->push($directSale);
+        if ($request->has('status') && $request->status != 'all') {
+            $stats['total_net'] = (float) $sales->sum('total_net');
+            $stats['total_discount'] = (float) $sales->sum('total_extradiscount');
         }
 
-        // Apply bill_no search to direct returns if provided
-        $billNoSearch = trim($request->input('bill_no') ?? $request->input('invoice_no') ?? '');
-        if (!empty($billNoSearch)) {
-            $directReturnRows = $directReturnRows->filter(function($dr) use ($billNoSearch) {
-                return str_contains(strtolower($dr->invoice_no), strtolower($billNoSearch))
-                    || str_contains(strtolower($dr->reference), strtolower($billNoSearch))
-                    || str_contains((string)$dr->return_id, $billNoSearch);
-            });
-        }
-
-        $directReturnsCount = $directReturnRows->count();
-        $stats['direct_returns_count'] = $directReturnsCount;
-
-        // Query Medical / Physician Samples
-        $medicalSamplesQuery = \App\Models\MedicalSample::with(['items.product', 'customer', 'warehouse']);
-        if ($request->customer_id && $request->customer_id !== "all") {
-            $medicalSamplesQuery->where("customer_id", $request->customer_id);
-        } elseif ($request->filled("zone_id") && $request->zone_id !== "all") {
-            $zCustIds = \App\Models\Customer::where("zone", $request->zone_id)->pluck("id")->toArray();
-            $medicalSamplesQuery->whereIn("customer_id", $zCustIds);
-        }
-        if ($startDate && $endDate) {
-            $medicalSamplesQuery->where(function($q) use ($startDate, $endDate) {
-                $q->whereBetween("sample_date", [$startDate, $endDate])
-                  ->orWhereBetween("created_at", [$startDate . " 00:00:00", $endDate . " 23:59:59"]);
-            });
-        }
-        $medicalSamples = $medicalSamplesQuery->get();
-        $totalWosAmount = (float)$medicalSamples->sum('wos_amount');
-        $totalSamplePieces = (float)$medicalSamples->sum('total_pieces');
-
-        // Transform Medical Samples into Sale-compatible rows for listing table
-        $sampleRows = collect();
-        foreach ($medicalSamples as $ms) {
-            $sampleObj = new \App\Models\Sale();
-            $sampleObj->id = $ms->id;
-            $sampleObj->is_sample = true;
-            $sampleObj->sample_id = $ms->id;
-            $sampleObj->invoice_no = $ms->sample_no;
-            $sampleObj->customer_id = $ms->customer_id;
-            $sampleObj->customer_relation = $ms->customer;
-            $sampleObj->reference = $ms->doctor_name ? ('Dr. ' . $ms->doctor_name) : ($ms->remarks ?: 'Physician Sample');
-            $sampleObj->sale_status = 'sample';
-            $sampleObj->created_at = $ms->sample_date ? \Carbon\Carbon::parse($ms->sample_date) : $ms->created_at;
-            $sampleObj->total_items = (float)$ms->total_pieces;
-            $sampleObj->qty = (float)$ms->total_pieces;
-            $sampleObj->effective_qty = (float)$ms->total_pieces;
-            $sampleObj->effective_sold_qty = (float)$ms->total_pieces;
-            $sampleObj->bonus_qty = 0;
-            $sampleObj->effective_gross = 0;
-            $sampleObj->total_bill_amount = 0;
-            $sampleObj->per_total = 0;
-            $sampleObj->total_net = 0; // Customer gets sample free
-            $sampleObj->effective_net = 0;
-            $sampleObj->wos_amount = (float)$ms->wos_amount; // Worth of Sample at Purchase Cost
-            $sampleObj->total_returned = 0;
-            $sampleObj->total_extradiscount = 0;
-            $sampleObj->tier_medical_discount = 0;
-            $sampleObj->tier_doctor_discount = 0;
-            $sampleObj->tier_distribution_discount = 0;
-            $sampleObj->items = $ms->items->map(function($si) {
-                $it = new \stdClass();
-                $it->product = $si->product;
-                $it->product_name = $si->product ? $si->product->item_name : 'Sample Product';
-                $it->qty = $si->qty;
-                $it->price = 0;
-                $it->discount_amount = 0;
-                return $it;
-            });
-            $sampleRows->push($sampleObj);
-        }
-
-        // Apply bill_no search to samples if provided
-        if (!empty($billNoSearch)) {
-            $sampleRows = $sampleRows->filter(function($sr) use ($billNoSearch) {
-                return str_contains(strtolower($sr->invoice_no), strtolower($billNoSearch))
-                    || str_contains(strtolower($sr->reference), strtolower($billNoSearch))
-                    || str_contains((string)$sr->sample_id, $billNoSearch);
-            });
-        }
-
-        $samplesCount = $sampleRows->count();
-        $stats['total_wos_amount'] = $totalWosAmount;
-        $stats['total_samples_qty'] = $totalSamplePieces;
-        $stats['samples_count'] = $samplesCount;
-        $stats['total_count'] = $sales->count() + $directReturnsCount + $samplesCount;
-        // Deduct WOS (Worth of Samples) from Gross Profit
-        $stats['total_gross_profit'] = round($realizedNet - $totalCogs - (float) $sales->sum('effective_bonus_amount') - $totalWosAmount, 2);
-
-        // Apply status filter to table rows
-        $statusFilter = $request->input('status', 'all');
-        if ($statusFilter === 'direct_returns') {
-            $sales = $directReturnRows;
-        } elseif ($statusFilter === 'samples') {
-            $sales = $sampleRows;
-        } elseif ($statusFilter === 'all' || empty($statusFilter)) {
-            $sales = $sales->concat($directReturnRows)->concat($sampleRows)->sortByDesc('created_at')->values();
-        }
-
-        // If AJAX request, return only table rows partial & stats
         if ($request->ajax()) {
             return response()->json([
                 'html' => view('admin_panel.sale.partials.sales_table_body', compact('sales'))->render(),
@@ -770,31 +180,87 @@ class SaleController extends Controller
             ]);
         }
 
-        // Load all customers for filter dropdown
         $customers = Customer::orderBy('customer_name')->get();
-        $zones = \App\Models\Zone::all();
-        $customerTypes = Customer::distinct()->whereNotNull('customer_type')->where('customer_type', '!=', '')->pluck('customer_type');
-        $activeProducts = Product::where('is_active', true)->with('warehouseStocks')->orderBy('item_name')->get();
-        $allWarehouses = Warehouse::all();
 
-        return view('admin_panel.sale.index', compact('sales', 'customers', 'stats', 'zones', 'customerTypes', 'activeProducts', 'allWarehouses'));
+        return view('admin_panel.sale.index', compact('sales', 'customers', 'stats'))->with('page_type', $pageType);
     }
 
-    public function addsale()
+    public function index(Request $request)
+    {
+        $query = Sale::with(['customer_relation', 'items.product', 'returns', 'deliveryChallans'])
+            ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
+            ->where(function($q) {
+                $q->where('sale_type', 'direct_sale')
+                  ->orWhereNull('sale_type');
+            });
+        
+        return $this->getSalesDataAndRespond($query, $request, 'direct_sale');
+    }
+
+    public function quotations(Request $request)
+    {
+        $query = Sale::with(['customer_relation', 'items.product', 'returns', 'deliveryChallans'])
+            ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
+            ->where('sale_type', 'quotation');
+        
+        return $this->getSalesDataAndRespond($query, $request, 'quotation');
+    }
+
+    public function salesOrders(Request $request)
+    {
+        $query = Sale::with(['customer_relation', 'items.product', 'returns', 'deliveryChallans'])
+            ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned'])
+            ->where('sale_type', 'sales_order');
+        
+        return $this->getSalesDataAndRespond($query, $request, 'sales_order');
+    }
+    public function addsale(Request $request = null)
     {
         $customer = Customer::all();
         $warehouse = Warehouse::all();
         
-        $allSeries = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
-        $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
-        $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+        // Ensure standard series exist (INV, TAX, CO, SO, QUO)
+        $standardSeries = [
+            ['prefix' => 'INV', 'padding' => 4, 'is_default' => 1],
+            ['prefix' => 'TAX', 'padding' => 3, 'is_default' => 0],
+            ['prefix' => 'CO', 'padding' => 3, 'is_default' => 0],
+            ['prefix' => 'SO', 'padding' => 4, 'is_default' => 0],
+            ['prefix' => 'QUO', 'padding' => 4, 'is_default' => 0],
+        ];
+        foreach ($standardSeries as $ss) {
+            \App\Models\InvoiceSeries::firstOrCreate(
+                ['prefix' => $ss['prefix']],
+                ['padding' => $ss['padding'], 'next_number' => 1, 'is_default' => $ss['is_default']]
+            );
+        }
+
+        $type = request('type');
+        $exclude = ['PO', 'PINV', 'DC', 'DDC', 'DGRN', 'GRN', 'SR', 'PRET', 'SQ', 'INVSLE'];
+        if ($type !== 'quotation') $exclude[] = 'QUO';
+        if ($type !== 'sales_order' && $type !== 'quotation') $exclude[] = 'SO';
+        
+        $allSeries = \App\Models\InvoiceSeries::whereNotIn('prefix', $exclude)->orderByRaw("is_default DESC, id ASC")->get();
+        
+        if ($type === 'quotation') {
+            $quoSeries = $allSeries->where('prefix', 'QUO')->first();
+            $activePrefix = $quoSeries ? $quoSeries->prefix : 'QUO';
+        } elseif ($type === 'sales_order') {
+            $soSeries = $allSeries->where('prefix', 'SO')->first();
+            $activePrefix = $soSeries ? $soSeries->prefix : 'SO';
+        } else {
+            $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
+            $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+        }
+
         $nextInvoiceNumber = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
 
-        $recentProducts = Product::latest()->take(12)->get();
+        $recentProducts = Product::where('is_active', true)->orderBy('item_code', 'asc')->take(24)->get();
 
         // Filter accounts (Cash/Bank) for Payment Voucher
-        $accounts = \App\Models\Account::whereHas('head', function($q) {
-            $q->whereIn('name', ['Cash', 'Bank']);
+        $accounts = \App\Models\Account::where(function($query) {
+            $query->whereHas('head', function($q) {
+                $q->whereIn('name', ['Cash', 'Bank', 'cash', 'bank']);
+            })->orWhere('title', 'like', '%cash%');
         })->where('status', 1)
             ->orderBy('title')
             ->get();
@@ -807,31 +273,69 @@ class SaleController extends Controller
 
     public function searchpname(Request $request)
     {
-        $q = $request->get('q');
+        $q = trim($request->get('q', ''));
         $warehouseId = $request->get('warehouse_id', 1);
+        $words = array_values(array_filter(explode(' ', $q)));
 
-        $products = Product::with(['brand'])
+        $productsQuery = Product::with(['brand'])
             ->leftJoin('warehouse_stocks', function ($join) use ($warehouseId) {
                 $join->on('products.id', '=', 'warehouse_stocks.product_id')
                     ->where('warehouse_stocks.warehouse_id', $warehouseId);
             })
-            ->where('products.is_active', true) /* Only active products */
-            ->where(function ($query) use ($q) {
-                $query->where('products.item_name', 'like', "%{$q}%")
-                    ->orWhere('products.item_code', 'like', "%{$q}%")
-                    ->orWhere('products.barcode_path', 'like', "%{$q}%");
-            })
-            ->select(
+            ->where('products.is_active', true); /* Only active products */
+
+        if (!empty($words)) {
+            $cleanTerm = addslashes($q);
+            $cleanAlphaNum = addslashes(preg_replace('/[^a-zA-Z0-9]/', '', $q));
+            $paddedCode = is_numeric($cleanAlphaNum) ? str_pad($cleanAlphaNum, 4, '0', STR_PAD_LEFT) : $cleanAlphaNum;
+
+            $productsQuery->where(function ($query) use ($words) {
+                foreach ($words as $w) {
+                    $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $w);
+                    $query->where(function ($subQ) use ($w, $escaped) {
+                        $subQ->where('products.item_name', 'like', "%{$w}%")
+                            ->orWhere('products.item_code', 'like', "%{$w}%")
+                            ->orWhere('products.barcode_path', 'like', "%{$w}%");
+
+                        if (strlen($w) >= 3) {
+                            $subQ->orWhere('products.color', 'like', "%\"name\":\"%{$escaped}%\"%")
+                                ->orWhere('products.color', 'like', "%\"barcode\":\"%{$escaped}%\"%");
+                        }
+                    });
+                }
+            });
+
+            $allWordsCondition = count($words) > 1 
+                ? implode(' AND ', array_map(fn($w) => "products.item_name LIKE '%" . addslashes($w) . "%'", $words)) 
+                : "products.item_name LIKE '%{$cleanTerm}%'";
+
+            $productsQuery->orderByRaw("
+                CASE
+                    WHEN products.item_code = '{$cleanTerm}' THEN 1
+                    WHEN products.item_code = 'ITEM-{$cleanTerm}' THEN 2
+                    WHEN products.item_code = 'ITEM-{$paddedCode}' THEN 3
+                    WHEN products.barcode_path = '{$cleanTerm}' THEN 4
+                    WHEN products.item_code LIKE '%-{$cleanTerm}' THEN 5
+                    WHEN products.item_code LIKE '%-{$paddedCode}' THEN 6
+                    WHEN products.item_name = '{$cleanTerm}' THEN 7
+                    WHEN products.item_name LIKE '{$cleanTerm}%' THEN 8
+                    WHEN ({$allWordsCondition}) THEN 9
+                    WHEN products.item_code LIKE '%{$cleanTerm}%' THEN 10
+                    WHEN products.barcode_path LIKE '{$cleanTerm}%' THEN 11
+                    ELSE 12
+                END ASC, products.item_code ASC, products.item_name ASC
+            ");
+        } else {
+            $productsQuery->orderBy('products.item_code', 'asc');
+        }
+
+        $products = $productsQuery->select(
                 'products.*',
                 'warehouse_stocks.total_pieces as wh_stock',
                 'warehouse_stocks.quantity as wh_box_qty'
             )
             ->limit(50)
-            ->get()
-            ->map(function ($product) {
-                return $product;
-            });
-
+            ->get();
 
         return response()->json($products);
     }
@@ -1286,9 +790,16 @@ class SaleController extends Controller
                         $variantData = is_string($saleColor) ? json_decode($saleColor, true) : $saleColor;
                     }
                     if (is_array($variantData) && isset($variantData['conv_factor'])) {
-                        $factor = (float)$variantData['conv_factor'];
-                        if ($factor > 0) {
-                            $stockQty = $qty * $factor;
+                        $sizeMode = $item['size_mode'] ?? ($sItem->size_mode ?? '');
+                        // Only carton/size products convert boxes->pieces via conv_factor.
+                        // For kg/gm products total_pieces/qty are already in KG — use as-is.
+                        if (in_array($sizeMode, ['by_kg', 'by_gm', 'by_feet', 'by_meter', 'by_pieces'])) {
+                            $stockQty = $qty;
+                        } else {
+                            $factor = (float)$variantData['conv_factor'];
+                            if ($factor > 0) {
+                                $stockQty = $qty * $factor;
+                            }
                         }
                     }
                 } catch (\Exception $e) {}
@@ -1325,8 +836,13 @@ class SaleController extends Controller
                     $saleItem->total_pieces = max(0, $saleItem->total_pieces - $qty);
                     $prod = Product::find($productId);
                     $ppb = $prod->pieces_per_box > 0 ? $prod->pieces_per_box : 1;
-                    $saleItem->qty = $saleItem->total_pieces / $ppb;
-                    $saleItem->loose_pieces = $saleItem->total_pieces % $ppb;
+                    if (in_array($saleItem->size_mode, ['by_cartons', 'by_box', 'by_size'])) {
+                        $saleItem->qty = $saleItem->total_pieces / $ppb;
+                        $saleItem->loose_pieces = fmod((float)$saleItem->total_pieces, (float)$ppb);
+                    } else {
+                        $saleItem->qty = $saleItem->total_pieces;
+                        $saleItem->loose_pieces = 0;
+                    }
                     
                     // Recalculate item total after return
                     $newGross = $saleItem->total_pieces * $saleItem->price;
@@ -1344,7 +860,7 @@ class SaleController extends Controller
             $allSaleItems = \App\Models\SaleItem::where('sale_id', $sale->id)->get();
             $sale->total_bill_amount = $allSaleItems->sum('total');
             // Recalculate Net (Accounting for extra discount if any)
-            $sale->total_net = max(0, $sale->total_bill_amount - ($sale->total_extradiscount ?? 0));
+            $sale->total_net = max(0, ($sale->total_bill_amount - ($sale->total_extradiscount ?? 0)) + ($sale->shipping_charges ?? 0) + ($sale->cutting_charges ?? 0));
             $sale->total_items = $allSaleItems->sum('total_pieces');
             $sale->save();
         }
@@ -1564,9 +1080,94 @@ class SaleController extends Controller
 
     public function saleinvoice($id)
     {
-        $sale = Sale::with(['customer_relation.salesOfficer'])->findOrFail($id);
+        $sale = Sale::with(['customer_relation.salesOfficer', 'returns.items'])->findOrFail($id);
+        $user = auth()->user();
+        $isEstimate = request()->query('type') === 'estimate' || $sale->sale_type === 'quotation';
+
+        if ($user) {
+            if ($isEstimate) {
+                if (!$user->can('quotations.print')) {
+                    abort(403, 'Unauthorized action. You do not have permission to print quotations.');
+                }
+            } elseif ($sale->sale_type === 'sales_order') {
+                if (!$user->can('sales_orders.print')) {
+                    abort(403, 'Unauthorized action. You do not have permission to print sales orders.');
+                }
+            } else {
+                if (!$user->can('sales.print')) {
+                    abort(403, 'Unauthorized action. You do not have permission to print sale invoices.');
+                }
+            }
+        }
+
         $items = $this->_getSaleItems($sale);
         $isEstimate = request()->query('type') === 'estimate';
+
+        // Calculate returned quantities
+        $totalOriginalPieces = 0;
+        $totalReturnedPieces = 0;
+        $returnedItemsMap = [];
+        
+        if ($sale->returns) {
+            foreach ($sale->returns as $ret) {
+                if (in_array($ret->status, ['posted', 'approved', 'completed', 'returned']) || in_array($ret->return_status, ['approved', 'completed']) || empty($ret->status)) {
+                    foreach ($ret->items as $rItem) {
+                        $key = $rItem->product_id;
+                        if (!isset($returnedItemsMap[$key])) {
+                            $returnedItemsMap[$key] = 0;
+                        }
+                        $returnedItemsMap[$key] += $rItem->qty;
+                    }
+                }
+            }
+        }
+
+        $netSaleTotal = 0;
+        $items = $items->map(function ($item) use (&$returnedItemsMap, &$totalOriginalPieces, &$totalReturnedPieces, &$netSaleTotal) {
+            $totalOriginalPieces += $item['total_pieces'];
+            $key = $item['product_id'];
+            
+            if (isset($returnedItemsMap[$key]) && $returnedItemsMap[$key] > 0) {
+                $deductQty = min($item['total_pieces'], $returnedItemsMap[$key]);
+                $item['returned_qty'] = $deductQty;
+                
+                $netPieces = $item['total_pieces'] - $deductQty;
+                $netTotal = $netPieces * $item['price_per_piece'];
+                
+                // Adjust for view calculations
+                if ($item['total_pieces'] > 0) {
+                    $ratio = $netPieces / $item['total_pieces'];
+                    $item['qty_box'] = (isset($item['qty_box']) ? $item['qty_box'] : 0) * $ratio;
+                }
+                $item['qty'] = $netPieces;
+                $item['total_pieces'] = $netPieces;
+                $item['total'] = $netTotal;
+                
+                $returnedItemsMap[$key] -= $deductQty;
+                $totalReturnedPieces += $deductQty;
+                $netSaleTotal += $netTotal;
+            } else {
+                $item['returned_qty'] = 0;
+                $netSaleTotal += $item['total'];
+            }
+            return $item;
+        });
+
+        // Compute true net sale total accounting for discounts, shipping, and returns
+        if ($totalReturnedPieces > 0) {
+            $netSaleTotal = max(0, round(($netSaleTotal - (float)($sale->total_extradiscount ?? 0)) + (float)($sale->shipping_charges ?? 0) + (float)($sale->cutting_charges ?? 0), 2));
+        } else {
+            $netSaleTotal = (float)$sale->total_net;
+        }
+
+        // Exclude items that have been fully returned if you don't want to show them?
+        // Wait, showing them as 0 qty is probably fine or we can filter them.
+        // Let's filter them out if net pieces is 0 so the invoice only shows remaining items
+        $items = $items->filter(function($item) {
+            return $item['total_pieces'] > 0 || $item['returned_qty'] > 0;
+        })->values();
+
+        $isFullReturn = ($totalOriginalPieces > 0 && $totalReturnedPieces >= $totalOriginalPieces);
 
         // Calculate Balances for Invoice
         $previousBalance = 0;
@@ -1595,7 +1196,14 @@ class SaleController extends Controller
                 $previousBalance = 0;
             }
         }
-        $currentBalance = $previousBalance + $sale->total_net;
+        $currentBalance = $previousBalance + $netSaleTotal;
+
+        if ($sale->sale_status === 'booked' && !$sale->is_booking) {
+            return view('admin_panel.sale.salequotation', [
+                'sale' => $sale,
+                'saleItems' => $items,
+            ]);
+        }
 
         return view('admin_panel.sale.saleinvoice', [
             'sale' => $sale,
@@ -1603,265 +1211,107 @@ class SaleController extends Controller
             'previousBalance' => $previousBalance,
             'currentBalance' => $currentBalance,
             'isEstimate' => $isEstimate,
+            'isFullReturn' => $isFullReturn,
+            'netSaleTotal' => $netSaleTotal,
+            'totalReturnedPieces' => $totalReturnedPieces,
+            'totalOriginalPieces' => $totalOriginalPieces,
         ]);
-    }
-
-    /**
-     * Net Sales Audit Sheet View (Pharma Town Sheet matching Image 2/3 style)
-     */
-    public function saleAuditSheet(\Illuminate\Http\Request $request, $id)
-    {
-        $sale = Sale::with(['items.product', 'customer_relation', 'returns.items.product'])->findOrFail($id);
-
-        // Map returns
-        $returnedMap = [];
-        if ($sale->returns) {
-            foreach ($sale->returns as $ret) {
-                $isBonusRet = ($ret->bill_amount == 0 && $ret->net_amount == 0);
-                foreach ($ret->items as $ri) {
-                    $pid = $ri->product_id;
-                    if (!isset($returnedMap[$pid])) {
-                        $returnedMap[$pid] = [
-                            'qty' => 0, 
-                            'bonus' => 0, 
-                            'price' => (float)($ri->price ?? 0), 
-                            'product' => $ri->product
-                        ];
-                    }
-                    if ($isBonusRet || $ri->line_total == 0) {
-                        $returnedMap[$pid]['bonus'] += (float)$ri->qty;
-                    } else {
-                        $returnedMap[$pid]['qty'] += (float)$ri->qty;
-                    }
-                    if ($ri->price > 0) {
-                        $returnedMap[$pid]['price'] = (float)$ri->price;
-                    }
-                }
-            }
-        }
-
-        // Determine default customer / sale tier discount percentage
-        $defaultSaleDiscPct = 0;
-        if (!empty($sale->discount_percentage) && (float)$sale->discount_percentage > 0) {
-            $defaultSaleDiscPct = (float)$sale->discount_percentage;
-        } elseif (!empty($sale->discount_tier) && $sale->customer_relation && !empty($sale->customer_relation->discount_tiers)) {
-            $tiers = $sale->customer_relation->discount_tiers;
-            if (is_string($tiers)) {
-                $tiers = json_decode($tiers, true) ?? [];
-            }
-            $activeTiers = explode(',', $sale->discount_tier);
-            foreach ($activeTiers as $t) {
-                $t = trim($t);
-                if (isset($tiers[$t])) {
-                    $defaultSaleDiscPct += (float)$tiers[$t];
-                }
-            }
-        }
-
-        $auditRows = [];
-        $processedProducts = [];
-
-        foreach ($sale->items as $item) {
-            $pid = $item->product_id;
-            $processedProducts[$pid] = true;
-            $p = $item->product;
-
-            $bonusQty = (float)($item->bonus_qty ?? 0);
-            $totalPieces = (float)($item->total_pieces ?? 0);
-            $billedQty = $totalPieces > 0 ? max(0, $totalPieces - $bonusQty) : (float)($item->qty ?? 0);
-
-            $retQty = isset($returnedMap[$pid]) ? (float)$returnedMap[$pid]['qty'] : 0;
-            $retBonus = isset($returnedMap[$pid]) ? (float)$returnedMap[$pid]['bonus'] : 0;
-
-            $isFullReturn = ($retQty > 0 && $billedQty > 0 && $retQty >= $billedQty);
-
-            if ($isFullReturn) {
-                // If an item in this delivery was fully returned (e.g. Fernate & Nytoph exchange from previous stock),
-                // treat this row as pure return deducted against new sales (matching pharma Town Audit Sheet format)
-                $effSaleQty = 0;
-                $effSaleBonus = 0;
-                $rPaid = ($retBonus > 0 && $retQty > $retBonus) ? ($retQty - $retBonus) : $retQty;
-                if ($rPaid == 12 && $bonusQty == 2) {
-                    $rPaid = 10;
-                    $retBonus = 2;
-                } elseif ($rPaid == 6 && $bonusQty == 1) {
-                    $rPaid = 5;
-                    $retBonus = 1;
-                }
-                $effRetQty = $rPaid;
-                $effRetBonus = $retBonus;
-            } else {
-                $effSaleQty = $billedQty;
-                $effSaleBonus = $bonusQty;
-                $effRetQty = $retQty;
-                $effRetBonus = $retBonus;
-            }
-
-            $price = (float)($item->price ?? 0);
-            if ($price <= 0 && isset($returnedMap[$pid])) {
-                $price = $returnedMap[$pid]['price'];
-            }
-            if ($price <= 0 && $p) {
-                $price = (float)($p->sale_price_per_piece ?? 0);
-            }
-
-            $pack = '-';
-            if ($p) {
-                $pack = $p->pack_size ?: ($p->size_val ?: '1\'S');
-            }
-
-            $discPct = 0;
-            if (!empty($item->discount_percent) && (float)$item->discount_percent > 0) {
-                $discPct = (float)$item->discount_percent;
-            } elseif (!empty($item->discount_percentage) && (float)$item->discount_percentage > 0) {
-                $discPct = (float)$item->discount_percentage;
-            } elseif (!empty($item->discount_amount) && (float)$item->discount_amount > 0) {
-                $itemGross = ((float)$item->total) + ((float)$item->discount_amount);
-                $discPct = $itemGross > 0 ? round(((float)$item->discount_amount / $itemGross) * 100, 2) : 0;
-            } else {
-                $discPct = $defaultSaleDiscPct;
-            }
-
-            $auditRows[] = [
-                'product_id' => $pid,
-                'code' => $p ? ($p->item_code ?: 'PP' . str_pad($pid, 3, '0', STR_PAD_LEFT)) : 'PP' . str_pad($pid, 3, '0', STR_PAD_LEFT),
-                'name' => $p ? ($p->item_name ?: ($item->product_name ?: 'Product')) : ($item->product_name ?: 'Product'),
-                'pack' => $pack,
-                'sale_qty' => $effSaleQty,
-                'sale_bonus' => $effSaleBonus,
-                'undel_qty' => 0,
-                'undel_bonus' => 0,
-                'return_qty' => $effRetQty,
-                'return_bonus' => $effRetBonus,
-                'price' => $price,
-                'disc_pct' => $discPct,
-            ];
-        }
-
-        // Add any products that were only returned
-        foreach ($returnedMap as $pid => $rData) {
-            if (isset($processedProducts[$pid])) continue;
-            $p = $rData['product'];
-            $auditRows[] = [
-                'product_id' => $pid,
-                'code' => $p ? ($p->item_code ?: 'PP' . str_pad($pid, 3, '0', STR_PAD_LEFT)) : 'PP' . str_pad($pid, 3, '0', STR_PAD_LEFT),
-                'name' => $p ? ($p->item_name ?: 'Returned Product') : 'Returned Product',
-                'pack' => $p ? ($p->pack_size ?: '1\'S') : '1\'S',
-                'sale_qty' => 0,
-                'sale_bonus' => 0,
-                'undel_qty' => 0,
-                'undel_bonus' => 0,
-                'return_qty' => $rData['qty'],
-                'return_bonus' => $rData['bonus'],
-                'price' => $rData['price'],
-                'disc_pct' => $defaultSaleDiscPct,
-            ];
-        }
-
-        $partyDiscountAmt = 0;
-        foreach ($auditRows as $r) {
-            $nQty = ($r['sale_qty'] ?? 0) - ($r['undel_qty'] ?? 0) - ($r['return_qty'] ?? 0);
-            $lineNetVal = round($nQty * ($r['price'] ?? 0), 2);
-            $lineDiscAmt = ($r['disc_pct'] > 0) ? round(($lineNetVal * $r['disc_pct']) / 100, 2) : 0;
-            $partyDiscountAmt += $lineDiscAmt;
-        }
-
-        if ($request->ajax()) {
-            return view('admin_panel.sale.partials.audit_sheet_table', compact('sale', 'auditRows', 'partyDiscountAmt'))->render();
-        }
-
-        return view('admin_panel.sale.audit_sheet_view', compact('sale', 'auditRows', 'partyDiscountAmt'));
     }
 
     public function saleedit($id)
     {
         // 1. Fetch Sale with relations (including nested items.product for pre-fill)
-        // Eager load warehouseStocks to display live stock and returns.items to reflect returns in edit view
-        $sale = Sale::with(['items.product.warehouseStocks', 'customer_relation', 'returns.items'])->findOrFail($id);
+        // Eager load warehouseStocks to display stock in edit view
+        $sale = Sale::with(['items.product.warehouseStocks', 'customer_relation'])->findOrFail($id);
+
+        $currentUser = auth()->user();
+        if ($currentUser) {
+            if ($sale->sale_type === 'quotation' && !$currentUser->can('quotations.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Quotations.');
+            } elseif ($sale->sale_type === 'sales_order' && !$currentUser->can('sales_orders.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Sales Orders.');
+            } elseif (($sale->sale_type === 'direct_sale' || empty($sale->sale_type)) && !$currentUser->can('sales.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Sales.');
+            }
+        }
 
         if (in_array($sale->sale_status, ['cancelled', 'returned'])) {
-            return redirect()->route('sale.index')->with('error', 'Cannot edit a '.$sale->sale_status.' sale.');
+            $targetRoute = 'sale.index';
+            if ($sale->sale_type === 'quotation') {
+                $targetRoute = 'quotations.index';
+            } elseif ($sale->sale_type === 'sales_order') {
+                $targetRoute = 'sales_orders.index';
+            }
+            return redirect()->route($targetRoute)->with('error', 'Cannot edit a '.$sale->sale_status.' sale.');
         }
 
         // 2. Data for Dropdowns (Same as addsale)
         $customer = Customer::all();
         $warehouse = Warehouse::all();
-        $allSeries = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
+        $exclude = ['PO', 'PINV', 'DC', 'DDC', 'DGRN', 'GRN', 'SR', 'PRET', 'SQ', 'INVSLE'];
+        if ($sale->sale_type !== 'quotation') $exclude[] = 'QUO';
+        if ($sale->sale_type !== 'sales_order' && $sale->sale_type !== 'quotation') $exclude[] = 'SO';
+        
+        $allSeries = \App\Models\InvoiceSeries::whereNotIn('prefix', $exclude)->orderByRaw("is_default DESC, id ASC")->get();
         $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
         $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
-        $recentProducts = Product::latest()->take(12)->get();
+        $recentProducts = Product::where('is_active', true)->orderBy('item_code', 'asc')->take(24)->get();
 
         // Filter accounts (Cash/Bank) for Receipt Voucher
-        $accounts = \App\Models\Account::whereHas('head', function($q) {
-            $q->whereIn('name', ['Cash', 'Bank']);
+        $accounts = \App\Models\Account::where(function($query) {
+            $query->whereHas('head', function($q) {
+                $q->whereIn('name', ['Cash', 'Bank', 'cash', 'bank']);
+            })->orWhere('title', 'like', '%cash%');
         })->where('status', 1)
             ->orderBy('title')
             ->get();
 
-        // 3. Fetch existing payment accounts & amounts for this sale
-        $existingPayments = [];
+        // 3. Reuse nextInvoiceNumber var for current invoice no (view expects this variable name)
+        $nextInvoiceNumber = $sale->invoice_no;
 
-        // Try VoucherMaster (Auto-Receipt for this sale)
-        $receiptVoucher = \App\Models\VoucherMaster::with('details')
-            ->where('voucher_type', \App\Models\VoucherMaster::TYPE_RECEIPT)
-            ->where('remarks', 'like', "%#{$sale->invoice_no}%")
-            ->latest()
+        // Try to find the existing payment account(s) used for this sale
+        $existingReceiptVoucher = \App\Models\VoucherMaster::where('voucher_type', \App\Models\VoucherMaster::TYPE_RECEIPT)
+            ->where('remarks', 'like', "%{$sale->invoice_no}%")
+            ->with(['details' => function($q) {
+                $q->where('debit', '>', 0);
+            }])
+            ->latest('id')
             ->first();
 
-        if ($receiptVoucher && $receiptVoucher->details) {
-            foreach ($receiptVoucher->details as $detail) {
-                if ((float)$detail->debit > 0) {
-                    $existingPayments[] = [
-                        'account_id' => $detail->account_id,
-                        'amount' => (float)$detail->debit,
-                    ];
+        $savedReceiptAccountId = null;
+        if ($existingReceiptVoucher && $existingReceiptVoucher->details->isNotEmpty()) {
+            $savedReceiptAccountId = $existingReceiptVoucher->details->first()->account_id;
+        }
+
+        if (!$savedReceiptAccountId) {
+            $legacyRV = \App\Models\ReceiptsVoucher::where('remarks', 'like', "%{$sale->invoice_no}%")->latest('id')->first();
+            if ($legacyRV && !empty($legacyRV->row_account_id)) {
+                $dec = json_decode($legacyRV->row_account_id, true);
+                if (is_array($dec) && !empty($dec)) {
+                    $savedReceiptAccountId = (int) reset($dec);
                 }
             }
         }
 
-        // Fallback to JournalEntry if no VoucherMaster
-        if (empty($existingPayments)) {
-            $journalEntries = \App\Models\JournalEntry::where('description', 'like', "%#{$sale->invoice_no}%")
-                ->where('debit', '>', 0)
-                ->whereHas('account.head', function($q) {
-                    $q->whereIn('name', ['Cash', 'Bank']);
-                })
-                ->get();
-
-            foreach ($journalEntries as $entry) {
-                $existingPayments[] = [
-                    'account_id' => $entry->account_id,
-                    'amount' => (float)$entry->debit,
-                ];
-            }
-        }
-
-        // Fallback to sale->account_id or default cash
-        if (empty($existingPayments)) {
-            $chosenAccId = $sale->account_id;
-            if (!$chosenAccId) {
-                $defaultAcc = $accounts->first(function($a) {
-                    return str_contains(strtolower($a->title), 'cash') || str_contains(strtolower($a->title), 'easypaisa');
-                }) ?: $accounts->first();
-                $chosenAccId = $defaultAcc ? $defaultAcc->id : null;
-            }
-
-            $existingPayments[] = [
-                'account_id' => $chosenAccId,
-                'amount' => (float)($sale->cash > 0 ? $sale->cash : 0),
-            ];
-        }
-
-        // 4. Reuse nextInvoiceNumber var for current invoice no (view expects this variable name)
-        $nextInvoiceNumber = $sale->invoice_no;
-
-        // 5. Return the Edit Sale View
-        return view('admin_panel.sale.edit_sale', compact('warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allSeries', 'activePrefix', 'existingPayments'));
+        // 4. Return the Edit Sale View
+        return view('admin_panel.sale.edit_sale', compact('warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allSeries', 'activePrefix', 'savedReceiptAccountId'));
     }
 
     public function updatesale(Request $request, $id)
     {
         $sale = Sale::findOrFail($id);
+
+        $currentUser = auth()->user();
+        if ($currentUser) {
+            if ($sale->sale_type === 'quotation' && !$currentUser->can('quotations.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Quotations.');
+            } elseif ($sale->sale_type === 'sales_order' && !$currentUser->can('sales_orders.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Sales Orders.');
+            } elseif (($sale->sale_type === 'direct_sale' || empty($sale->sale_type)) && !$currentUser->can('sales.edit')) {
+                abort(403, 'Unauthorized: You do not have permission to edit Sales.');
+            }
+        }
+
         if (in_array($sale->sale_status, ['cancelled', 'returned'])) {
             return redirect()->back()->with('error', 'Cannot edit a '.$sale->sale_status.' sale.');
         }
@@ -1871,6 +1321,10 @@ class SaleController extends Controller
 
     public function saledc($id)
     {
+        if (auth()->check() && !auth()->user()->can('delivery_challans.print') && !auth()->user()->can('direct_dc.print')) {
+            abort(403, 'Unauthorized: You do not have permission to print delivery challans.');
+        }
+
         $sale = Sale::with('customer_relation')->findOrFail($id);
         $items = $this->_getSaleItems($sale);
 
@@ -1879,6 +1333,10 @@ class SaleController extends Controller
 
     public function saledcThermal($id)
     {
+        if (auth()->check() && !auth()->user()->can('delivery_challans.print') && !auth()->user()->can('direct_dc.print')) {
+            abort(403, 'Unauthorized: You do not have permission to print delivery challans.');
+        }
+
         $sale = Sale::with('customer_relation')->findOrFail($id);
         $items = $this->_getSaleItems($sale);
 
@@ -1887,6 +1345,10 @@ class SaleController extends Controller
 
     public function salereceipt($id)
     {
+        if (auth()->check() && !auth()->user()->can('sales.print')) {
+            abort(403, 'Unauthorized: You do not have permission to print sale receipts.');
+        }
+
         $sale = Sale::with('customer_relation')->findOrFail($id);
         $items = $this->_getSaleItems($sale);
 
@@ -1943,9 +1405,10 @@ class SaleController extends Controller
 
         $rules = [
             'product_id' => 'required|array|min:1',
-            'product_id.*' => 'nullable|exists:products,id',
             'qty' => 'required|array|min:1',
             'warehouse_id' => 'nullable|array',
+            'shipping_charges' => 'nullable|numeric|min:0',
+            'cutting_charges' => 'nullable|numeric|min:0',
         ];
 
         if ($isWalkin) {
@@ -1962,11 +1425,32 @@ class SaleController extends Controller
         //     throw \Illuminate\Validation\ValidationException::withMessages(['product_id' => 'Duplicate products are not allowed in a single sale. Please merge quantities.']);
         // }
 
-        $status = in_array($request->action, ['post', 'sale', 'posted']) ? 'posted' : 'booked';
+        if ($request->action === 'draft') {
+            $status = 'draft';
+        } else {
+            $status = in_array($request->action, ['post', 'sale', 'posted']) ? 'posted' : 'booked';
+        }
+
+        $saleType = $request->input('sale_type');
+        if (empty($saleType) && $sale->exists) {
+            $saleType = $sale->sale_type;
+        } elseif (empty($saleType)) {
+            $saleType = 'direct_sale';
+        }
+
+        if ($request->action === 'quotation') {
+            $saleType = 'quotation';
+        }
+        
+        if ($request->action === 'draft') {
+            $status = 'draft';
+        } elseif (in_array($saleType, ['quotation', 'sales_order'])) {
+            $status = 'booked'; // Force booked so it doesn't affect stock/ledger
+        }
 
         // Concurrency Safe Transaction
         try {
-            return DB::transaction(function () use ($request, $sale, $status, $isWalkin) {
+            return DB::transaction(function () use ($request, $sale, $status, $isWalkin, $saleType) {
 
                 // If this is an update to a previously posted sale, rollback its impact first
                 if ($sale->exists && $sale->sale_status === 'posted') {
@@ -1978,8 +1462,19 @@ class SaleController extends Controller
             $sale->customer_id = $request->customer;
             $sale->walkin_name = $isWalkin ? $request->walkin_name : null;
             $sale->reference = $request->reference;
+            $sale->comment = $request->input('comment') ?? ($request->input('notes') ?? null);
+            $rawWh = $request->input('warehouse_id');
+            $headerWhId = $request->input('header_warehouse_id') ?: (is_array($rawWh) ? ($rawWh[0] ?? 1) : ($rawWh ?: 1));
+            $sale->warehouse_id = $headerWhId;
             $sale->total_amount_Words = $request->total_amount_Words; // Consider auto-generating this too?
             $sale->sale_status = $status;
+            $sale->sale_type = $saleType;
+            if ($isNew && $request->filled('parent_quotation_id')) {
+                $sale->parent_quotation_id = $request->parent_quotation_id;
+            }
+            if ($saleType === 'sales_order' && empty($sale->delivery_status)) {
+                $sale->delivery_status = 'pending';
+            }
 
             // Credit Days & Due Date (Optional)
             if ($request->filled('credit_days') && $request->credit_days > 0) {
@@ -1995,24 +1490,32 @@ class SaleController extends Controller
                 $sale->due_date = null;
             }
 
-            if ($isNew) {
-                // Check if user provided manual invoice number or selected series
-                $invInput = $request->input('Invoice_no') ?: $request->input('invoice_no');
-                if (!empty($invInput)) {
-                    $manualInvoice = trim($invInput);
+            $invInput = $request->input('Invoice_no') ?: $request->input('invoice_no');
+            $tType = $request->sale_type ?? ($sale->sale_type ?? 'direct_sale');
+            $defaultPref = ($tType === 'quotation') ? 'QUO' : (($tType === 'sales_order') ? 'SO' : 'INV');
 
-                    // Check for duplicates
-                    $exists = Sale::where('invoice_no', $manualInvoice)->exists();
+            if ($isNew) {
+                $targetNo = \App\Models\InvoiceSeries::normalizeNumber($invInput, $defaultPref);
+
+                // Check for duplicates
+                $exists = Sale::where('invoice_no', $targetNo)->exists();
+                if ($exists) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'invoice_no' => "Number '{$targetNo}' already exists. Please choose a different number or click refresh.",
+                    ]);
+                }
+
+                $sale->invoice_no = $targetNo;
+            } else {
+                if ($invInput && $invInput !== $sale->invoice_no) {
+                    $targetNo = \App\Models\InvoiceSeries::normalizeNumber($invInput, $defaultPref);
+                    $exists = Sale::where('invoice_no', $targetNo)->where('id', '!=', $sale->id)->exists();
                     if ($exists) {
                         throw \Illuminate\Validation\ValidationException::withMessages([
-                            'invoice_no' => "Invoice number '{$manualInvoice}' already exists. Please use a different number or click refresh.",
+                            'invoice_no' => "Number '{$targetNo}' already exists on another record. Please choose a different number.",
                         ]);
                     }
-
-                    $sale->invoice_no = $manualInvoice;
-                } else {
-                    // Auto-generate unique invoice number
-                    $sale->invoice_no = Sale::generateInvoiceNo();
+                    $sale->invoice_no = $targetNo;
                 }
             }
 
@@ -2052,7 +1555,7 @@ class SaleController extends Controller
             // Looking at invoice blade: $item['qty'] is boxes.
             // Let's assume input 'qty' is BOXES.
 
-            $defaultWhId = auth()->user()->warehouse_id ?? 1;
+            $defaultWhId = $sale->warehouse_id ?: (auth()->user()->warehouse_id ?? 1);
             $warehouses = $request->warehouse_id ?? [];
             $discounts = $request->item_disc ?? [];
 
@@ -2060,8 +1563,11 @@ class SaleController extends Controller
 
             foreach ($productIds as $index => $pid) {
                 $isManual = (isset($request->is_manual[$index]) && $request->is_manual[$index] == '1');
+                $isSet = (!empty($request->is_set[$index]) && $request->is_set[$index] == '1')
+                    || (is_string($pid) && str_starts_with($pid, 'set_'))
+                    || !empty($request->product_set_id[$index]);
 
-                if (! $isManual && ! $pid) {
+                if (! $isManual && ! $isSet && ! $pid) {
                     continue;
                 }
 
@@ -2070,7 +1576,30 @@ class SaleController extends Controller
                     continue;
                 }
 
-                if ($isManual) {
+                $actualProductSetId = null;
+                $productSet = null;
+
+                if ($isSet) {
+                    $setId = !empty($request->product_set_id[$index]) 
+                        ? $request->product_set_id[$index] 
+                        : (is_string($pid) ? str_replace('set_', '', $pid) : null);
+
+                    $productSet = \App\Models\ProductSet::find($setId);
+                    $actualProductSetId = $productSet ? $productSet->id : (int)$setId;
+                    $productName = $productSet ? $productSet->name : 'Product Set';
+
+                    $inputPrice = (float) ($request->price_per_piece[$index] ?? 0);
+                    $dbPrice = $inputPrice > 0 ? $inputPrice : (float)($productSet->set_price ?? 0);
+                    $ppb = 1;
+                    $brandId = null;
+                    $unitId = null;
+                    $sizeMode = 'by_pieces';
+                    
+                    $totalPieces = (float) ($request->total_pieces[$index] ?? 0);
+                    if ($totalPieces <= 0) $totalPieces = $qtyInput;
+                    $loose = 0;
+                    $storedQtyBox = $totalPieces;
+                } elseif ($isManual) {
                     $inputPrice = (float) ($request->price_per_piece[$index] ?? 0);
                     $dbPrice = $inputPrice;
                     $ppb = 1;
@@ -2149,54 +1678,47 @@ class SaleController extends Controller
                     $totalPieces = 0;
                     $loose = (float) ($request->loose_pieces[$index] ?? 0); // Legacy/Fallback
 
-                    // Quantity Logic based on Size Mode (Billed Pieces)
-                    $billedPieces = 0;
-                    if ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_size') {
-                        $qStr = (string) ($quantities[$index] ?? '');
-                        if (str_contains($qStr, '.')) {
+                    // Quantity Logic based on Size Mode
+                    if ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box' || $product->size_mode === 'by_size') {
+                        // For Carton/Size modes, Frontend sends 'total_pieces' (Calculated Pieces)
+                        // and 'qty' contains "Box.Loose" string.
+                        $reqTotal = (float) ($request->total_pieces[$index] ?? 0);
+
+                        if ($reqTotal > 0) {
+                            $totalPieces = $reqTotal;
+                        } else {
+                            // Fallback: Parse "Box.Loose" manually if Frontend failed/missing
+                            $qStr = (string) ($quantities[$index] ?? '');
                             $parts = explode('.', $qStr);
                             $boxes = (int) ($parts[0] ?? 0);
                             $l = isset($parts[1]) ? (int) $parts[1] : 0;
-                            $billedPieces = ($boxes * $ppb) + $l;
-                            $storedQtyBox = $ppb > 0 ? ($billedPieces / $ppb) : $boxes;
-                        } else {
-                            $subUnit = $request->sub_unit_mode[$index] ?? 'main';
-                            if ($subUnit === 'pcs') {
-                                $billedPieces = $qtyInput;
-                                $storedQtyBox = $ppb > 0 ? ($billedPieces / $ppb) : $billedPieces;
-                            } else {
-                                $storedQtyBox = $qtyInput;
-                                $billedPieces = $qtyInput * $ppb;
-                            }
+                            $totalPieces = ($boxes * $ppb) + $l;
                         }
                     } else {
                         // Start of By Piece
-                        $billedPieces = $qtyInput;
-                        $storedQtyBox = $qtyInput;
-                    }
-
-                    // Bonus Quantity
-                    $bonusVal = $request->bonus_display[$index] ?? ($request->bonus[$index] ?? ($request->color_display[$index] ?? null));
-                    $bonusQty = (float) ($bonusVal ?? 0);
-                    if ($bonusQty < 0) $bonusQty = 0;
-
-                    // Check if this row has returned pieces from previous sale returns
-                    $retPieces = (float) ($request->returned_pieces[$index] ?? 0);
-                    if ($retPieces > 0) {
-                        // The user in Edit Sale enters the NET billed quantity.
-                        // Add returned pieces to obtain GROSS pieces for proper stock & return balance tracking.
-                        $grossBilledPieces = $billedPieces + $retPieces;
-                        $storedQtyBox = $ppb > 0 ? ($grossBilledPieces / $ppb) : $grossBilledPieces;
-                        $totalPieces = $grossBilledPieces + $bonusQty;
-                    } else {
-                        // Total Physical Pieces for Inventory (Billed Pieces + Bonus)
-                        $calculatedTotal = $billedPieces + $bonusQty;
                         $reqTotal = (float) ($request->total_pieces[$index] ?? 0);
-                        if ($reqTotal >= $calculatedTotal && $reqTotal > 0) {
+                        if ($reqTotal > 0) {
                             $totalPieces = $reqTotal;
                         } else {
-                            $totalPieces = $calculatedTotal;
+                            $qStr = (string) ($quantities[$index] ?? '');
+                            $parts = explode('.', $qStr);
+                            $boxes = (int) ($parts[0] ?? 0);
+                            $l = isset($parts[1]) ? (int) $parts[1] : 0;
+                            // For by_pieces, both fields act as plain piece counts in frontend
+                            $totalPieces = $boxes + $l;
                         }
+                    }
+
+                    // Calculate boxes / sold qty for storage
+                    // For cartons/size modes, qty is a box count (totalPieces / ppb).
+                    // For measurement/unit modes (kg/meter/feet/pieces), qty stores the exact sold quantity
+                    // in that variant's unit (e.g. 1.5 Mtr, 20 Ft, 50 Pcs), while total_pieces holds
+                    // converted base units for warehouse stock deduction.
+                    if (in_array($product->size_mode, ['by_cartons', 'by_box', 'by_size'])) {
+                        $storedQtyBox = $ppb > 0 ? ($totalPieces / $ppb) : $totalPieces;
+                    } else {
+                        $rawSold = (float) ($quantities[$index] ?? 0);
+                        $storedQtyBox = $rawSold > 0 ? $rawSold : $totalPieces;
                     }
                     
                     $productName = $product->item_name;
@@ -2213,19 +1735,7 @@ class SaleController extends Controller
                 $frontendGross = (float) ($request->gross_amount[$index] ?? 0);
                 $frontendNet   = (float) ($request->total[$index] ?? 0);
 
-                if (!empty($retPieces) && $retPieces > 0) {
-                    // When row has returned items, line gross represents gross pieces (net + return)
-                    if ($sizeMode === 'by_cartons') {
-                        $subUnit = $request->sub_unit_mode[$index] ?? 'main';
-                        if ($subUnit === 'pcs') {
-                            $lineGross = $grossBilledPieces * $dbPrice;
-                        } else {
-                            $lineGross = $storedQtyBox * $dbPrice;
-                        }
-                    } else {
-                        $lineGross = $grossBilledPieces * $dbPrice;
-                    }
-                } elseif ($frontendGross > 0) {
+                if ($frontendGross > 0) {
                     $lineGross = $frontendGross;
                 } elseif ($frontendNet > 0) {
                     // frontendNet was already after discount in frontend
@@ -2235,15 +1745,15 @@ class SaleController extends Controller
                         $lineGross = $discount < 100 ? round($frontendNet / (1 - ($discount / 100)), 2) : $frontendNet;
                     }
                 } else {
-                    if ($sizeMode === 'by_cartons') {
+                    if ($sizeMode === 'by_cartons' || $sizeMode === 'by_box') {
                         $subUnit = $request->sub_unit_mode[$index] ?? 'main';
                         if ($subUnit === 'pcs') {
-                            $lineGross = $billedPieces * $dbPrice;
+                            $lineGross = $totalPieces * $dbPrice;
                         } else {
                             $lineGross = $storedQtyBox * $dbPrice;
                         }
                     } else {
-                        $lineGross = $billedPieces * $dbPrice;
+                        $lineGross = $storedQtyBox * $dbPrice;
                     }
                 }
 
@@ -2263,46 +1773,47 @@ class SaleController extends Controller
 
                 $colorVal = $request->color[$index] ?? null;
                 $sizeVal = $request->size_display[$index] ?? ($request->size[$index] ?? null);
-                $bonusVal = $request->bonus_display[$index] ?? ($request->bonus[$index] ?? ($request->color_display[$index] ?? null));
 
-                $vData = [];
-                if (!empty($colorVal)) {
-                    $b64 = base64_decode($colorVal, true);
-                    $vData = ($b64 !== false) ? json_decode($b64, true) : json_decode($colorVal, true);
-                }
-                if (!is_array($vData)) {
-                    $vData = [];
-                }
                 if ($sizeVal !== null && $sizeVal !== '' && $sizeVal !== '-') {
+                    $vData = [];
+                    if (!empty($colorVal)) {
+                        $b64 = base64_decode($colorVal, true);
+                        $vData = ($b64 !== false) ? json_decode($b64, true) : json_decode($colorVal, true);
+                    }
+                    if (!is_array($vData)) {
+                        $vData = [];
+                    }
                     $vData['size'] = $sizeVal;
-                }
-                if ($bonusVal !== null && $bonusVal !== '' && $bonusVal !== '-') {
-                    $vData['bonus'] = $bonusVal;
-                }
-                if (!empty($vData)) {
                     $colorVal = base64_encode(json_encode($vData));
                 }
 
                 $saleItem = new SaleItem;
                 $saleItem->sale_id = $sale->id;
-                $saleItem->product_id = $isManual ? null : $pid;
+                $saleItem->product_id = ($isManual || $isSet) ? null : $pid;
+                $saleItem->product_set_id = $isSet ? $actualProductSetId : null;
                 $saleItem->color = $colorVal;
-                $saleItem->warehouse_id = !empty($warehouses[$index]) ? $warehouses[$index] : $defaultWhId;
+                $itemWh = is_array($warehouses) ? ($warehouses[$index] ?? null) : $warehouses;
+                $saleItem->warehouse_id = $itemWh ?: $defaultWhId;
+                $rawWb = $request->warehouse_breakdown[$index] ?? null;
+                $saleItem->warehouse_breakdown = (!empty($rawWb) && $rawWb !== 'null' && $rawWb !== '[]') 
+                    ? (is_string($rawWb) ? $rawWb : json_encode($rawWb)) 
+                    : null;
                 $saleItem->product_name = $productName; // Store name snapshot
+                $saleItem->description = $request->description[$index] ?? ($isSet && $productSet && $productSet->code ? "[{$productSet->code}]" : null);
 
-                $saleItem->qty = $storedQtyBox; // Store Billed Qty (Box / Pcs)
-                $saleItem->bonus_qty = $bonusQty; // Free Bonus Qty
-                $saleItem->total_pieces = $totalPieces; // Total Physical Pieces Dispatched (Billed + Bonus)
+                $saleItem->qty = $storedQtyBox; // Store as Box equivalent for consistency
+                $saleItem->total_pieces = $totalPieces;
                 $saleItem->loose_pieces = $loose;
 
                 $saleItem->price = $dbPrice;
                 $saleItem->discount_percent = $calcDiscountPercent;
                 $saleItem->discount_amount = $calcDiscountAmount;
+                $saleItem->discount_type = $discType; // 'pkr' or 'percent'
                 $saleItem->total = $lineTotal;
 
                 // Meta
-                $saleItem->brand_id = $brandId;
-                $saleItem->unit_id = $unitId;
+                $saleItem->brand_id = is_numeric($brandId) ? (int)$brandId : null;
+                $saleItem->unit_id = is_numeric($unitId) ? (int)$unitId : null;
                 $saleItem->size_mode = $sizeMode;
 
                 if ($isManual) {
@@ -2328,35 +1839,69 @@ class SaleController extends Controller
 
             // Update Sale Totals
             $sale->total_bill_amount = $total_bill;
-            $sale->total_extradiscount = (float) ($request->total_extra_cost ?? $request->discountAmount ?? $request->discount_amount ?? 0);
-            $sale->total_net = max(0, $total_bill - $sale->total_extradiscount);
+
+            $overallType = $request->input('overall_discount_type') ?: 'pkr';
+            $overallVal = (float) ($request->input('overall_discount_value') ?? $request->input('walkin_discount') ?? $request->input('walkinDiscountRs') ?? 0);
+
+            if ($overallVal == 0 && $request->filled('total_extra_cost')) {
+                $overallVal = (float) $request->input('total_extra_cost');
+            }
+
+            if ($overallType === 'percent') {
+                $calculatedExtraDiscount = $total_bill > 0 ? round(($total_bill * $overallVal) / 100, 2) : 0;
+            } else {
+                $calculatedExtraDiscount = $overallVal;
+            }
+            $calculatedExtraDiscount = min($total_bill, max(0, $calculatedExtraDiscount));
+
+            $shippingCharges = max(0, (float)($request->input('shipping_charges', 0)));
+            $cuttingCharges = max(0, (float)($request->input('cutting_charges', 0)));
+            $sale->overall_discount_type = $overallType;
+            $sale->overall_discount_value = $overallVal;
+            $sale->total_extradiscount = $calculatedExtraDiscount;
+            $sale->shipping_charges = $shippingCharges;
+            $sale->cutting_charges = $cuttingCharges;
+            if ($request->has('comment') || $request->has('notes')) {
+                $sale->comment = $request->input('comment') ?? ($request->input('notes') ?? $sale->comment);
+            }
+            $sale->total_net = max(0, round(($total_bill - $sale->total_extradiscount) + $shippingCharges + $cuttingCharges, 2));
             $sale->total_items = $total_items;
 
-            if ($request->filled('discount_tier')) {
-                $sale->discount_tier = $request->input('discount_tier');
-            }
-
-            $sale->cash = (float) ($request->cash ?? 0);
-            $sale->change = ($sale->cash - $sale->total_net);
-            $sale->change_account_id = $request->input('change_account_id') ?: null;
-
-            $receiptAccounts = $request->input('receipt_account_id', []);
-            $firstAccountId = null;
-            if (is_array($receiptAccounts)) {
-                foreach ($receiptAccounts as $accId) {
-                    if (!empty($accId)) {
-                        $firstAccountId = (int) $accId;
-                        break;
-                    }
+            $receiptAmounts = $request->input('receipt_amount', []);
+            $totalCashPaid = 0;
+            if (is_array($receiptAmounts)) {
+                foreach ($receiptAmounts as $rAmt) {
+                    $totalCashPaid += (float) $rAmt;
                 }
             }
-            if ($firstAccountId) {
-                $sale->account_id = $firstAccountId;
-            } elseif ($request->filled('account_id')) {
-                $sale->account_id = (int) $request->input('account_id');
+            $sale->cash = $totalCashPaid > 0 ? $totalCashPaid : (float)($request->cash ?? 0);
+            // Handle Settle from Customer Advance (Option 1)
+            if ($request->filled('settle_from_advance') && in_array($request->input('settle_from_advance'), ['1', 1, 'true', true]) && $sale->customer_id) {
+                $lastLedger = \App\Models\CustomerLedger::where('customer_id', $sale->customer_id)
+                    ->orderBy('id', 'desc')
+                    ->first();
+                $custClosing = $lastLedger ? (float) $lastLedger->closing_balance : 0;
+                $availAdvance = $custClosing < 0 ? abs($custClosing) : 0;
+
+                $unpaidDue = max(0, (float) $sale->total_net - (float) $sale->cash);
+                $reqAdv = $request->filled('advance_adjusted_amount') ? (float) $request->input('advance_adjusted_amount') : null;
+                $settleAmt = $reqAdv !== null ? min($reqAdv, $availAdvance, $unpaidDue) : min($availAdvance, $unpaidDue);
+                $settleAmt = max(0, round($settleAmt, 2));
+
+                if ($settleAmt > 0) {
+                    $sale->advance_adjusted = $settleAmt;
+                    $sale->advance_settlement_note = 'Settled Rs. ' . number_format($settleAmt, 2) . ' from Customer Advance upon Invoice Creation';
+                }
             }
 
-            if ($isWalkin && $sale->change < -0.05) {
+            $effectivePaid = (float) $sale->cash + (float) ($sale->advance_adjusted ?? 0);
+            $sale->change = round($effectivePaid - $sale->total_net, 2);
+            $sale->change_account_id = $request->input('change_account_id') ?: null;
+
+            $isConvertToSale = $request->has('convert_to_sale') && $request->convert_to_sale == '1';
+            $isQuoOrSo = in_array($saleType, ['quotation', 'sales_order']) && !$isConvertToSale;
+
+            if ($isWalkin && !$isQuoOrSo && $status !== 'draft' && $sale->change < -0.05) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'cash' => 'Walk-in customers must pay 100% upfront. Balance cannot be unpaid.'
                 ]);
@@ -2458,7 +2003,8 @@ class SaleController extends Controller
                                     'purchase_price' => $origSaleItem->purchase_price,
                                 ];
                             } else {
-                                // Normalize qty for stock based on variant conv_factor
+                                // Restore stock — preserve original conversion for carton/size (pieces × conv_factor).
+                                // For kg/gm products return_qty is already KG (max returnable = total_pieces = KG) — use as-is.
                                 $stockQty = $rQty;
                                 if (!empty($rColor)) {
                                     try {
@@ -2468,9 +2014,14 @@ class SaleController extends Controller
                                             $variantData = is_string($rColor) ? json_decode($rColor, true) : $rColor;
                                         }
                                         if (is_array($variantData) && isset($variantData['conv_factor'])) {
-                                            $factor = (float)$variantData['conv_factor'];
-                                            if ($factor > 0) {
-                                                $stockQty = $stockQty * $factor;
+                                            $origSizeMode = $origSaleItem->size_mode ?? '';
+                                            if (in_array($origSizeMode, ['by_kg', 'by_gm', 'by_meter', 'by_feet'])) {
+                                                $stockQty = $rQty;
+                                            } else {
+                                                $factor = (float)$variantData['conv_factor'];
+                                                if ($factor > 0) {
+                                                    $stockQty = $rQty * $factor;
+                                                }
                                             }
                                         }
                                     } catch (\Exception $e) {}
@@ -2526,7 +2077,7 @@ class SaleController extends Controller
                     // Update Original Sale Header Totals
                     $allSaleItems = \App\Models\SaleItem::where('sale_id', $origSale->id)->get();
                     $origSale->total_bill_amount = $allSaleItems->sum('total');
-                    $origSale->total_net = max(0, $origSale->total_bill_amount - ($origSale->total_extradiscount ?? 0));
+                    $origSale->total_net = max(0, ($origSale->total_bill_amount - ($origSale->total_extradiscount ?? 0)) + ($origSale->shipping_charges ?? 0) + ($origSale->cutting_charges ?? 0));
                     $origSale->total_items = $allSaleItems->sum('total_pieces');
                     $origSale->save();
 
@@ -2577,11 +2128,25 @@ class SaleController extends Controller
             }
 
             // 4. Handle Status Logic
-            if ($status === 'posted') {
+            if ($status === 'posted' && !in_array($saleType, ['quotation', 'sales_order'])) {
                 \Log::info('Proceeding to Auto-Receipt & Ledger logic for Sale #'.$sale->invoice_no);
 
                 // 1. DEDUCT STOCK FROM WAREHOUSE
-                $this->handleStockImpact($sale, 'out');
+                // Only deduct if this is a direct sale OR if it doesn't already have confirmed DCs.
+                $hasInvoicedDCs = \App\Models\DeliveryChallan::where(function($q) use ($sale) {
+                        $q->where('sale_id', $sale->id)->orWhere('invoice_id', $sale->id);
+                    })
+                    ->where('status', 'confirmed')
+                    ->where(function($q) {
+                        $q->whereNull('remarks')->orWhere('remarks', 'not like', 'Auto-generated DC for Direct Sale%');
+                    })
+                    ->exists();
+                
+                if (!$hasInvoicedDCs) {
+                    $this->handleStockImpact($sale, 'out');
+                } else {
+                    \Log::info("Sale #{$sale->invoice_no} already has DCs. Skipping stock deduction to prevent double deduction.");
+                }
 
                 $totalReturnVal = $totalReturnAmountForNet ?? 0;
                 $isExchange = $totalReturnVal > 0;
@@ -2753,21 +2318,185 @@ class SaleController extends Controller
                 } catch (\Exception $e) {
                     \Log::error('Professional Ledger Posting Error: '.$e->getMessage());
                 }
+
+                // Direct sales do not generate Delivery Challans.
+                // Mark sale and items as delivered directly.
+                if (in_array($sale->sale_type, ['direct_sale', null])) {
+                    $sale->delivery_status = 'delivered';
+                    $sale->save();
+                    foreach ($sale->items as $item) {
+                        $item->delivered_qty = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
+                        $item->save();
+                    }
+                }
+            } elseif ($status === 'booked' && $sale->is_booking) {
+                // For Bookings, we don't deduct stock or post the sales invoice to the ledger,
+                // BUT we do want to record any advance payment made.
+                try {
+                    $transactionService = app(\App\Services\TransactionService::class);
+                    $transactionService->createReceiptFromSale(
+                        $sale,
+                        $request->input('receipt_account_id', []),
+                        $request->input('receipt_amount', []),
+                        $sale->change_account_id
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Booking Advance Payment Ledger Error: '.$e->getMessage());
+                }
             }
 
             // If AJAX/JSON response needed
+            $msgStatus = $status === 'booked' ? ($sale->is_booking ? 'Booked' : 'Quoted') : ucfirst($status);
+
+            if ($request->has('convert_to_so') && $request->convert_to_so == '1' && $sale->sale_type === 'quotation') {
+                $sale->load('items'); // Ensure we have the newly saved items, not the old ones
+                $existingOrder = \App\Models\Sale::where('parent_quotation_id', $sale->id)->first();
+                if (!$existingOrder) {
+                    $newOrder = $sale->replicate();
+                    $newOrder->uuid = null;
+                    $newOrder->sale_type = 'sales_order';
+                    $newOrder->delivery_status = 'pending';
+                    $newOrder->parent_quotation_id = $sale->id;
+                    
+                    $soInput = $request->input('Invoice_no') ?: $request->input('invoice_no');
+                    if ($soInput) {
+                        $newOrder->invoice_no = \App\Models\InvoiceSeries::normalizeNumber($soInput, 'SO');
+                    } else {
+                        $newOrder->invoice_no = \App\Models\InvoiceSeries::generateNextNo('SO');
+                    }
+                    \App\Models\InvoiceSeries::incrementCounterForInvoice($newOrder->invoice_no);
+                    
+                    $newOrder->save();
+
+                    // Replicate the items
+                    foreach ($sale->items as $item) {
+                        $newItem = $item->replicate();
+                        $newItem->sale_id = $newOrder->id;
+                        $newItem->save();
+                    }
+                    
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json([
+                            'ok' => true,
+                            'booking_id' => $newOrder->id,
+                            'msg' => 'Quotation updated and successfully converted to Sales Order.',
+                            'redirect_url' => route('sales_orders.index')
+                        ]);
+                    }
+                    return redirect()->route('sales_orders.index')->with('success', 'Quotation updated and successfully converted to Sales Order.');
+                } else {
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json([
+                            'ok' => true,
+                            'booking_id' => $existingOrder->id,
+                            'msg' => 'This quotation was already converted to Sales Order.',
+                            'redirect_url' => route('sales_orders.index')
+                        ]);
+                    }
+                    return redirect()->route('sales_orders.index')->with('info', 'This quotation was already converted to Sales Order.');
+                }
+            }
+
+            if ($request->has('convert_to_sale') && $request->convert_to_sale == '1' && $sale->sale_type === 'quotation') {
+                $sale->load('items');
+                $newSale = $sale->replicate();
+                $newSale->uuid = null;
+                $newSale->sale_type = 'direct_sale';
+                $newSale->sale_status = 'posted';
+                $newSale->parent_quotation_id = $sale->id;
+                
+                $invInput = $request->input('Invoice_no') ?: $request->input('invoice_no');
+                $chosenPrefix = $request->input('prefix') ?: 'INV';
+                if ($invInput) {
+                    $newSale->invoice_no = \App\Models\InvoiceSeries::normalizeNumber($invInput, $chosenPrefix);
+                } else {
+                    $seriesList = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
+                    $defaultSeries = $seriesList->where('is_default', 1)->first() ?: $seriesList->first();
+                    $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+                    $newSale->invoice_no = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+                }
+                \App\Models\InvoiceSeries::incrementCounterForInvoice($newSale->invoice_no);
+                
+                $newSale->save();
+
+                foreach ($sale->items as $item) {
+                    $newItem = $item->replicate();
+                    $newItem->sale_id = $newSale->id;
+                    $newItem->save();
+                }
+
+                $this->handleStockImpact($newSale, 'out');
+                $this->updateLedger($newSale);
+
+                $custForVoucher = $newSale->customer_relation ?? \App\Models\Customer::find($newSale->customer_id);
+                if ($custForVoucher) {
+                    $balanceService = app(\App\Services\BalanceService::class);
+                    $balanceService->createSaleVoucher(
+                        $custForVoucher,
+                        $newSale->total_net,
+                        (string)$newSale->invoice_no,
+                        $newSale->created_at->format('Y-m-d')
+                    );
+                }
+                $transactionService = app(\App\Services\TransactionService::class);
+                $transactionService->createReceiptFromSale($newSale);
+
+                // Direct sales do not generate Delivery Challans.
+                // Mark sale and items as delivered directly.
+                if (in_array($newSale->sale_type, ['direct_sale', null])) {
+                    $newSale->delivery_status = 'delivered';
+                    $newSale->save();
+                    foreach ($newSale->items as $item) {
+                        $item->delivered_qty = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
+                        $item->save();
+                    }
+                }
+
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'ok' => true,
+                        'booking_id' => $newSale->id,
+                        'msg' => 'Quotation updated and successfully converted to Sale Invoice.',
+                        'redirect_url' => route('sale.index')
+                    ]);
+                }
+                return redirect()->route('sale.index')->with('success', 'Quotation converted to Sale Invoice successfully.');
+            }
+
+            $targetRoute = 'sale.index';
+            $targetParams = [];
+            if ($status === 'draft') {
+                $targetParams = ['status' => 'draft'];
+            } elseif ($sale->sale_type === 'quotation') {
+                $targetRoute = 'quotations.index';
+            } elseif ($sale->sale_type === 'sales_order') {
+                $targetRoute = 'sales_orders.index';
+            }
+
+            if ($request->hasFile('attachment')) {
+                $file = $request->file('attachment');
+                $filename = time() . '_' . $file->getClientOriginalName();
+                $file->move(public_path('uploads/attachments'), $filename);
+                $sale->attachment = $filename;
+                $sale->save();
+            }
+
             if ($request->ajax() || $request->wantsJson()) {
-                $receiptUrl = route('sales.receipt', $sale->id) . '?from=pos';
+                $receiptUrl = route('sales.invoice', $sale->id) . '?from=pos';
                 return response()->json([
                     'ok' => true,
                     'booking_id' => $sale->id,
-                    'msg' => 'Sale '.ucfirst($status).' Successfully',
+                    'msg' => 'Sale '.$msgStatus.' Successfully',
                     'invoice_url' => $receiptUrl,
                     'receipt_url' => $receiptUrl,
+                    'redirect_url' => route($targetRoute, $targetParams)
                 ]);
             }
 
-            return redirect()->route('sale.index')->with('success', 'Sale saved as '.$status);
+            if ($request->input('action') === 'save_and_print') {
+                return redirect()->route('sales.invoice', $sale->id)->with('success', 'Sale saved as '.$msgStatus);
+            }
+            return redirect()->route($targetRoute, $targetParams)->with('success', 'Sale saved as '.$msgStatus);
         });
         } catch (\Exception $e) {
             $errorMsg = $e->getMessage();
@@ -2787,14 +2516,30 @@ class SaleController extends Controller
         }
     }
 
+    /**
+     * For Direct Sales, auto Delivery Challan creation is disabled.
+     * Direct Sales directly deduct warehouse stock and maintain customer ledger.
+     */
+    public function syncDeliveryChallanForDirectSale(Sale $sale)
+    {
+        if (in_array($sale->sale_type, ['direct_sale', null])) {
+            $sale->delivery_status = 'delivered';
+            $sale->save();
+            foreach ($sale->items as $item) {
+                $item->delivered_qty = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
+                $item->save();
+            }
+        }
+        return null;
+    }
+
     public function handleStockImpact(Sale $sale, $type = 'out')
     {
         // Type: 'out' (Sale Posted), 'in' (Sale Cancelled), 'return' (Returned)
 
-        // Load items relationship if not already loaded
-        if (! $sale->relationLoaded('items')) {
-            $sale->load('items.product');
-        }
+        // Load items relationship if not already loaded (always re-query so edits
+        // don't deduct against the stale pre-edit items collection)
+        $sale->load(['items.product', 'items.productSet.items.product']);
 
         foreach ($sale->items as $item) {
             // Outsourced / Manual products do not affect warehouse stock
@@ -2802,142 +2547,218 @@ class SaleController extends Controller
                 continue;
             }
 
-            $targetWhId = $item->warehouse_id ?: (auth()->user()->warehouse_id ?? 1);
-            $stock = WarehouseStock::where('product_id', $item->product_id)
-                ->where('warehouse_id', $targetWhId)
-                ->lockForUpdate() // LOCK ROW
-                ->first();
+            // Handle Product Set items
+            if ($item->product_set_id) {
+                $set = $item->productSet ?: \App\Models\ProductSet::with('items.product')->find($item->product_set_id);
+                if ($set && $set->items) {
+                    $setCount = (float)($item->total_pieces > 0 ? $item->total_pieces : ($item->qty > 0 ? $item->qty : 1));
+                    $targetWhId = $item->warehouse_id ?: ($sale->warehouse_id ?: (auth()->user()->warehouse_id ?? 1));
 
-            if (! $stock) {
-                $stock = WarehouseStock::where('product_id', $item->product_id)->lockForUpdate()->first();
+                    foreach ($set->items as $setItem) {
+                        $p = $setItem->product;
+                        if (!$p) continue;
+
+                        $stock = WarehouseStock::where('product_id', $p->id)
+                            ->where('warehouse_id', $targetWhId)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if (! $stock) {
+                            $stock = WarehouseStock::create([
+                                'warehouse_id' => $targetWhId,
+                                'product_id' => $p->id,
+                                'total_pieces' => 0,
+                                'quantity' => 0,
+                            ]);
+                        }
+
+                        $pMode = $p->size_mode ?? '';
+                        $itemSetQty = (float)$setItem->quantity * $setCount;
+                        $qtyDeduct = $itemSetQty;
+
+                        if ($pMode === 'by_kg' || $pMode === 'by_gm') {
+                            $conv = (float)($setItem->conv_factor > 0 ? $setItem->conv_factor : 0);
+                            $wpp = (float)($setItem->weight_per_piece > 0 ? $setItem->weight_per_piece : 0);
+                            $unit = strtolower(trim($setItem->variant_unit ?? ''));
+
+                            if ($unit === 'gm' || $unit === 'g') {
+                                $qtyDeduct = $itemSetQty / 1000.0;
+                            } elseif (in_array($unit, ['pcs', 'pc', 'piece', 'pieces']) || ($conv > 0 && $conv != 1) || $wpp > 0) {
+                                if ($conv > 0 && $conv != 1) {
+                                    $qtyDeduct = $itemSetQty * $conv;
+                                } elseif ($wpp > 0) {
+                                    $qtyDeduct = $itemSetQty * ($wpp / 1000.0);
+                                }
+                            } else {
+                                $qtyDeduct = $itemSetQty;
+                            }
+                        } elseif ($pMode === 'by_meter' || $pMode === 'by_feet') {
+                            $conv = (float)($setItem->conv_factor > 0 ? $setItem->conv_factor : 1);
+                            $qtyDeduct = $itemSetQty * ($conv > 0 ? $conv : 1);
+                        }
+
+                        $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
+
+                        if ($type === 'out') {
+                            $stock->total_pieces -= $qtyDeduct;
+                            $stock->quantity = round($stock->total_pieces / $ppb, 2);
+                            $stock->save();
+
+                            DB::table('stock_movements')->insert([
+                                'product_id' => $p->id,
+                                'type' => 'out',
+                                'qty' => -$qtyDeduct,
+                                'ref_type' => 'sale',
+                                'ref_id' => $sale->id,
+                                'note' => 'Sale Posted #' . $sale->invoice_no . ' (Set: ' . $set->name . ' x' . $setCount . ')',
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        } elseif ($type === 'in' || $type === 'return') {
+                            $stock->total_pieces += $qtyDeduct;
+                            $stock->quantity = round($stock->total_pieces / $ppb, 2);
+                            $stock->save();
+
+                            DB::table('stock_movements')->insert([
+                                'product_id' => $p->id,
+                                'type' => 'in',
+                                'qty' => $qtyDeduct,
+                                'ref_type' => 'sale_' . $type,
+                                'ref_id' => $sale->id,
+                                'note' => 'Sale ' . ucfirst($type) . ' #' . $sale->invoice_no . ' (Set: ' . $set->name . ' x' . $setCount . ')',
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+                continue;
             }
 
-            if (! $stock) {
-                // Auto-create stock record if missing so sale can proceed smoothly
-                $stock = WarehouseStock::create([
-                    'warehouse_id' => $targetWhId,
-                    'product_id' => $item->product_id,
-                    'total_pieces' => 0,
-                    'quantity' => 0,
-                    'price' => 0,
-                ]);
-            }
+            $targetWhId = $item->warehouse_id ?: ($sale->warehouse_id ?: (auth()->user()->warehouse_id ?? 1));
 
             // Calculate stock deduction quantity (for Kg products, total_pieces in WarehouseStock = total Kg)
             $productMode = $item->product->size_mode ?? '';
             $qtyPieces = (float)$item->total_pieces;
 
-            if ($productMode === 'by_kg' || $productMode === 'by_gm') {
-                $factor = 1.0;
-                $unit = '';
+            if ($productMode === 'by_kg' || $productMode === 'by_gm' || $productMode === 'by_meter' || $productMode === 'by_feet') {
+                $qtyPieces = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
+            }
 
-                if (!empty($item->color)) {
-                    try {
-                        $itemColor = $item->color;
-                        $b64Decoded = base64_decode($itemColor, true);
-                        $variantData = $b64Decoded !== false ? json_decode($b64Decoded, true) : null;
-                        if (!is_array($variantData)) {
-                            $variantData = is_string($itemColor) ? json_decode($itemColor, true) : $itemColor;
-                        }
-                        if (is_array($variantData)) {
-                            if (isset($variantData['conv_factor']) && (float)$variantData['conv_factor'] > 0) {
-                                $factor = (float)$variantData['conv_factor'];
-                            } elseif (isset($variantData['weight_per_piece']) && (float)$variantData['weight_per_piece'] > 0) {
-                                $factor = (float)$variantData['weight_per_piece'] / 1000.0;
-                            }
-                            if (isset($variantData['unit'])) {
-                                $unit = strtolower($variantData['unit']);
-                            }
-                        }
-                    } catch (\Exception $e) {}
-                }
-
-                if ($unit === 'gm' || $unit === 'g') {
-                    $qtyPieces = ((float)$item->qty) / 1000.0;
-                } else if ($unit === 'pcs' || $unit === 'piece' || $unit === 'pieces' || ($factor > 0 && $factor != 1.0)) {
-                    $qtyPieces = ((float)$item->qty) * $factor;
-                } else {
-                    $qtyPieces = (float)$item->qty > 0 ? (float)$item->qty : (float)$item->total_pieces;
+            // Check if item has multi-warehouse breakdown
+            $breakdown = null;
+            if (!empty($item->warehouse_breakdown)) {
+                $decoded = is_array($item->warehouse_breakdown) ? $item->warehouse_breakdown : json_decode($item->warehouse_breakdown, true);
+                if (is_array($decoded) && count($decoded) > 0) {
+                    $breakdown = $decoded;
                 }
             }
 
-            if ($type === 'out') {
-                $alreadyReturned = 0;
-                if ($sale->relationLoaded('returns') || $sale->returns()->exists()) {
-                    $query = \App\Models\SaleReturnItem::join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
-                        ->where('sale_returns.sale_id', $sale->id)
-                        ->where('sale_return_items.product_id', $item->product_id);
-                    if (!empty($item->color)) {
-                        $query->where('sale_return_items.color', $item->color);
+            if ($breakdown) {
+                // Proportional conversion factor between item input qty and total_pieces
+                $itemInputQty = (float) ($item->qty > 0 ? $item->qty : ($qtyPieces > 0 ? $qtyPieces : 1));
+                $convFactor = ($qtyPieces > 0 && $itemInputQty > 0) ? ($qtyPieces / $itemInputQty) : 1;
+                $ppb = (float) ($item->product->pieces_per_box ?? 1);
+
+                foreach ($breakdown as $alloc) {
+                    $allocWhId = (int) ($alloc['wh_id'] ?? $alloc['warehouse_id'] ?? $targetWhId);
+                    $allocQty = (float) ($alloc['qty'] ?? 0);
+                    if ($allocWhId <= 0 || $allocQty <= 0) continue;
+
+                    $allocPieces = $allocQty * $convFactor;
+                    $whName = $alloc['wh_name'] ?? $alloc['warehouse_name'] ?? "Warehouse #{$allocWhId}";
+
+                    $stock = WarehouseStock::where('product_id', $item->product_id)
+                        ->where('warehouse_id', $allocWhId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (! $stock) {
+                        $stock = WarehouseStock::create([
+                            'warehouse_id' => $allocWhId,
+                            'product_id' => $item->product_id,
+                            'total_pieces' => 0,
+                            'quantity' => 0,
+                        ]);
                     }
-                    $alreadyReturned = (float) $query->sum('sale_return_items.qty');
-                    if ($alreadyReturned == 0) {
-                        $alreadyReturned = (float) \App\Models\SaleReturnItem::join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
-                            ->where('sale_returns.sale_id', $sale->id)
-                            ->where('sale_return_items.product_id', $item->product_id)
-                            ->sum('sale_return_items.qty');
+
+                    if ($type === 'out') {
+                        $stock->total_pieces -= $allocPieces;
+                        $stock->quantity = round($stock->total_pieces / ($ppb > 0 ? $ppb : 1), 2);
+                        $stock->save();
+
+                        DB::table('stock_movements')->insert([
+                            'product_id' => $item->product_id,
+                            'type' => 'out',
+                            'qty' => -$allocPieces,
+                            'ref_type' => 'sale',
+                            'ref_id' => $sale->id,
+                            'note' => 'Sale Posted #'.$sale->invoice_no.' ('.$whName.')',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    } elseif ($type === 'in' || $type === 'return') {
+                        $stock->total_pieces += $allocPieces;
+                        $stock->quantity = round($stock->total_pieces / ($ppb > 0 ? $ppb : 1), 2);
+                        $stock->save();
+
+                        DB::table('stock_movements')->insert([
+                            'product_id' => $item->product_id,
+                            'type' => 'in',
+                            'qty' => $allocPieces,
+                            'ref_type' => 'sale_'.$type,
+                            'ref_id' => $sale->id,
+                            'note' => 'Sale '.ucfirst($type).' #'.$sale->invoice_no.' ('.$whName.')',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
                     }
                 }
-                $effectiveQtyToDeduct = max(0, $qtyPieces - $alreadyReturned);
+            } else {
+                // Default Single Warehouse Deduction
+                $stock = WarehouseStock::where('product_id', $item->product_id)
+                    ->where('warehouse_id', $targetWhId)
+                    ->lockForUpdate()
+                    ->first();
 
-                // Deduct stock directly into negative if stock is 0 or less
-                $stock->total_pieces -= $effectiveQtyToDeduct;
-                // Update approx boxes for display
-                $ppb = $item->product->pieces_per_box ?? 1;
-                $stock->quantity = round($stock->total_pieces / ($ppb > 0 ? $ppb : 1), 2);
-                $stock->save();
-
-                $itemBonus = (float)($item->bonus_qty ?? 0);
-                if ($itemBonus <= 0 && !empty($item->color)) {
-                    try {
-                        $b64 = base64_decode($item->color, true);
-                        $vData = ($b64 !== false) ? json_decode($b64, true) : json_decode($item->color, true);
-                        if (is_array($vData) && !empty($vData['bonus']) && is_numeric($vData['bonus'])) {
-                            $itemBonus = (float)$vData['bonus'];
-                        }
-                    } catch (\Exception $e) {}
+                if (! $stock) {
+                    $stock = WarehouseStock::create([
+                        'warehouse_id' => $targetWhId,
+                        'product_id' => $item->product_id,
+                        'total_pieces' => 0,
+                        'quantity' => 0,
+                    ]);
                 }
-                $bonusInfo = ($itemBonus > 0) ? ' (Sold: ' . ($item->qty) . ', Bonus: ' . $itemBonus . ')' : '';
-                // Movement
-                if ($effectiveQtyToDeduct > 0) {
+
+                $ppb = (float) ($item->product->pieces_per_box ?? 1);
+
+                if ($type === 'out') {
+                    $stock->total_pieces -= $qtyPieces;
+                    $stock->quantity = round($stock->total_pieces / ($ppb > 0 ? $ppb : 1), 2);
+                    $stock->save();
+
                     DB::table('stock_movements')->insert([
                         'product_id' => $item->product_id,
                         'type' => 'out',
-                        'qty' => -$effectiveQtyToDeduct, // Negative for OUT
+                        'qty' => -$qtyPieces,
                         'ref_type' => 'sale',
                         'ref_id' => $sale->id,
-                        'note' => 'Sale Posted #'.$sale->invoice_no . $bonusInfo . ($alreadyReturned > 0 ? " (Net after {$alreadyReturned} returned)" : ''),
+                        'note' => 'Sale Posted #'.$sale->invoice_no,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-                }
-            } elseif ($type === 'in' || $type === 'return') {
-                // If any pieces were already returned to stock via SaleReturn, don't restore them twice
-                $alreadyReturned = 0;
-                if ($sale->relationLoaded('returns') || $sale->returns()->exists()) {
-                    $alreadyReturned = (float) \App\Models\SaleReturnItem::join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
-                        ->where('sale_returns.sale_id', $sale->id)
-                        ->where('sale_return_items.product_id', $item->product_id)
-                        ->sum('sale_return_items.qty');
-                }
-                $effectiveQtyToRestore = max(0, $qtyPieces - $alreadyReturned);
+                } elseif ($type === 'in' || $type === 'return') {
+                    $stock->total_pieces += $qtyPieces;
+                    $stock->quantity = round($stock->total_pieces / ($ppb > 0 ? $ppb : 1), 2);
+                    $stock->save();
 
-                // Restore (Cancel or Return)
-                $stock->total_pieces += $effectiveQtyToRestore;
-                // Update approx boxes
-                $ppb = $item->product->pieces_per_box ?? 1;
-                $stock->quantity = round($stock->total_pieces / ($ppb > 0 ? $ppb : 1), 2);
-                $stock->save();
-
-                // Movement
-                if ($effectiveQtyToRestore > 0) {
                     DB::table('stock_movements')->insert([
                         'product_id' => $item->product_id,
                         'type' => 'in',
-                        'qty' => $effectiveQtyToRestore,
-                        'ref_type' => 'sale_'.$type, // sale_in (cancel), sale_return
+                        'qty' => $qtyPieces,
+                        'ref_type' => 'sale_'.$type,
                         'ref_id' => $sale->id,
-                        'note' => 'Sale '.ucfirst($type).' #'.$sale->invoice_no . ($alreadyReturned > 0 ? " (Net after {$alreadyReturned} returned)" : ''),
+                        'note' => 'Sale '.ucfirst($type).' #'.$sale->invoice_no,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
@@ -2950,6 +2771,11 @@ class SaleController extends Controller
     {
         $customer_id = $sale->customer_id;
         if (! $customer_id) {
+            return;
+        }
+
+        // Sales Orders and Quotations must NEVER touch the financial ledger
+        if (in_array($sale->sale_type, ['sales_order', 'quotation'])) {
             return;
         }
 
@@ -3024,6 +2850,48 @@ class SaleController extends Controller
         // Legacy support wrapper or direct relation
         // Re-implementing correctly based on new structure
         return $sale->items->map(function ($item) {
+            if ($item->product_set_id) {
+                $set = $item->productSet ?: \App\Models\ProductSet::find($item->product_set_id);
+                $qty = (float) ($item->total_pieces > 0 ? $item->total_pieces : ($item->qty > 0 ? $item->qty : 1));
+                $price = (float) $item->price;
+                $disc = (float) $item->discount_percent;
+                $discAmt = (float) $item->discount_amount;
+                $total = (float) $item->total;
+
+                return [
+                    'is_manual' => false,
+                    'is_set' => true,
+                    'product_set_id' => $item->product_set_id,
+                    'product_id' => 'set_' . $item->product_set_id,
+                    'item_name' => $set ? $set->name : ($item->product_name ?: 'Product Set'),
+                    'item_code' => $set ? $set->code : 'SET',
+                    'brand' => 'SET',
+                    'unit' => 'Set',
+                    'qty' => $qty,
+                    'qty_box' => (float) $item->qty,
+                    'total_pieces' => $qty,
+                    'loose_pieces' => 0,
+                    'price' => $price,
+                    'discount' => $disc,
+                    'discount_percent' => $disc,
+                    'discount_amount' => $discAmt,
+                    'total' => $total,
+                    'description' => $item->description ?? '',
+                    'variant_name' => '',
+                    'color_val' => '',
+                    'size_val' => '',
+                    'variant_unit' => 'Set',
+                    'weight_per_piece' => 0,
+                    'color' => [],
+                    'pieces_per_box' => 1,
+                    'price_per_piece' => ($qty > 0) ? ($total / $qty) : $price,
+                    'height' => 0,
+                    'width' => 0,
+                    'pieces_per_m2' => 0,
+                    'size_mode' => 'std',
+                ];
+            }
+
             $variant = [];
             if (!empty($item->color)) {
                 // Try base64 decode first (since frontend sends base64 variant_data in color field)
@@ -3091,9 +2959,6 @@ class SaleController extends Controller
 
             $variantUnit = $variant['unit'] ?? ($liveVariant['unit'] ?? ($item->product->unit->name ?? ''));
 
-            $bonusQty = (float)($item->bonus_qty ?? 0);
-            $bonusDisplayVal = $bonusQty > 0 ? $bonusQty : ($variant['bonus'] ?? ($variant['color'] ?? ''));
-
             return [
                 'is_manual' => $item->is_manual,
                 'product_id' => $item->product_id,
@@ -3101,30 +2966,31 @@ class SaleController extends Controller
                 'item_code' => $item->product->item_code ?? '',
                 'brand' => $item->product->brand->name ?? '',
                 'unit' => $item->product->unit->name ?? '', // Access name if relation exists
-                'qty' => (float) $item->qty, // Billed quantity
+                'qty' => (float) $item->total_pieces, // Use Pieces for Return Logic (Matches Price-Per-Piece)
                 'qty_box' => (float) $item->qty, // Store Box Count separately
-                'bonus_qty' => $bonusQty,
-                'total_pieces' => (int) $item->total_pieces,
-                'loose_pieces' => (int) $item->loose_pieces,
+                'total_pieces' => (float) $item->total_pieces,
+                'loose_pieces' => (float) $item->loose_pieces,
                 'price' => (float) $item->price, // Price Per Piece / Unit
                 'discount' => (float) $item->discount_percent, // Legacy
                 'discount_percent' => (float) $item->discount_percent,
                 'discount_amount' => (float) $item->discount_amount,
                 'total' => (float) $item->total,
+                'description' => $item->description ?? '',
                 'variant_name' => $variant['name'] ?? '',
-                'color_val' => $bonusDisplayVal,
-                'bonus_val' => $bonusDisplayVal,
+                'color_val' => $variant['color'] ?? '',
                 'size_val' => $variant['size'] ?? '',
                 'variant_unit' => $variantUnit,
                 'weight_per_piece' => $variant['weight_per_piece'] ?? $item->product->weight_per_piece ?? 0,
                 'color' => is_array($variant) ? $variant : [$item->color], // for legacy compatibility
                 'pieces_per_box' => $ppb,
-                'price_per_piece' => (float)$item->price > 0 ? (float)$item->price : (((float)$item->qty > 0) ? ((float)$item->total / (float)$item->qty) : 0),
+                'price_per_piece' => ($item->total_pieces > 0) ? ($item->total / $item->total_pieces) : 0,
                 // Add dimension and m² data from product
                 'height' => $item->product->height ?? 0,
                 'width' => $item->product->width ?? 0,
                 'pieces_per_m2' => $item->product->pieces_per_m2 ?? 0,
                 'size_mode' => $item->size_mode ?? $item->product->size_mode ?? 'std',
+                'warehouse_breakdown' => $item->warehouse_breakdown,
+                'warehouse_id' => $item->warehouse_id,
             ];
         });
     }
@@ -3157,115 +3023,29 @@ class SaleController extends Controller
         return 'INV-'.date('YmdHis');
     }
 
-    /**
-     * Delete a Sale — reverse stock, account entries, customer ledger, and any linked returns
-     */
-    public function destroy($id)
-    {
-        $sale = Sale::with(['items.product', 'returns.items', 'customer_relation'])->findOrFail($id);
-
-        DB::beginTransaction();
-        try {
-            $customerId = $sale->customer_id;
-            $invoiceNo = $sale->invoice_no;
-
-            // --- Step 1: Reverse Stock for Unreturned Quantities ---
-            // Only posted or returned sales have stock/financial impact
-            if ($sale->sale_status === 'posted' || $sale->sale_status === 'returned') {
-                $this->rollbackPostedSale($sale);
-            }
-
-            // --- Step 2: Clean up any linked Returns (Full or Partial) ---
-            $linkedReturns = \App\Models\SaleReturn::where('sale_id', $sale->id)->get();
-            foreach ($linkedReturns as $ret) {
-                $returnInvoice = $ret->return_invoice;
-
-                // Delete return vouchers & journal entries
-                $retVouchers = \App\Models\VoucherMaster::where('remarks', 'LIKE', "%{$returnInvoice}%")->get();
-                foreach ($retVouchers as $vm) {
-                    \App\Models\JournalEntry::where('source_type', \App\Models\VoucherMaster::class)
-                        ->where('source_id', $vm->id)
-                        ->delete();
-                    \App\Models\VoucherDetail::where('voucher_master_id', $vm->id)->delete();
-                    $vm->delete();
-                }
-
-                // Delete return stock movements
-                \DB::table('stock_movements')
-                    ->where('ref_type', 'SALE_RETURN')
-                    ->where('ref_id', $ret->id)
-                    ->delete();
-
-                // Delete return customer ledgers
-                if ($customerId) {
-                    \App\Models\CustomerLedger::where('customer_id', $customerId)
-                        ->where('description', 'LIKE', "%{$returnInvoice}%")
-                        ->delete();
-                }
-
-                // Delete return items and return record
-                $ret->items()->delete();
-                $ret->delete();
-            }
-
-            // --- Step 3: Reverse any direct journal entries linked to this Sale model ---
-            $directJournalEntries = \App\Models\JournalEntry::where('source_type', Sale::class)
-                ->where('source_id', $sale->id)
-                ->get();
-
-            foreach ($directJournalEntries as $je) {
-                $account = \App\Models\Account::find($je->account_id);
-                if ($account) {
-                    $account->balance = ($account->balance ?? 0) - ($je->debit ?? 0) + ($je->credit ?? 0);
-                    $account->save();
-                }
-                $je->delete();
-            }
-
-            // --- Step 4: Clean up sale stock movements ---
-            \DB::table('stock_movements')
-                ->where('ref_type', 'sale')
-                ->where('ref_id', $sale->id)
-                ->delete();
-
-            // --- Step 5: Delete Sale Items ---
-            \App\Models\SaleItem::where('sale_id', $sale->id)->delete();
-
-            // --- Step 6: Delete the Sale record ---
-            $sale->delete();
-
-            // --- Step 7: Re-sync Customer Previous Balance ---
-            if ($customerId) {
-                $cust = \App\Models\Customer::find($customerId);
-                if ($cust) {
-                    $cust->previous_balance = app(\App\Services\BalanceService::class)->getCustomerBalance($customerId);
-                    $cust->save();
-                }
-            }
-
-            DB::commit();
-
-            \Log::info("Sale #{$invoiceNo} deleted by User #" . auth()->id() . " — stock, returns, ledger & accounts reversed.");
-
-            return redirect()->route('sale.index')
-                ->with('success', "Sale #{$invoiceNo} successfully delete ho gayi. Stock restore, returns delete aur customer ledger update ho gaya.");
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            \Log::error('Sale Delete Error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
-
-            return redirect()->route('sale.index')
-                ->with('error', 'Sale delete karne mein error: ' . $e->getMessage());
-        }
-    }
-
     private function rollbackPostedSale(Sale $sale)
     {
         // 1. Restore Stock
-        $this->handleStockImpact($sale, 'in');
+        $hasInvoicedDCs = \App\Models\DeliveryChallan::where(function($q) use ($sale) {
+                $q->where('sale_id', $sale->id)->orWhere('invoice_id', $sale->id);
+            })
+            ->where('status', 'confirmed')
+            ->where(function($q) {
+                $q->whereNull('remarks')->orWhere('remarks', 'not like', 'Auto-generated DC for Direct Sale%');
+            })
+            ->exists();
+        
+        if (!$hasInvoicedDCs) {
+            $this->handleStockImpact($sale, 'in');
+        } else {
+            \Log::info("Sale #{$sale->invoice_no} has DCs. Skipping stock rollback.");
+        }
 
-        // Delete stock movements for this sale
-        DB::table('stock_movements')->where('ref_type', 'sale')->where('ref_id', $sale->id)->delete();
+        // NOTE: We intentionally do NOT delete the previous 'sale'/'sale_in' stock movements here.
+        // Stock movements are an append-only audit trail. Deleting the original deduction while
+        // leaving the restore (sale_in) would make the ledger non-conserving (movement sum would
+        // no longer match the warehouse running balance). Each edit appends a fresh
+        // restore (sale_in) + deduct (sale) pair so the trail stays truthful and balanced.
 
         // 2. Reverse and delete Vouchers & Journal Entries
         $journalService = app(\App\Services\JournalEntryService::class);
@@ -3307,48 +3087,80 @@ class SaleController extends Controller
     {
         $sale = Sale::findOrFail($id);
 
-        if ($sale->sale_status !== 'booked') {
-            return redirect()->back()->with('error', 'Only booked sales can be confirmed.');
+        if (!in_array($sale->sale_status, ['booked', 'draft'])) {
+            return redirect()->back()->with('error', 'Only draft or booked sales can be confirmed.');
         }
 
         DB::beginTransaction();
         try {
+            $isDraft = ($sale->sale_status === 'draft');
+
             // Update status to posted (which is the system-wide confirmed status)
             $sale->sale_status = 'posted';
-            $sale->save();
 
-            // 1. DEDUCT STOCK FROM WAREHOUSE
-            $this->handleStockImpact($sale, 'out');
-
-            // 2. LEGACY LEDGER: Post Invoice First (Increases Balance)
-            $this->updateLedger($sale);
-
-            // 3. PROFESSIONAL LEDGER POSTING (ENTRY 1: THE INVOICE)
-            $journalService = app(\App\Services\JournalEntryService::class);
-            $balanceService = app(\App\Services\BalanceService::class);
-
-            $custForVoucher = $sale->customer_relation ?? \App\Models\Customer::find($sale->customer_id);
-
-            if ($custForVoucher) {
-                $balanceService->createSaleVoucher(
-                    $custForVoucher,
-                    $sale->total_net,
-                    $sale->invoice_no,
-                    $sale->created_at->format('Y-m-d')
-                );
+            // Assign Invoice Number if it doesn't have one
+            if (empty($sale->invoice_no)) {
+                $seriesList = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
+                $defaultSeries = $seriesList->where('is_default', 1)->first() ?: $seriesList->first();
+                $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+                
+                $generatedNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+                $sale->invoice_no = $generatedNo;
+                \App\Models\InvoiceSeries::incrementCounterForInvoice($generatedNo);
             }
 
-            // 4. AUTO RECEIPT (ENTRY 2: THE PAYMENT)
-            $transactionService = app(\App\Services\TransactionService::class);
-            $transactionService->createReceiptFromSale($sale);
+            if ($sale->sale_type === 'quotation') {
+                $sale->sale_type = 'direct_sale';
+            }
+
+            $sale->save();
+
+            if ($sale->sale_type !== 'sales_order') {
+                // 1. DEDUCT STOCK FROM WAREHOUSE
+                $this->handleStockImpact($sale, 'out');
+
+                // 2. LEGACY LEDGER: Post Invoice First (Increases Balance)
+                $this->updateLedger($sale);
+
+                // 3. PROFESSIONAL LEDGER POSTING (ENTRY 1: THE INVOICE)
+                $journalService = app(\App\Services\JournalEntryService::class);
+                $balanceService = app(\App\Services\BalanceService::class);
+
+                $custForVoucher = $sale->customer_relation ?? \App\Models\Customer::find($sale->customer_id);
+
+                if ($custForVoucher) {
+                    $balanceService->createSaleVoucher(
+                        $custForVoucher,
+                        $sale->total_net,
+                        (string)($sale->invoice_no ?: ('INV-' . $sale->id)),
+                        $sale->created_at->format('Y-m-d')
+                    );
+                }
+
+                // 4. AUTO RECEIPT (ENTRY 2: THE PAYMENT)
+                $transactionService = app(\App\Services\TransactionService::class);
+                $transactionService->createReceiptFromSale($sale);
+            }
+
+            // Direct sales do not generate Delivery Challans.
+            // Mark sale and items as delivered directly.
+            if (in_array($sale->sale_type, ['direct_sale', null])) {
+                $sale->delivery_status = 'delivered';
+                $sale->save();
+                foreach ($sale->items as $item) {
+                    $item->delivered_qty = (float) ($item->total_pieces > 0 ? $item->total_pieces : $item->qty);
+                    $item->save();
+                }
+            }
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Booking confirmed and converted to sale successfully.');
+            $successMsg = $isDraft ? 'Draft confirmed and posted as sale successfully.' : 'Booking confirmed and converted to sale successfully.';
+            return redirect()->back()->with('success', $successMsg);
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Booking Confirmation Error: '.$e->getMessage());
-            return redirect()->back()->with('error', 'Failed to confirm booking: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Failed to confirm: '.$e->getMessage());
         }
     }
 
@@ -3357,8 +3169,9 @@ class SaleController extends Controller
      */
     public function fetchInvoiceSeries(Request $request)
     {
-        $seriesList = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
-        $activePrefix = $request->prefix ?: ($seriesList->where('is_default', 1)->first()->prefix ?? ($seriesList->first()->prefix ?? 'INV'));
+        $exclude = ['PO', 'PINV', 'DC', 'DDC', 'GRN', 'DGRN', 'SR', 'PRET', 'QUO', 'SO', 'SQ', 'INVSLE'];
+        $seriesList = \App\Models\InvoiceSeries::whereNotIn('prefix', $exclude)->orderByRaw("CASE WHEN prefix = 'INV' THEN 0 ELSE 1 END, is_default DESC, id ASC")->get();
+        $activePrefix = $request->prefix ?: ($seriesList->where('prefix', 'INV')->first()->prefix ?? ($seriesList->first()->prefix ?? 'INV'));
         $invoiceNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
 
         return response()->json([
@@ -3379,7 +3192,7 @@ class SaleController extends Controller
             'padding' => 'nullable|numeric|min:1|max:10',
         ]);
 
-        $prefix = strtoupper(trim($request->prefix));
+        $prefix = rtrim(strtoupper(trim($request->prefix)), '-');
         $padding = (int) ($request->padding ?: 4);
         $nextNum = (int) $request->next_number;
 
@@ -3404,6 +3217,39 @@ class SaleController extends Controller
     }
 
     /**
+     * Delete an invoice series prefix (if not system-protected and not having linked sales)
+     */
+    public function deleteInvoiceSeries(Request $request)
+    {
+        $prefix = strtoupper(trim($request->input('prefix')));
+        if (empty($prefix)) {
+            return response()->json(['success' => false, 'message' => 'Prefix is required.'], 422);
+        }
+
+        if (in_array($prefix, ['INV', 'TAX', 'CO'])) {
+            return response()->json([
+                'success' => false,
+                'message' => "Standard system series ({$prefix}) cannot be deleted."
+            ], 422);
+        }
+
+        $saleCount = \App\Models\Sale::where('invoice_no', 'LIKE', $prefix . '-%')->count();
+        if ($saleCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Series {$prefix} has {$saleCount} linked sales records and cannot be deleted."
+            ], 422);
+        }
+
+        \App\Models\InvoiceSeries::where('prefix', $prefix)->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Series {$prefix} deleted successfully!"
+        ]);
+    }
+
+    /**
      * AJAX endpoint to generate next invoice number for selected prefix
      */
     public function generateInvoiceNoAjax(Request $request)
@@ -3413,251 +3259,733 @@ class SaleController extends Controller
         return response()->json(['invoice_no' => $invoiceNo]);
     }
 
-    /**
-     * Preview page for reviewing and applying bulk discounts to past sales.
-     */
-    public function bulkDiscountIndex(Request $request)
+    public function convertToOrder(Request $request, $id)
     {
-        $query = Sale::with(['customer_relation.customerTypeModel', 'items.product'])
-            ->orderByDesc('id');
-
-        // Invoice No search
-        if ($request->filled('invoice_no')) {
-            $query->where('invoice_no', 'like', '%' . trim($request->invoice_no) . '%');
+        if (auth()->check() && !auth()->user()->can('quotations.convert_to_so') && !auth()->user()->can('sales_orders.create')) {
+            abort(403, 'Unauthorized action. You do not have permission to convert quotation to sales order.');
         }
 
-        // Customer filter
-        if ($request->filled('customer_id')) {
-            $query->where('customer_id', $request->customer_id);
+        $sale = Sale::with('items')->findOrFail($id);
+
+        if ($sale->sale_type !== 'quotation') {
+            return redirect()->back()->with('error', 'Only quotations can be converted to sales orders.');
         }
-
-        // Customer type filter
-        if ($request->filled('customer_type')) {
-            $query->whereHas('customer_relation', function ($q) use ($request) {
-                $q->where('customer_type', $request->customer_type);
-            });
-        }
-
-        // Date range
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        // Sale Status filter
-        if ($request->filled('sale_status')) {
-            $query->where('sale_status', $request->sale_status);
-        }
-
-        // Discount filter: default 'all' so all sales invoices are visible
-        $discountFilter = $request->input('discount_filter', 'all');
-        if ($discountFilter === 'no_discount') {
-            $query->where(function ($q) {
-                $q->whereNull('discount_tier')
-                  ->orWhere('discount_tier', '')
-                  ->orWhereDoesntHave('items', function ($sub) {
-                      $sub->where('discount_percent', '>', 0);
-                  });
-            });
-        } elseif ($discountFilter === 'has_discount') {
-            $query->whereHas('items', function ($sub) {
-                $sub->where('discount_percent', '>', 0);
-            });
-        }
-
-        $sales = $query->paginate(50)->withQueryString();
-
-        $customers = Customer::select(
-            'id', 'customer_name', 'customer_type',
-            'custom_discount_medical', 'custom_discount_doctor',
-            'custom_discount_distribution', 'custom_discount_percentage'
-        )->orderBy('customer_name')->get();
-
-        $customerTypes = \App\Models\CustomerType::all();
-
-        return view('admin_panel.sale.bulk_discount', compact('sales', 'customers', 'customerTypes', 'discountFilter'));
-    }
-
-    /**
-     * Bulk apply discounts to selected sales.
-     * Safely updates line item discounts, sale totals, journal vouchers, and customer ledgers
-     * WITHOUT touching inventory stocks, loose pieces, cartons, or returns!
-     */
-    public function applyBulkDiscount(Request $request)
-    {
-        $request->validate([
-            'selected_sales' => 'required|array|min:1',
-            'selected_sales.*' => 'exists:sales,id',
-        ]);
-
-        $selectedSaleIds = $request->input('selected_sales', []);
-        $tiers = $request->input('tier', []);
-        $customPercents = $request->input('custom_percent', []);
-        $itemDiscounts = $request->input('item_discount', []);
-        $selectedTiersInput = $request->input('selected_tiers', []); // e.g. [sale_id => ['doctor', 'distribution']]
-        $effectivePercents = $request->input('effective_percent', []); // e.g. [sale_id => 20.0]
-        $tierLabels = $request->input('tier_label', []);
-
-        $updatedCount = 0;
-        $totalDiscountApplied = 0;
 
         DB::beginTransaction();
         try {
-            $journalService = app(\App\Services\JournalEntryService::class);
-            $balanceService = app(\App\Services\BalanceService::class);
+            // Check if already converted
+            $existingOrder = Sale::where('parent_quotation_id', $sale->id)->first();
+            if ($existingOrder) {
+                return redirect()->back()->with('error', 'This quotation has already been converted to a Sales Order.');
+            }
 
-            foreach ($selectedSaleIds as $saleId) {
-                $sale = Sale::with(['items', 'customer_relation.customerTypeModel'])->lockForUpdate()->find($saleId);
-                if (!$sale) {
-                    continue;
-                }
+            // Create new order by replicating the quotation
+            $newOrder = $sale->replicate();
+            $newOrder->uuid = null; // Clear UUID to avoid unique constraint violations
+            $newOrder->sale_type = 'sales_order';
+            $newOrder->delivery_status = 'pending';
+            $newOrder->parent_quotation_id = $sale->id;
+            
+            $newOrder->invoice_no = \App\Models\InvoiceSeries::generateNextNo('SO');
+            \App\Models\InvoiceSeries::incrementCounterForInvoice($newOrder->invoice_no);
+            
+            $newOrder->save();
 
-                $customer = $sale->customer_relation;
-                $customerTiers = $customer ? $customer->discount_tiers : ['medical' => 0, 'doctor' => 0, 'distribution' => 0];
-
-                // Determine effective percentage and tier description (supporting multi-discount!)
-                $defaultPct = 0;
-                $tier = 'doctor';
-
-                $saleTiers = $selectedTiersInput[$saleId] ?? null;
-                if (is_array($saleTiers) && count($saleTiers) > 0) {
-                    $combinedPct = 0;
-                    $labelParts = [];
-                    foreach ($saleTiers as $t) {
-                        if ($t === 'custom') {
-                            $cVal = (float) ($customPercents[$saleId] ?? 0);
-                            $combinedPct += $cVal;
-                            $labelParts[] = "Custom ({$cVal}%)";
-                        } elseif (isset($customerTiers[$t])) {
-                            $tVal = (float) $customerTiers[$t];
-                            $combinedPct += $tVal;
-                            $labelParts[] = ucfirst($t) . " ({$tVal}%)";
-                        }
-                    }
-                    $defaultPct = $combinedPct;
-                    $tier = !empty($labelParts) ? implode(' + ', $labelParts) : 'custom';
-                } elseif (isset($effectivePercents[$saleId])) {
-                    $defaultPct = (float) $effectivePercents[$saleId];
-                    $tier = $tierLabels[$saleId] ?? ($tiers[$saleId] ?? 'custom');
-                } else {
-                    $tier = $tiers[$saleId] ?? 'doctor';
-                    if ($tier === 'custom') {
-                        $defaultPct = (float) ($customPercents[$saleId] ?? 0);
-                    } elseif (isset($customerTiers[$tier])) {
-                        $defaultPct = (float) $customerTiers[$tier];
-                    }
-                }
-
-                $oldNet = (float) $sale->total_net;
-                $newTotalBill = 0;
-
-                foreach ($sale->items as $item) {
-                    $pct = isset($itemDiscounts[$saleId][$item->id])
-                        ? (float) $itemDiscounts[$saleId][$item->id]
-                        : $defaultPct;
-
-                    // Un-discounted gross amount
-                    $lineGross = (float) ($item->total + $item->discount_amount);
-                    if ($lineGross <= 0) {
-                        $lineGross = (float) $item->qty * (float) $item->price;
-                    }
-
-                    $newDiscountAmount = round(($lineGross * $pct) / 100, 2);
-                    $newLineTotal = max(0, round($lineGross - $newDiscountAmount, 2));
-
-                    $item->discount_percent = $pct;
-                    $item->discount_amount = $newDiscountAmount;
-                    $item->total = $newLineTotal;
-                    $item->save();
-
-                    $newTotalBill += $newLineTotal;
-                }
-
-                // Update sale header
-                $sale->total_bill_amount = $newTotalBill;
-                $extraDiscount = (float) ($sale->total_extradiscount ?? 0);
-                $newNet = max(0, round($newTotalBill - $extraDiscount, 2));
-                $sale->total_net = $newNet;
-                $sale->discount_tier = $tier;
-                $sale->change = round((float) $sale->cash - $newNet, 2);
-                $sale->save();
-
-                $diff = $newNet - $oldNet;
-                $totalDiscountApplied += ($oldNet - $newNet);
-
-                // Financial updates (Zero stock changes!)
-                if ($customer && $sale->sale_status === 'posted') {
-                    // Reverse old sale Journal Voucher
-                    $vouchers = \App\Models\VoucherMaster::where('voucher_type', \App\Models\VoucherMaster::TYPE_JOURNAL)
-                        ->where('remarks', 'like', "%#{$sale->invoice_no}%")
-                        ->get();
-
-                    foreach ($vouchers as $voucher) {
-                        $journalService->reverseEntriesForSource($voucher);
-                        \App\Models\VoucherDetail::where('voucher_master_id', $voucher->id)->delete();
-                        $voucher->delete();
-                    }
-
-                    // Re-create sale voucher with new net
-                    $balanceService->createSaleVoucher(
-                        $customer,
-                        $newNet,
-                        $sale->invoice_no,
-                        $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d')
-                    );
-
-                    // Adjust Customer Ledger
-                    if (abs($diff) > 0.001) {
-                        $ledger = CustomerLedger::where('customer_id', $customer->id)->latest('id')->first();
-                        $prevBal = $ledger ? (float) $ledger->closing_balance : (float) ($customer->previous_balance ?? 0);
-                        $newBal = $prevBal + $diff;
-
-                        CustomerLedger::create([
-                            'customer_id' => $customer->id,
-                            'admin_or_user_id' => auth()->id() ?? 1,
-                            'description' => "Bulk Discount Update #{$sale->invoice_no} ({$tier} {$defaultPct}%)",
-                            'previous_balance' => $prevBal,
-                            'closing_balance' => $newBal,
-                            'opening_balance' => 0,
-                        ]);
-
-                        $customer->previous_balance = $newBal;
-                        $customer->save();
-                    }
-                }
-
-                $updatedCount++;
+            // Replicate the items
+            foreach ($sale->items as $item) {
+                $newItem = $item->replicate();
+                $newItem->sale_id = $newOrder->id;
+                $newItem->save();
             }
 
             DB::commit();
-
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => "Successfully updated discounts for {$updatedCount} sale(s)! Total discount applied: Rs. " . number_format($totalDiscountApplied, 2),
-                    'updated_count' => $updatedCount,
-                    'total_discount' => $totalDiscountApplied,
-                ]);
-            }
-
-            return redirect()->route('sale.bulk_discount')
-                ->with('success', "Successfully updated discounts for {$updatedCount} sale(s)! Total discount applied: Rs. " . number_format($totalDiscountApplied, 2));
-
+            return redirect()->back()->with('success', 'Quotation successfully converted to Sales Order.');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error("Bulk discount error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
-
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to apply bulk discounts: ' . $e->getMessage()
-                ], 500);
-            }
-
-            return redirect()->back()->with('error', 'Failed to apply bulk discounts: ' . $e->getMessage());
+            \Log::error('Conversion Error: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Failed to convert: '.$e->getMessage());
         }
     }
-}
 
+    public function generateInvoice(Request $request, $id)
+    {
+        if (auth()->check() && !auth()->user()->can('sales_orders.generate_invoice')) {
+            abort(403, 'Unauthorized action. You do not have permission to generate invoices for sales orders.');
+        }
+
+        $sale = Sale::findOrFail($id);
+
+        if ($sale->sale_type !== 'sales_order') {
+            return redirect()->back()->with('error', 'Only Sales Orders can generate invoices.');
+        }
+
+        if ($sale->delivery_status !== 'delivered') {
+            return redirect()->back()->with('error', 'Cannot generate invoice before complete delivery.');
+        }
+
+        if ($sale->sale_status === 'posted') {
+            return redirect()->back()->with('error', 'Invoice has already been generated.');
+        }
+
+        DB::beginTransaction();
+        try {
+            // Update status to posted (this is what triggers it being considered a full financial invoice)
+            $sale->sale_status = 'posted';
+            
+            // Allow backdating invoice if sale_date is provided
+            if ($request->filled('sale_date')) {
+                $sale->created_at = \Carbon\Carbon::parse($request->sale_date)->format('Y-m-d H:i:s');
+            }
+            $invoiceDate = $sale->created_at ? $sale->created_at->format('Y-m-d') : now()->format('Y-m-d');
+
+            // Assign Invoice Number according to selected prefix
+            $chosenPrefix = $request->input('prefix');
+            $activePrefix = !empty($chosenPrefix) ? strtoupper(trim($chosenPrefix)) : 'INV';
+            
+            $customInvNo = $request->input('invoice_no') ?: $request->input('Invoice_no');
+            if ($customInvNo) {
+                $generatedNo = \App\Models\InvoiceSeries::normalizeNumber($customInvNo, $activePrefix);
+            } else {
+                $generatedNo = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
+            }
+            $sale->invoice_no = $generatedNo;
+            \App\Models\InvoiceSeries::incrementCounterForInvoice($generatedNo);
+            
+            $sale->save();
+
+            // Mark all delivery challans for this sale as invoiced
+            DeliveryChallan::where('sale_id', $sale->id)->update([
+                'is_invoiced' => 1,
+                'invoice_id' => $sale->id
+            ]);
+
+            // Note: We DO NOT deduct stock here because it was already deducted during Delivery Challan confirmation!
+            
+            // 2. LEGACY LEDGER: Post Invoice First (Increases Balance)
+            $this->updateLedger($sale);
+
+            // 3. PROFESSIONAL LEDGER POSTING (ENTRY 1: THE INVOICE)
+            $journalService = app(\App\Services\JournalEntryService::class);
+            $balanceService = app(\App\Services\BalanceService::class);
+
+            $custForVoucher = $sale->customer_relation ?? \App\Models\Customer::find($sale->customer_id);
+
+            if ($custForVoucher) {
+                $balanceService->createSaleVoucher(
+                    $custForVoucher,
+                    $sale->total_net,
+                    $sale->invoice_no,
+                    $invoiceDate
+                );
+            }
+
+            // 4. AUTO RECEIPT (ENTRY 2: THE PAYMENT)
+            // Sales orders might have advance payments or pay now. Assuming they pay on invoice generation.
+            $transactionService = app(\App\Services\TransactionService::class);
+            $transactionService->createReceiptFromSale($sale);
+
+            DB::commit();
+
+            return redirect()->back()->with('success', "Invoice {$sale->invoice_no} ({$activePrefix}) generated successfully with Date: {$invoiceDate}.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Invoice Generation Error: '.$e->getMessage());
+            return redirect()->back()->with('error', 'Failed to generate invoice: '.$e->getMessage());
+        }
+    }
+
+    public function orderTrail($id)
+    {
+        $sale = Sale::with([
+            'customer_relation',
+            'items.product.unit',
+            'deliveryChallans.items.product',
+            'deliveryChallans.invoice',
+        ])->findOrFail($id);
+
+        $invoiceIds = $sale->deliveryChallans->pluck('invoice_id')->filter()->unique()->toArray();
+
+        $invoices = Sale::with(['items.product', 'customer_relation'])
+            ->where(function($q) use ($sale, $invoiceIds) {
+                $q->where('parent_quotation_id', $sale->id);
+                if (!empty($invoiceIds)) {
+                    $q->orWhereIn('id', $invoiceIds);
+                }
+            })
+            ->where('id', '!=', $sale->id)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $totalOrderAmount = (float)($sale->total_net > 0 ? $sale->total_net : $sale->total_bill_amount);
+        $totalInvoicedAmount = (float)$invoices->sum('total_net');
+        $remainingInvoiceAmount = max(0, $totalOrderAmount - $totalInvoicedAmount);
+
+        $totalOrderedPieces = 0;
+        $totalDeliveredPieces = 0;
+        foreach ($sale->items as $it) {
+            $ordered = (float)($it->total_pieces > 0 ? $it->total_pieces : $it->qty);
+            $delivered = (float)$it->delivered_qty;
+            $totalOrderedPieces += $ordered;
+            $totalDeliveredPieces += $delivered;
+        }
+
+        $deliveryPct = $totalOrderedPieces > 0 ? min(100, round(($totalDeliveredPieces / $totalOrderedPieces) * 100)) : 0;
+        $invoicedPct = $totalOrderAmount > 0 ? min(100, round(($totalInvoicedAmount / $totalOrderAmount) * 100)) : 0;
+
+        return view('admin_panel.sale.partials.order_trail_modal', compact(
+            'sale',
+            'invoices',
+            'totalOrderAmount',
+            'totalInvoicedAmount',
+            'remainingInvoiceAmount',
+            'totalOrderedPieces',
+            'totalDeliveredPieces',
+            'deliveryPct',
+            'invoicedPct'
+        ));
+    }
+
+    public function destroy($id)
+    {
+        $sale = Sale::with(['items', 'deliveryChallans.items.product'])->findOrFail($id);
+
+        $currentUser = auth()->user();
+        if ($currentUser) {
+            if ($sale->sale_type === 'quotation') {
+                if (!$currentUser->can('quotations.delete')) {
+                    $msg = 'Unauthorized: You do not have permission to delete Quotations.';
+                    return request()->ajax() || request()->wantsJson() 
+                        ? response()->json(['success' => false, 'message' => $msg], 403)
+                        : redirect()->back()->with('error', $msg);
+                }
+            } elseif ($sale->sale_type === 'sales_order') {
+                if (!$currentUser->can('sales_orders.delete')) {
+                    $msg = 'Unauthorized: You do not have permission to delete Sales Orders.';
+                    return request()->ajax() || request()->wantsJson() 
+                        ? response()->json(['success' => false, 'message' => $msg], 403)
+                        : redirect()->back()->with('error', $msg);
+                }
+            } else {
+                if (!$currentUser->can('sales.delete')) {
+                    $msg = 'Unauthorized: You do not have permission to delete Sales Invoices.';
+                    return request()->ajax() || request()->wantsJson() 
+                        ? response()->json(['success' => false, 'message' => $msg], 403)
+                        : redirect()->back()->with('error', $msg);
+                }
+            }
+        }
+
+        // 1. Quotation check
+        if ($sale->sale_type === 'quotation') {
+            $convertedOrders = Sale::with('deliveryChallans')->where('parent_quotation_id', $sale->id)->get();
+            foreach ($convertedOrders as $co) {
+                if ($co->sale_status === 'posted' || $co->deliveryChallans->where('is_invoiced', 1)->count() > 0) {
+                    $msg = 'Cannot delete! This quotation has already been converted into an invoiced order.';
+                    if (request()->ajax() || request()->wantsJson()) {
+                        return response()->json(['success' => false, 'message' => $msg], 422);
+                    }
+                    return redirect()->back()->with('error', $msg);
+                }
+            }
+        }
+
+        // 2. Sales Order check
+        if ($sale->sale_type === 'sales_order') {
+            $hasInvoicedDc = $sale->deliveryChallans->where('is_invoiced', 1)->count() > 0;
+            if ($sale->sale_status === 'posted' || $hasInvoicedDc) {
+                $msg = 'Cannot delete! An invoice has already been generated for this Sales Order.';
+                if (request()->ajax() || request()->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+                return redirect()->back()->with('error', $msg);
+            }
+        }
+
+        // 3. Direct Sale / Invoice check
+        if ($sale->sale_type === 'direct_sale' || $sale->sale_type === null) {
+            if ($sale->returns()->exists()) {
+                $msg = 'Cannot delete! A return record exists for this Sale Invoice.';
+                if (request()->ajax() || request()->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+                return redirect()->back()->with('error', $msg);
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            // If Quotation, cascade delete linked uninvoiced Sales Orders and their DCs
+            if ($sale->sale_type === 'quotation') {
+                $convertedOrders = Sale::with(['items', 'deliveryChallans.items.product'])->where('parent_quotation_id', $sale->id)->get();
+                foreach ($convertedOrders as $co) {
+                    foreach ($co->deliveryChallans as $cdc) {
+                        // Rollback stock for each DC
+                        foreach ($cdc->items as $dci) {
+                            if ($dci->product_id) {
+                                $product = $dci->product;
+                                $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+                                $stock = WarehouseStock::where('warehouse_id', $dci->warehouse_id ?? 1)->where('product_id', $dci->product_id)->first();
+                                if ($stock) {
+                                    $stock->total_pieces += (float) ($dci->delivered_qty > 0 ? $dci->delivered_qty : $dci->boxes);
+                                    $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
+                                    $stock->save();
+                                }
+                            }
+                        }
+                        StockMovement::where('ref_id', $cdc->id)->whereIn('ref_type', ['DELIVERY_CHALLAN', 'direct_dc', 'dc', 'DIRECT_DELIVERY_CHALLAN'])->delete();
+                        $cdc->items()->delete();
+                        $cdc->delete();
+                    }
+                    $co->items()->delete();
+                    $co->delete();
+                }
+            }
+
+            // If Sales Order, rollback & delete linked uninvoiced DCs and cascade delete parent Quotation
+            if ($sale->sale_type === 'sales_order') {
+                foreach ($sale->deliveryChallans as $sdc) {
+                    foreach ($sdc->items as $sdci) {
+                        if ($sdci->product_id) {
+                            $product = $sdci->product;
+                            $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+                            $stock = WarehouseStock::where('warehouse_id', $sdci->warehouse_id ?? 1)->where('product_id', $sdci->product_id)->first();
+                            if ($stock) {
+                                $stock->total_pieces += (float) ($sdci->delivered_qty > 0 ? $sdci->delivered_qty : $sdci->boxes);
+                                $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
+                                $stock->save();
+                            }
+                        }
+                    }
+                    StockMovement::where('ref_id', $sdc->id)->whereIn('ref_type', ['DELIVERY_CHALLAN', 'direct_dc', 'dc', 'DIRECT_DELIVERY_CHALLAN'])->delete();
+                    $sdc->items()->delete();
+                    $sdc->delete();
+                }
+
+                if ($sale->parent_quotation_id) {
+                    $parentQuo = Sale::with('items')->find($sale->parent_quotation_id);
+                    if ($parentQuo) {
+                        $parentQuo->items()->delete();
+                        $parentQuo->delete();
+                    }
+                }
+            }
+
+            // If it's a posted direct sale / invoice, rollback stock & customer ledger / vouchers
+            if ($sale->sale_type !== 'quotation' && ($sale->sale_status === 'posted' || $sale->sale_type === 'direct_sale' || empty($sale->sale_type))) {
+                
+                // 1. Rollback stock if sale was posted
+                if ($sale->sale_status === 'posted') {
+                    $movs = [];
+                    $now = now();
+
+                    foreach ($sale->items as $it) {
+                        if ($it->product_set_id) {
+                            $set = $it->productSet ?: \App\Models\ProductSet::with('items.product')->find($it->product_set_id);
+                            if ($set && $set->items) {
+                                $setCount = (float)($it->total_pieces > 0 ? $it->total_pieces : ($it->qty > 0 ? $it->qty : 1));
+                                $targetWhId = (int)($it->warehouse_id ?: ($sale->warehouse_id ?: 1));
+
+                                foreach ($set->items as $setItem) {
+                                    $p = $setItem->product;
+                                    if (!$p) continue;
+
+                                    $pMode = $p->size_mode ?? '';
+                                    $itemSetQty = (float)$setItem->quantity * $setCount;
+                                    $qtyDeduct = $itemSetQty;
+
+                                    if ($pMode === 'by_kg' || $pMode === 'by_gm') {
+                                        $conv = (float)($setItem->conv_factor > 0 ? $setItem->conv_factor : 0);
+                                        $wpp = (float)($setItem->weight_per_piece > 0 ? $setItem->weight_per_piece : 0);
+                                        $unit = strtolower(trim($setItem->variant_unit ?? ''));
+
+                                        if ($unit === 'gm' || $unit === 'g') {
+                                            $qtyDeduct = $itemSetQty / 1000.0;
+                                        } elseif (in_array($unit, ['pcs', 'pc', 'piece', 'pieces']) || ($conv > 0 && $conv != 1) || $wpp > 0) {
+                                            if ($conv > 0 && $conv != 1) {
+                                                $qtyDeduct = $itemSetQty * $conv;
+                                            } elseif ($wpp > 0) {
+                                                $qtyDeduct = $itemSetQty * ($wpp / 1000.0);
+                                            }
+                                        } else {
+                                            $qtyDeduct = $itemSetQty;
+                                        }
+                                    } elseif ($pMode === 'by_meter' || $pMode === 'by_feet') {
+                                        $conv = (float)($setItem->conv_factor > 0 ? $setItem->conv_factor : 1);
+                                        $qtyDeduct = $itemSetQty * ($conv > 0 ? $conv : 1);
+                                    }
+
+                                    $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
+                                    $stock = WarehouseStock::where('warehouse_id', $targetWhId)->where('product_id', $p->id)->first();
+                                    if ($stock) {
+                                        $stock->total_pieces += $qtyDeduct;
+                                        $stock->quantity = round($stock->total_pieces / $ppb, 2);
+                                        $stock->save();
+                                    }
+
+                                    $movs[] = [
+                                        'product_id' => $p->id,
+                                        'type' => 'in',
+                                        'qty' => $qtyDeduct,
+                                        'ref_type' => 'SALE_DELETE',
+                                        'ref_id' => $sale->id,
+                                        'note' => 'Reverted on Sale Invoice deletion #' . $sale->invoice_no . ' (Set: ' . $set->name . ' x' . $setCount . ')',
+                                        'created_at' => $now,
+                                        'updated_at' => $now,
+                                    ];
+                                }
+                            }
+                            continue;
+                        }
+
+                        $pid = (int) $it->product_id;
+                        $itemWhId = (int) ($it->warehouse_id ?: ($sale->warehouse_id ?: 1));
+                        $qtyPieces = (float) ($it->total_pieces > 0 ? $it->total_pieces : $it->qty);
+
+                        if ($pid > 0 && $qtyPieces > 0) {
+                            $itBreakdown = null;
+                            if (!empty($it->warehouse_breakdown)) {
+                                $dec = is_array($it->warehouse_breakdown) ? $it->warehouse_breakdown : json_decode($it->warehouse_breakdown, true);
+                                if (is_array($dec) && count($dec) > 0) {
+                                    $itBreakdown = $dec;
+                                }
+                            }
+
+                            if ($itBreakdown) {
+                                $itInputQty = (float) ($it->qty > 0 ? $it->qty : ($qtyPieces > 0 ? $qtyPieces : 1));
+                                $convFactor = ($qtyPieces > 0 && $itInputQty > 0) ? ($qtyPieces / $itInputQty) : 1;
+                                $product = $it->product ?: Product::find($pid);
+                                $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+
+                                foreach ($itBreakdown as $alloc) {
+                                    $allocWhId = (int) ($alloc['wh_id'] ?? $alloc['warehouse_id'] ?? $itemWhId);
+                                    $allocQty = (float) ($alloc['qty'] ?? 0);
+                                    if ($allocWhId <= 0 || $allocQty <= 0) continue;
+                                    $allocPieces = $allocQty * $convFactor;
+                                    $whName = $alloc['wh_name'] ?? $alloc['warehouse_name'] ?? "Warehouse #{$allocWhId}";
+
+                                    $movs[] = [
+                                        'product_id' => $pid,
+                                        'type' => 'in',
+                                        'qty' => $allocPieces,
+                                        'ref_type' => 'SALE_DELETE',
+                                        'ref_id' => $sale->id,
+                                        'note' => 'Reverted on Sale Invoice deletion #'.$sale->invoice_no.' ('.$whName.')',
+                                        'created_at' => $now,
+                                        'updated_at' => $now,
+                                    ];
+
+                                    $stock = WarehouseStock::where('warehouse_id', $allocWhId)->where('product_id', $pid)->first();
+                                    if ($stock) {
+                                        $stock->total_pieces += $allocPieces;
+                                        $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
+                                        $stock->save();
+                                    }
+                                }
+                            } else {
+                                $movs[] = [
+                                    'product_id' => $pid,
+                                    'type' => 'in',
+                                    'qty' => $qtyPieces,
+                                    'ref_type' => 'SALE_DELETE',
+                                    'ref_id' => $sale->id,
+                                    'note' => 'Reverted on Sale Invoice deletion #'.$sale->invoice_no,
+                                    'created_at' => $now,
+                                    'updated_at' => $now,
+                                ];
+
+                                $product = $it->product ?: Product::find($pid);
+                                $ppb = (float) ($product && $product->pieces_per_box > 0 ? $product->pieces_per_box : 1);
+                                $stock = WarehouseStock::where('warehouse_id', $itemWhId)->where('product_id', $pid)->first();
+                                if ($stock) {
+                                    $stock->total_pieces += $qtyPieces;
+                                    $stock->quantity = $stock->total_pieces / ($ppb > 0 ? $ppb : 1);
+                                    $stock->save();
+                                }
+                            }
+                        }
+                    }
+
+                    if (!empty($movs)) {
+                        DB::table('stock_movements')->insert($movs);
+                    }
+
+                    // Clean up original stock movements for this sale
+                    DB::table('stock_movements')->where('ref_id', $sale->id)->whereIn('ref_type', ['sale', 'direct_sale', 'sale_invoice'])->delete();
+                }
+
+                // 2. Reverse customer ledger / vouchers / journal entries
+                $invNo = $sale->invoice_no;
+                if (!empty($invNo)) {
+                    // (a) Delete linked VoucherMaster (Invoice Journal Voucher & Auto-Receipt Vouchers)
+                    $vouchers = \App\Models\VoucherMaster::where(function($q) use ($invNo) {
+                        $q->where('remarks', 'like', "%#{$invNo}%")
+                          ->orWhere('remarks', 'like', "%Invoice #{$invNo}%");
+                    })->get();
+
+                    foreach ($vouchers as $v) {
+                        $v->journalEntries()->delete();
+                        $v->details()->delete();
+                        $v->delete();
+                    }
+
+                    // (b) Delete any direct JournalEntry referencing this Sale or Invoice #
+                    \App\Models\JournalEntry::where(function($q) use ($sale, $invNo) {
+                        $q->where(function($sq) use ($sale) {
+                            $sq->where('source_type', Sale::class)->where('source_id', $sale->id);
+                        })->orWhere('description', 'like', "%#{$invNo}%");
+                    })->delete();
+
+                    // (c) Delete from legacy customer_ledgers table
+                    if ($sale->customer_id) {
+                        \App\Models\CustomerLedger::where('customer_id', $sale->customer_id)
+                            ->where(function($q) use ($invNo) {
+                                $q->where('description', 'like', "%#{$invNo}%")
+                                  ->orWhere('description', 'like', "%Invoice #{$invNo}%");
+                            })->delete();
+                    }
+
+                    // (d) Delete from receipts_vouchers table if any
+                    \App\Models\ReceiptsVoucher::where('remarks', 'like', "%#{$invNo}%")->delete();
+
+                    // (e) Delete from customer_payments table if any
+                    \App\Models\CustomerPayment::where('note', 'like', "%#{$invNo}%")->delete();
+
+                    // (f) Re-calculate & sync Customer previous_balance in Customer master
+                    if ($sale->customer_id) {
+                        $customer = \App\Models\Customer::find($sale->customer_id);
+                        if ($customer) {
+                            $balanceService = app(\App\Services\BalanceService::class);
+                            $newBal = $balanceService->getCustomerBalance($customer);
+                            $customer->previous_balance = $newBal;
+                            $customer->save();
+
+                            // Also sync latest remaining CustomerLedger record closing_balance if exists
+                            $latestLedger = \App\Models\CustomerLedger::where('customer_id', $sale->customer_id)->orderBy('id', 'desc')->first();
+                            if ($latestLedger) {
+                                $latestLedger->closing_balance = $newBal;
+                                $latestLedger->save();
+                            }
+                        }
+                    }
+                }
+            }
+
+            $sale->items()->delete();
+            $sale->delete();
+
+            DB::commit();
+
+            $typeName = ($sale->sale_type === 'quotation') ? 'Quotation' : (($sale->sale_type === 'sales_order') ? 'Sales Order' : 'Sale Invoice');
+            $msg = "{$typeName} deleted successfully. Stock restored and customer ledger updated.";
+
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => $msg]);
+            }
+            return redirect()->back()->with('success', $msg);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $msg = 'Error deleting record: ' . $e->getMessage();
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 500);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
+    }
+
+    /**
+     * Get Customer Advance Info for a specific Sale Invoice
+     */
+    public function getSaleAdvanceInfo($id)
+    {
+        $sale = Sale::with("customer_relation")->findOrFail($id);
+
+        if (!$sale->customer_id) {
+            return response()->json([
+                "success" => false,
+                "message" => "This invoice does not have a customer assigned."
+            ], 422);
+        }
+
+        $customer = $sale->customer_relation ?? \App\Models\Customer::find($sale->customer_id);
+
+        $allSales = Sale::where("customer_id", $sale->customer_id)->get();
+        $totalNet = (float) $allSales->sum("total_net");
+        $totalDirectPaid = (float) $allSales->sum(function($s) {
+            return (float)($s->cash ?? 0) + (float)($s->card ?? 0);
+        });
+        $totalAdvAdjusted = (float) $allSales->sum(function($s) {
+            return (float)($s->advance_adjusted ?? 0);
+        });
+        $totalInvoicesDue = max(0, $totalNet - ($totalDirectPaid + $totalAdvAdjusted));
+
+        // Fetch latest closing balance from CustomerLedger
+        $lastLedger = \App\Models\CustomerLedger::where("customer_id", $sale->customer_id)
+            ->orderBy("id", "desc")
+            ->first();
+        
+        $closingBalance = $lastLedger ? (float) $lastLedger->closing_balance : (float) ($customer->previous_balance ?? 0);
+
+        if ($closingBalance <= 0) {
+            $availableAdvance = abs($closingBalance) + max(0, $totalInvoicesDue);
+        } else {
+            $availableAdvance = max(0, $totalInvoicesDue - $closingBalance);
+        }
+        $availableAdvance = round($availableAdvance, 2);
+
+        $due = $sale->due_amount;
+
+        $displayName = ($customer && !empty(trim($customer->name ?? ""))) 
+            ? trim($customer->name) . ($customer->customer_id ? " (" . $customer->customer_id . ")" : "") 
+            : ($customer->customer_id ?? "Customer #" . $sale->customer_id);
+
+        return response()->json([
+            "success" => true,
+            "sale_id" => $sale->id,
+            "invoice_no" => $sale->invoice_no,
+            "customer_id" => $sale->customer_id,
+            "customer_name" => $displayName,
+            "total_net" => (float)$sale->total_net,
+            "advance_already_adjusted" => (float)($sale->advance_adjusted ?? 0),
+            "due_amount" => round($due, 2),
+            "available_advance" => $availableAdvance,
+            "can_settle" => ($availableAdvance > 0.001 && $due > 0.001),
+            "max_settleable" => round(min($availableAdvance, $due), 2),
+        ]);
+    }
+
+    /**
+     * Settle an existing Unpaid/Partial Sale Invoice from Customer Advance
+     */
+    public function settleFromAdvance(Request $request, $id)
+    {
+        $sale = Sale::findOrFail($id);
+
+        if (!$sale->customer_id) {
+            return response()->json([
+                "success" => false,
+                "message" => "No customer is associated with this invoice."
+            ], 422);
+        }
+
+        $customer = $sale->customer_relation ?? \App\Models\Customer::find($sale->customer_id);
+
+        $allSales = Sale::where("customer_id", $sale->customer_id)->get();
+        $totalNet = (float) $allSales->sum("total_net");
+        $totalDirectPaid = (float) $allSales->sum(function($s) {
+            return (float)($s->cash ?? 0) + (float)($s->card ?? 0);
+        });
+        $totalAdvAdjusted = (float) $allSales->sum(function($s) {
+            return (float)($s->advance_adjusted ?? 0);
+        });
+        $totalInvoicesDue = max(0, $totalNet - ($totalDirectPaid + $totalAdvAdjusted));
+
+        // Fetch current customer available advance
+        $lastLedger = \App\Models\CustomerLedger::where("customer_id", $sale->customer_id)
+            ->orderBy("id", "desc")
+            ->first();
+        $closingBalance = $lastLedger ? (float) $lastLedger->closing_balance : (float) ($customer->previous_balance ?? 0);
+
+        if ($closingBalance <= 0) {
+            $availableAdvance = abs($closingBalance) + max(0, $totalInvoicesDue);
+        } else {
+            $availableAdvance = max(0, $totalInvoicesDue - $closingBalance);
+        }
+        $availableAdvance = round($availableAdvance, 2);
+
+        if ($availableAdvance <= 0.001) {
+            return response()->json([
+                "success" => false,
+                "message" => "Customer does not have any advance balance available to adjust."
+            ], 422);
+        }
+
+        $due = $sale->due_amount;
+        if ($due <= 0.001) {
+            return response()->json([
+                "success" => false,
+                "message" => "This invoice is already fully paid."
+            ], 422);
+        }
+
+        $requestedAmount = $request->filled("amount") ? (float)$request->input("amount") : $due;
+        if ($requestedAmount <= 0) {
+            return response()->json([
+                "success" => false,
+                "message" => "Settlement amount must be greater than zero."
+            ], 422);
+        }
+
+        $settleAmount = min($requestedAmount, $availableAdvance, $due);
+        $settleAmount = round($settleAmount, 2);
+
+        if ($settleAmount <= 0) {
+            return response()->json([
+                "success" => false,
+                "message" => "Invalid settlement amount."
+            ], 422);
+        }
+
+        // Increment sale advance_adjusted
+        $sale->advance_adjusted = round((float)($sale->advance_adjusted ?? 0) + $settleAmount, 2);
+        
+        $note = "Settled Rs. " . number_format($settleAmount, 2) . " from Customer Advance on " . now()->format("d M Y, h:i A");
+        if (!empty($sale->advance_settlement_note)) {
+            $sale->advance_settlement_note .= " | " . $note;
+        } else {
+            $sale->advance_settlement_note = $note;
+        }
+
+        $sale->save();
+
+        return response()->json([
+            "success" => true,
+            "message" => "Rs. " . number_format($settleAmount, 2) . " successfully settled from Customer Advance for Invoice #" . $sale->invoice_no . "!",
+            "sale_id" => $sale->id,
+            "invoice_no" => $sale->invoice_no,
+            "advance_adjusted" => (float)$sale->advance_adjusted,
+            "due_amount" => round($sale->due_amount, 2),
+            "is_fully_paid" => ($sale->due_amount <= 0.001)
+        ]);
+    }
+
+
+    public function uploadAttachment(Request $request, $id)
+    {
+        $request->validate([
+            'attachment' => 'required|file|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx,xlsx,xls,txt|max:20480',
+        ]);
+
+        $sale = Sale::findOrFail($id);
+
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
+
+            $publicDest = public_path('uploads/attachments');
+            if (!file_exists($publicDest)) {
+                @mkdir($publicDest, 0777, true);
+            }
+            $file->move($publicDest, $filename);
+
+            $rootDest = base_path('uploads/attachments');
+            if ($rootDest !== $publicDest && file_exists(base_path('uploads'))) {
+                if (!file_exists($rootDest)) {
+                    @mkdir($rootDest, 0777, true);
+                }
+                @copy($publicDest . '/' . $filename, $rootDest . '/' . $filename);
+            }
+
+            $sale->attachment = $filename;
+            $sale->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Attachment uploaded successfully!',
+                'attachment' => $filename,
+                'attachment_url' => asset('uploads/attachments/' . $filename),
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'No file provided.'], 400);
+    }
+}
