@@ -34,19 +34,20 @@ class SyncController extends Controller
     }
 
     /**
-     * Runs on the local server instance to push data to the cloud.
+     * Runs on the local server instance to push unsynced data to cloud
+     * and pull newly created cloud data (2-Way Full Sync).
      */
     public function syncToCloud(Request $request)
     {
         $cloudSyncUrl = rtrim(env('CLOUD_SYNC_URL', 'https://test.binsultansweet.com'), '/');
         $syncToken = env('SYNC_TOKEN', 'trendhub_sync_default_token_2026');
 
-        // 1. Fetch unsynced customers
+        // 1. Fetch unsynced local customers
         $customers = Customer::where('is_synced', 0)->get()->map(function($c) {
             return $c->toArray();
         })->toArray();
 
-        // 2. Fetch unsynced sales with items
+        // 2. Fetch unsynced local sales with items
         $sales = Sale::where('is_synced', 0)->get()->map(function($s) {
             $sData = $s->toArray();
             
@@ -65,29 +66,24 @@ class SyncController extends Controller
             return $sData;
         })->toArray();
 
-        if (empty($customers) && empty($sales)) {
-            return response()->json([
-                'status' => 'success',
-                'message' => 'All local data is already fully synchronized with the cloud! No pending bills found.',
-                'synced_sales' => 0,
-                'synced_customers' => 0
-            ]);
-        }
+        // 3. Collect all known sale UUIDs from local to ask Cloud for missing sales
+        $knownSaleUuids = Sale::whereNotNull('uuid')->pluck('uuid')->toArray();
 
         try {
-            // Send payload to cloud via HTTP Client (withoutVerifying to bypass local SSL errors)
+            // Send payload to cloud via HTTP Client (withoutVerifying to bypass SSL issues)
             $response = Http::timeout(60)
                 ->withoutVerifying()
                 ->withHeaders(['X-Sync-Token' => $syncToken])
                 ->post($cloudSyncUrl . '/api/receive-sync', [
                     'customers' => $customers,
-                    'sales' => $sales
+                    'sales' => $sales,
+                    'known_sale_uuids' => $knownSaleUuids,
                 ]);
 
             if ($response->successful()) {
                 $resData = $response->json();
                 if (isset($resData['status']) && $resData['status'] === 'success') {
-                    // Update local records to synced
+                    // A. Mark pushed local records as synced
                     if (!empty($customers)) {
                         Customer::whereIn('uuid', collect($customers)->pluck('uuid'))->update(['is_synced' => 1]);
                     }
@@ -95,10 +91,91 @@ class SyncController extends Controller
                         Sale::whereIn('uuid', collect($sales)->pluck('uuid'))->update(['is_synced' => 1]);
                     }
 
+                    $pulledSalesCount = 0;
+
+                    // B. Process pulled Cloud sales onto Local
+                    $cloudSales = $resData['cloud_sales'] ?? [];
+                    if (!empty($cloudSales)) {
+                        DB::beginTransaction();
+                        try {
+                            foreach ($cloudSales as $cs) {
+                                $uuid = $cs['uuid'] ?? null;
+                                if (!$uuid) continue;
+
+                                // If already exists on local, skip
+                                if (Sale::where('uuid', $uuid)->exists()) continue;
+
+                                $items = $cs['items'] ?? [];
+                                unset($cs['id']);
+                                unset($cs['items']);
+
+                                // Match customer on local
+                                if (!empty($cs['customer_uuid'])) {
+                                    $localCust = Customer::where('uuid', $cs['customer_uuid'])->first();
+                                    if ($localCust) {
+                                        $cs['customer_id'] = $localCust->id;
+                                    }
+                                }
+                                unset($cs['customer_uuid']);
+
+                                $newSale = new Sale($cs);
+                                $newSale->uuid = $uuid;
+                                $newSale->is_synced = 1;
+                                $newSale->save();
+
+                                foreach ($items as $ci) {
+                                    unset($ci['id']);
+                                    unset($ci['sale_id']);
+                                    if (!empty($ci['product_code'])) {
+                                        $localProd = Product::where('item_code', $ci['product_code'])->first();
+                                        if ($localProd) {
+                                            $ci['product_id'] = $localProd->id;
+                                        }
+                                    }
+                                    unset($ci['product_code']);
+
+                                    $sItem = new SaleItem($ci);
+                                    $sItem->sale_id = $newSale->id;
+                                    $sItem->save();
+                                }
+
+                                $pulledSalesCount++;
+                            }
+
+                            // C. Update product stock on local if provided
+                            if (!empty($resData['product_stocks'])) {
+                                foreach ($resData['product_stocks'] as $pStock) {
+                                    if (isset($pStock['item_code']) && isset($pStock['total_stock_qty'])) {
+                                        Product::where('item_code', $pStock['item_code'])->update([
+                                            'total_stock_qty' => $pStock['total_stock_qty']
+                                        ]);
+                                    }
+                                }
+                            }
+
+                            DB::commit();
+                        } catch (\Exception $ex) {
+                            DB::rollBack();
+                            Log::error('Error applying pulled cloud sales locally: ' . $ex->getMessage());
+                        }
+                    }
+
+                    $msg = 'Synchronization successful!';
+                    if (count($sales) > 0) {
+                        $msg .= ' Pushed ' . count($sales) . ' offline sale(s) to Cloud.';
+                    }
+                    if ($pulledSalesCount > 0) {
+                        $msg .= ' Pulled ' . $pulledSalesCount . ' new sale(s) from Cloud.';
+                    }
+                    if (count($sales) === 0 && $pulledSalesCount === 0) {
+                        $msg = 'Both systems are already fully synchronized!';
+                    }
+
                     return response()->json([
                         'status' => 'success',
-                        'message' => 'Cloud synchronization completed successfully! ' . count($sales) . ' sales and ' . count($customers) . ' customers synced.',
+                        'message' => $msg,
                         'synced_sales' => count($sales),
+                        'pulled_sales' => $pulledSalesCount,
                         'synced_customers' => count($customers)
                     ]);
                 } else {
@@ -122,7 +199,8 @@ class SyncController extends Controller
     }
 
     /**
-     * Runs on the cloud server instance to receive pushed data.
+     * Runs on the cloud server instance to receive pushed data from local
+     * AND return new cloud sales that local does not have yet.
      */
     public function receiveSync(Request $request)
     {
@@ -134,17 +212,17 @@ class SyncController extends Controller
         $payload = $request->all();
         $customers = $payload['customers'] ?? [];
         $sales = $payload['sales'] ?? [];
+        $knownSaleUuids = $payload['known_sale_uuids'] ?? [];
 
         DB::beginTransaction();
         try {
-            // Process customers
+            // 1. Process incoming customers from Local
             foreach ($customers as $cData) {
                 $uuid = $cData['uuid'] ?? (string) Str::uuid();
                 unset($cData['id']);
                 
                 $customer = Customer::where('uuid', $uuid)->first();
                 if (!$customer) {
-                    // Prevent duplicate customer_id collision on cloud
                     if (isset($cData['customer_id']) && Customer::where('customer_id', $cData['customer_id'])->exists()) {
                         $cData['customer_id'] = 'CUST-' . str_pad((Customer::max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT);
                     }
@@ -157,7 +235,7 @@ class SyncController extends Controller
                 }
             }
 
-            // Process sales
+            // 2. Process incoming sales from Local
             $saleController = app(\App\Http\Controllers\SaleController::class);
             $balanceService = app(\App\Services\BalanceService::class);
             $transactionService = app(\App\Services\TransactionService::class);
@@ -180,14 +258,6 @@ class SyncController extends Controller
 
                 $sale = Sale::where('uuid', $uuid)->first();
                 if (!$sale) {
-                    // Resolve invoice_no collision
-                    if (isset($sData['invoice_no']) && Sale::where('invoice_no', $sData['invoice_no'])->exists()) {
-                        $sData['invoice_no'] = $sData['invoice_no'] . '-OFF';
-                        if (Sale::where('invoice_no', $sData['invoice_no'])->exists()) {
-                            $sData['invoice_no'] = 'INV-' . date('YmdHis') . '-' . rand(10, 99);
-                        }
-                    }
-
                     $sale = new Sale($sData);
                     $sale->uuid = $uuid;
                     $sale->is_synced = 1;
@@ -255,34 +325,39 @@ class SyncController extends Controller
             }
 
             DB::commit();
-            return response()->json(['status' => 'success', 'message' => 'Sync payload processed successfully.']);
+
+            // 3. Find any sales on Cloud that Local does NOT have yet
+            $cloudSalesForLocal = [];
+            if (!empty($knownSaleUuids)) {
+                $cloudSalesForLocal = Sale::whereNotIn('uuid', $knownSaleUuids)
+                    ->with(['items.product', 'customer_relation'])
+                    ->orderBy('id', 'asc')
+                    ->get()
+                    ->map(function($s) {
+                        $sData = $s->toArray();
+                        $sData['customer_uuid'] = $s->customer_relation ? $s->customer_relation->uuid : null;
+                        $sData['items'] = $s->items->map(function($item) {
+                            $iData = $item->toArray();
+                            $iData['product_code'] = $item->product ? $item->product->item_code : null;
+                            return $iData;
+                        })->toArray();
+                        return $sData;
+                    })->toArray();
+            }
+
+            // 4. Return updated product stock quantities from Cloud
+            $productStocks = Product::select('item_code', 'total_stock_qty')->get()->toArray();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Sync payload processed successfully.',
+                'cloud_sales' => $cloudSalesForLocal,
+                'product_stocks' => $productStocks
+            ]);
         } catch (\Exception $ex) {
             DB::rollBack();
             Log::error('Sync error on cloud: ' . $ex->getMessage());
             return response()->json(['status' => 'error', 'message' => $ex->getMessage()], 500);
         }
-    }
-
-    /**
-     * Cloud endpoint to pull master data (products and prices) down to local PC
-     */
-    public function pullMasterData(Request $request)
-    {
-        $token = $request->header('X-Sync-Token') ?? $request->input('sync_token');
-        if ($token !== env('SYNC_TOKEN', 'trendhub_sync_default_token_2026')) {
-            return response()->json(['status' => 'error', 'message' => 'Unauthorized sync request.'], 401);
-        }
-
-        $lastUpdated = $request->input('last_updated');
-        $query = Product::select('item_code', 'item_name', 'purchase_price_per_piece', 'price_per_piece', 'wholesale_price', 'sale_price_per_box', 'total_stock_qty', 'updated_at');
-        if ($lastUpdated) {
-            $query->where('updated_at', '>=', $lastUpdated);
-        }
-        $products = $query->limit(500)->get();
-
-        return response()->json([
-            'status' => 'success',
-            'products' => $products
-        ]);
     }
 }
