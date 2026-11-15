@@ -146,6 +146,24 @@ class SyncController extends Controller
                                     $sItem->save();
                                 }
 
+                                // Post to Local Stock, Customer Ledger & Vouchers
+                                if ($newSale->sale_status === 'posted') {
+                                    $saleController = app(\App\Http\Controllers\SaleController::class);
+                                    $balanceService = app(\App\Services\BalanceService::class);
+                                    $transactionService = app(\App\Services\TransactionService::class);
+
+                                    try { $saleController->handleStockImpact($newSale, 'out'); } catch (\Exception $e) {}
+                                    try { $saleController->updateLedger($newSale); } catch (\Exception $e) {}
+                                    try {
+                                        $custForVoucher = $newSale->customer_relation ?? Customer::find($newSale->customer_id);
+                                        if ($custForVoucher) {
+                                            $date = $newSale->created_at ? $newSale->created_at->format('Y-m-d') : date('Y-m-d');
+                                            $balanceService->createSaleVoucher($custForVoucher, $newSale->total_net, $newSale->invoice_no, $date);
+                                        }
+                                    } catch (\Exception $e) {}
+                                    try { $transactionService->createReceiptFromSale($newSale); } catch (\Exception $e) {}
+                                }
+
                                 $pulledSalesCount++;
                             }
 
@@ -155,6 +173,17 @@ class SyncController extends Controller
                                     if (isset($pStock['item_code']) && isset($pStock['total_stock_qty'])) {
                                         Product::where('item_code', $pStock['item_code'])->update([
                                             'total_stock_qty' => $pStock['total_stock_qty']
+                                        ]);
+                                    }
+                                }
+                            }
+
+                            // D. Update customer balances on local from Cloud
+                            if (!empty($resData['customer_balances'])) {
+                                foreach ($resData['customer_balances'] as $cBal) {
+                                    if (!empty($cBal['uuid'])) {
+                                        Customer::where('uuid', $cBal['uuid'])->update([
+                                            'previous_balance' => $cBal['previous_balance']
                                         ]);
                                     }
                                 }
@@ -359,11 +388,19 @@ class SyncController extends Controller
                 $productStocks = Product::whereIn('id', $affectedProductIds)->select('item_code', 'total_stock_qty')->get()->toArray();
             }
 
+            // 5. Return updated customer balances for affected customers
+            $affectedCustomerUuids = collect($cloudSalesForLocal)->pluck('customer_uuid')->filter()->unique();
+            $customerBalances = [];
+            if ($affectedCustomerUuids->isNotEmpty()) {
+                $customerBalances = Customer::whereIn('uuid', $affectedCustomerUuids)->select('uuid', 'previous_balance')->get()->toArray();
+            }
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Sync payload processed successfully.',
                 'cloud_sales' => $cloudSalesForLocal,
-                'product_stocks' => $productStocks
+                'product_stocks' => $productStocks,
+                'customer_balances' => $customerBalances
             ]);
         } catch (\Exception $ex) {
             DB::rollBack();
