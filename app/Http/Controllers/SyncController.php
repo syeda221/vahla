@@ -118,7 +118,11 @@ class SyncController extends Controller
                                 }
                                 unset($cs['customer_uuid']);
 
-                                $newSale = new Sale($cs);
+                                // Filter attributes to only valid columns on Local table
+                                $saleColumns = \Illuminate\Support\Facades\Schema::getColumnListing('sales');
+                                $filteredSaleData = array_intersect_key($cs, array_flip($saleColumns));
+
+                                $newSale = new Sale($filteredSaleData);
                                 $newSale->uuid = $uuid;
                                 $newSale->is_synced = 1;
                                 $newSale->save();
@@ -134,7 +138,10 @@ class SyncController extends Controller
                                     }
                                     unset($ci['product_code']);
 
-                                    $sItem = new SaleItem($ci);
+                                    $itemColumns = \Illuminate\Support\Facades\Schema::getColumnListing('sale_items');
+                                    $filteredItemData = array_intersect_key($ci, array_flip($itemColumns));
+
+                                    $sItem = new SaleItem($filteredItemData);
                                     $sItem->sale_id = $newSale->id;
                                     $sItem->save();
                                 }
@@ -345,8 +352,12 @@ class SyncController extends Controller
                     })->toArray();
             }
 
-            // 4. Return updated product stock quantities from Cloud
-            $productStocks = Product::select('item_code', 'total_stock_qty')->get()->toArray();
+            // 4. Return updated product stock quantities only for affected items
+            $affectedProductIds = collect($cloudSalesForLocal)->pluck('items')->flatten(1)->pluck('product_id')->filter()->unique();
+            $productStocks = [];
+            if ($affectedProductIds->isNotEmpty()) {
+                $productStocks = Product::whereIn('id', $affectedProductIds)->select('item_code', 'total_stock_qty')->get()->toArray();
+            }
 
             return response()->json([
                 'status' => 'success',
