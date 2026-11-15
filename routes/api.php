@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 Route::post('/receive-sync', [SyncController::class, 'receiveSync'])->name('api.receive_sync');
+Route::get('/pull-master-data', [SyncController::class, 'pullMasterData'])->name('api.pull_master_data');
 
 // ---------------------------------------------------------
 // FRONTEND HEADLESS API ROUTES

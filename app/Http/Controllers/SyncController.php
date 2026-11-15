@@ -10,15 +10,35 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class SyncController extends Controller
 {
+    /**
+     * Get current sync status & count of unsynced records
+     */
+    public function syncStatus(Request $request)
+    {
+        $unsyncedSales = Sale::where('is_synced', 0)->count();
+        $unsyncedCustomers = Customer::where('is_synced', 0)->count();
+        $total = $unsyncedSales + $unsyncedCustomers;
+
+        return response()->json([
+            'status' => 'success',
+            'unsynced_sales' => $unsyncedSales,
+            'unsynced_customers' => $unsyncedCustomers,
+            'total_unsynced' => $total,
+            'cloud_url' => env('CLOUD_SYNC_URL', 'https://test.binsultansweet.com'),
+            'local_url' => env('LOCAL_SYNC_URL', 'http://127.0.0.1:8000'),
+        ]);
+    }
+
     /**
      * Runs on the local server instance to push data to the cloud.
      */
     public function syncToCloud(Request $request)
     {
-        $cloudSyncUrl = env('CLOUD_SYNC_URL', 'https://haroontraders.binsultansweet.com');
+        $cloudSyncUrl = rtrim(env('CLOUD_SYNC_URL', 'https://test.binsultansweet.com'), '/');
         $syncToken = env('SYNC_TOKEN', 'trendhub_sync_default_token_2026');
 
         // 1. Fetch unsynced customers
@@ -48,7 +68,9 @@ class SyncController extends Controller
         if (empty($customers) && empty($sales)) {
             return response()->json([
                 'status' => 'success',
-                'message' => 'Your local database is already fully synchronized with the cloud!'
+                'message' => 'All local data is already fully synchronized with the cloud! No pending bills found.',
+                'synced_sales' => 0,
+                'synced_customers' => 0
             ]);
         }
 
@@ -75,7 +97,9 @@ class SyncController extends Controller
 
                     return response()->json([
                         'status' => 'success',
-                        'message' => 'Cloud synchronization completed successfully! ' . count($sales) . ' sales and ' . count($customers) . ' customers synced.'
+                        'message' => 'Cloud synchronization completed successfully! ' . count($sales) . ' sales and ' . count($customers) . ' customers synced.',
+                        'synced_sales' => count($sales),
+                        'synced_customers' => count($customers)
                     ]);
                 } else {
                     return response()->json([
@@ -86,13 +110,13 @@ class SyncController extends Controller
             } else {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'HTTP request failed: ' . $response->body()
+                    'message' => 'Cloud server error (' . $response->status() . '): ' . $response->body()
                 ], $response->status());
             }
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Connection to cloud failed: ' . $e->getMessage()
+                'message' => 'Could not reach cloud server. Please check your internet connection: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -115,11 +139,15 @@ class SyncController extends Controller
         try {
             // Process customers
             foreach ($customers as $cData) {
-                $uuid = $cData['uuid'];
+                $uuid = $cData['uuid'] ?? (string) Str::uuid();
                 unset($cData['id']);
                 
                 $customer = Customer::where('uuid', $uuid)->first();
                 if (!$customer) {
+                    // Prevent duplicate customer_id collision on cloud
+                    if (isset($cData['customer_id']) && Customer::where('customer_id', $cData['customer_id'])->exists()) {
+                        $cData['customer_id'] = 'CUST-' . str_pad((Customer::max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT);
+                    }
                     $customer = new Customer($cData);
                     $customer->uuid = $uuid;
                     $customer->is_synced = 1;
@@ -135,7 +163,7 @@ class SyncController extends Controller
             $transactionService = app(\App\Services\TransactionService::class);
 
             foreach ($sales as $sData) {
-                $uuid = $sData['uuid'];
+                $uuid = $sData['uuid'] ?? (string) Str::uuid();
                 $items = $sData['items'] ?? [];
                 
                 unset($sData['id']);
@@ -152,6 +180,14 @@ class SyncController extends Controller
 
                 $sale = Sale::where('uuid', $uuid)->first();
                 if (!$sale) {
+                    // Resolve invoice_no collision
+                    if (isset($sData['invoice_no']) && Sale::where('invoice_no', $sData['invoice_no'])->exists()) {
+                        $sData['invoice_no'] = $sData['invoice_no'] . '-OFF';
+                        if (Sale::where('invoice_no', $sData['invoice_no'])->exists()) {
+                            $sData['invoice_no'] = 'INV-' . date('YmdHis') . '-' . rand(10, 99);
+                        }
+                    }
+
                     $sale = new Sale($sData);
                     $sale->uuid = $uuid;
                     $sale->is_synced = 1;
@@ -179,25 +215,41 @@ class SyncController extends Controller
                     // Process postings on the cloud
                     if ($sale->sale_status === 'posted') {
                         // 1. Deduct stock from warehouse
-                        $saleController->handleStockImpact($sale, 'out');
+                        try {
+                            $saleController->handleStockImpact($sale, 'out');
+                        } catch (\Exception $e) {
+                            Log::warning('Stock impact warning during sync: ' . $e->getMessage());
+                        }
                         
                         // 2. Legacy Ledger posting
-                        $saleController->updateLedger($sale);
+                        try {
+                            $saleController->updateLedger($sale);
+                        } catch (\Exception $e) {
+                            Log::warning('Ledger posting warning during sync: ' . $e->getMessage());
+                        }
 
                         // 3. Professional Ledger posting (Debit AR, Credit Sales)
-                        $custForVoucher = $sale->customer_relation ?? Customer::find($sale->customer_id);
-                        if ($custForVoucher) {
-                            $date = $sale->created_at->format('Y-m-d');
-                            $balanceService->createSaleVoucher(
-                                $custForVoucher,
-                                $sale->total_net,
-                                $sale->invoice_no,
-                                $date
-                            );
+                        try {
+                            $custForVoucher = $sale->customer_relation ?? Customer::find($sale->customer_id);
+                            if ($custForVoucher) {
+                                $date = $sale->created_at ? $sale->created_at->format('Y-m-d') : date('Y-m-d');
+                                $balanceService->createSaleVoucher(
+                                    $custForVoucher,
+                                    $sale->total_net,
+                                    $sale->invoice_no,
+                                    $date
+                                );
+                            }
+                        } catch (\Exception $e) {
+                            Log::warning('Sale voucher warning during sync: ' . $e->getMessage());
                         }
 
                         // 4. Auto Receipt (cash payment posting)
-                        $transactionService->createReceiptFromSale($sale);
+                        try {
+                            $transactionService->createReceiptFromSale($sale);
+                        } catch (\Exception $e) {
+                            Log::warning('Receipt warning during sync: ' . $e->getMessage());
+                        }
                     }
                 }
             }
@@ -209,5 +261,28 @@ class SyncController extends Controller
             Log::error('Sync error on cloud: ' . $ex->getMessage());
             return response()->json(['status' => 'error', 'message' => $ex->getMessage()], 500);
         }
+    }
+
+    /**
+     * Cloud endpoint to pull master data (products and prices) down to local PC
+     */
+    public function pullMasterData(Request $request)
+    {
+        $token = $request->header('X-Sync-Token') ?? $request->input('sync_token');
+        if ($token !== env('SYNC_TOKEN', 'trendhub_sync_default_token_2026')) {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized sync request.'], 401);
+        }
+
+        $lastUpdated = $request->input('last_updated');
+        $query = Product::select('item_code', 'item_name', 'purchase_price_per_piece', 'price_per_piece', 'wholesale_price', 'sale_price_per_box', 'total_stock_qty', 'updated_at');
+        if ($lastUpdated) {
+            $query->where('updated_at', '>=', $lastUpdated);
+        }
+        $products = $query->limit(500)->get();
+
+        return response()->json([
+            'status' => 'success',
+            'products' => $products
+        ]);
     }
 }

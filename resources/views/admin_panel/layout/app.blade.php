@@ -411,6 +411,18 @@
             align-items: center;
             gap: 8px;
         }
+        .header-offline-pill {
+            background: rgba(180, 83, 9, 0.45);
+            border: 1px solid rgba(245, 158, 11, 0.6);
+            border-radius: 10px;
+            padding: 6px 14px;
+            color: #fbbf24;
+            font-size: 12.5px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
         .online-dot {
             width: 8px;
             height: 8px;
@@ -418,6 +430,90 @@
             background: #10b981;
             box-shadow: 0 0 8px #10b981;
             animation: pulseGlow 2s infinite;
+        }
+        .offline-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f59e0b;
+            box-shadow: 0 0 8px #f59e0b;
+            animation: pulseGlow 2s infinite;
+        }
+        .header-sync-btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff !important;
+            border-radius: 10px;
+            padding: 6px 12px;
+            font-size: 12.5px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35);
+            transition: all 0.2s ease;
+        }
+        .header-sync-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.5);
+            color: #ffffff !important;
+            text-decoration: none;
+        }
+        .header-sync-btn:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .header-sync-badge {
+            background: #ef4444;
+            color: #ffffff;
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+        .header-offline-switch-btn {
+            background: rgba(245, 158, 11, 0.2);
+            border: 1px solid rgba(245, 158, 11, 0.5);
+            color: #fbbf24 !important;
+            border-radius: 10px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        .header-offline-switch-btn:hover {
+            background: rgba(245, 158, 11, 0.35);
+            color: #ffffff !important;
+            transform: translateY(-1px);
+            text-decoration: none;
+        }
+        .header-switch-btn {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #ffffff !important;
+            border-radius: 10px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        .header-switch-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            color: #ffffff !important;
+            transform: translateY(-1px);
+            text-decoration: none;
         }
         @keyframes pulseGlow {
             0%, 100% { transform: scale(1); opacity: 1; }
@@ -593,11 +689,56 @@
                             <span>Support</span>
                         </a>
 
-                        <!-- Online Status Pill -->
-                        <div class="header-online-pill">
-                            <span class="online-dot"></span>
-                            <span class="d-none d-sm-inline">Online</span>
-                        </div>
+                        <!-- Online / Offline & Sync Navigation Controls -->
+                        @php
+                            $host = request()->getHost();
+                            $isLocalInstance = in_array($host, ['localhost', '127.0.0.1']) || str_ends_with($host, '.local') || str_ends_with($host, '.test');
+                            $cloudSyncUrl = rtrim(env('CLOUD_SYNC_URL', 'https://test.binsultansweet.com'), '/');
+                            $localSyncUrl = rtrim(env('LOCAL_SYNC_URL', 'http://127.0.0.1:8000'), '/');
+                            $pendingSyncCount = 0;
+                            if ($isLocalInstance) {
+                                try {
+                                    $pendingSyncCount = \App\Models\Sale::where('is_synced', 0)->count() + \App\Models\Customer::where('is_synced', 0)->count();
+                                } catch (\Exception $e) {
+                                    $pendingSyncCount = 0;
+                                }
+                            }
+                        @endphp
+
+                        @if($isLocalInstance)
+                            <!-- Local Offline Mode Badge -->
+                            <div class="header-offline-pill" title="Running Locally on this PC">
+                                <span class="offline-dot"></span>
+                                <span class="d-none d-sm-inline">Offline PC</span>
+                            </div>
+
+                            <!-- Sync to Cloud Button -->
+                            <button type="button" class="header-sync-btn" id="topNavSyncBtn" title="Sync pending offline sales & customers to Cloud">
+                                <i class="fas fa-cloud-arrow-up"></i>
+                                <span class="d-none d-md-inline">Sync to Cloud</span>
+                                <span class="header-sync-badge" id="topNavSyncBadge" style="{{ $pendingSyncCount > 0 ? '' : 'display:none;' }}">
+                                    {{ $pendingSyncCount }}
+                                </span>
+                            </button>
+
+                            <!-- Switch to Online Domain Button -->
+                            <a href="{{ $cloudSyncUrl }}" target="_blank" class="header-switch-btn d-none d-lg-inline-flex" title="Open Cloud Domain">
+                                <i class="fas fa-globe"></i>
+                                <span>Go Online</span>
+                            </a>
+                        @else
+                            <!-- Cloud Online Mode Badge -->
+                            <div class="header-online-pill" id="cloudStatusPill" title="Connected to Cloud Domain">
+                                <span class="online-dot"></span>
+                                <span class="d-none d-sm-inline">Cloud Online</span>
+                            </div>
+
+                            <!-- Switch to Offline Mode Button -->
+                            <a href="{{ $localSyncUrl }}" class="header-offline-switch-btn" id="btnSwitchToOffline" title="Switch to Local Offline Billing">
+                                <i class="fas fa-desktop"></i>
+                                <span class="d-none d-md-inline">Offline Mode</span>
+                            </a>
+                        @endif
 
                         <!-- Sun / Theme Toggle -->
                         <div class="d-none d-sm-flex align-items-center justify-content-center text-white-50" style="width: 28px; height: 28px; cursor: pointer; font-size: 15px;">
@@ -1670,6 +1811,143 @@
                         $('#mobileMenuIcon, .navbar-toggler i').removeClass('fa-times').addClass('fa-bars');
                         $('body').css('overflow', '');
                     }
+                }
+            });
+        });
+    </script>
+
+    {{-- Hybrid Online / Offline Auto-Detection & Cloud Sync Engine --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const isLocalMachine = {{ $isLocalInstance ? 'true' : 'false' }};
+            const cloudUrl = "{{ $cloudSyncUrl }}";
+            const localUrl = "{{ $localSyncUrl }}";
+
+            // 1. Sync button handler on Local PC
+            const topNavSyncBtn = document.getElementById('topNavSyncBtn');
+            if (topNavSyncBtn) {
+                topNavSyncBtn.addEventListener('click', function () {
+                    topNavSyncBtn.disabled = true;
+                    const originalHtml = topNavSyncBtn.innerHTML;
+                    topNavSyncBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Syncing...</span>';
+
+                    Swal.fire({
+                        title: 'Cloud Synchronization',
+                        html: '<p style="font-size:14px; color:#475569;">Local PC se data cloud domain par bheja ja raha hai...<br>Barah-e-karam intezar karein.</p>',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    fetch('{{ route('admin.sync_to_cloud') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        topNavSyncBtn.disabled = false;
+                        topNavSyncBtn.innerHTML = originalHtml;
+
+                        if (data.status === 'success') {
+                            const badge = document.getElementById('topNavSyncBadge');
+                            if (badge) {
+                                badge.textContent = '0';
+                                badge.style.display = 'none';
+                            }
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Sync Kamyab Ho Gaya! 🎉',
+                                html: `<p style="font-size:14px;">${data.message}</p>
+                                       <div class="mt-3 p-3 bg-light rounded text-left" style="font-size:13px;">
+                                          <b>Synced Sales:</b> ${data.synced_sales ?? 0}<br>
+                                          <b>Synced Customers:</b> ${data.synced_customers ?? 0}
+                                       </div>`,
+                                showCancelButton: true,
+                                confirmButtonText: '<i class="fas fa-globe"></i> Online Domain Kholein',
+                                cancelButtonText: 'Local Par Hi Rahein',
+                                confirmButtonColor: '#2563eb',
+                                cancelButtonColor: '#64748b'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    window.open(cloudUrl, '_blank');
+                                }
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Sync Failed',
+                                text: data.message || 'Cloud sync ke dauran koi masla pesh aaya.',
+                                confirmButtonColor: '#ef4444'
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        topNavSyncBtn.disabled = false;
+                        topNavSyncBtn.innerHTML = originalHtml;
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Connection / Internet Error',
+                            text: 'Cloud server se rabta nahi ho saka. Barah-e-karam apna internet connection check karein.',
+                            confirmButtonColor: '#ef4444'
+                        });
+                    });
+                });
+            }
+
+            // 2. Auto-Detect when Internet Drops (on Cloud Domain)
+            window.addEventListener('offline', function () {
+                if (!isLocalMachine) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Internet Disconnect Ho Gaya! ⚠️',
+                        html: `<p style="font-size:14px;">Aapka internet band ho chuka hai.<br>
+                               Billing ko bina kisi rukawat ke jaari rakhne ke liye <b>Offline Local PC</b> par switch karein.</p>`,
+                        showCancelButton: true,
+                        confirmButtonText: '<i class="fas fa-desktop"></i> Switch to Offline Mode',
+                        cancelButtonText: 'Wait for Internet',
+                        confirmButtonColor: '#f59e0b',
+                        cancelButtonColor: '#64748b'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = localUrl;
+                        }
+                    });
+                }
+            });
+
+            // 3. Auto-Detect when Internet Restores (on Local PC)
+            window.addEventListener('online', function () {
+                if (isLocalMachine) {
+                    fetch('{{ route('admin.sync_status') }}')
+                        .then(r => r.json())
+                        .then(d => {
+                            const badge = document.getElementById('topNavSyncBadge');
+                            if (badge && d.total_unsynced > 0) {
+                                badge.textContent = d.total_unsynced;
+                                badge.style.display = 'inline-block';
+
+                                Swal.fire({
+                                    icon: 'info',
+                                    title: 'Internet Restored! 🟢',
+                                    html: `<p style="font-size:14px;">Internet connection active ho chuka hai.<br>
+                                           Aapke paas <b>${d.total_unsynced}</b> unsynced records hain jo cloud par bhej sakte hain.</p>`,
+                                    showCancelButton: true,
+                                    confirmButtonText: '<i class="fas fa-cloud-arrow-up"></i> Sync Now to Cloud',
+                                    cancelButtonText: 'Later',
+                                    confirmButtonColor: '#4f46e5',
+                                    cancelButtonColor: '#64748b'
+                                }).then((result) => {
+                                    if (result.isConfirmed && topNavSyncBtn) {
+                                        topNavSyncBtn.click();
+                                    }
+                                });
+                            }
+                        })
+                        .catch(() => {});
                 }
             });
         });

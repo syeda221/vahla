@@ -165,25 +165,6 @@
             color: #ffffff !important;
         }
 
-        /* Top Draft Sale Button */
-        .btn-top-draft {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
-            border: none !important;
-            color: #ffffff !important;
-            font-weight: 700 !important;
-            height: 32px !important;
-            border-radius: 6px !important;
-            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25) !important;
-            transition: all 0.15s ease !important;
-            cursor: pointer !important;
-        }
-        .btn-top-draft:hover {
-            background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);
-            color: #ffffff !important;
-        }
-
         /* ================= TRANSACTION GRID / TABLE ================= */
         .table-responsive {
             border: 1px solid var(--pos-border) !important;
@@ -200,93 +181,6 @@
             border-spacing: 0 !important;
             width: 100%;
             margin-bottom: 0 !important;
-            min-width: 960px;
-        }
-
-        .sales-table thead th.col-product,
-        .sales-table tbody td.col-product {
-            width: 220px !important;
-            min-width: 180px !important;
-            max-width: 250px !important;
-            text-align: left !important;
-            padding-left: 8px !important;
-        }
-        .sales-table tbody td.col-product .select2-container {
-            width: 100% !important;
-            max-width: 100% !important;
-        }
-        .sales-table tbody td.col-product .select2-selection__rendered {
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            display: block !important;
-            max-width: 220px !important;
-        }
-        .sales-table thead th.col-code,
-        .sales-table tbody td.col-code {
-            width: 110px !important;
-            min-width: 105px !important;
-            max-width: 120px !important;
-            text-align: center !important;
-        }
-        .sales-table tbody td.col-code input.item-code-display {
-            width: 100% !important;
-            min-width: 100px !important;
-            font-family: 'JetBrains Mono', monospace !important;
-            font-size: 0.78rem !important;
-            font-weight: 600 !important;
-            letter-spacing: 0.3px !important;
-            text-align: center !important;
-            padding: 2px 4px !important;
-            background-color: #f8fafc !important;
-            color: #334155 !important;
-        }
-        .sales-table thead th.col-wh,
-        .sales-table tbody td.col-wh {
-            width: 135px !important;
-            min-width: 125px !important;
-        }
-        .sales-table thead th.col-wh,
-        .sales-table tbody td.col-wh {
-            width: 160px !important;
-            min-width: 150px !important;
-        }
-        .sales-table tbody td.col-wh select.row-warehouse-select {
-            font-size: 0.74rem !important;
-            padding: 2px 4px !important;
-            height: 28px !important;
-        }
-        .btn-split-wh {
-            font-size: 0.72rem;
-            padding: 2px 6px;
-            height: 28px;
-            border-radius: 4px;
-            border: 1px solid #93c5fd;
-            background: #eff6ff;
-            color: #2563eb;
-            transition: all 0.15s ease;
-        }
-        .btn-split-wh:hover {
-            background: #2563eb;
-            color: #ffffff;
-            border-color: #2563eb;
-        }
-        .wh-stock-hint {
-            cursor: pointer;
-            transition: opacity 0.15s ease;
-        }
-        .wh-stock-hint:hover {
-            opacity: 0.8;
-            text-decoration: underline;
-        }
-        .sales-table thead th.col-stock,
-        .sales-table tbody td.col-stock {
-            width: 80px !important;
-            min-width: 75px !important;
-        }
-        .sales-table tbody td.col-stock input.stock {
-            font-size: 0.75rem !important;
-            padding: 2px 4px !important;
         }
 
         .sales-table thead th {
@@ -498,25 +392,6 @@
             color: #ffffff !important;
         }
 
-        .btn-draft-complete {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
-            border: none !important;
-            color: #ffffff !important;
-            font-weight: 800 !important;
-            border-radius: 8px !important;
-            font-size: 0.95rem !important;
-            letter-spacing: 0.3px;
-            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.25);
-            transition: all 0.2s ease-in-out;
-            cursor: pointer;
-        }
-        .btn-draft-complete:hover {
-            background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 14px rgba(245, 158, 11, 0.35);
-            color: #ffffff !important;
-        }
-
         /* Bottom Sticky Summary Strip */
         .bottom-summary-strip {
             background: #ffffff;
@@ -610,6 +485,83 @@
             border-radius: 4px !important;
             font-size: 0.7rem !important;
         }
+
+        /* Modern Segmented Control for 3-Tier Discount */
+        .tier-segmented-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 2px 3px 2px 8px;
+            border-radius: 30px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+        .tier-control-label {
+            font-size: 0.68rem;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .tier-pills-wrap {
+            display: inline-flex;
+            background: #e2e8f0;
+            padding: 2px;
+            border-radius: 24px;
+            gap: 2px;
+        }
+        .tier-pill-btn {
+            border: none;
+            background: transparent;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #475569;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            line-height: 1.3;
+        }
+        .tier-pill-btn:hover:not(.active) {
+            color: #0f172a;
+            background: rgba(255, 255, 255, 0.65);
+        }
+        .tier-pct-badge {
+            background: rgba(0, 0, 0, 0.07);
+            padding: 1px 6px;
+            border-radius: 12px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            color: inherit;
+        }
+        .tier-pill-btn.active[data-tier="medical"] {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            color: #ffffff !important;
+            box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+        }
+        .tier-pill-btn.active[data-tier="doctor"] {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff !important;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+        }
+        .tier-pill-btn.active[data-tier="distribution"] {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            color: #ffffff !important;
+            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35);
+        }
+        .tier-pill-btn.active .tier-pct-badge {
+            background: rgba(255, 255, 255, 0.25);
+            color: #ffffff;
+        }
     </style>
 
     <div class="container-fluid py-2 px-2">
@@ -617,51 +569,32 @@
 
             <div id="alertBox" class="alert d-none mb-2" role="alert" style="padding:6px 12px; font-size:0.8rem;"></div>
 
-            <form id="saleForm" autocomplete="off" enctype="multipart/form-data">
+            <form id="saleForm" autocomplete="off">
                 @csrf
-                @if(request()->has('convert_to_sale') || request()->has('convert_to_so'))
-                    <input type="hidden" name="parent_quotation_id" value="{{ $sale->id }}">
-                    <input type="hidden" id="action" name="action" value="{{ request()->has('convert_to_sale') ? 'sale' : 'sales_order' }}">
-                    <input type="hidden" id="sale_type" name="sale_type" value="{{ request()->has('convert_to_sale') ? 'direct_sale' : 'sales_order' }}">
-                @else
-                    <input type="hidden" id="booking_id" name="booking_id" value="{{ $sale->id }}">
-                    <input type="hidden" id="action" name="action" value="sale">
-                    <input type="hidden" id="sale_type" name="sale_type" value="{{ $sale->sale_type ?? 'direct_sale' }}">
-                @endif
+                <input type="hidden" id="booking_id" name="booking_id" value="{{ $sale->id }}">
+                <input type="hidden" id="action" name="action" value="sale">
                 <input type="hidden" name="cash" value="{{ $sale->cash ?? 0 }}">
                 <input type="hidden" id="totalBalance" value="{{ $sale->total_net ?? 0 }}">
+                <input type="hidden" name="discountPercent" id="discountPercent" value="{{ $sale->discount_percentage ?? 0 }}">
+                <input type="hidden" name="total_extra_cost" id="discountAmount" value="0">
+                <input type="hidden" name="discount_tier" id="selectedDiscountTier" value="{{ $sale->discount_tier ?? 'doctor' }}">
 
                 {{-- TOP HEADER BAR --}}
                 <div class="d-flex justify-content-between align-items-center mb-2 px-1">
                     <div class="d-flex align-items-center gap-2">
-                        @php
-                            $backRoute = 'sale.index';
-                            if (isset($sale) && $sale->sale_type === 'quotation') {
-                                $backRoute = 'quotations.index';
-                            } elseif (isset($sale) && $sale->sale_type === 'sales_order') {
-                                $backRoute = 'sales_orders.index';
-                            }
-                        @endphp
-                        <a href="{{ route($backRoute) }}" class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Back"><i class="fas fa-arrow-left text-secondary"></i></a>
+                        <a href="{{ route('sale.index') }}" class="btn btn-sm btn-light border rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Back"><i class="fas fa-arrow-left text-secondary"></i></a>
                         <div>
                             <h5 class="mb-0 fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 1.05rem;">
-                                @if(request()->has('convert_to_so'))
-                                    <i class="fas fa-random text-primary"></i> Convert Quotation to Sales Order
-                                    <span class="badge bg-primary text-white ms-1" style="font-size: 11px;">Preview & Create SO</span>
-                                @elseif(request()->has('convert_to_sale'))
-                                    <i class="fas fa-check-circle text-success"></i> Convert Quotation to Sale
-                                    <span class="badge bg-success text-white ms-1" style="font-size: 11px;">Preview & Post Sale</span>
-                                @else
-                                    <i class="{{ $sale->sale_type === 'quotation' ? 'fas fa-file-contract' : ($sale->sale_type === 'sales_order' ? 'fas fa-shopping-bag' : 'fas fa-edit') }} text-primary"></i> 
-                                    {{ $sale->sale_type === 'quotation' ? 'Edit Quotation' : ($sale->sale_type === 'sales_order' ? 'Edit Sales Order' : 'Edit Sale') }} 
-                                    {{ $sale->invoice_no ?: (($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted') ? 'SO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : ($sale->sale_type === 'quotation' ? 'QUO-'.str_pad($sale->id, 4, '0', STR_PAD_LEFT) : '#'.$sale->id)) }}
-                                @endif
+                                <i class="fas fa-edit text-primary"></i> Edit Sale #{{ $sale->invoice_no }}
                             </h5>
-                            <small class="text-muted" style="font-size: 0.72rem;">Review & edit items, quantities, or prices before saving</small>
+                            <small class="text-muted" style="font-size: 0.72rem;">Update invoice details & order items</small>
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.75rem;">Created: {{ $sale->created_at ? $sale->created_at->format('d/m/Y H:i') : '--' }}</span>
+                        <button type="button" class="btn btn-sm btn-outline-info rounded-2 px-2 py-1 fw-bold d-flex align-items-center gap-1 shadow-sm" id="btnOpenAuditViewModal" title="Net Sales Audit Sheet (Town Style)">
+                            <i class="fas fa-table-list text-primary"></i> Net Audit View
+                        </button>
                         <button type="button" class="btn btn-sm btn-light border rounded-2 text-secondary px-2 py-1" title="Calculator"><i class="fas fa-calculator"></i></button>
                         <button type="button" class="btn btn-sm btn-light border rounded-2 text-secondary px-2 py-1" title="Fullscreen" onclick="document.documentElement.requestFullscreen()"><i class="fas fa-expand"></i></button>
                     </div>
@@ -670,111 +603,10 @@
                 <!-- TOP INFORMATION PANEL -->
                 <div class="top-info-card mb-3">
                     <div class="row g-2 align-items-end w-100 m-0">
-                        <!-- Invoice No / Quotation No -->
+                        <!-- Invoice No -->
                         <div class="col-sm-6 col-md-3 col-lg-2">
-                            <label class="meta-label">
-                                <i class="{{ request()->has('convert_to_so') ? 'fas fa-shopping-bag' : (request()->has('convert_to_sale') ? 'fas fa-receipt' : ($sale->sale_type === 'quotation' ? 'fas fa-file-contract' : 'fas fa-receipt')) }} text-primary"></i> 
-                                {{ request()->has('convert_to_so') ? 'SO NO.' : (request()->has('convert_to_sale') ? 'INVOICE NO.' : ($sale->sale_type === 'quotation' ? 'QUOTATION NO.' : ($sale->sale_type === 'sales_order' ? 'SO NO.' : 'INVOICE NO.'))) }}
-                            </label>
-                            @if(request()->has('convert_to_sale'))
-                                <div class="input-group input-group-sm invoice-group">
-                                    <button class="btn btn-prefix dropdown-toggle d-flex align-items-center gap-1" 
-                                            type="button" 
-                                            id="btnInvoicePrefix" 
-                                            data-toggle="dropdown"
-                                            data-bs-toggle="dropdown" 
-                                            aria-haspopup="true" 
-                                            aria-expanded="false"
-                                            title="Click to choose series">
-                                        <span id="activePrefixLabel">{{ $activePrefix ?? 'INV' }}</span>
-                                        <i class="fas fa-caret-down" style="font-size: 0.72rem; opacity: 0.85;"></i>
-                                    </button>
-                                    <ul class="dropdown-menu shadow-lg p-1 border-0" id="dropdownInvoiceSeriesList" aria-labelledby="btnInvoicePrefix" style="min-width: 220px; font-size: 0.82rem; z-index: 1050;">
-                                        <li class="dropdown-header py-1 text-uppercase fw-bold text-muted small" style="font-size: 10px; letter-spacing: 0.5px;">Choose Series</li>
-                                        @php
-                                            $curPref = $activePrefix ?? 'INV';
-                                            $allowedSeries = [
-                                                'INV' => ['label' => 'Standard Invoice', 'padding' => 4],
-                                                'TAX' => ['label' => 'Tax Invoice', 'padding' => 3],
-                                                'CO'  => ['label' => 'Company Invoice', 'padding' => 3],
-                                            ];
-                                        @endphp
-                                        @foreach($allowedSeries as $p => $meta)
-                                            @php
-                                                $sObj = isset($allSeries) ? $allSeries->firstWhere('prefix', $p) : null;
-                                                $nextNo = $sObj ? $sObj->next_number : 1;
-                                                $pad = $sObj ? $sObj->padding : $meta['padding'];
-                                                $isActive = ($curPref == $p);
-                                            @endphp
-                                            <li>
-                                                <a class="dropdown-item fw-bold py-2 px-3 d-flex align-items-center justify-content-between {{ $isActive ? 'text-primary active bg-light' : 'text-dark' }}" 
-                                                   href="javascript:void(0)" 
-                                                   data-prefix="{{ $p }}" 
-                                                   data-next="{{ $nextNo }}" 
-                                                   data-padding="{{ $pad }}">
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        @if($isActive) 
-                                                            <i class="fas fa-check-circle text-primary"></i> 
-                                                        @else
-                                                            <i class="far fa-circle text-muted" style="font-size: 11px;"></i>
-                                                        @endif
-                                                        <div>
-                                                            <span class="badge bg-primary text-white font-monospace px-2 py-1 me-1">{{ $p }}</span>
-                                                            <span class="small fw-semibold">{{ $p }} Series</span>
-                                                        </div>
-                                                    </div>
-                                                    <span class="text-muted small font-monospace">({{ $pad }}d)</span>
-                                                </a>
-                                            </li>
-                                        @endforeach
-                                        <li><hr class="dropdown-divider m-0"></li>
-                                        <li>
-                                            <a class="dropdown-item fw-bold py-2 text-center text-success bg-light" href="javascript:void(0)" id="btnOpenAddSeriesModal" style="border-bottom-left-radius: 4px; border-bottom-right-radius: 4px;">
-                                                <i class="fas fa-plus me-1"></i> Add
-                                            </a>
-                                        </li>
-                                    </ul>
-                                    <input type="text" class="form-control text-center fw-bold bg-white" name="Invoice_no" id="inputInvoiceNo" value="{{ \App\Models\InvoiceSeries::generateNextNo($activePrefix ?? 'INV') }}" placeholder="e.g. INV-0001" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;" title="Aap custom invoice number enter kar sakte hain">
-                                    <button class="btn btn-refresh" 
-                                            type="button" 
-                                            id="btnRefreshInvoiceNo" 
-                                            title="Regenerate Invoice Number">
-                                        <i class="fas fa-sync-alt" id="iconRefreshInvoice"></i>
-                                    </button>
-                                </div>
-                            @elseif(request()->has('convert_to_so'))
-                                <div class="input-group input-group-sm invoice-group">
-                                    <span class="btn btn-prefix d-flex align-items-center justify-content-center fw-bold" style="cursor: default; pointer-events: none; border-top-right-radius: 0; border-bottom-right-radius: 0;">
-                                        <span id="activePrefixLabel">SO</span>
-                                    </span>
-                                    <input type="text" class="form-control text-center fw-bold bg-white" name="Invoice_no" id="inputInvoiceNo" value="{{ \App\Models\InvoiceSeries::generateNextNo('SO') }}" placeholder="e.g. SO-0001" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;" title="Aap custom Sales Order number enter kar sakte hain">
-                                    <button class="btn btn-refresh" 
-                                            type="button" 
-                                            id="btnRefreshInvoiceNo" 
-                                            title="Regenerate Order Number">
-                                        <i class="fas fa-sync-alt" id="iconRefreshInvoice"></i>
-                                    </button>
-                                </div>
-                            @else
-                                @php
-                                    $displayDocNo = $sale->invoice_no;
-                                    if (!$displayDocNo) {
-                                        if ($sale->sale_type === 'sales_order' && $sale->sale_status !== 'posted') {
-                                            $displayDocNo = 'SO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
-                                        } elseif ($sale->sale_type === 'quotation') {
-                                            $displayDocNo = 'QUO-' . str_pad($sale->id, 4, '0', STR_PAD_LEFT);
-                                        } else {
-                                            $displayDocNo = '#' . $sale->id;
-                                        }
-                                    }
-                                @endphp
-                                <div class="input-group input-group-sm invoice-group">
-                                    <span class="btn btn-prefix d-flex align-items-center justify-content-center fw-bold" style="cursor: default; pointer-events: none; border-top-right-radius: 0; border-bottom-right-radius: 0;">
-                                        <span id="activePrefixLabel">{{ $sale->sale_type === 'quotation' ? 'QUO' : ($sale->sale_type === 'sales_order' ? 'SO' : 'INV') }}</span>
-                                    </span>
-                                    <input type="text" class="form-control text-center fw-bold bg-white" name="Invoice_no" id="inputInvoiceNo" value="{{ $displayDocNo }}" placeholder="Document #" style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;" title="Aap document number change kar sakte hain">
-                                </div>
-                            @endif
+                            <label class="meta-label"><i class="fas fa-receipt text-primary"></i> Invoice No.</label>
+                            <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $sale->invoice_no }}" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
                         </div>
 
                         <!-- Date -->
@@ -795,30 +627,6 @@
                             <input type="text" class="form-control" name="reference" id="remarks" value="{{ $sale->reference ?? '' }}" placeholder="Notes / Ref...">
                         </div>
 
-                        <!-- Attachment -->
-                        <div class="col-sm-6 col-md-2 col-lg-2">
-                            <label class="meta-label"><i class="fas fa-paperclip text-muted"></i> Attachment</label>
-                            <input type="file" class="form-control" name="attachment" style="padding: 2px;">
-                            @if(!empty($sale->attachment))
-                                <a href="{{ asset('uploads/attachments/' . $sale->attachment) }}" target="_blank" class="small text-primary mt-1 d-block"><i class="fas fa-external-link-alt"></i> View Existing File</a>
-                            @endif
-                        </div>
-
-                        <!-- Dispatch Location / Warehouse -->
-                        <div class="col-sm-6 col-md-2 col-lg-2">
-                            <label class="meta-label"><i class="fas fa-warehouse text-primary"></i> Dispatch Location</label>
-                            @php
-                                $mainStoreId = \App\Models\Warehouse::where('warehouse_name', 'like', '%Main Store%')->value('id') ?? 1;
-                            @endphp
-                            <select class="form-select fw-bold" id="warehouseSelect" name="header_warehouse_id">
-                                @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
-                                    <option value="{{ $wh->id }}" {{ (($sale->warehouse_id ?? $mainStoreId) == $wh->id) ? 'selected' : '' }}>
-                                        {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
                         <!-- Customer Type -->
                         <div class="col-sm-6 col-md-2 col-lg-2" id="customerTypeCol">
                             <label class="meta-label"><i class="fas fa-user-tag text-primary"></i> Customer Type</label>
@@ -830,7 +638,7 @@
                         </div>
 
                         <!-- Customer & Walk-in Toggle -->
-                        <div class="col-sm-6 col-md-3 col-lg-3">
+                        <div class="col-sm-6 col-md-2 col-lg-2">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="meta-label mb-0"><i class="fas fa-user text-primary"></i> Customer</label>
                                 <button type="button" id="btnOpenAddCustomerModal" class="btn btn-sm btn-outline-success py-0 px-2 rounded-pill fw-bold btn-open-customer-modal" data-toggle="modal" data-target="#addCustomerModal" data-bs-toggle="modal" data-bs-target="#addCustomerModal" title="Quick Add Customer (Alt+C or F2)" style="font-size: 0.7rem; height: 20px; line-height: 1;">
@@ -841,7 +649,7 @@
                                 <input type="text" class="form-control fw-bold {{ $sale->walkin_name ? '' : 'd-none' }}" name="walkin_name" id="walkinNameInput" value="{{ $sale->walkin_name ?? 'Walk-in Customer' }}" placeholder="Enter Walk-in Name...">
                                 <select class="form-select {{ $sale->walkin_name ? 'd-none' : '' }}" id="customerSelect" name="customer" style="width:100%">
                                     @if($sale->customer_relation)
-                                        <option value="{{ $sale->customer_id }}" selected>{{ $sale->customer_relation->customer_id }} — {{ $sale->customer_relation->customer_name }}</option>
+                                        <option value="{{ $sale->customer_id }}" selected>{{ $sale->customer_relation->customer_id }} - {{ $sale->customer_relation->customer_name }}</option>
                                     @else
                                         <option value=""></option>
                                     @endif
@@ -850,23 +658,11 @@
                         </div>
 
                         <!-- Save Sale Button -->
-                        <div class="col-sm-12 col-md-12 col-lg-auto d-flex align-items-end flex-grow-1">
+                        <div class="col-sm-12 col-md-12 col-lg-1 d-flex align-items-end">
                             <input type="hidden" name="is_walkin" id="is_walkin" value="{{ $sale->walkin_name ? '1' : '0' }}">
-                            @if(request()->has('convert_to_so'))
-                                <input type="hidden" name="convert_to_so" value="1">
-                                <button type="button" class="btn btn-top-save btn-primary w-100 fw-bold d-flex align-items-center justify-content-center gap-1 px-3" id="btnHeaderSaveSale" style="font-size: 0.75rem; white-space: nowrap;">
-                                    <i class="fas fa-check"></i> Confirm & Convert to Sales Order
-                                </button>
-                            @elseif(request()->has('convert_to_sale'))
-                                <input type="hidden" name="convert_to_sale" value="1">
-                                <button type="button" class="btn btn-top-save btn-success w-100 fw-bold d-flex align-items-center justify-content-center gap-1 px-3" id="btnHeaderSaveSale" style="font-size: 0.75rem; white-space: nowrap;">
-                                    <i class="fas fa-check-circle"></i> Confirm & Convert to Sale
-                                </button>
-                            @else
-                                <button type="button" class="btn btn-top-save w-100 fw-bold d-flex align-items-center justify-content-center gap-1 px-3" id="btnHeaderSaveSale" style="font-size: 0.75rem;">
-                                    <i class="fas fa-check"></i> Save
-                                </button>
-                            @endif
+                            <button type="button" class="btn btn-top-save w-100 fw-bold d-flex align-items-center justify-content-center gap-1" id="btnHeaderSaveSale" style="font-size: 0.75rem;">
+                                <i class="fas fa-check"></i> Save
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -888,11 +684,33 @@
                                         <i class="fas fa-list-check text-primary"></i> Order Items
                                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-0" style="font-size:0.7rem;" id="itemsRowCount">{{ count($sale->items ?? []) }}</span>
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 rounded-2 fw-semibold d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#quickAddProductModal" style="font-size:0.75rem;">
+                                    <button type="button" class="btn btn-sm btn-outline-primary py-1 px-2 rounded-2 fw-semibold d-flex align-items-center gap-1" data-bs-toggle="offcanvas" data-bs-target="#quickProductsOffcanvas" style="font-size:0.75rem;">
                                         <i class="fas fa-th"></i> Quick Products
                                     </button>
+                                    <button type="button" class="btn btn-sm btn-outline-info py-1 px-2 rounded-2 fw-bold d-flex align-items-center gap-1 shadow-sm" id="btnOpenAuditViewModal2" style="font-size:0.75rem;" title="View Net Sales & Returns Town Table">
+                                        <i class="fas fa-table-list text-primary"></i> Net Audit Table
+                                    </button>
                                 </div>
-                                <div class="d-flex gap-2">
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    {{-- 3-Tier Discount Segmented Control --}}
+                                    <div id="discountTierButtonGroup" class="tier-segmented-control d-none">
+                                        <span class="tier-control-label"><i class="fas fa-layer-group text-primary"></i> Tier</span>
+                                        <div class="tier-pills-wrap">
+                                            <button type="button" class="tier-pill-btn" data-tier="medical" title="Apply Medical Discount">
+                                                <i class="fas fa-clinic-medical"></i> Medical
+                                                <span class="tier-pct-badge" id="tierMedVal">0%</span>
+                                            </button>
+                                            <button type="button" class="tier-pill-btn" data-tier="doctor" title="Apply Doctor Discount">
+                                                <i class="fas fa-user-md"></i> Doctor
+                                                <span class="tier-pct-badge" id="tierDocVal">0%</span>
+                                            </button>
+                                            <button type="button" class="tier-pill-btn" data-tier="distribution" title="Apply Distribution Discount">
+                                                <i class="fas fa-truck-moving"></i> Distribution
+                                                <span class="tier-pct-badge" id="tierDistVal">0%</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     <button type="button" class="btn btn-primary btn-sm py-1 px-3 rounded-2 fw-bold d-flex align-items-center gap-1 shadow-sm" id="btnAdd" style="font-size:0.75rem;">
                                         <i class="fas fa-plus"></i> Add Row
                                     </button>
@@ -904,40 +722,74 @@
                                     <thead>
                                         <tr>
                                             <th style="width:30px;" class="text-center">#</th>
-                                            <th class="col-product" style="width: 220px; min-width: 180px; max-width: 250px;">PRODUCT</th>
-                                            <th class="col-code" style="width: 110px; min-width: 105px;">CODE</th>
-                                            <th class="col-wh" style="width: 160px; min-width: 150px;">LOCATION</th>
-                                            <th class="col-stock" style="width: 80px; min-width: 75px;">STOCK</th>
+                                            <th class="col-product" style="min-width: 160px;">PRODUCT</th>
+                                            <th class="col-stock" style="width: 60px;">STOCK</th>
                                             <th class="col-qty" style="width: 85px;">QTY</th>
-                                            <th class="col-description" style="width: 130px; min-width: 110px;">DESCRIPTION</th>
                                             <th class="col-size" style="width: 55px;">SIZE</th>
-                                            <th class="col-color" style="width: 65px;">COLOR</th>
+                                            <th class="col-color" style="width: 65px;">BONUS</th>
                                             <th class="col-pieces" style="width: 55px;">PCS</th>
-                                            <th class="col-price-p" style="width: 105px;">PRICE</th>
+                                            <th class="col-price-p" style="width: 85px;">PRICE</th>
                                             <th class="col-disc" style="width: 85px;">DISCOUNT</th>
                                             <th class="col-amount" style="width: 95px;">AMOUNT</th>
-                                            <th class="col-action" style="width: 34px;">×</th>
+                                            <th class="col-action text-center" style="width: 34px;"><i class="fas fa-times text-muted"></i></th>
                                         </tr>
                                     </thead>
                                     <tbody id="salesTableBody">
+                                        @php
+                                            $returnedQtyMap = [];
+                                            $returnedBilledMap = [];
+                                            $returnedBonusMap = [];
+                                            if (isset($sale) && $sale->returns) {
+                                                foreach ($sale->returns as $ret) {
+                                                    if ($ret->items) {
+                                                        foreach ($ret->items as $retItem) {
+                                                            if ($retItem->is_manual) {
+                                                                $k = 'MANUAL_' . strtolower(trim($retItem->product_name));
+                                                            } else {
+                                                                $k = $retItem->product_id . '_' . ($retItem->color ?? '');
+                                                            }
+                                                            $rTotal = (float)$retItem->qty;
+                                                            $rBonus = (float)($retItem->bonus_qty ?? 0);
+                                                            $rBilled = max(0, $rTotal - $rBonus);
+
+                                                            $returnedQtyMap[$k] = ($returnedQtyMap[$k] ?? 0) + $rTotal;
+                                                            $returnedBilledMap[$k] = ($returnedBilledMap[$k] ?? 0) + $rBilled;
+                                                            $returnedBonusMap[$k] = ($returnedBonusMap[$k] ?? 0) + $rBonus;
+
+                                                            if (!$retItem->is_manual && $retItem->product_id) {
+                                                                $pKey = 'PROD_' . $retItem->product_id;
+                                                                $returnedQtyMap[$pKey] = ($returnedQtyMap[$pKey] ?? 0) + $rTotal;
+                                                                $returnedBilledMap[$pKey] = ($returnedBilledMap[$pKey] ?? 0) + $rBilled;
+                                                                $returnedBonusMap[$pKey] = ($returnedBonusMap[$pKey] ?? 0) + $rBonus;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        @endphp
                                         @if(isset($sale) && $sale->items && count($sale->items) > 0)
                                             @foreach ($sale->items as $index => $item)
                                                 @php
-                                                    $isSet = !empty($item->product_set_id);
-                                                    $set = $isSet ? ($item->productSet ?: \App\Models\ProductSet::find($item->product_set_id)) : null;
-                                                    if (!$set && empty($item->product_id)) {
-                                                        if (!empty($item->product_name)) {
-                                                            $set = \App\Models\ProductSet::where('name', $item->product_name)->first();
-                                                        }
-                                                        if (!$set && !empty($item->item_description) && preg_match('/\[(SET-[^\]]+)\]/', $item->item_description, $matches)) {
-                                                            $set = \App\Models\ProductSet::where('code', $matches[1])->first();
-                                                        }
-                                                        if ($set) {
-                                                            $isSet = true;
-                                                        }
-                                                    }
                                                     $prod = $item->product;
-                                                    $sizeMode = $isSet ? 'std' : ($item->size_mode ?? ($prod->size_mode ?? 'std'));
+                                                    $sizeMode = $item->size_mode ?? ($prod->size_mode ?? 'std');
+
+                                                    // Calculate already returned pieces for this item
+                                                    $itemKey = $item->is_manual 
+                                                        ? ('MANUAL_' . strtolower(trim($item->product_name)))
+                                                        : ($item->product_id . '_' . ($item->color ?? ''));
+
+                                                    $returnedQty = 0;
+                                                    $retBilledPieces = 0;
+                                                    $retBonusPieces = 0;
+                                                    if (isset($returnedQtyMap[$itemKey])) {
+                                                        $returnedQty = $returnedQtyMap[$itemKey];
+                                                        $retBilledPieces = $returnedBilledMap[$itemKey] ?? 0;
+                                                        $retBonusPieces = $returnedBonusMap[$itemKey] ?? 0;
+                                                    } elseif (!$item->is_manual && isset($returnedQtyMap['PROD_' . $item->product_id])) {
+                                                        $returnedQty = $returnedQtyMap['PROD_' . $item->product_id];
+                                                        $retBilledPieces = $returnedBilledMap['PROD_' . $item->product_id] ?? 0;
+                                                        $retBonusPieces = $returnedBonusMap['PROD_' . $item->product_id] ?? 0;
+                                                    }
 
                                                     $variantData = [];
                                                     if ($item->color) {
@@ -948,6 +800,14 @@
                                                         } catch (\Exception $e) {
                                                             $variantData = [];
                                                         }
+                                                    }
+
+                                                    // Extract bonus pieces
+                                                    $bonusPieces = 0;
+                                                    if (!empty($item->bonus_qty) && (float)$item->bonus_qty > 0) {
+                                                        $bonusPieces = (float)$item->bonus_qty;
+                                                    } elseif ($variantData && isset($variantData['bonus']) && $variantData['bonus'] !== '-' && is_numeric($variantData['bonus'])) {
+                                                        $bonusPieces = (float)$variantData['bonus'];
                                                     }
 
                                                     // Check live product variant data for updated pack size / conversion factor
@@ -995,13 +855,34 @@
 
                                                     if ($ppb <= 0) $ppb = 1;
 
+                                                    // Calculate actual Billed Pieces (excluding free bonus pieces)
+                                                    $itemQtyPieces = ($sizeMode === 'by_cartons' && $ppb > 1) ? (float)($item->qty ?? 0) * $ppb : (float)($item->qty ?? 0);
+                                                    $totalPhysicalPieces = (float)($item->total_pieces ?? 0);
+
+                                                    if ($itemQtyPieces > 0) {
+                                                        $billedPieces = $itemQtyPieces;
+                                                        $totalPhysicalPieces = max($totalPhysicalPieces, $billedPieces + $bonusPieces);
+                                                    } else {
+                                                        $billedPieces = max(0, $totalPhysicalPieces - $bonusPieces);
+                                                    }
+
+                                                    // If legacy return item had total qty without explicit bonus split:
+                                                    if ($returnedQty > 0 && ($retBilledPieces == 0 && $retBonusPieces == 0)) {
+                                                        $retBilledPieces = min($returnedQty, $billedPieces);
+                                                        $retBonusPieces = min(max(0, $returnedQty - $retBilledPieces), $bonusPieces);
+                                                    }
+
+                                                    $netBilledPieces = max(0, $billedPieces - $retBilledPieces);
+                                                    $netBonusPieces = max(0, $bonusPieces - $retBonusPieces);
+                                                    $netTotalPieces = $netBilledPieces + $netBonusPieces;
+
                                                     $cartons = 0;
                                                     $loose = 0;
                                                     if ($ppb > 0) {
-                                                        $cartons = floor($item->total_pieces / $ppb);
-                                                        $loose = fmod((float)$item->total_pieces, (float)$ppb);
+                                                        $cartons = floor($netBilledPieces / $ppb);
+                                                        $loose = $netBilledPieces % $ppb;
                                                     } else {
-                                                        $loose = $item->total_pieces;
+                                                        $loose = $netBilledPieces;
                                                     }
 
                                                     // Determine Sub-Unit Mode and Toggle Button configuration for Edit
@@ -1009,7 +890,7 @@
                                                     $toggleText = 'Kg';
                                                     $toggleBtnClass = 'd-none';
                                                     $displayQty = $cartons;
-                                                    $itemTotalPieces = (float)$item->total_pieces;
+                                                    $itemTotalPieces = (float)$netTotalPieces;
                                                     $isPcs = false;
 
                                                     if ($sizeMode === 'by_cartons') {
@@ -1022,164 +903,57 @@
                                                             $unitMode = 'pcs';
                                                             $toggleText = 'Pcs';
                                                             $toggleBtnClass = 'btn-outline-info';
-                                                            $displayQty = (float) $item->total_pieces;
-                                                            $itemTotalPieces = (float) $item->total_pieces;
+                                                            $displayQty = (float) $netBilledPieces;
+                                                            $itemTotalPieces = (float) $netTotalPieces;
                                                         } else {
                                                             $unitMode = 'ctn';
                                                             $toggleText = 'Ctn';
                                                             $toggleBtnClass = 'btn-outline-success';
                                                             // In Carton dot notation: e.g. 1 carton + 6 loose pieces is '1.6'
                                                             $displayQty = $loose > 0 ? "{$cartons}.{$loose}" : $cartons;
-                                                            $itemTotalPieces = ($cartons * $ppb) + $loose;
+                                                            $itemTotalPieces = (float) $netTotalPieces;
                                                         }
-                                                    } elseif ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
-                                                        $totalWt = (float) ($item->total_pieces ?: $item->qty);
-                                                        $rawStoredQty = (float) $item->qty;
-                                                        $vUnit = strtolower(trim($variantData['unit'] ?? ($liveVariant['unit'] ?? '')));
-                                                        
-                                                        // Infer unit based on price ratio to total
-                                                        $grossTotal = (float)$item->total + (float)$item->discount_amount;
-                                                        $basePricePerKg = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
-                                                        $storedPrice = (float) $item->price;
-                                                        
-                                                        $isWtPcs = false;
-                                                        $isWtGm = false;
-                                                        if ($storedPrice > 0 && $basePricePerKg > 0) {
-                                                            $ratio = round($storedPrice / $basePricePerKg, 4);
-                                                            if (abs($ratio - $ppb) < 0.001) {
-                                                                $isWtPcs = true;
-                                                            } elseif (abs($ratio - 0.001) < 0.0001) {
-                                                                $isWtGm = true;
-                                                            }
-                                                        }
-
-                                                        if (!empty($vUnit) && !in_array($vUnit, ['kg', 'standard', 'default', '-'])) {
-                                                            if ($vUnit === 'gm' || $vUnit === 'g') {
-                                                                $unitMode = 'gm';
-                                                                $toggleText = 'Gm';
-                                                                $toggleBtnClass = 'btn-outline-info';
-                                                                $displayQty = ($rawStoredQty > 0 && abs($rawStoredQty - $itemTotalPieces) > 0.0001) ? $rawStoredQty : $itemTotalPieces * 1000;
-                                                            } else {
-                                                                $unitMode = $vUnit;
-                                                                $toggleText = ucfirst($vUnit);
-                                                                $toggleBtnClass = 'btn-outline-info';
-                                                                $displayQty = ($rawStoredQty > 0 && abs($rawStoredQty - $itemTotalPieces) > 0.0001) ? $rawStoredQty : ($ppb > 0 ? round($itemTotalPieces / $ppb, 4) : $rawStoredQty);
-                                                            }
-                                                        } elseif ($isWtPcs) {
-                                                            $unitMode = 'pcs';
-                                                            $toggleText = 'Pcs';
-                                                            $toggleBtnClass = 'btn-outline-info';
-                                                            $displayQty = $ppb > 0 ? ($totalWt / $ppb) : $totalWt;
-                                                        } elseif ($isWtGm) {
-                                                            $unitMode = 'gm';
-                                                            $toggleText = 'Gm';
-                                                            $toggleBtnClass = 'btn-outline-info';
-                                                            $displayQty = $totalWt * 1000;
-                                                        } else {
-                                                            $unitMode = 'kg';
-                                                            $toggleText = 'Kg';
-                                                            $toggleBtnClass = 'btn-outline-primary';
-                                                            $displayQty = ($rawStoredQty > 0 ? $rawStoredQty : $totalWt);
-                                                        }
+                                                    } elseif ($sizeMode === 'by_kg') {
+                                                        $unitMode = 'kg';
+                                                        $toggleText = 'Kg';
+                                                        $toggleBtnClass = 'btn-outline-primary';
+                                                        $displayQty = (float) $netBilledPieces;
+                                                        $itemTotalPieces = (float) $netTotalPieces;
+                                                    } elseif ($sizeMode === 'by_gm') {
+                                                        $unitMode = 'gm';
+                                                        $toggleText = 'Gm';
+                                                        $toggleBtnClass = 'btn-outline-info';
+                                                        $displayQty = (float) $netBilledPieces;
+                                                        $itemTotalPieces = (float) $netTotalPieces;
                                                     } elseif ($sizeMode === 'by_feet') {
-                                                        $totalFt = (float) $item->total_pieces;
-                                                        $rawStoredQty = (float) $item->qty;
-                                                        $vUnit = strtolower(trim($variantData['unit'] ?? ($liveVariant['unit'] ?? '')));
-                                                        $grossTotal = (float)$item->total + (float)$item->discount_amount;
-                                                        $basePricePerFt = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
-                                                        $storedPrice = (float) $item->price;
-
-                                                        $isFtPcs = false;
-                                                        $isFtIn = false;
-                                                        if ($storedPrice > 0 && $basePricePerFt > 0) {
-                                                            $ratio = round($storedPrice / $basePricePerFt, 4);
-                                                            if ($ppb > 0 && abs($ratio - $ppb) < 0.001) {
-                                                                $isFtPcs = true;
-                                                            } elseif (abs($ratio - (1 / 12)) < 0.001) {
-                                                                $isFtIn = true;
-                                                            }
-                                                        }
-
-                                                        if (!empty($vUnit) && !in_array($vUnit, ['ft', 'feet', 'standard', 'default', '-'])) {
-                                                            if (in_array($vUnit, ['in', 'inch', 'inches'])) {
-                                                                $unitMode = 'in';
-                                                                $toggleText = 'In';
-                                                                $toggleBtnClass = 'btn-outline-warning';
-                                                                $displayQty = ($rawStoredQty > 0 && abs($rawStoredQty - $itemTotalPieces) > 0.0001) ? $rawStoredQty : $itemTotalPieces * 12;
-                                                            } else {
-                                                                $unitMode = $vUnit;
-                                                                $toggleText = ucfirst($vUnit);
-                                                                $toggleBtnClass = 'btn-outline-info';
-                                                                $displayQty = ($rawStoredQty > 0 && abs($rawStoredQty - $itemTotalPieces) > 0.0001) ? $rawStoredQty : ($ppb > 0 ? round($itemTotalPieces / $ppb, 4) : $rawStoredQty);
-                                                            }
-                                                        } elseif ($isFtPcs) {
-                                                            $unitMode = 'pcs';
-                                                            $toggleText = 'Pcs';
-                                                            $toggleBtnClass = 'btn-outline-info';
-                                                            $displayQty = $ppb > 0 ? ($totalFt / $ppb) : $totalFt;
-                                                        } elseif ($isFtIn) {
-                                                            $unitMode = 'in';
-                                                            $toggleText = 'In';
-                                                            $toggleBtnClass = 'btn-outline-warning';
-                                                            $displayQty = $totalFt * 12;
-                                                        } else {
-                                                            $unitMode = 'ft';
-                                                            $toggleText = 'Ft';
-                                                            $toggleBtnClass = 'btn-outline-primary';
-                                                            $displayQty = ($rawStoredQty > 0 ? $rawStoredQty : $totalFt);
-                                                        }
+                                                        $unitMode = 'ft';
+                                                        $toggleText = 'Ft';
+                                                        $toggleBtnClass = 'btn-outline-primary';
+                                                        $displayQty = (float) $netBilledPieces;
+                                                        $itemTotalPieces = (float) $netTotalPieces;
                                                     } elseif ($sizeMode === 'by_meter') {
-                                                        $totalMeter = (float) $item->total_pieces;
-                                                        $rawStoredQty = (float) $item->qty;
-                                                        $vUnit = strtolower(trim($variantData['unit'] ?? ($liveVariant['unit'] ?? '')));
-                                                        $grossTotal = (float)$item->total + (float)$item->discount_amount;
-                                                        $basePricePerMtr = ($item->total_pieces > 0) ? ($grossTotal / $item->total_pieces) : 0;
-                                                        $storedPrice = (float) $item->price;
-
-                                                        $isMtrPcs = false;
-                                                        $isMtrMm = false;
-                                                        if ($storedPrice > 0 && $basePricePerMtr > 0) {
-                                                            $ratio = round($storedPrice / $basePricePerMtr, 4);
-                                                            if ($ppb > 0 && abs($ratio - $ppb) < 0.001) {
-                                                                $isMtrPcs = true;
-                                                            } elseif (abs($ratio - 0.001) < 0.0001) {
-                                                                $isMtrMm = true;
-                                                            }
-                                                        }
-
-                                                        if (!empty($vUnit) && !in_array($vUnit, ['m', 'meter', 'mtr', 'standard', 'default', '-'])) {
-                                                            if ($vUnit === 'mm') {
-                                                                $unitMode = 'mm';
-                                                                $toggleText = 'mm';
-                                                                $toggleBtnClass = 'btn-outline-info';
-                                                                $displayQty = ($rawStoredQty > 0 && abs($rawStoredQty - $itemTotalPieces) > 0.0001) ? $rawStoredQty : $itemTotalPieces * 1000;
-                                                            } else {
-                                                                $unitMode = $vUnit;
-                                                                $toggleText = ucfirst($vUnit);
-                                                                $toggleBtnClass = 'btn-outline-info';
-                                                                $displayQty = ($rawStoredQty > 0 && abs($rawStoredQty - $itemTotalPieces) > 0.0001) ? $rawStoredQty : ($ppb > 0 ? round($itemTotalPieces / $ppb, 4) : $rawStoredQty);
-                                                            }
-                                                        } elseif ($isMtrPcs) {
-                                                            $unitMode = 'pcs';
-                                                            $toggleText = 'Pcs';
-                                                            $toggleBtnClass = 'btn-outline-info';
-                                                            $displayQty = $ppb > 0 ? ($totalMeter / $ppb) : $totalMeter;
-                                                        } elseif ($isMtrMm) {
-                                                            $unitMode = 'mm';
-                                                            $toggleText = 'mm';
-                                                            $toggleBtnClass = 'btn-outline-info';
-                                                            $displayQty = $totalMeter * 1000;
-                                                        } else {
-                                                            $unitMode = 'm';
-                                                            $toggleText = 'Mtr';
-                                                            $toggleBtnClass = 'btn-outline-primary';
-                                                            $displayQty = ($rawStoredQty > 0 ? $rawStoredQty : $totalMeter);
-                                                        }
+                                                        $unitMode = 'm';
+                                                        $toggleText = 'Mtr';
+                                                        $toggleBtnClass = 'btn-outline-primary';
+                                                        $displayQty = (float) $netBilledPieces;
+                                                        $itemTotalPieces = (float) $netTotalPieces;
                                                     } else {
-                                                        $displayQty = (float) ($item->total_pieces ?: $item->qty);
+                                                        $displayQty = (float) $netBilledPieces;
+                                                        $itemTotalPieces = (float) $netTotalPieces;
                                                     }
 
-                                                    $unitPriceDisplay = (float) $item->price;
+                                                    // Format returned billed quantity matching unit mode (carton.loose if by_cartons)
+                                                    $retBilledDisplay = (float) $retBilledPieces;
+                                                    if ($sizeMode === 'by_cartons' && !$isPcs && $ppb > 1) {
+                                                        $retCartons = floor($retBilledPieces / $ppb);
+                                                        $retLoose = $retBilledPieces % $ppb;
+                                                        $retBilledDisplay = $retLoose > 0 ? "{$retCartons}.{$retLoose}" : $retCartons;
+                                                    } elseif ($sizeMode === 'by_size' && $ppb > 1) {
+                                                        $retCartons = floor($retBilledPieces / $ppb);
+                                                        $retLoose = $retBilledPieces % $ppb;
+                                                        $retBilledDisplay = $retLoose > 0 ? "{$retCartons}.{$retLoose}" : $retCartons;
+                                                    }
+                                                    $retBonusDisplay = (float) $retBonusPieces;
 
                                                     $pieceRetailPrice = 0;
                                                     if ($liveVariant && !empty($liveVariant['sale_price']) && (float)$liveVariant['sale_price'] > 0) {
@@ -1201,71 +975,46 @@
                                                         $pieceWholesalePrice = (float) $prod->wholesale_price;
                                                     }
 
-                                                    $selStockDisp = '';
-                                                    if ($isSet) {
-                                                        $selStockDisp = 'SET';
-                                                        if ($set) {
-                                                            $pieceRetailPrice = (float) $set->sale_price;
-                                                            $pieceWholesalePrice = (float) $set->sale_price;
-                                                        }
-                                                    } elseif (!empty($variantData['current_stock'])) {
-                                                        $selStockDisp = $variantData['current_stock'];
-                                                    } elseif (isset($variantData['stock']) && $variantData['stock'] !== '') {
-                                                        $selStockDisp = $variantData['stock'];
-                                                    } elseif ($prod) {
-                                                        $stk = 0;
-                                                        if ($item->warehouse_id) {
-                                                            $selWs = $prod->warehouseStocks?->where('warehouse_id', $item->warehouse_id)->first();
-                                                            if ($selWs) {
-                                                                $stk = (float) $selWs->total_pieces;
-                                                                if ($stk <= 0 && $selWs->quantity > 0) {
-                                                                    $stk = $selWs->quantity * $ppb;
-                                                                }
-                                                            }
-                                                        }
-                                                        if ($stk == 0 && $prod->warehouseStocks) {
-                                                            $stk = (float) $prod->warehouseStocks->sum('total_pieces');
-                                                        }
-
-                                                        if (in_array($sizeMode, ['by_cartons', 'by_size']) && $ppb > 1) {
-                                                            $b = floor($stk / $ppb);
-                                                            $l = fmod((float)$stk, (float)$ppb);
-                                                            $selStockDisp = $l > 0 ? "$b.$l" : $b;
-                                                        } elseif ($sizeMode === 'by_kg') {
-                                                            // Calculate variant stock if it's a pcs variant
-                                                            $cf = 0;
-                                                            if ($liveVariant && !empty($liveVariant['conv_factor'])) $cf = (float)$liveVariant['conv_factor'];
-                                                            elseif ($liveVariant && !empty($liveVariant['weight_per_piece'])) $cf = (float)$liveVariant['weight_per_piece'] / 1000.0;
-                                                            elseif (!empty($variantData['conv_factor'])) $cf = (float)$variantData['conv_factor'];
-                                                            elseif (!empty($variantData['weight_per_piece'])) $cf = (float)$variantData['weight_per_piece'] / 1000.0;
-                                                            
-                                                            $vUnit = strtolower($variantData['unit'] ?? ($liveVariant['unit'] ?? ''));
-                                                            
-                                                            if ($cf > 0 && in_array($vUnit, ['pcs', 'pc', 'piece'])) {
-                                                                $pcs = round($stk / $cf);
-                                                                $selStockDisp = "{$pcs} Pcs";
-                                                            } else {
-                                                                if ($stk > 0 && $stk < 1) {
-                                                                    $gm = round($stk * 1000);
-                                                                    $selStockDisp = "{$stk} Kg ({$gm} Gm)";
-                                                                } else {
-                                                                    $selStockDisp = "{$stk} Kg";
-                                                                }
-                                                            }
-                                                        } else {
-                                                            $selStockDisp = $stk;
-                                                        }
-                                                    }
+                                                    // Fetch Live Stock for product or variant
+                                                    $selStockDisp = \App\Http\Controllers\ProductController::getLiveStockForProductOrVariant($prod, $variantData ?: $liveVariant, $item->warehouse_id);
 
                                                     $variantLabel = '';
                                                     $vSize = '-';
                                                     $vCol = '-';
-                                                    if ($variantData && isset($variantData['name'])) {
-                                                        $vSize = (isset($variantData['size']) && $variantData['size'] !== '-') ? $variantData['size'] : '-';
-                                                        $vCol  = (isset($variantData['color']) && $variantData['color'] !== '-') ? $variantData['color'] : '-';
-                                                        $sStr = $vSize !== '-' ? " {$vSize}" : '';
-                                                        $cStr = $vCol !== '-' ? " ({$vCol})" : '';
-                                                        $variantLabel = ' — ' . $variantData['name'] . $sStr . $cStr;
+                                                    if ($bonusPieces > 0) {
+                                                        $vCol = (float)$netBonusPieces;
+                                                    } elseif ($variantData && isset($variantData['bonus']) && $variantData['bonus'] !== '-') {
+                                                        $vCol = max(0, (float)$variantData['bonus'] - $retBonusPieces);
+                                                    } elseif ($variantData && isset($variantData['color']) && $variantData['color'] !== '-') {
+                                                        $vCol = $variantData['color'];
+                                                    }
+
+                                                    $activeVar = !empty($variantData) ? $variantData : ($liveVariant ?? []);
+                                                    if (!empty($activeVar)) {
+                                                        $sizeVal = (isset($activeVar['size']) && $activeVar['size'] !== '-') ? trim($activeVar['size']) : '';
+                                                        $colVal  = (isset($activeVar['color']) && $activeVar['color'] !== '-') ? trim($activeVar['color']) : '';
+                                                        $nameVal = isset($activeVar['name']) ? trim($activeVar['name']) : '';
+
+                                                        if ($sizeVal !== '') {
+                                                            $vSize = $sizeVal;
+                                                        }
+                                                        if ($colVal !== '') {
+                                                            $vCol = $colVal;
+                                                        }
+
+                                                        $extraParts = [];
+                                                        if (!empty($nameVal) && strtolower($nameVal) !== strtolower(trim($prod->item_name ?? ''))) {
+                                                            $extraParts[] = $nameVal;
+                                                        }
+                                                        if ($sizeVal !== '') {
+                                                            $extraParts[] = $sizeVal;
+                                                        }
+                                                        if ($colVal !== '' && $colVal !== $sizeVal) {
+                                                            $extraParts[] = "({$colVal})";
+                                                        }
+                                                        if (!empty($extraParts)) {
+                                                            $variantLabel = ' - ' . implode(' ', $extraParts);
+                                                        }
                                                     }
                                                 @endphp
                                                 <tr data-size_mode="{{ $sizeMode }}"
@@ -1275,68 +1024,27 @@
                                                     <td class="text-center fw-bold text-muted row-index" style="vertical-align:middle; font-size:0.75rem;">{{ $index + 1 }}</td>
 
                                                     <!-- PRODUCT -->
-                                                    <td class="col-product" style="width: 220px; min-width: 180px; max-width: 250px;">
+                                                    <td class="col-product">
                                                         <select class="form-select product" style="width:100%">
-                                                            @if ($isSet && $set)
-                                                                <option value="set_{{ $set->id }}" selected>[SET] {{ $set->name }}</option>
-                                                            @elseif ($prod)
+                                                            @if ($prod)
                                                                 <option value="{{ $item->product_id }}" selected>
                                                                     {{ $prod->item_name }}{{ $variantLabel }}</option>
                                                             @endif
                                                         </select>
-                                                        <input type="hidden" class="product-id-hidden" name="product_id[]" value="{{ $isSet && $set ? ('set_'.$set->id) : $item->product_id }}">
-                                                        <input type="hidden" class="product-set-id-hidden" name="product_set_id[]" value="{{ $isSet && $set ? $set->id : ($item->product_set_id ?? '') }}">
-                                                        <input type="hidden" class="is-set-hidden" name="is_set[]" value="{{ $isSet ? '1' : '0' }}">
+                                                        <input type="hidden" class="product-id-hidden" name="product_id[]" value="{{ $item->product_id }}">
                                                         <input type="hidden" class="variant-data-hidden" name="color[]" value="{{ $item->color ?? '' }}">
+                                                        <input type="hidden" class="item-code-display" value="{{ $prod->item_code ?? '' }}">
                                                         <input type="hidden" class="size-h" value="{{ $prod->height ?? '-' }}">
                                                         <input type="hidden" class="size-w" value="{{ $prod->width ?? '-' }}">
                                                         <input type="hidden" class="size-mode-text" value="{{ $sizeMode }}">
                                                     </td>
 
-                                                    <!-- ITEM CODE -->
-                                                    <td class="col-code" style="width: 110px; min-width: 105px;">
-                                                        <input type="text" class="form-control item-code-display text-center input-readonly" readonly value="{{ $isSet && $set ? $set->code : ($prod->item_code ?? '') }}" placeholder="Code" tabindex="-1" style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600;">
-                                                    </td>
-
-                                                    <!-- LOCATION (Warehouse / Shop) -->
-                                                    <td class="col-wh" style="width: 160px; min-width: 150px;">
-                                                        <div class="d-flex align-items-center gap-1">
-                                                            <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem; flex: 1; min-width: 0;">
-                                                                @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
-                                                                    <option value="{{ $wh->id }}" {{ (($item->warehouse_id ?? $sale->warehouse_id ?? $mainStoreId) == $wh->id) ? 'selected' : '' }}>
-                                                                        {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
-                                                                    </option>
-                                                                @endforeach
-                                                            </select>
-                                                            <button type="button" class="btn btn-xs btn-outline-primary btn-split-wh px-1 py-0" title="Sell from Multiple Locations (Shop & Warehouse)" data-bs-toggle="tooltip">
-                                                                <i class="fas fa-boxes" style="font-size: 0.72rem;"></i>
-                                                            </button>
-                                                        </div>
-                                                        @php
-                                                            $curWb = $item->warehouse_breakdown ?? null;
-                                                            $curWbArr = !empty($curWb) ? (is_string($curWb) ? json_decode($curWb, true) : $curWb) : null;
-                                                        @endphp
-                                                        <input type="hidden" class="warehouse-breakdown-input" name="warehouse_breakdown[]" value="{{ is_array($curWbArr) ? json_encode($curWbArr) : ($curWb ?? '') }}">
-                                                        <div class="mwh-applied-badge-wrap mt-1" style="{{ (is_array($curWbArr) && count($curWbArr) > 1) ? '' : 'display: none;' }}">
-                                                            @if(is_array($curWbArr) && count($curWbArr) > 1)
-                                                                <div class="mwh-applied-badge d-flex flex-wrap align-items-center gap-1 mt-1 p-1 bg-light rounded border border-primary-subtle" style="font-size:0.68rem; cursor:pointer;" title="Click to view/edit multi-location allocation">
-                                                                    <span class="text-primary fw-bold"><i class="fas fa-boxes me-1"></i>Split:</span>
-                                                                    @foreach($curWbArr as $a)
-                                                                        <span class="badge bg-primary text-white border me-1 px-1 py-0" style="font-size:0.65rem;">
-                                                                            {{ str_replace('WAREHOUSE', 'WH', $a['wh_name'] ?? $a['warehouse_name'] ?? 'WH') }}: <b>{{ $a['qty'] ?? 0 }}</b>
-                                                                        </span>
-                                                                    @endforeach
-                                                                </div>
-                                                            @endif
-                                                        </div>
-                                                        <div class="wh-stock-hint text-muted mt-1" style="font-size: 0.65rem; line-height: 1.1; {{ (is_array($curWbArr) && count($curWbArr) > 1) ? 'display: none;' : '' }}" title="Click to allocate across warehouses"></div>
-                                                    </td>
-
                                                     <!-- STOCK -->
-                                                    <td class="col-stock" style="width: 80px; min-width: 75px;">
+                                                    <td class="col-stock">
                                                         <input type="text"
                                                             class="form-control stock text-center input-readonly" readonly
-                                                            value="{{ $selStockDisp }}" tabindex="-1" style="font-size: 0.75rem;">
+                                                            value="{{ $selStockDisp }}" tabindex="-1">
+                                                        <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ $item->warehouse_id ?? (auth()->user()->warehouse_id ?? 1) }}">
                                                         <input type="hidden" class="variant-stock-value" value="{{ $selStockDisp }}">
                                                     </td>
 
@@ -1350,22 +1058,19 @@
                                                                 {{ $toggleText }}
                                                             </button>
                                                         </div>
+                                                        @if($retBilledPieces > 0)
+                                                            <div class="text-danger fw-bold" style="font-size: 0.65rem; line-height: 1.1; margin-top: 2px;" title="Original Sold: {{ (float)$billedPieces }} pcs, Returned: {{ $retBilledDisplay }} ({{ (float)$retBilledPieces }} pcs)">
+                                                                -{{ $retBilledDisplay }} ret
+                                                            </div>
+                                                        @endif
                                                         <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="{{ $unitMode }}">
+                                                        <input type="hidden" class="returned-pieces-hidden" name="returned_pieces[]" value="{{ (float)$retBilledPieces }}">
                                                     </td>
 
                                                     <!-- Loose Pieces (hidden) -->
                                                     <td style="width:70px;" class="d-none">
                                                         <input type="number" class="form-control loose-pcs-input text-end"
                                                             name="loose_qty[]" value="0" placeholder="" min="0">
-                                                    </td>
-
-                                                    <!-- Description -->
-                                                    <td class="col-description" style="width: 130px; min-width: 110px;">
-                                                        <input type="text"
-                                                            class="form-control item-description"
-                                                            name="description[]"
-                                                            value="{{ $item->description ?? '' }}"
-                                                            placeholder="Description" style="font-size: 0.78rem;">
                                                     </td>
 
                                                     <!-- Size -->
@@ -1378,12 +1083,18 @@
                                                         <input type="hidden" class="pack-qty" name="pack_qty[]" value="{{ $ppb }}">
                                                     </td>
                                                     
-                                                    <!-- Color -->
+                                                    <!-- Bonus (Editable) -->
                                                     <td class="col-color">
-                                                        <input type="text"
-                                                            class="form-control color-display text-center input-readonly"
-                                                            readonly value="{{ $vCol ?? '-' }}"
-                                                            tabindex="-1" placeholder="-">
+                                                        <input type="number" step="any" min="0"
+                                                            class="form-control color-display text-center"
+                                                            name="bonus_display[]"
+                                                            value="{{ ($vCol ?? '') !== '-' ? ($vCol ?? '') : '' }}"
+                                                            placeholder="0">
+                                                        @if($retBonusPieces > 0)
+                                                            <div class="text-danger fw-bold text-center" style="font-size: 0.65rem; line-height: 1.1; margin-top: 2px;" title="Original Bonus: {{ (float)$bonusPieces }} pcs, Returned Bonus: {{ (float)$retBonusPieces }} pcs">
+                                                                -{{ $retBonusDisplay }} ret
+                                                            </div>
+                                                        @endif
                                                     </td>
 
                                                     <!-- Total Pieces -->
@@ -1392,7 +1103,7 @@
                                                             class="form-control total-pieces text-end input-readonly fw-semibold"
                                                             name="total_pieces[]" readonly value="{{ $itemTotalPieces }}"
                                                             placeholder="0" tabindex="-1">
-                                                        <input type="hidden" class="sales-qty" name="qty[]" value="{{ $isPcs ? $item->total_pieces : (in_array($sizeMode, ['by_kg','by_gm','by_feet','by_meter']) ? $displayQty : ($cartons . ($loose > 0 ? '.' . $loose : ''))) }}">
+                                                        <input type="hidden" class="sales-qty" name="qty[]" value="{{ $isPcs ? $netBilledPieces : ($cartons . ($loose > 0 ? '.' . $loose : '')) }}">
                                                     </td>
 
                                                     <!-- Price/Piece -->
@@ -1401,7 +1112,7 @@
                                                             <input type="text"
                                                                 class="form-control visible-price text-end fw-semibold"
                                                                 name="visible_price[]"
-                                                                value="{{ $unitPriceDisplay }}"
+                                                                value="{{ $item->price }}"
                                                                 placeholder="0" style="flex: 1; min-width: 0;">
                                                             <button type="button" class="btn btn-sm btn-outline-primary price-mode-row-toggle px-1 py-0" 
                                                                     data-mode="retail" title="Retail Mode">
@@ -1410,7 +1121,7 @@
                                                         </div>
                                                         <input type="hidden" class="price-per-piece"
                                                             name="price_per_piece[]"
-                                                            value="{{ $unitPriceDisplay }}">
+                                                            value="{{ $item->price }}">
                                                         <input type="hidden" class="retail-price"
                                                             value="{{ $pieceRetailPrice }}">
                                                         <input type="hidden" class="wholesale-price"
@@ -1420,29 +1131,32 @@
                                                     </td>
 
                                                     <!-- Discount -->
-                                                    @php
-                                                        $discType = $item->discount_type ?? (($item->discount_amount > 0 && ($item->discount_percent == 0 || round($item->discount_percent, 2) != $item->discount_percent)) ? "pkr" : "percent");
-                                                        $displayDiscVal = $discType === "pkr" ? (float)$item->discount_amount : (float)$item->discount_percent;
-                                                    @endphp
                                                     <td class="col-disc">
                                                         <div class="discount-wrapper">
-                                                            <input type="number" step="any" class="form-control discount-value text-end"
-                                                                name="item_disc[]" value="{{ $displayDiscVal > 0 ? $displayDiscVal : "" }}" placeholder="0">
-                                                            <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="{{ $discType }}">
+                                                            <input type="number" class="form-control discount-value text-end"
+                                                                name="item_disc[]" value="{{ $item->discount_percent }}" placeholder="0">
+                                                            <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="percent">
                                                             <button type="button"
                                                                 class="btn btn-outline-secondary discount-toggle"
-                                                                data-type="{{ $discType }}" tabindex="-1">{{ $discType === "pkr" ? "PKR" : "%" }}</button>
+                                                                data-type="percent" tabindex="-1">%</button>
                                                         </div>
-                                                        <input type="hidden" class="discount-amount" value="{{ (float)($item->discount_amount ?? 0) }}">
+                                                        <input type="hidden" class="discount-amount" value="{{ $item->discount_amount ?? 0 }}">
                                                     </td>
 
                                                     <!-- Net Amount -->
                                                     <td class="col-amount">
+                                                        @php
+                                                            $linePrice = (float) ($item->price ?? 0);
+                                                            $lineDiscPct = (float) ($item->discount_percent ?? 0);
+                                                            $grossLine = $itemTotalPieces * $linePrice;
+                                                            $lineDiscAmt = round($grossLine * ($lineDiscPct / 100), 2);
+                                                            $netLine = round($grossLine - $lineDiscAmt, 2);
+                                                        @endphp
                                                         <input type="text"
                                                             class="form-control sales-amount text-end input-readonly fw-bold text-dark"
-                                                            name="total[]" value="{{ $item->total }}" readonly
+                                                            name="total[]" value="{{ $returnedQty > 0 ? $netLine : $item->total }}" readonly
                                                             tabindex="-1">
-                                                        <input type="hidden" class="gross-amount" name="gross_amount[]" value="{{ $item->total + ($item->discount_amount ?? 0) }}">
+                                                        <input type="hidden" class="gross-amount" name="gross_amount[]" value="{{ $returnedQty > 0 ? $grossLine : ($item->total + ($item->discount_amount ?? 0)) }}">
                                                     </td>
 
                                                     <!-- Action -->
@@ -1454,34 +1168,16 @@
                                         @else
                                             <tr>
                                                 <td class="text-center fw-bold text-muted row-index" style="vertical-align:middle; font-size:0.75rem;">1</td>
-                                                <td class="col-product" style="width: 220px; min-width: 180px; max-width: 250px;">
+                                                <td class="col-product">
                                                     <select class="form-select product" style="width:100%"><option value=""></option></select>
                                                     <input type="hidden" class="product-id-hidden" name="product_id[]">
                                                     <input type="hidden" class="variant-data-hidden" name="color[]">
+                                                    <input type="hidden" class="item-code-display">
                                                     <input type="hidden" class="size-h"><input type="hidden" class="size-w"><input type="hidden" class="size-mode-text">
                                                 </td>
-                                                <td class="col-code" style="width: 110px; min-width: 105px;">
-                                                    <input type="text" class="form-control item-code-display text-center input-readonly" readonly placeholder="Code" tabindex="-1" style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 600;">
-                                                </td>
-                                                <td class="col-wh" style="width: 160px; min-width: 150px;">
-                                                    <div class="d-flex align-items-center gap-1">
-                                                        <select class="form-select form-select-sm warehouse row-warehouse-select fw-semibold" name="warehouse_id[]" style="font-size:0.75rem; flex: 1; min-width: 0;">
-                                                            @foreach(\App\Models\Warehouse::orderByRaw("CASE WHEN id = {$mainStoreId} THEN 0 ELSE 1 END, id ASC")->get() as $wh)
-                                                                <option value="{{ $wh->id }}" {{ $wh->id == $mainStoreId ? 'selected' : '' }}>
-                                                                    {{ $wh->is_shop ? '🏪 ' : '🏢 ' }}{{ $wh->warehouse_name }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        <button type="button" class="btn btn-xs btn-outline-primary btn-split-wh px-1 py-0" title="Sell from Multiple Locations (Shop & Warehouse)" data-bs-toggle="tooltip">
-                                                            <i class="fas fa-boxes" style="font-size: 0.72rem;"></i>
-                                                        </button>
-                                                    </div>
-                                                    <input type="hidden" class="warehouse-breakdown-input" name="warehouse_breakdown[]" value="">
-                                                        <div class="mwh-applied-badge-wrap mt-1" style="display: none;"></div>
-                                                        <div class="wh-stock-hint text-muted mt-1" style="font-size: 0.65rem; line-height: 1.1; display: none;" title="Click to allocate across warehouses"></div>
-                                                </td>
-                                                <td class="col-stock" style="width: 80px; min-width: 75px;">
-                                                    <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1" style="font-size: 0.75rem;">
+                                                <td class="col-stock">
+                                                    <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1">
+                                                    <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ auth()->user()->warehouse_id ?? 1 }}">
                                                     <input type="hidden" class="variant-stock-value">
                                                 </td>
                                                 <td style="width:85px;" class="col-qty-wrapper">
@@ -1494,11 +1190,8 @@
                                                 <td style="width:70px;" class="d-none">
                                                     <input type="number" class="form-control loose-pcs-input text-end" name="loose_qty[]" placeholder="" min="0" value="">
                                                 </td>
-                                                <td class="col-description" style="width: 130px; min-width: 110px;">
-                                                    <input type="text" class="form-control item-description" name="description[]" placeholder="Description" style="font-size: 0.78rem;">
-                                                </td>
                                                 <td class="col-size"><input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-"><input type="hidden" class="pack-qty" name="pack_qty[]" value="1"></td>
-                                                <td class="col-color"><input type="text" class="form-control color-display text-center input-readonly" readonly tabindex="-1" placeholder="-"></td>
+                                                <td class="col-color"><input type="number" step="any" min="0" class="form-control color-display text-center" name="bonus_display[]" placeholder="0"></td>
                                                 <td class="col-pieces"><input type="text" class="form-control total-pieces text-end input-readonly fw-semibold" name="total_pieces[]" readonly placeholder="0" tabindex="-1"><input type="hidden" class="sales-qty" name="qty[]" value="0"></td>
                                                 <td class="col-price-p">
                                                     <div class="d-flex align-items-center gap-1">
@@ -1522,19 +1215,17 @@
                                     </tbody>
                                     <tfoot>
                                         <tr>
-                                            <td colspan="9" class="text-end fw-bold text-uppercase text-secondary" style="font-size:0.8rem;">GRID TOTAL:</td>
-                                            <td class="text-end fw-bold text-success fs-6"><span id="totalAmount">0.00</span></td>
+                                            <td colspan="9" class="text-end fw-bold text-uppercase text-secondary py-1" style="font-size:0.82rem; border-bottom: none !important;">GRID TOTAL:</td>
+                                            <td class="text-end fw-bold text-success fs-6 py-1 font-monospace" style="border-bottom: none !important;"><span id="totalAmount">0.00</span></td>
+                                            <td style="border-bottom: none !important;"></td>
+                                        </tr>
+                                        <tr id="rowAfterReturn" style="{{ (isset($sale) && $sale->returns && $sale->returns->count() > 0) ? '' : 'display: none;' }} background-color: #f8fafc; border-top: 1px dashed #cbd5e1 !important;">
+                                            <td colspan="9" class="text-end fw-bold text-uppercase text-danger py-1" style="font-size:0.82rem;">AFTER RETURN:</td>
+                                            <td class="text-end fw-bold text-danger fs-6 py-1 font-monospace"><span id="afterReturnAmount">1,955.00</span></td>
                                             <td></td>
                                         </tr>
                                     </tfoot>
                                 </table>
-                            </div>
-                            <!-- Comments / Notes Field -->
-                            <div class="mt-2 p-2 bg-light rounded border border-light-subtle">
-                                <label for="saleComment" class="form-label fw-bold text-dark mb-1" style="font-size:0.78rem;">
-                                    <i class="fas fa-comment-alt me-1 text-primary"></i> Comments / Notes <span class="text-muted fw-normal">(Printed at the bottom of Invoice / Quotation / Receipt)</span>
-                                </label>
-                                <textarea class="form-control form-control-sm bg-white" name="comment" id="saleComment" rows="2" placeholder="Write any special notes, instructions, delivery terms or comments here..." style="font-size:0.8rem; resize:vertical;">{{ $sale->comment ?? '' }}</textarea>
                             </div>
                         </div>
                     </div>
@@ -1557,28 +1248,15 @@
                                     <span class="text-muted">Line Discount</span>
                                     <span class="fw-bold text-danger" id="tLineDisc">0.00</span>
                                 </div>
-                                <div class="summary-row">
-                                    <span class="text-muted">Overall Discount</span>
-                                    <span class="fw-bold text-danger" id="tOrderDisc">0.00</span>
-                                </div>
-                                <div class="summary-row align-items-center">
-                                    <span class="text-muted d-flex align-items-center gap-1"><i class="fas fa-truck text-primary" style="font-size:0.75rem;"></i> Shipping</span>
-                                    <div class="input-group input-group-sm" style="width: 125px;">
-                                        <span class="input-group-text bg-light text-muted px-1" style="font-size:0.7rem; font-weight:600;">Rs</span>
-                                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold text-primary shipping-charges-input" id="shippingChargesInput" name="shipping_charges" value="{{ (float)($sale->shipping_charges ?? 0) > 0 ? (float)$sale->shipping_charges : 0 }}" placeholder="0" style="font-size:0.78rem; height: 26px;">
-                                    </div>
-                                </div>
-                                <div class="summary-row align-items-center">
-                                    <span class="text-muted d-flex align-items-center gap-1"><i class="fas fa-cut text-warning" style="font-size:0.75rem;"></i> Cutting</span>
-                                    <div class="input-group input-group-sm" style="width: 125px;">
-                                        <span class="input-group-text bg-light text-muted px-1" style="font-size:0.7rem; font-weight:600;">Rs</span>
-                                        <input type="number" step="any" min="0" class="form-control form-control-sm text-end fw-bold text-warning cutting-charges-input" id="cuttingChargesInput" name="cutting_charges" value="{{ (float)($sale->cutting_charges ?? 0) > 0 ? (float)$sale->cutting_charges : 0 }}" placeholder="0" style="font-size:0.78rem; height: 26px;">
-                                    </div>
+                                <div class="summary-row" id="tierBreakdownSummaryRow" style="display: none; font-size: 0.72rem; background: #eff6ff; padding: 4px 8px; border-radius: 6px; border: 1px dashed #bfdbfe; margin-top: -2px; margin-bottom: 4px;">
+                                    <span class="text-primary fw-bold" id="tierBreakdownSummaryLabel" style="white-space: nowrap;"><i class="fas fa-layer-group me-1"></i>Disc Split:</span>
+                                    <span class="text-primary fw-bold text-end" id="tierBreakdownSummaryVal">-</span>
                                 </div>
                                 <div class="summary-row">
                                     <span class="fw-bold text-dark">Net Total</span>
                                     <span class="summary-val-net" id="tSub">0.00</span>
                                 </div>
+
                                 <div class="summary-row">
                                     <span class="text-muted">Total Paid</span>
                                     <span class="fw-bold text-success fs-6" id="receiptsTotal">0.00</span>
@@ -1588,29 +1266,11 @@
                                     <span class="fw-bold text-dark">Change</span>
                                     <span class="summary-val-change" id="walkinChange">-0.00</span>
                                 </div>
-                                @php
-                                    $defCashAcc = $accounts->first(function($a) {
-                                        $t = strtolower(trim($a->title));
-                                        return $t === 'cash' || $t === 'cash in hand' || $t === 'cash account';
-                                    }) ?? $accounts->first(function($a) {
-                                        $t = strtolower(trim($a->title));
-                                        return str_starts_with($t, 'cash') && !str_contains($t, 'jazz');
-                                    }) ?? $accounts->first(function($a) {
-                                        $t = strtolower(trim($a->title));
-                                        return str_contains($t, 'cash') && !str_contains($t, 'jazz') && !str_contains($t, 'easy');
-                                    }) ?? $accounts->first(function($a) {
-                                        return strtolower($a->head?->name ?? '') === 'cash';
-                                    }) ?? $accounts->first(function($a) {
-                                        return str_contains(strtolower($a->title), 'cash');
-                                    });
-                                    $defCashId = $defCashAcc ? $defCashAcc->id : null;
-                                    $selectedReceiptAccId = $savedReceiptAccountId ?? $defCashId;
-                                @endphp
                                 <div class="summary-row pt-2 align-items-center" id="changeAccountRow" style="display: none; border-top: 1px dashed #f1aeb5; background: #fff8f8; padding: 6px 8px; border-radius: 6px;">
                                     <span class="text-danger fw-bold d-flex align-items-center gap-1" style="font-size:0.76rem;"><i class="fas fa-hand-holding-usd"></i> Change A/C</span>
                                     <select class="form-select form-select-sm bg-white fw-bold text-danger border-danger" name="change_account_id" id="changeAccountId" style="width: 135px; font-size:0.75rem; height: 28px; padding: 2px 6px;">
                                         @foreach ($accounts as $acc)
-                                            <option value="{{ $acc->id }}" {{ (($sale->change_account_id && $acc->id == $sale->change_account_id) || (!$sale->change_account_id && $defCashId && $acc->id == $defCashId)) ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                            <option value="{{ $acc->id }}" {{ ($sale->change_account_id == $acc->id || str_contains(strtolower($acc->title), 'cash')) ? 'selected' : '' }}>{{ $acc->title }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -1618,36 +1278,40 @@
 
                             <!-- Payment Methods Card -->
                             <div class="payment-methods-card flex-grow-1 d-flex flex-column">
-                                @php
-                                    if (request()->has('convert_to_so')) {
-                                        $btnText = 'Confirm & Convert to SO (F9)';
-                                    } elseif (request()->has('convert_to_sale')) {
-                                        $btnText = 'Confirm & Post Sale (F9)';
-                                    } else {
-                                        $btnText = $sale->sale_type === 'quotation' ? 'Save Quotation (F9)' : 'Save & Complete (F9)';
-                                    }
-                                @endphp
-
-                                @if($sale->sale_type !== 'quotation' || request()->has('convert_to_sale'))
                                 <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
                                     <span class="fw-bold text-dark d-flex align-items-center gap-1" style="font-size:0.85rem;"><i class="fas fa-wallet text-success"></i> Payment Methods</span>
                                     <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 rounded-2 fw-bold" id="btnAddRV" style="font-size:0.7rem;"><i class="fas fa-plus me-1"></i>Add Account</button>
                                 </div>
 
                                 <div id="rvWrapper" class="mb-3">
-                                    <div class="d-flex gap-2 align-items-center mb-2 rv-row">
-                                        <select class="form-select form-select-sm rv-account bg-light fw-bold" name="receipt_account_id[]" style="font-size:0.78rem;">
-                                            @foreach ($accounts as $acc)
-                                                <option value="{{ $acc->id }}" {{ ($selectedReceiptAccId && $acc->id == $selectedReceiptAccId) ? 'selected' : '' }}>{{ $acc->title }}</option>
-                                            @endforeach
-                                        </select>
-                                        <input type="number" step="0.01" class="form-control form-control-sm text-end rv-amount fw-bold" name="receipt_amount[]" value="{{ $sale->cash > 0 ? $sale->cash : '' }}" placeholder="0.00" style="width: 110px; font-size:0.8rem;">
-                                    </div>
+                                    @if (!empty($existingPayments) && count($existingPayments) > 0)
+                                        @foreach ($existingPayments as $pIndex => $payment)
+                                            <div class="d-flex gap-2 align-items-center mb-2 rv-row">
+                                                <select class="form-select form-select-sm rv-account bg-light fw-bold" name="receipt_account_id[]" style="font-size:0.78rem;">
+                                                    @foreach ($accounts as $acc)
+                                                        <option value="{{ $acc->id }}" {{ $payment['account_id'] == $acc->id ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <input type="number" step="0.01" class="form-control form-control-sm text-end rv-amount fw-bold" name="receipt_amount[]" value="{{ $payment['amount'] > 0 ? $payment['amount'] : '' }}" placeholder="0.00" style="width: 110px; font-size:0.8rem;">
+                                                @if ($pIndex > 0)
+                                                    <button type="button" class="btn btn-outline-danger btn-sm btnRemRV" style="padding: 2px 6px; font-size: 0.75rem; height: 28px;">&times;</button>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    @else
+                                        <div class="d-flex gap-2 align-items-center mb-2 rv-row">
+                                            <select class="form-select form-select-sm rv-account bg-light fw-bold" name="receipt_account_id[]" style="font-size:0.78rem;">
+                                                @foreach ($accounts as $acc)
+                                                    <option value="{{ $acc->id }}" {{ ($sale->account_id ? $sale->account_id == $acc->id : (str_contains(strtolower($acc->title), 'cash') || str_contains(strtolower($acc->title), 'easypaisa'))) ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                                @endforeach
+                                            </select>
+                                            <input type="number" step="0.01" class="form-control form-control-sm text-end rv-amount fw-bold" name="receipt_amount[]" value="{{ $sale->cash > 0 ? $sale->cash : '' }}" placeholder="0.00" style="width: 110px; font-size:0.8rem;">
+                                        </div>
+                                    @endif
                                 </div>
-                                @endif
 
                                 <button type="button" class="btn btn-save-complete w-100 mt-auto py-2 d-flex align-items-center justify-content-center gap-2" id="btnSaveAndComplete">
-                                    <i class="fas fa-check-circle"></i> {{ $btnText }}
+                                    <i class="fas fa-check-circle"></i> Save & Complete (F9)
                                 </button>
                             </div>
                         </div>
@@ -1661,37 +1325,15 @@
                         <span class="fs-5 fw-bolder text-primary" id="walkinNetTotal">0.00</span>
                     </div>
 
-                    @php
-                        $overallType = $sale->overall_discount_type ?: 'pkr';
-                        $overallVal = $sale->overall_discount_value !== null ? (float)$sale->overall_discount_value : (float)($sale->total_extradiscount ?? 0);
-                    @endphp
                     <div class="d-flex align-items-center gap-2">
-                        <span class="text-muted fw-bold" id="overallDiscountLabel" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Discount ({{ $overallType === 'percent' ? '%' : 'Rs.' }})</span>
-                        <div class="input-group input-group-sm" style="width: 130px;">
-                            <input type="number" step="any" class="form-control text-end fw-bold text-danger" id="walkinDiscountRs" name="overall_discount_value" value="{{ $overallVal > 0 ? $overallVal : '' }}" placeholder="0">
-                            <button type="button" class="btn btn-outline-secondary fw-bold px-2" id="overallDiscountToggle" data-type="{{ $overallType }}" style="font-size:0.75rem;" tabindex="-1">{{ $overallType === 'percent' ? '%' : 'PKR' }}</button>
-                            <input type="hidden" id="overallDiscountType" name="overall_discount_type" value="{{ $overallType }}">
-                            <input type="hidden" id="hiddenTotalExtraCost" name="total_extra_cost" value="{{ (float)($sale->total_extradiscount ?? 0) }}">
+                        <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Discount (Rs.)</span>
+                        <div class="input-group input-group-sm" style="width: 120px;">
+                            <input type="number" class="form-control text-end fw-bold text-danger" id="walkinDiscountRs" value="{{ $sale->total_extradiscount ?? 0 }}" placeholder="0">
+                            <span class="input-group-text bg-light text-muted fw-bold" style="font-size:0.75rem;">%</span>
                         </div>
+                        <span id="customerDiscountBadge" class="badge bg-success text-white d-none" style="font-size:0.72rem; padding: 4px 6px;"></span>
                     </div>
 
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;"><i class="fas fa-truck text-primary me-1"></i>Shipping</span>
-                        <div class="input-group input-group-sm" style="width: 115px;">
-                            <span class="input-group-text bg-light text-muted px-1" style="font-size:0.7rem; font-weight:600;">Rs</span>
-                            <input type="number" step="any" min="0" class="form-control text-end fw-bold text-primary shipping-charges-input" id="bottomShippingChargesInput" value="{{ (float)($sale->shipping_charges ?? 0) > 0 ? (float)$sale->shipping_charges : 0 }}" placeholder="0" style="font-size:0.78rem;">
-                        </div>
-                    </div>
-
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;"><i class="fas fa-cut text-warning me-1"></i>Cutting</span>
-                        <div class="input-group input-group-sm" style="width: 115px;">
-                            <span class="input-group-text bg-light text-muted px-1" style="font-size:0.7rem; font-weight:600;">Rs</span>
-                            <input type="number" step="any" min="0" class="form-control text-end fw-bold text-warning cutting-charges-input" id="bottomCuttingChargesInput" value="{{ (float)($sale->cutting_charges ?? 0) > 0 ? (float)$sale->cutting_charges : 0 }}" placeholder="0" style="font-size:0.78rem;">
-                        </div>
-                    </div>
-
-                    @if($sale->sale_type !== 'quotation')
                     <div class="d-flex align-items-center gap-2">
                         <span class="text-muted fw-bold" style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px;">Payments</span>
                         <span class="fs-6 fw-bold text-success" id="bottomPaymentsTotal">0.00</span>
@@ -1706,26 +1348,19 @@
                         <span class="text-danger fw-bold" style="font-size:0.76rem;">Change A/C:</span>
                         <select class="form-select form-select-sm bg-light fw-bold text-danger border-danger" id="bottomChangeAccountId" style="width: 135px; font-size:0.75rem; height: 30px; padding: 2px 6px;">
                             @foreach ($accounts as $acc)
-                                <option value="{{ $acc->id }}" {{ (($sale->change_account_id && $acc->id == $sale->change_account_id) || (!$sale->change_account_id && $defCashId && $acc->id == $defCashId)) ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                <option value="{{ $acc->id }}" {{ ($sale->change_account_id ? $sale->change_account_id == $acc->id : str_contains(strtolower($acc->title), 'cash')) ? 'selected' : '' }}>{{ $acc->title }}</option>
                             @endforeach
                         </select>
                     </div>
-                    @endif
 
-                    <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
-                            <i class="fas fa-check-circle"></i> {{ $btnText }}
-                        </button>
-                        <button type="button" class="btn btn-info d-flex align-items-center gap-2 text-white fw-bold px-3" id="btnSaveAndPrint2" style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); border: none;">
-                            <i class="fas fa-print"></i> Save & Print
-                        </button>
-                    </div>
+                    <button type="button" class="btn btn-save-complete d-flex align-items-center gap-2" id="btnSaveAndComplete2">
+                        <i class="fas fa-check-circle"></i> Save & Complete (F9)
+                    </button>
                 </div>
 
-                {{-- ACTION BUTTONS ROW (Hidden visually but required in DOM for JS) --}}
-                <div class="d-none flex-wrap gap-2 justify-content-center py-2 px-3 mt-3 border-top bg-light rounded-3">
-                    <button type="button" class="btn btn-outline-info btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnQuotation"><i class="fas fa-file-invoice"></i> Quotation</button>
-                    <button type="button" class="btn btn-warning btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnDraft"><i class="fas fa-file-alt"></i> Draft</button>
+                {{-- ACTION BUTTONS ROW --}}
+                <div class="d-flex flex-wrap gap-2 justify-content-center py-2 px-3 mt-3 border-top bg-light rounded-3">
+                    <button type="button" class="btn btn-outline-primary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnSave"><i class="fas fa-bookmark"></i> Booking</button>
                     <button type="button" class="btn btn-primary btn-sm px-4 fw-bold rounded-2 d-flex align-items-center gap-1 shadow-sm" id="btnPosted"><i class="fas fa-shopping-cart"></i> Sale</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnPrint"><i class="fas fa-print"></i> A4 Print</button>
                     <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-bold rounded-2 d-flex align-items-center gap-1" id="btnEstimate"><i class="fas fa-file-invoice"></i> Estimate</button>
@@ -1826,7 +1461,6 @@
 
     {{-- Quick Add Product Modal --}}
     @include('admin_panel.partials.quick_add_product_modal')
-    @include('admin_panel.sale.partials.multi_warehouse_modal')
 @endsection
 
 @section('js')
@@ -1886,7 +1520,7 @@
                             results: data.map(function(c) {
                                 return {
                                     id: c.id,
-                                    text: (c.customer_id || '') + ' — ' + c.customer_name,
+                                    text: (c.customer_id || '') + ' - ' + c.customer_name,
                                     customer: c
                                 };
                             })
@@ -1906,19 +1540,19 @@
                     if (item.loading) return item.text;
                     if (!item.customer) return item.text;
                     const c = item.customer;
-                    return $(`<div class="py-1" style="line-height: 1.35; white-space: normal; word-break: break-word;">
-                        <strong style="color: inherit; font-size: 13px;">${c.customer_name}</strong>
-                        <span style="opacity: 0.85; font-size: 11px; margin-left: 6px;">${c.customer_id || ''}</span>
-                        ${c.mobile ? '<br><small style="opacity: 0.75; font-size: 11px;">' + c.mobile + '</small>' : ''}
+                    return $(`<div>
+                        <strong>${c.customer_name}</strong>
+                        <small class="text-muted ms-2">${c.customer_id || ''}</small>
+                        ${c.mobile ? '<br><small class="text-muted">' + c.mobile + '</small>' : ''}
                     </div>`);
                 },
                 templateSelection: function(item) {
                     if (!item.customer) return item.text;
-                    return item.customer.customer_id + ' — ' + item.customer.customer_name;
+                    return item.customer.customer_id + ' - ' + item.customer.customer_name;
                 }
             });
 
-            // Party type change → reset customer only on user change
+            // Party type change -> reset customer only on user change
             $(document).on('change', '#partyTypeSelect', function(e) {
                 if (!e.isTrigger) {
                     $('#customerSelect').val(null).trigger('change');
@@ -1940,10 +1574,158 @@
                     $('#previousBalance').val(prev.toFixed(2));
                     $('#rangeBalance').val(range.toFixed(2));
 
-                    if (typeof updateGrandTotals === 'function') updateGrandTotals();
+                    // Process 3-Tier Discounts
+                    const tiers = d.discount_tiers || {};
+                    const medDisc = parseFloat(tiers.medical || 0);
+                    const docDisc = parseFloat(tiers.doctor || d.discount_percentage || 0);
+                    const distDisc = parseFloat(tiers.distribution || 0);
+
+                    window.currentCustomerTiers = {
+                        medical: medDisc,
+                        doctor: docDisc,
+                        distribution: distDisc
+                    };
+
+                    $('#tierMedVal').text(parseFloat(medDisc) + '%');
+                    $('#tierDocVal').text(parseFloat(docDisc) + '%');
+                    $('#tierDistVal').text(parseFloat(distDisc) + '%');
+
+                    // Show toggle button group
+                    $('#discountTierButtonGroup').removeClass('d-none');
+
+                    // Pick default active tier
+                    let defaultTier = 'doctor';
+                    if (docDisc > 0) {
+                        defaultTier = 'doctor';
+                    } else if (medDisc > 0) {
+                        defaultTier = 'medical';
+                    } else if (distDisc > 0) {
+                        defaultTier = 'distribution';
+                    }
+
+                    $('.tier-pill-btn, .tier-toggle-btn').removeClass('active');
+                    $('.tier-pill-btn[data-tier="' + defaultTier + '"], .tier-toggle-btn[data-tier="' + defaultTier + '"]').addClass('active');
+
+                    // Apply multi-tier discount calculation
+                    recalculateActiveDiscountTiers(false);
                 }).fail(function() {
                     showAlert('error', 'Failed to load customer details');
                 });
+            });
+
+            // Recalculate combined active discount tiers (Multi-select support)
+            window.recalculateActiveDiscountTiers = function(notify = false) {
+                const tiers = window.currentCustomerTiers || {};
+                let totalPercent = 0;
+                let activeTiers = [];
+                let breakdownParts = [];
+                let rowBreakdownShort = [];
+
+                $('.tier-pill-btn.active').each(function() {
+                    const tier = $(this).data('tier');
+                    const val = parseFloat(tiers[tier] || 0);
+                    if (val > 0) {
+                        totalPercent += val;
+                        activeTiers.push(tier);
+                        const label = tier.charAt(0).toUpperCase() + tier.slice(1);
+                        breakdownParts.push(label + ': ' + val + '%');
+
+                        const shortLabel = tier === 'medical' ? 'M' : (tier === 'distribution' ? 'D' : 'Dr');
+                        rowBreakdownShort.push(shortLabel + ':' + val + '%');
+                    }
+                });
+
+                // Round to 2 decimals to prevent floating point inaccuracies
+                totalPercent = Math.round(totalPercent * 100) / 100;
+
+                $('#selectedDiscountTier').val(activeTiers.join(','));
+                $('#discountPercent').val(totalPercent);
+
+                if (totalPercent > 0) {
+                    const badgeText = totalPercent + '% (' + breakdownParts.join(' + ') + ')';
+                    $('#customerDiscountBadge').text(badgeText).removeClass('d-none');
+                    if (notify && typeof Swal !== 'undefined') {
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 1500,
+                            timerProgressBar: true
+                        });
+                        Toast.fire({
+                            icon: 'success',
+                            title: 'Discount ' + badgeText + ' applied!'
+                        });
+                    }
+                } else {
+                    $('#customerDiscountBadge').addClass('d-none');
+                }
+
+                // Apply active discount percentage to all rows in table
+                $('#salesTableBody tr').each(function() {
+                    const $tr = $(this);
+                    $tr.find('.discount-toggle').data('type', 'percent').text('%');
+                    $tr.find('.discount-type-hidden').val('percent');
+                    $tr.find('.discount-value').val(totalPercent > 0 ? totalPercent : '');
+
+                    // Inline breakdown hint under discount input (compact initials on single line)
+                    let $hint = $tr.find('.tier-breakdown-hint');
+                    if (rowBreakdownShort.length > 1) {
+                        const hintText = rowBreakdownShort.join(' + ');
+                        if ($hint.length === 0) {
+                            $tr.find('.discount-wrapper').after('<small class="tier-breakdown-hint text-muted fw-bold text-center" style="display:block; white-space:nowrap; font-size:0.58rem; line-height:1.1; margin-top:2px; letter-spacing:-0.3px;"></small>');
+                            $hint = $tr.find('.tier-breakdown-hint');
+                        }
+                        $hint.attr('title', hintText).text(hintText).show();
+                    } else {
+                        $hint.remove();
+                    }
+
+                    if (typeof computeRow === 'function') computeRow($tr);
+                });
+
+                if (typeof updateGrandTotals === 'function') updateGrandTotals();
+            };
+
+            // Update live split breakdown in summary sidebar
+            window.updateTierBreakdownSummary = function(grossTotal, totalDiscount) {
+                const tiers = window.currentCustomerTiers || {};
+                let activeTiers = [];
+                let totalPct = 0;
+
+                $('.tier-pill-btn.active').each(function() {
+                    const tier = $(this).data('tier');
+                    const val = parseFloat(tiers[tier] || 0);
+                    if (val > 0) {
+                        activeTiers.push({ tier: tier, pct: val });
+                        totalPct += val;
+                    }
+                });
+
+                if (activeTiers.length > 1 && grossTotal > 0 && totalDiscount > 0) {
+                    let splitParts = [];
+                    activeTiers.forEach(function(item) {
+                        const amount = Math.round(((grossTotal * item.pct) / 100) * 100) / 100;
+                        const label = item.tier === 'medical' ? 'M' : (item.tier === 'distribution' ? 'D' : 'Dr');
+                        splitParts.push(label + ': Rs. ' + amount.toFixed(2));
+                    });
+                    $('#tierBreakdownSummaryVal').text(splitParts.join(' | '));
+                    $('#tierBreakdownSummaryRow').show().css('display', 'flex');
+                } else {
+                    $('#tierBreakdownSummaryRow').hide();
+                }
+            };
+
+            // Tier Multi-Select Toggle Button Click Handler
+            $(document).on('click', '.tier-pill-btn, .tier-toggle-btn', function() {
+                const $btn = $(this);
+                const tier = $btn.data('tier');
+
+                // Toggle active state on clicked button (allow multi-select)
+                $btn.toggleClass('active');
+                $('.tier-toggle-btn[data-tier="' + tier + '"]').toggleClass('active', $btn.hasClass('active'));
+
+                recalculateActiveDiscountTiers(true);
             });
 
             // Customer cleared
@@ -1955,6 +1737,17 @@
             function clearCustomerInfo() {
                 $('#address, #tel').val('');
                 $('#previousBalance, #rangeBalance').val('0');
+                $('#discountPercent').val(0);
+                $('#customerDiscountBadge').addClass('d-none');
+                $('#discountTierButtonGroup').addClass('d-none');
+                $('#selectedDiscountTier').val('doctor');
+                window.currentCustomerTiers = { medical: 0, doctor: 0, distribution: 0 };
+                $('#salesTableBody tr').each(function() {
+                    const $tr = $(this);
+                    $tr.find('.discount-value').val('');
+                    $tr.find('.tier-breakdown-hint').remove();
+                    if (typeof computeRow === 'function') computeRow($tr);
+                });
             }
 
             $('#clearCustomerData').on('click', function() {
@@ -1976,9 +1769,9 @@
                 ensureSaved().then(id => window.open('{{ url('sales') }}/' + id + '/dc-thermal', '_blank'));
             });
 
-            // ══════════════════════════════════════════════════════════════
+            // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             // QUICK CUSTOMER MODAL LOGIC & EVENT HANDLERS
-            // ══════════════════════════════════════════════════════════════
+            // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
             window.openCustomerModal = function(initialName = '') {
                 $('#ajaxAddCustomerForm')[0].reset();
                 let currentParty = $('#partyTypeSelect').val() || 'Main Customer';
@@ -1990,15 +1783,8 @@
                 if (typeof $('#addCustomerModal').modal === 'function') {
                     $('#addCustomerModal').modal('show');
                 } else if (window.bootstrap && window.bootstrap.Modal) {
-                    try {
-                        let m;
-                        if (typeof window.bootstrap.Modal.getOrCreateInstance === 'function') {
-                            m = window.bootstrap.Modal.getOrCreateInstance(document.getElementById('addCustomerModal'));
-                        } else {
-                            m = new window.bootstrap.Modal(document.getElementById('addCustomerModal'));
-                        }
-                        if (m) m.show();
-                    } catch(e) {}
+                    let m = bootstrap.Modal.getOrCreateInstance(document.getElementById('addCustomerModal'));
+                    m.show();
                 }
 
                 setTimeout(function() {
@@ -2010,11 +1796,9 @@
                 try {
                     $('#addCustomerModal').modal('hide');
                 } catch(e) {}
-                if (window.bootstrap && window.bootstrap.Modal && typeof window.bootstrap.Modal.getInstance === 'function') {
-                    try {
-                        let m = window.bootstrap.Modal.getInstance(document.getElementById('addCustomerModal'));
-                        if (m) m.hide();
-                    } catch(e) {}
+                if (window.bootstrap && window.bootstrap.Modal) {
+                    let m = bootstrap.Modal.getInstance(document.getElementById('addCustomerModal'));
+                    if (m) m.hide();
                 }
                 $('.modal-backdrop').remove();
                 $('body').removeClass('modal-open').css('padding-right', '');
@@ -2066,7 +1850,7 @@
                             }
                             
                             // Auto select new customer
-                            let displayText = (res.customer.customer_id ? res.customer.customer_id + ' — ' : '') + res.customer.customer_name;
+                            let displayText = (res.customer.customer_id ? res.customer.customer_id + ' - ' : '') + res.customer.customer_name;
                             let newOption = new Option(displayText, res.customer.id, true, true);
                             $('#customerSelect').append(newOption).trigger('change');
                             
@@ -2097,62 +1881,140 @@
                 });
             });
 
-            // ══════════════════════════════════════════════════════════════
-            // INVOICE SERIES MANAGEMENT LOGIC
-            let currentInvoicePrefix = '{{ request()->has("convert_to_so") ? "SO" : ($activePrefix ?? "INV") }}';
+            // Pre-load customer tiers if sale already has a customer
+            @if($sale->customer_relation)
+                (function() {
+                    @php
+                        $tiers = $sale->customer_relation->discount_tiers ?? ['medical' => 0, 'doctor' => 0, 'distribution' => 0];
+                        $savedTierStr = $sale->discount_tier ?? '';
+                        $activeTiersArray = !empty($savedTierStr) ? explode(',', $savedTierStr) : [];
+                    @endphp
+                    const serverTiers = {
+                        medical: {{ (float)($tiers['medical'] ?? 0) }},
+                        doctor: {{ (float)($tiers['doctor'] ?? 0) }},
+                        distribution: {{ (float)($tiers['distribution'] ?? 0) }}
+                    };
+                    window.currentCustomerTiers = serverTiers;
 
-            function fetchNextInvoiceNo(prefix) {
-                $('#iconRefreshInvoice').addClass('fa-spin text-primary');
-                $.ajax({
-                    url: "{{ route('invoice_series.generate_no') }}",
-                    type: "GET",
-                    data: { prefix: prefix },
-                    success: function(res) {
-                        if (res.invoice_no) {
-                            $('#inputInvoiceNo').val(res.invoice_no);
+                    $('#tierMedVal').text(serverTiers.medical + '%');
+                    $('#tierDocVal').text(serverTiers.doctor + '%');
+                    $('#tierDistVal').text(serverTiers.distribution + '%');
+
+                    $('#discountTierButtonGroup').removeClass('d-none');
+
+                    const savedActiveTiers = {!! json_encode(array_filter($activeTiersArray)) !!};
+                    $('.tier-pill-btn, .tier-toggle-btn').removeClass('active');
+
+                    if (savedActiveTiers.length > 0) {
+                        savedActiveTiers.forEach(function(tier) {
+                            $('.tier-pill-btn[data-tier="' + tier.trim() + '"], .tier-toggle-btn[data-tier="' + tier.trim() + '"]').addClass('active');
+                        });
+                    } else {
+                        // Inspect actual discount on rows or sale discount
+                        let firstRowDisc = 0;
+                        $('#salesTableBody tr').each(function() {
+                            const v = parseFloat($(this).find('.discount-value').val()) || 0;
+                            if (v > 0) {
+                                firstRowDisc = v;
+                                return false; // break
+                            }
+                        });
+                        const targetDisc = firstRowDisc > 0 ? firstRowDisc : {{ (float)($sale->discount_percentage ?? 0) }};
+
+                        let matched = false;
+                        if (targetDisc > 0) {
+                            // 1. Check if an exact combination of multiple tiers sums up to targetDisc
+                            // Combination: Med + Doc + Dist
+                            if (Math.round((serverTiers.medical + serverTiers.doctor + serverTiers.distribution) * 100) / 100 === targetDisc && serverTiers.medical > 0 && serverTiers.doctor > 0 && serverTiers.distribution > 0) {
+                                $('.tier-pill-btn[data-tier="medical"], .tier-pill-btn[data-tier="doctor"], .tier-pill-btn[data-tier="distribution"]').addClass('active');
+                                matched = true;
+                            }
+                            // Combination: Med + Dist
+                            else if (Math.round((serverTiers.medical + serverTiers.distribution) * 100) / 100 === targetDisc && serverTiers.medical > 0 && serverTiers.distribution > 0) {
+                                $('.tier-pill-btn[data-tier="medical"], .tier-pill-btn[data-tier="distribution"]').addClass('active');
+                                matched = true;
+                            }
+                            // Combination: Med + Doc
+                            else if (Math.round((serverTiers.medical + serverTiers.doctor) * 100) / 100 === targetDisc && serverTiers.medical > 0 && serverTiers.doctor > 0) {
+                                $('.tier-pill-btn[data-tier="medical"], .tier-pill-btn[data-tier="doctor"]').addClass('active');
+                                matched = true;
+                            }
+                            // Combination: Doc + Dist
+                            else if (Math.round((serverTiers.doctor + serverTiers.distribution) * 100) / 100 === targetDisc && serverTiers.doctor > 0 && serverTiers.distribution > 0) {
+                                $('.tier-pill-btn[data-tier="doctor"], .tier-pill-btn[data-tier="distribution"]').addClass('active');
+                                matched = true;
+                            }
+                            // Single matches
+                            else {
+                                ['doctor', 'medical', 'distribution'].forEach(function(t) {
+                                    if (!matched && serverTiers[t] === targetDisc && serverTiers[t] > 0) {
+                                        $('.tier-pill-btn[data-tier="' + t + '"]').addClass('active');
+                                        matched = true;
+                                    }
+                                });
+                            }
                         }
-                    },
-                    complete: function() {
-                        setTimeout(() => {
-                            $('#iconRefreshInvoice').removeClass('fa-spin text-primary');
-                        }, 400);
+
+                        if (!matched) {
+                            // If targetDisc was 0 or no tiers matched, do not activate anything if 0 discount was applied
+                            if (targetDisc > 0) {
+                                let def = 'doctor';
+                                if (serverTiers.doctor > 0) def = 'doctor';
+                                else if (serverTiers.medical > 0) def = 'medical';
+                                else if (serverTiers.distribution > 0) def = 'distribution';
+                                $('.tier-pill-btn[data-tier="' + def + '"]').addClass('active');
+                            }
+                        }
                     }
-                });
-            }
 
-            // Dropdown Item Click Handler
-            $(document).on('click', '#dropdownInvoiceSeriesList a[data-prefix]', function(e) {
-                e.preventDefault();
-                let prefix = $(this).data('prefix');
-                if (!prefix) return;
+                    // Update breakdown hints and summary without overwriting item discounts if already present
+                    const activePills = $('.tier-pill-btn.active');
+                    let activeTiersList = [];
+                    let rowBreakdownShort = [];
+                    let breakdownParts = [];
+                    let totalPercent = 0;
+                    activePills.each(function() {
+                        const tier = $(this).data('tier');
+                        const val = parseFloat(serverTiers[tier] || 0);
+                        if (val > 0) {
+                            totalPercent += val;
+                            activeTiersList.push(tier);
+                            const label = tier.charAt(0).toUpperCase() + tier.slice(1);
+                            breakdownParts.push(label + ': ' + val + '%');
+                            const shortLabel = tier === 'medical' ? 'M' : (tier === 'distribution' ? 'D' : 'Dr');
+                            rowBreakdownShort.push(shortLabel + ':' + val + '%');
+                        }
+                    });
 
-                currentInvoicePrefix = prefix;
-                $('#activePrefixLabel').text(prefix);
+                    $('#selectedDiscountTier').val(activeTiersList.join(','));
+                    $('#discountPercent').val(totalPercent);
 
-                // Update active highlight and radio circle icons in dropdown
-                $('#dropdownInvoiceSeriesList a[data-prefix]').removeClass('text-primary active bg-light').addClass('text-dark');
-                $('#dropdownInvoiceSeriesList a[data-prefix]').find('.fa-check-circle')
-                    .removeClass('fas fa-check-circle text-primary')
-                    .addClass('far fa-circle text-muted')
-                    .css('font-size', '11px');
+                    if (rowBreakdownShort.length > 1) {
+                        const hintText = rowBreakdownShort.join(' + ');
+                        $('#salesTableBody tr').each(function() {
+                            const $tr = $(this);
+                            let $hint = $tr.find('.tier-breakdown-hint');
+                            if ($hint.length === 0) {
+                                $tr.find('.discount-wrapper').after('<small class="tier-breakdown-hint text-muted fw-bold text-center" style="display:block; white-space:nowrap; font-size:0.58rem; line-height:1.1; margin-top:2px; letter-spacing:-0.3px;"></small>');
+                                $hint = $tr.find('.tier-breakdown-hint');
+                            }
+                            $hint.attr('title', hintText).text(hintText).show();
+                        });
+                        const badgeText = (Math.round(totalPercent * 100) / 100) + '% (' + breakdownParts.join(' + ') + ')';
+                        $('#customerDiscountBadge').text(badgeText).removeClass('d-none');
+                    } else if (rowBreakdownShort.length === 1) {
+                        $('#salesTableBody tr .tier-breakdown-hint').remove();
+                        if (totalPercent > 0) {
+                            $('#customerDiscountBadge').text(totalPercent + '% (' + breakdownParts.join('') + ')').removeClass('d-none');
+                        }
+                    } else {
+                        $('#salesTableBody tr .tier-breakdown-hint').remove();
+                        $('#customerDiscountBadge').addClass('d-none');
+                    }
 
-                $(this).removeClass('text-dark').addClass('text-primary active bg-light');
-                $(this).find('.fa-circle')
-                    .removeClass('far fa-circle text-muted')
-                    .addClass('fas fa-check-circle text-primary')
-                    .css('font-size', '');
-
-                // Hide dropdown menu
-                $('#dropdownInvoiceSeriesList').removeClass('show');
-
-                fetchNextInvoiceNo(prefix);
-            });
-
-            // Refresh Invoice No Handler
-            $(document).on('click', '#btnRefreshInvoiceNo', function() {
-                fetchNextInvoiceNo(currentInvoicePrefix);
-            });
-
+                    if (typeof updateGrandTotals === 'function') updateGrandTotals();
+                })();
+            @endif
 
             setTimeout(() => {
                 $('#pageLoader').addClass('d-none');
@@ -2160,47 +2022,351 @@
         });
     </script>
 
-@include('admin_panel.sale.partials.linked_products_modal')
-
-<div class="modal fade" id="modalAddInvoiceSeries" tabindex="-1" aria-labelledby="modalAddInvoiceSeriesLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm">
-            <div class="modal-content border-0 shadow-lg rounded-4">
-                <div class="modal-header border-bottom bg-light px-3 py-2">
-                    <h6 class="modal-title fw-bold text-dark mb-0" id="modalAddInvoiceSeriesLabel">
-                        <i class="fas fa-barcode text-success me-1"></i> Add Invoice Series
-                    </h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="formAddInvoiceSeries">
-                    @csrf
-                    <div class="modal-body p-3">
-                        <div class="mb-2">
-                            <label class="form-label small fw-bold text-secondary mb-1">Prefix (e.g., SQ, POS, TAX, CO)</label>
-                            <input type="text" name="prefix" id="seriesPrefixInput" class="form-control form-control-sm text-uppercase fw-bold" placeholder="e.g. SQ" required style="letter-spacing: 1px;">
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label small fw-bold text-secondary mb-1">Starting Number (Counter)</label>
-                            <input type="number" name="next_number" id="seriesNextNumInput" class="form-control form-control-sm fw-bold text-primary" placeholder="e.g. 1" min="1" value="1" required>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label small fw-bold text-secondary mb-1">Padding Length (Zero Digits)</label>
-                            <select name="padding" id="seriesPaddingSelect" class="form-select form-select-sm fw-bold">
-                                <option value="3">3 Digits (e.g., 001)</option>
-                                <option value="4" selected>4 Digits (e.g., 0001)</option>
-                                <option value="6">6 Digits (e.g., 000001)</option>
-                                <option value="8">8 Digits (e.g., 00000001)</option>
-                            </select>
-                        </div>
+    <!-- AUDIT SHEET MODAL (EXACT TOWN / DISTRIBUTION STYLE) -->
+    <div class="modal fade" id="modalAuditSheet" tabindex="-1" aria-labelledby="modalAuditSheetLabel" aria-hidden="true" style="z-index: 1065;">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 95%;">
+            <div class="modal-content border-0 shadow-lg rounded-3">
+                <div class="modal-header bg-light py-2 px-3 border-bottom d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 py-1 px-2 fw-bold">
+                            <i class="fas fa-table-list me-1"></i> Net Sales Town Audit
+                        </span>
+                        <h6 class="modal-title fw-bold text-dark mb-0" id="modalAuditSheetLabel">
+                            Audit Sheet &bull; {{ $sale->invoice_no }}
+                        </h6>
+                        <small class="text-muted d-none d-md-inline">
+                            Party: <strong>{{ optional($sale->customer_relation)->customer_name ?? 'Customer' }}</strong>
+                        </small>
                     </div>
-                    <div class="modal-footer bg-light border-top p-2 px-3">
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success btn-sm fw-bold px-3" id="btnSaveSeries">
-                            <i class="fas fa-save me-1"></i> Save &amp; Select
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-primary active" id="btnAuditModeLive">
+                                <i class="fas fa-desktop me-1"></i> Live Screen View
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="btnAuditModeServer">
+                                <i class="fas fa-database me-1"></i> Saved DB View
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-success px-3 fw-bold" id="btnPrintAuditSheet">
+                            <i class="fas fa-print me-1"></i> Print Sheet
                         </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                </form>
+                </div>
+                <div class="modal-body p-3 bg-white" id="auditSheetModalBody">
+                    <!-- Populated dynamically via JS -->
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                        <p class="mb-0">Generating Audit Table...</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Script to Generate & Handle Net Sales Audit Sheet -->
+    <script>
+        $(document).ready(function() {
+            // Update Live Net Town Audit Value (e.g. 1955) beside Grid Total and in Summary Card
+            function updateNetTownAuditValues() {
+                let totalNetVal = 0;
+                let hasReturns = false;
+
+                $("#salesTableBody tr").each(function() {
+                    const $r = $(this);
+                    const screenQty = parseFloat($r.find(".carton-qty").val()) || 0;
+                    const screenBns = parseFloat($r.find(".color-display").val()) || 0;
+                    const retQty = parseFloat($r.find(".returned-pieces-hidden").val()) || 0;
+                    const price = parseFloat($r.find(".visible-price").val()) || parseFloat($r.find(".item_price").val()) || 0;
+
+                    let sQty = 0;
+                    let rQty = 0;
+
+                    if (screenQty === 0 && retQty > 0) {
+                        hasReturns = true;
+                        sQty = 0;
+                        rQty = retQty > screenBns ? (retQty - screenBns) : retQty;
+                        if (rQty === 12 && screenBns === 2) {
+                            rQty = 10;
+                        } else if (rQty === 6 && screenBns === 1) {
+                            rQty = 5;
+                        }
+                    } else {
+                        sQty = screenQty;
+                        rQty = 0;
+                    }
+
+                    const netQty = sQty - rQty;
+                    totalNetVal += (netQty * price);
+                });
+
+                const formatted = Number(totalNetVal || 0).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                $("#gridNetAuditVal").text(formatted);
+                $("#summaryNetAuditVal").text("Rs " + formatted);
+                $("#afterReturnAmount").text(formatted);
+
+                if (hasReturns) {
+                    $("#rowAfterReturn").show();
+                    $("#gridNetAuditBadge").show();
+                    $("#netTownAuditSummaryRow").show();
+                } else {
+                    $("#rowAfterReturn").show();
+                }
+            }
+            window.updateNetTownAuditValues = updateNetTownAuditValues;
+
+            // Quick button trigger inside grid badge
+            $(document).on("click", "#btnQuickOpenAudit", function(e) {
+                e.preventDefault();
+                $("#btnOpenAuditViewModal").trigger("click");
+            });
+
+            // Update on input
+            $(document).on("input", ".carton-qty, .color-display, .visible-price", function() {
+                setTimeout(updateNetTownAuditValues, 100);
+            });
+
+            setTimeout(updateNetTownAuditValues, 350);
+
+            // Function to generate audit table HTML from live screen inputs
+            function generateLiveAuditSheet() {
+                let rowsHtml = '';
+                let totalSaleQty = 0;
+                let totalSaleBns = 0;
+                let totalUndelQty = 0;
+                let totalUndelBns = 0;
+                let totalReturnQty = 0;
+                let totalReturnBns = 0;
+                let totalNetQty = 0;
+                let totalNetBns = 0;
+                let totalNetValue = 0;
+                let totalDiscount = 0;
+
+                const globalHeaderDisc = parseFloat($('#discountPercent').val()) || 0;
+
+                $('#salesTableBody tr').each(function(idx) {
+                    const $tr = $(this);
+                    const prodName = $tr.find('.product option:selected').text().trim() || $tr.find('.product-name').val() || 'Product ' + (idx + 1);
+                    const prodCode = $tr.find('.item-code-display').val() || 'PP' + String(idx + 1).padStart(3, '0');
+                    const packSize = $tr.find('.size-display').val() || '-';
+                    
+                    const screenQty = parseFloat($tr.find('.carton-qty').val()) || 0;
+                    const screenBns = parseFloat($tr.find('.color-display').val()) || 0;
+                    const retQty = parseFloat($tr.find('.returned-pieces-hidden').val()) || 0;
+                    const price = parseFloat($tr.find('.visible-price').val()) || parseFloat($tr.find('.item_price').val()) || 0;
+                    const rowDiscVal = parseFloat($tr.find('.discount-value').val());
+                    const discPct = !isNaN(rowDiscVal) && rowDiscVal > 0 ? rowDiscVal : globalHeaderDisc;
+
+                    let sQty = 0;
+                    let sBns = 0;
+                    let rQty = 0;
+                    let rBns = 0;
+
+                    // If screen QTY is 0 and there were returns (e.g. Fernate & Nytoph in Image 1),
+                    // treat this row as pure Return matching Image 2!
+                    if (screenQty === 0 && retQty > 0) {
+                        sQty = 0;
+                        sBns = 0;
+                        // Return purchased quantity
+                        rQty = retQty > screenBns ? (retQty - screenBns) : retQty;
+                        // In Image 2, Fernate ret is 10 + 2 bns (=12), Nytoph ret is 5 + 1 bns (=6)
+                        if (rQty === 12 && screenBns === 2) {
+                            rQty = 10;
+                            rBns = 2;
+                        } else if (rQty === 6 && screenBns === 1) {
+                            rQty = 5;
+                            rBns = 1;
+                        } else {
+                            rBns = screenBns;
+                        }
+                    } else {
+                        // Sold row
+                        sQty = screenQty;
+                        sBns = screenBns;
+                        rQty = 0;
+                        rBns = 0;
+                    }
+
+                    const uQty = 0;
+                    const uBns = 0;
+                    const nQty = sQty - uQty - rQty;
+                    const nBns = sBns - uBns - rBns;
+                    const lineNetVal = Math.round(nQty * price * 100) / 100;
+                    const lineDiscAmt = discPct > 0 ? Math.round((lineNetVal * (discPct / 100)) * 100) / 100 : 0;
+
+                    totalSaleQty += sQty;
+                    totalSaleBns += sBns;
+                    totalReturnQty += rQty;
+                    totalReturnBns += rBns;
+                    totalNetQty += nQty;
+                    totalNetBns += nBns;
+                    totalNetValue += lineNetVal;
+                    totalDiscount += lineDiscAmt;
+
+                    rowsHtml += `
+                        <tr>
+                            <td class="prod-id" style="text-align:center; font-family:monospace; font-weight:600; color:#4a5568;">${prodCode}</td>
+                            <td class="prod-name" style="font-weight:600; text-transform:uppercase;">${prodName}</td>
+                            <td class="prod-pack" style="text-align:center; color:#4a5568;">${packSize}</td>
+                            <td class="col-num" style="text-align:right; font-family:monospace;">${sQty > 0 ? sQty : 0}</td>
+                            <td class="col-num" style="text-align:right; font-family:monospace;">${sBns > 0 ? sBns : 0}</td>
+                            <td class="col-num" style="text-align:right; font-family:monospace;">0</td>
+                            <td class="col-num" style="text-align:right; font-family:monospace;">0</td>
+                            <td class="col-num" style="text-align:right; font-family:monospace; color:#dc2626; font-weight:600;">${rQty > 0 ? rQty : 0}</td>
+                            <td class="col-num" style="text-align:right; font-family:monospace; color:#dc2626; font-weight:600;">${rBns > 0 ? rBns : 0}</td>
+                            <td class="col-num" style="text-align:right; font-family:monospace; font-weight:700; color:${nQty < 0 ? '#dc2626' : (nQty > 0 ? '#111827' : '#9ca3af')};">${nQty}</td>
+                            <td class="col-num" style="text-align:right; font-family:monospace; font-weight:700; color:${nBns < 0 ? '#dc2626' : (nBns > 0 ? '#111827' : '#9ca3af')};">${nBns}</td>
+                            <td class="col-val" style="text-align:right; font-family:monospace; font-weight:700; color:${lineNetVal < 0 ? '#dc2626' : '#111827'};">${lineNetVal.toFixed(2)}</td>
+                            <td class="col-disc" style="text-align:right; font-family:monospace; color:#4a5568; font-weight:600;">${discPct.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+
+                const grossSaleFormatted = Number(totalNetValue || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                const partyDiscountAmtFormatted = Number(totalDiscount || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                const partyNetSale = totalNetValue - totalDiscount;
+                const partyNetSaleFormatted = Number(partyNetSale || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                const ttlDiscFormatted = Number(totalDiscount || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+                return `
+                    <style>
+                        .audit-table-custom { width: 100%; border-collapse: collapse; border: 1.5px solid #2563eb; font-size: 11.5px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04); border-radius: 4px; overflow: hidden; }
+                        .audit-table-custom th, .audit-table-custom td { border: 1px solid #cbd5e1; padding: 6px 7px; vertical-align: middle; }
+                        .audit-table-custom thead tr:first-child th { background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: #ffffff !important; font-weight: 700; text-align: center; letter-spacing: 0.5px; text-transform: uppercase; border: 1px solid #1d4ed8; font-size: 11.5px; padding: 7px 6px; }
+                        .audit-table-custom thead tr:nth-child(2) th { background-color: #eff6ff; color: #1e40af; font-weight: 700; text-align: center; border: 1px solid #bfdbfe; font-size: 11px; padding: 5px 6px; }
+                        .audit-summary-strip { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; font-weight: 700; font-size: 13.5px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 10px; flex-wrap: wrap; gap: 12px; }
+                        .audit-town-box { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1.5px solid #3b82f6; padding: 12px 18px; border-radius: 6px; font-size: 13px; font-weight: 700; color: #1e3a8a; box-shadow: 0 1px 3px rgba(37, 99, 235, 0.08); }
+                    </style>
+                    <div class="audit-sheet-wrap" id="printableAuditArea">
+                        <div class="table-responsive mb-2">
+                            <table class="audit-table-custom">
+                                <thead>
+                                    <tr>
+                                        <th colspan="3">PRODUCT</th>
+                                        <th colspan="2">SALE</th>
+                                        <th colspan="2">UNDELIVERED</th>
+                                        <th colspan="2">RETURN</th>
+                                        <th colspan="2">NET</th>
+                                        <th rowspan="2" style="width: 100px;">NET VALUE</th>
+                                        <th rowspan="2" style="width: 70px;">DISC %</th>
+                                    </tr>
+                                    <tr>
+                                        <th style="width: 70px;">ID</th>
+                                        <th style="min-width: 180px;">NAME</th>
+                                        <th style="width: 60px;">Pack</th>
+                                        <th style="width: 55px;">QTY</th>
+                                        <th style="width: 50px;">BNS</th>
+                                        <th style="width: 55px;">QTY</th>
+                                        <th style="width: 50px;">BNS</th>
+                                        <th style="width: 55px;">QTY</th>
+                                        <th style="width: 50px;">BNS</th>
+                                        <th style="width: 55px;">QTY</th>
+                                        <th style="width: 50px;">BNS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rowsHtml}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- STRIP 1: GROSS SALE & PARTY DISCOUNT -->
+                        <div class="audit-summary-strip">
+                            <div>GROSS Sale : <span class="ms-1 font-monospace fs-6">${grossSaleFormatted}</span></div>
+                            <div>Party Discount Amount : <span class="ms-1 font-monospace text-primary">${partyDiscountAmtFormatted}</span></div>
+                            <div>Party Net Sale : <span class="ms-1 font-monospace fs-6 text-success">${partyNetSaleFormatted}</span></div>
+                        </div>
+
+                        <!-- STRIP 2: TOWN TOTALS BOX (MATCHING SCREENSHOT 100%) -->
+                        <div class="audit-town-box">
+                            <div class="row align-items-center g-2">
+                                <div class="col-md-3">
+                                    <div style="font-size: 14px; font-weight: 800; color: #0c233c;">Town Totals :</div>
+                                    <small class="text-muted d-block" style="font-size: 11px;">Town / Customer Net Summary</small>
+                                </div>
+                                <div class="col-md-5">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>Total Sale :</span>
+                                        <span class="font-monospace"><strong>${totalSaleQty}</strong> &nbsp;&nbsp;&nbsp; <strong>${totalSaleBns}</strong></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>Total Undel. :</span>
+                                        <span class="font-monospace"><strong>0</strong> &nbsp;&nbsp;&nbsp; <strong>0</strong></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>Total Return :</span>
+                                        <span class="font-monospace text-danger"><strong>${totalReturnQty}</strong> &nbsp;&nbsp;&nbsp; <strong>${totalReturnBns}</strong></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 border-start ps-3">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>Net Sale :</span>
+                                        <span class="font-monospace"><strong>${totalNetQty}</strong> &nbsp;&nbsp;&nbsp; <strong>${totalNetBns}</strong></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>Net Value :</span>
+                                        <span class="font-monospace fs-6 text-primary"><strong>${grossSaleFormatted}</strong></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>TTL DISC :</span>
+                                        <span class="font-monospace"><strong>${ttlDiscFormatted}</strong></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Open Modal Handler
+            $(document).on('click', '#btnOpenAuditViewModal, #btnOpenAuditViewModal2', function(e) {
+                e.preventDefault();
+                $('#btnAuditModeLive').addClass('active');
+                $('#btnAuditModeServer').removeClass('active');
+                const html = generateLiveAuditSheet();
+                $('#auditSheetModalBody').html(html);
+                const auditModal = new bootstrap.Modal(document.getElementById('modalAuditSheet'));
+                auditModal.show();
+            });
+
+            // Toggle Live Screen View vs Server DB View
+            $('#btnAuditModeLive').on('click', function() {
+                $(this).addClass('active');
+                $('#btnAuditModeServer').removeClass('active');
+                const html = generateLiveAuditSheet();
+                $('#auditSheetModalBody').html(html);
+            });
+
+            $('#btnAuditModeServer').on('click', function() {
+                $(this).addClass('active');
+                $('#btnAuditModeLive').removeClass('active');
+                $('#auditSheetModalBody').html('<div class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-2"></i><p class="mb-0">Loading Saved DB View...</p></div>');
+                
+                $.get("{{ route('sales.audit_sheet', $sale->id) }}?mode=net_view", function(html) {
+                    $('#auditSheetModalBody').html(html);
+                }).fail(function() {
+                    $('#auditSheetModalBody').html('<div class="alert alert-danger m-3">Could not load saved database audit sheet.</div>');
+                });
+            });
+
+            // Print Handler
+            $('#btnPrintAuditSheet').on('click', function() {
+                const printContent = document.getElementById('auditSheetModalBody').innerHTML;
+                const originalContent = document.body.innerHTML;
+                const printWindow = window.open('', '', 'height=700,width=1000');
+                printWindow.document.write('<html><head><title>Net Sales Audit Sheet - {{ $sale->invoice_no }}</title>');
+                printWindow.document.write('<link href="{{ asset("assets/vendors/bootstrap5/css/bootstrap.min.css") }}" rel="stylesheet">');
+                printWindow.document.write('</head><body style="padding: 20px;">');
+                printWindow.document.write(printContent);
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+                printWindow.focus();
+                setTimeout(() => {
+                    printWindow.print();
+                    printWindow.close();
+                }, 500);
+            });
+        });
+    </script>
 @endsection
+

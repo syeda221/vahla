@@ -86,6 +86,7 @@ Route::get('/software', function () {
 
 Route::get('/home', [HomeController::class, 'index'])->middleware('auth')->name('home');
 Route::post('/admin/sync-to-cloud', [SyncController::class, 'syncToCloud'])->middleware('auth')->name('admin.sync_to_cloud');
+Route::get('/admin/sync-status', [SyncController::class, 'syncStatus'])->middleware('auth')->name('admin.sync_status');
 
 // Route::get('/adminpage', [HomeController::class, 'adminpage'])->middleware(['auth','admin'])->name('adminpage');
 
