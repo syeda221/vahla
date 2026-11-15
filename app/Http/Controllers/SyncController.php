@@ -6,6 +6,8 @@ use App\Models\Customer;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Product;
+use App\Models\Account;
+use App\Models\AccountHead;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -66,7 +68,21 @@ class SyncController extends Controller
             return $sData;
         })->toArray();
 
-        // 3. Collect all known customer & sale UUIDs from local to ask Cloud for missing records
+        // 3. Collect local cash/bank accounts
+        $accounts = Account::with('head:id,name')->get()->map(function($acc) {
+            return [
+                'title' => $acc->title,
+                'account_code' => $acc->account_code,
+                'head_name' => $acc->head ? $acc->head->name : null,
+                'type' => $acc->type,
+                'opening_balance' => $acc->opening_balance,
+                'current_balance' => $acc->current_balance,
+                'status' => $acc->status,
+                'is_active' => $acc->is_active ?? 1,
+            ];
+        })->toArray();
+
+        // 4. Collect all known customer & sale UUIDs from local to ask Cloud for missing records
         $knownCustomerUuids = Customer::whereNotNull('uuid')->pluck('uuid')->toArray();
         $knownSaleUuids = Sale::whereNotNull('uuid')->pluck('uuid')->toArray();
 
@@ -78,6 +94,7 @@ class SyncController extends Controller
                 ->post($cloudSyncUrl . '/api/receive-sync', [
                     'customers' => $customers,
                     'sales' => $sales,
+                    'accounts' => $accounts,
                     'known_customer_uuids' => $knownCustomerUuids,
                     'known_sale_uuids' => $knownSaleUuids,
                 ]);
@@ -93,8 +110,49 @@ class SyncController extends Controller
                         Sale::whereIn('uuid', collect($sales)->pluck('uuid'))->update(['is_synced' => 1]);
                     }
 
+                    $pulledAccountsCount = 0;
                     $pulledCustomersCount = 0;
                     $pulledSalesCount = 0;
+
+                    // B0. Process pulled Cloud accounts onto Local
+                    $cloudAccounts = $resData['cloud_accounts'] ?? [];
+                    if (!empty($cloudAccounts)) {
+                        foreach ($cloudAccounts as $ca) {
+                            $title = trim($ca['title'] ?? '');
+                            $code = trim($ca['account_code'] ?? '');
+                            if (empty($title)) continue;
+
+                            $existingAcc = Account::where(function($q) use ($title, $code) {
+                                $q->where('title', $title);
+                                if (!empty($code)) {
+                                    $q->orWhere('account_code', $code);
+                                }
+                            })->first();
+
+                            $headId = null;
+                            if (!empty($ca['head_name'])) {
+                                $head = AccountHead::firstOrCreate(
+                                    ['name' => $ca['head_name']],
+                                    ['level' => 1, 'opening_balance' => 0]
+                                );
+                                $headId = $head->id;
+                            }
+
+                            if (!$existingAcc) {
+                                Account::create([
+                                    'head_id' => $headId,
+                                    'title' => $title,
+                                    'account_code' => $code ?: ('ACC-' . str_pad((Account::max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT)),
+                                    'opening_balance' => $ca['opening_balance'] ?? 0,
+                                    'current_balance' => $ca['current_balance'] ?? ($ca['opening_balance'] ?? 0),
+                                    'type' => $ca['type'] ?? 'Debit',
+                                    'status' => $ca['status'] ?? 1,
+                                    'is_active' => $ca['is_active'] ?? 1,
+                                ]);
+                                $pulledAccountsCount++;
+                            }
+                        }
+                    }
 
                     // B1. Process pulled Cloud customers onto Local
                     $cloudCustomers = $resData['cloud_customers'] ?? [];
@@ -240,10 +298,10 @@ class SyncController extends Controller
                     if (count($sales) > 0 || count($customers) > 0) {
                         $msg .= ' Pushed: ' . count($sales) . ' sale(s), ' . count($customers) . ' customer(s).';
                     }
-                    if ($pulledSalesCount > 0 || $pulledCustomersCount > 0) {
-                        $msg .= ' Pulled: ' . $pulledSalesCount . ' sale(s), ' . $pulledCustomersCount . ' customer(s).';
+                    if ($pulledSalesCount > 0 || $pulledCustomersCount > 0 || $pulledAccountsCount > 0) {
+                        $msg .= ' Pulled: ' . $pulledSalesCount . ' sale(s), ' . $pulledCustomersCount . ' customer(s), ' . $pulledAccountsCount . ' account(s).';
                     }
-                    if (count($sales) === 0 && count($customers) === 0 && $pulledSalesCount === 0 && $pulledCustomersCount === 0) {
+                    if (count($sales) === 0 && count($customers) === 0 && $pulledSalesCount === 0 && $pulledCustomersCount === 0 && $pulledAccountsCount === 0) {
                         $msg = 'Both systems are already fully synchronized!';
                     }
 
@@ -253,7 +311,8 @@ class SyncController extends Controller
                         'synced_sales' => count($sales),
                         'pulled_sales' => $pulledSalesCount,
                         'synced_customers' => count($customers),
-                        'pulled_customers' => $pulledCustomersCount
+                        'pulled_customers' => $pulledCustomersCount,
+                        'pulled_accounts' => $pulledAccountsCount
                     ]);
                 } else {
                     return response()->json([
@@ -289,12 +348,51 @@ class SyncController extends Controller
         $payload = $request->all();
         $customers = $payload['customers'] ?? [];
         $sales = $payload['sales'] ?? [];
+        $incomingAccounts = $payload['accounts'] ?? [];
         $knownCustomerUuids = $payload['known_customer_uuids'] ?? [];
         $knownSaleUuids = $payload['known_sale_uuids'] ?? [];
 
         DB::beginTransaction();
         try {
-            // 1. Process incoming customers from Local
+            // 1a. Process incoming accounts from Local
+            if (!empty($incomingAccounts)) {
+                foreach ($incomingAccounts as $ia) {
+                    $title = trim($ia['title'] ?? '');
+                    $code = trim($ia['account_code'] ?? '');
+                    if (empty($title)) continue;
+
+                    $existing = Account::where(function($q) use ($title, $code) {
+                        $q->where('title', $title);
+                        if (!empty($code)) {
+                            $q->orWhere('account_code', $code);
+                        }
+                    })->first();
+
+                    if (!$existing) {
+                        $headId = null;
+                        if (!empty($ia['head_name'])) {
+                            $head = AccountHead::firstOrCreate(
+                                ['name' => $ia['head_name']],
+                                ['level' => 1, 'opening_balance' => 0]
+                            );
+                            $headId = $head->id;
+                        }
+
+                        Account::create([
+                            'head_id' => $headId,
+                            'title' => $title,
+                            'account_code' => $code ?: ('ACC-' . str_pad((Account::max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT)),
+                            'opening_balance' => $ia['opening_balance'] ?? 0,
+                            'current_balance' => $ia['current_balance'] ?? ($ia['opening_balance'] ?? 0),
+                            'type' => $ia['type'] ?? 'Debit',
+                            'status' => $ia['status'] ?? 1,
+                            'is_active' => $ia['is_active'] ?? 1,
+                        ]);
+                    }
+                }
+            }
+
+            // 1b. Process incoming customers from Local
             foreach ($customers as $cData) {
                 $uuid = $cData['uuid'] ?? (string) Str::uuid();
                 unset($cData['id']);
@@ -458,9 +556,24 @@ class SyncController extends Controller
                 $customerBalances = Customer::whereIn('uuid', $affectedCustomerUuids)->select('uuid', 'previous_balance')->get()->toArray();
             }
 
+            // 6. Return all cloud accounts to local
+            $cloudAccountsForLocal = Account::with('head:id,name')->get()->map(function($acc) {
+                return [
+                    'title' => $acc->title,
+                    'account_code' => $acc->account_code,
+                    'head_name' => $acc->head ? $acc->head->name : null,
+                    'type' => $acc->type,
+                    'opening_balance' => $acc->opening_balance,
+                    'current_balance' => $acc->current_balance,
+                    'status' => $acc->status,
+                    'is_active' => $acc->is_active ?? 1,
+                ];
+            })->toArray();
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Sync payload processed successfully.',
+                'cloud_accounts' => $cloudAccountsForLocal,
                 'cloud_customers' => $cloudCustomersForLocal,
                 'cloud_sales' => $cloudSalesForLocal,
                 'product_stocks' => $productStocks,

@@ -42,11 +42,12 @@ class SyncDaemon extends Command
                 if ($data && isset($data['status']) && $data['status'] === 'success') {
                     $pulledCust = $data['pulled_customers'] ?? 0;
                     $pulledSales = $data['pulled_sales'] ?? 0;
+                    $pulledAcc = $data['pulled_accounts'] ?? 0;
                     $pushedSales = $data['synced_sales'] ?? 0;
                     $pushedCust = $data['synced_customers'] ?? 0;
 
-                    if ($pulledCust > 0 || $pulledSales > 0 || $pushedSales > 0 || $pushedCust > 0) {
-                        $this->info("[" . date('H:i:s') . "] Auto-Synced: +{$pulledCust} customer(s), +{$pulledSales} sale(s) from Cloud | Pushed: {$pushedSales} sale(s), {$pushedCust} customer(s).");
+                    if ($pulledCust > 0 || $pulledSales > 0 || $pulledAcc > 0 || $pushedSales > 0 || $pushedCust > 0) {
+                        $this->info("[" . date('H:i:s') . "] Auto-Synced: +{$pulledCust} customer(s), +{$pulledSales} sale(s), +{$pulledAcc} account(s) | Pushed: {$pushedSales} sale(s), {$pushedCust} customer(s).");
                     }
                 }
             } catch (\Throwable $e) {
