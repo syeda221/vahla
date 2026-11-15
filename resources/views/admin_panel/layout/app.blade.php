@@ -1951,10 +1951,12 @@
                 }
             });
 
-            // 4. Silent Background Auto-Sync (Runs every 60s on Local PC while connected)
+            // 4. Silent Real-time Background Auto-Sync (on Local PC)
             if (isLocalMachine) {
-                setInterval(function () {
-                    if (!navigator.onLine) return;
+                let isSilentSyncing = false;
+                function runSilentAutoSync() {
+                    if (isSilentSyncing || !navigator.onLine) return;
+                    isSilentSyncing = true;
                     fetch('{{ route('admin.sync_to_cloud') }}', {
                         method: 'POST',
                         headers: {
@@ -1965,6 +1967,7 @@
                     })
                     .then(r => r.json())
                     .then(data => {
+                        isSilentSyncing = false;
                         if (data.status === 'success') {
                             const badge = document.getElementById('topNavSyncBadge');
                             if (badge) {
@@ -1974,9 +1977,23 @@
                         }
                     })
                     .catch(() => {
-                        // Silent catch - no disruption during normal operations
+                        isSilentSyncing = false;
                     });
-                }, 60000);
+                }
+
+                // A. Run immediately 2 seconds after page load
+                setTimeout(runSilentAutoSync, 2000);
+
+                // B. Run immediately when user switches tabs or focuses on Local window
+                window.addEventListener('focus', runSilentAutoSync);
+                document.addEventListener('visibilitychange', function () {
+                    if (!document.hidden) {
+                        runSilentAutoSync();
+                    }
+                });
+
+                // C. Continuous background pulse every 15 seconds
+                setInterval(runSilentAutoSync, 15000);
             }
         });
     </script>
