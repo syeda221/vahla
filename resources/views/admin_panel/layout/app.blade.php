@@ -1950,6 +1950,34 @@
                         .catch(() => {});
                 }
             });
+
+            // 4. Silent Background Auto-Sync (Runs every 60s on Local PC while connected)
+            if (isLocalMachine) {
+                setInterval(function () {
+                    if (!navigator.onLine) return;
+                    fetch('{{ route('admin.sync_to_cloud') }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            const badge = document.getElementById('topNavSyncBadge');
+                            if (badge) {
+                                badge.style.display = 'none';
+                                badge.textContent = '0';
+                            }
+                        }
+                    })
+                    .catch(() => {
+                        // Silent catch - no disruption during normal operations
+                    });
+                }, 60000);
+            }
         });
     </script>
     @stack('scripts')

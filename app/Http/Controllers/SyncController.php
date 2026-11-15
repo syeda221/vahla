@@ -127,6 +127,9 @@ class SyncController extends Controller
                                 $newSale->is_synced = 1;
                                 $newSale->save();
 
+                                // Update local series counter
+                                \App\Models\InvoiceSeries::incrementCounterForInvoice($newSale->invoice_no);
+
                                 foreach ($items as $ci) {
                                     unset($ci['id']);
                                     unset($ci['sale_id']);
@@ -294,10 +297,18 @@ class SyncController extends Controller
 
                 $sale = Sale::where('uuid', $uuid)->first();
                 if (!$sale) {
+                    // Conflict protection: if invoice number already taken by another sale on cloud, assign next available number
+                    if (Sale::where('invoice_no', $sData['invoice_no'])->exists()) {
+                        $sData['invoice_no'] = \App\Models\InvoiceSeries::generateNextNo('INV');
+                    }
+
                     $sale = new Sale($sData);
                     $sale->uuid = $uuid;
                     $sale->is_synced = 1;
                     $sale->save();
+
+                    // Advance series counter on cloud
+                    \App\Models\InvoiceSeries::incrementCounterForInvoice($sale->invoice_no);
 
                     // Create sale items
                     foreach ($items as $iData) {
