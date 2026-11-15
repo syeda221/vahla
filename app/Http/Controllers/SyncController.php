@@ -66,7 +66,8 @@ class SyncController extends Controller
             return $sData;
         })->toArray();
 
-        // 3. Collect all known sale UUIDs from local to ask Cloud for missing sales
+        // 3. Collect all known customer & sale UUIDs from local to ask Cloud for missing records
+        $knownCustomerUuids = Customer::whereNotNull('uuid')->pluck('uuid')->toArray();
         $knownSaleUuids = Sale::whereNotNull('uuid')->pluck('uuid')->toArray();
 
         try {
@@ -77,6 +78,7 @@ class SyncController extends Controller
                 ->post($cloudSyncUrl . '/api/receive-sync', [
                     'customers' => $customers,
                     'sales' => $sales,
+                    'known_customer_uuids' => $knownCustomerUuids,
                     'known_sale_uuids' => $knownSaleUuids,
                 ]);
 
@@ -91,9 +93,44 @@ class SyncController extends Controller
                         Sale::whereIn('uuid', collect($sales)->pluck('uuid'))->update(['is_synced' => 1]);
                     }
 
+                    $pulledCustomersCount = 0;
                     $pulledSalesCount = 0;
 
-                    // B. Process pulled Cloud sales onto Local
+                    // B1. Process pulled Cloud customers onto Local
+                    $cloudCustomers = $resData['cloud_customers'] ?? [];
+                    if (!empty($cloudCustomers)) {
+                        $custColumns = \Illuminate\Support\Facades\Schema::getColumnListing('customers');
+                        $balanceService = app(\App\Services\BalanceService::class);
+
+                        foreach ($cloudCustomers as $cc) {
+                            $uuid = $cc['uuid'] ?? null;
+                            if (!$uuid) continue;
+
+                            if (Customer::where('uuid', $uuid)->exists()) {
+                                Customer::where('uuid', $uuid)->update(['is_synced' => 1]);
+                                continue;
+                            }
+
+                            unset($cc['id']);
+                            if (isset($cc['customer_id']) && Customer::where('customer_id', $cc['customer_id'])->exists()) {
+                                $cc['customer_id'] = 'CUST-' . str_pad((Customer::max('id') ?? 0) + 1, 4, '0', STR_PAD_LEFT);
+                            }
+
+                            $filteredCustData = array_intersect_key($cc, array_flip($custColumns));
+                            $newCust = new Customer($filteredCustData);
+                            $newCust->uuid = $uuid;
+                            $newCust->is_synced = 1;
+                            $newCust->save();
+
+                            try {
+                                $balanceService->ensureCustomerOpeningBalance($newCust);
+                            } catch (\Exception $e) {}
+
+                            $pulledCustomersCount++;
+                        }
+                    }
+
+                    // B2. Process pulled Cloud sales onto Local
                     $cloudSales = $resData['cloud_sales'] ?? [];
                     if (!empty($cloudSales)) {
                         DB::beginTransaction();
@@ -200,13 +237,13 @@ class SyncController extends Controller
                     }
 
                     $msg = 'Synchronization successful!';
-                    if (count($sales) > 0) {
-                        $msg .= ' Pushed ' . count($sales) . ' offline sale(s) to Cloud.';
+                    if (count($sales) > 0 || count($customers) > 0) {
+                        $msg .= ' Pushed: ' . count($sales) . ' sale(s), ' . count($customers) . ' customer(s).';
                     }
-                    if ($pulledSalesCount > 0) {
-                        $msg .= ' Pulled ' . $pulledSalesCount . ' new sale(s) from Cloud.';
+                    if ($pulledSalesCount > 0 || $pulledCustomersCount > 0) {
+                        $msg .= ' Pulled: ' . $pulledSalesCount . ' sale(s), ' . $pulledCustomersCount . ' customer(s).';
                     }
-                    if (count($sales) === 0 && $pulledSalesCount === 0) {
+                    if (count($sales) === 0 && count($customers) === 0 && $pulledSalesCount === 0 && $pulledCustomersCount === 0) {
                         $msg = 'Both systems are already fully synchronized!';
                     }
 
@@ -215,7 +252,8 @@ class SyncController extends Controller
                         'message' => $msg,
                         'synced_sales' => count($sales),
                         'pulled_sales' => $pulledSalesCount,
-                        'synced_customers' => count($customers)
+                        'synced_customers' => count($customers),
+                        'pulled_customers' => $pulledCustomersCount
                     ]);
                 } else {
                     return response()->json([
@@ -251,6 +289,7 @@ class SyncController extends Controller
         $payload = $request->all();
         $customers = $payload['customers'] ?? [];
         $sales = $payload['sales'] ?? [];
+        $knownCustomerUuids = $payload['known_customer_uuids'] ?? [];
         $knownSaleUuids = $payload['known_sale_uuids'] ?? [];
 
         DB::beginTransaction();
@@ -373,6 +412,19 @@ class SyncController extends Controller
 
             DB::commit();
 
+            // 2b. Find any customers on Cloud that Local does NOT have yet
+            $cloudCustomersForLocal = [];
+            if (!empty($knownCustomerUuids)) {
+                Customer::whereNull('uuid')->orWhere('uuid', '')->each(function($c) {
+                    $c->uuid = (string) Str::uuid();
+                    $c->saveQuietly();
+                });
+
+                $cloudCustomersForLocal = Customer::whereNotIn('uuid', $knownCustomerUuids)
+                    ->get()
+                    ->toArray();
+            }
+
             // 3. Find any sales on Cloud that Local does NOT have yet
             $cloudSalesForLocal = [];
             if (!empty($knownSaleUuids)) {
@@ -409,6 +461,7 @@ class SyncController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Sync payload processed successfully.',
+                'cloud_customers' => $cloudCustomersForLocal,
                 'cloud_sales' => $cloudSalesForLocal,
                 'product_stocks' => $productStocks,
                 'customer_balances' => $customerBalances
