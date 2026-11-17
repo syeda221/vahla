@@ -99,10 +99,21 @@
                         </select>
                     </div>
                     <div class="col-md-3">
+                        <label class="form-label text-muted fw-semibold">Zone:</label>
+                        <select id="zone_id" class="form-control">
+                            <option value="">All Zones</option>
+                            @if(isset($zones))
+                                @foreach($zones as $z)
+                                    <option value="{{ $z->id }}">{{ $z->zone }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label text-muted fw-semibold">Current Date:</label>
                         <input type="text" id="as_of_date" class="form-control datepicker-custom" value="{{ date('Y-m-d') }}">
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <button class="btn btn-primary w-100 mt-1" id="btnGenerate">Generate</button>
                     </div>
                 </div>
@@ -118,13 +129,13 @@
                     <p style="margin: 0; font-size: 11px;">{{ \App\Models\Setting::get('company_address', '') }}</p>
                     <p style="margin: 0; font-size: 11px;">Tel: {{ \App\Models\Setting::get('company_phone', '') }}</p>
                     <h5 style="font-weight: 800; margin-top: 10px; margin-bottom: 4px; text-transform: uppercase;" id="printHeaderTitle">Account Payable Aging Report</h5>
-                    <div style="font-size: 11px; font-weight: 600;">As of: <span id="printDisplayDate">{{ date('d/m/Y') }}</span></div>
+                    <div style="font-size: 11px; font-weight: 600;">As of: <span id="printDisplayDate">{{ date('d/m/Y') }}</span><span id="printDisplayZone"></span></div>
                 </div>
 
                 <div class="d-flex justify-content-between align-items-start mb-3 no-print">
                     <div>
                         <h5 class="fw-bold mb-0" id="reportTitle">Account Payable Aging Report</h5>
-                        <small class="text-muted">As of: <span id="displayDate">{{ date('d/m/Y') }}</span></small>
+                        <small class="text-muted">As of: <span id="displayDate">{{ date('d/m/Y') }}</span><span id="displayZone"></span></small>
                     </div>
                     <button type="button" class="btn-print no-print" onclick="window.print()"><i class="fa fa-print me-1"></i> Print</button>
                 </div>
@@ -178,8 +189,10 @@ $(document).ready(function() {
     }
 
     function loadReport() {
-        let type    = $('#rpt_type').val();
-        let asOf    = $('#as_of_date').val();
+        let type     = $('#rpt_type').val();
+        let asOf     = $('#as_of_date').val();
+        let zoneId   = $('#zone_id').val();
+        let zoneText = $('#zone_id option:selected').text();
 
         // Update title
         let titleText = (type === 'payable') ? 'Account Payable Aging Report' : 'Account Receivable Aging Report';
@@ -189,11 +202,15 @@ $(document).ready(function() {
         $('#loader').show();
         $('#reportContent').hide();
 
-        $.get("{{ route('report.aging.fetch') }}", {type: type, as_of_date: asOf}, function(res) {
+        $.get("{{ route('report.aging.fetch') }}", {type: type, as_of_date: asOf, zone_id: zoneId}, function(res) {
             $('#loader').hide();
             $('#displayDate').text(res.as_of_date);
             $('#printDisplayDate').text(res.as_of_date);
             $('#hdrCurrent').text(res.as_of_date);
+
+            let zoneDisplay = (zoneId && zoneId !== '') ? ` | Zone: ${zoneText}` : '';
+            $('#displayZone').text(zoneDisplay);
+            $('#printDisplayZone').text(zoneDisplay);
 
             let html = '';
             if (res.rows.length === 0) {

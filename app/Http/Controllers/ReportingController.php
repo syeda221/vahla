@@ -3116,13 +3116,15 @@ class ReportingController extends Controller
     }
     public function aging_report()
     {
-        return view('admin_panel.reporting.aging_report');
+        $zones = \App\Models\Zone::orderBy('zone', 'asc')->get();
+        return view('admin_panel.reporting.aging_report', compact('zones'));
     }
 
     public function fetch_aging(Request $request)
     {
         $type     = $request->type ?: 'receivable'; // receivable | payable
         $asOfDate = $request->as_of_date ?: date('Y-m-d');
+        $zoneId   = $request->zone_id;
         $today    = \Carbon\Carbon::parse($asOfDate);
 
         $balanceService = app(\App\Services\BalanceService::class);
@@ -3139,7 +3141,19 @@ class ReportingController extends Controller
 
         if ($type === 'receivable') {
             // Customer Aging: Each Sale invoice outstanding
-            $customers = DB::table('customers')->get();
+            $customerQuery = DB::table('customers');
+
+            if (!empty($zoneId)) {
+                $zoneObj = DB::table('zones')->where('id', $zoneId)->first();
+                $customerQuery->where(function($q) use ($zoneId, $zoneObj) {
+                    $q->where('zone', $zoneId);
+                    if ($zoneObj) {
+                        $q->orWhere('zone', $zoneObj->zone);
+                    }
+                });
+            }
+
+            $customers = $customerQuery->get();
 
             foreach ($customers as $c) {
                 $totalBalance = $balanceService->getCustomerBalance($c->id);
@@ -3206,7 +3220,11 @@ class ReportingController extends Controller
             }
         } else {
             // Vendor Aging (Payable)
-            $vendors = DB::table('vendors')->get();
+            if (!empty($zoneId)) {
+                $vendors = collect([]); // Vendors do not have zone assigned
+            } else {
+                $vendors = DB::table('vendors')->get();
+            }
 
             foreach ($vendors as $v) {
                 $totalBalance = $balanceService->getVendorBalance($v->id);
