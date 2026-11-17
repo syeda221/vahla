@@ -8,8 +8,8 @@
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h3>Sales Officers</h3>
                             @can('sales.officers.create')
-                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal"
-                                    id="reset">
+                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#createModal"
+                                    data-bs-toggle="modal" data-bs-target="#createModal" id="reset">
                                     Create
                                 </button>
                             @endcan
@@ -76,8 +76,8 @@
                             <input type="text" name="name" class="form-control" required />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">نام</label>
-                            <input type="text" name="name_urdu" class="form-control text-end" dir="rtl" required />
+                            <label class="form-label">نام <small class="text-muted">(Optional)</small></label>
+                            <input type="text" name="name_urdu" class="form-control text-end" dir="rtl" />
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Mobile</label>
@@ -85,7 +85,7 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
                         @can('sales.officers.create')
                             <input type="submit" class="btn btn-primary" value="Save">
                         @endcan
@@ -111,9 +111,9 @@
                             <input type="text" name="name" id="edit_name" class="form-control" required />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">نام</label>
+                            <label class="form-label">نام <small class="text-muted">(Optional)</small></label>
                             <input type="text" name="name_urdu" id="edit_name_urdu" class="form-control text-end"
-                                dir="rtl" required />
+                                dir="rtl" />
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Mobile</label>
@@ -121,7 +121,7 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
                         @can('sales.officers.edit')
                             <input type="submit" class="btn btn-primary" value="Update">
                         @endcan
@@ -130,24 +130,28 @@
             </form>
         </div>
     </div>
+@endsection
 
-    <!-- Scripts -->
-     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-    <script src="{{ asset('assets/js/jquery.min.js') }}"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-
+@section('js')
     <script>
         $(document).ready(function() {
-            $('#default-datatable').DataTable({
-                pageLength: 10,
-                order: [
-                    [0, 'desc']
-                ]
+            if ($('#default-datatable').length) {
+                $('#default-datatable').DataTable({
+                    pageLength: 10,
+                    order: [
+                        [0, 'desc']
+                    ]
+                });
+            }
+
+            // Explicit click handler on #reset so modal opens reliably
+            $(document).on('click', '#reset', function() {
+                $('.create-form')[0].reset();
+                $('#createModal').modal('show');
             });
 
             // CREATE
-            $('.create-form').submit(function(e) {
+            $(document).on('submit', '.create-form', function(e) {
                 e.preventDefault();
                 let formData = new FormData(this);
                 $.ajax({
@@ -160,12 +164,19 @@
                         $('#createModal').modal('hide');
                         Swal.fire('Success', 'Sales Officer Created', 'success').then(() =>
                             location.reload());
+                    },
+                    error: function(xhr) {
+                        let msg = 'Failed to create sales officer.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+                        Swal.fire('Error', msg, 'error');
                     }
                 });
             });
 
             // LOAD EDIT DATA
-            $('.edit-btn').click(function() {
+            $(document).on('click', '.edit-btn', function() {
                 let id = $(this).data('id');
                 $.get("{{ url('sales-officers/edit') }}/" + id, function(data) {
                     $('#edit_id').val(data.id);
@@ -177,7 +188,7 @@
             });
 
             // UPDATE
-            $('.edit-form').submit(function(e) {
+            $(document).on('submit', '.edit-form', function(e) {
                 e.preventDefault();
                 let formData = new FormData(this);
                 $.ajax({
@@ -190,12 +201,19 @@
                         $('#editModal').modal('hide');
                         Swal.fire('Updated', 'Sales Officer Updated', 'success').then(() =>
                             location.reload());
+                    },
+                    error: function(xhr) {
+                        let msg = 'Failed to update sales officer.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+                        Swal.fire('Error', msg, 'error');
                     }
                 });
             });
 
             // DELETE
-            $('.delete-btn').click(function() {
+            $(document).on('click', '.delete-btn', function() {
                 let id = $(this).data('id');
                 let url = `/sales-officers/${id}`; // dynamically build route
                 Swal.fire({
