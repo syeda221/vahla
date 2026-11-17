@@ -46,6 +46,14 @@ class Customer extends Model
         }
     }
 
+    /**
+     * Get custom value or fallback to model attribute
+     */
+    public function getCustomValue($key)
+    {
+        return $this->{$key} ?? ($this->attributes[$key] ?? null);
+    }
+
     protected static function boot()
     {
         parent::boot();

@@ -530,9 +530,9 @@
 
                         @php
                             $relCust = $sale->customer_relation;
-                            $custNtn = $relCust ? ($relCust->getCustomValue('ntn_number') ?? $relCust->ntn_number ?? null) : null;
-                            $custStrn = $relCust ? ($relCust->getCustomValue('strn_number') ?? $relCust->strn_number ?? null) : null;
-                            $custCnic = $relCust ? ($relCust->getCustomValue('cnic') ?? $relCust->cnic ?? null) : null;
+                            $custNtn = $relCust ? ($relCust->ntn_number ?? (method_exists($relCust, 'getCustomValue') ? $relCust->getCustomValue('ntn_number') : null)) : null;
+                            $custStrn = $relCust ? ($relCust->strn_number ?? (method_exists($relCust, 'getCustomValue') ? $relCust->getCustomValue('strn_number') : null)) : null;
+                            $custCnic = $relCust ? ($relCust->cnic ?? (method_exists($relCust, 'getCustomValue') ? $relCust->getCustomValue('cnic') : null)) : null;
                         @endphp
 
                         @if(!empty($custNtn))
@@ -1713,6 +1713,11 @@
                 <div class="meta-row">
                     <span class="meta-label">STRN:</span>
                     <span class="meta-value">{{ $custStrn }}</span>
+                </div>
+            @elseif(!empty($custCnic))
+                <div class="meta-row">
+                    <span class="meta-label">CNIC:</span>
+                    <span class="meta-value">{{ $custCnic }}</span>
                 </div>
             @endif
 
