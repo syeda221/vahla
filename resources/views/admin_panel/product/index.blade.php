@@ -725,7 +725,6 @@
                             <th style="width:40px;">#</th>
                             <th style="width:52px;">Image</th>
                             <th>Item Details</th>
-                            <th>Stock</th>
                             <th>Purchase Price</th>
                             <th>Sale Price</th>
                             <th class="col-discount" style="width:130px;">Disc % <span style="font-weight:600;font-size:.62rem;color:var(--erp-muted);">(P / S)</span></th>
@@ -787,13 +786,6 @@
                                             <option value="{{ $cat->id }}" {{ (string) $product->category_id === (string) $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
                                         @endforeach
                                     </select>
-                                </td>
-                                <td>
-                                    <span class="stock-badge {{ $stockClass }}">
-                                        <i class="fas fa-cubes" style="font-size:.65rem;"></i>
-                                        {{ $stockDisplay }}
-                                        <span class="stock-unit">{{ $stockUnit }}</span>
-                                    </span>
                                 </td>
                                 <td class="price-purchase">
                                     <span class="js-price-display">Rs. {{ number_format($tradePrice, 2) }}</span>
@@ -923,12 +915,6 @@
                             <div style="font-size:.68rem; font-weight:700; color:var(--erp-muted); text-transform:uppercase;">Sale Price</div>
                             <div class="prod-mcard-price">Rs. {{ number_format($retailPrice, 2) }}</div>
                             <div style="font-size:.7rem; color:var(--erp-muted);">Cost: Rs. {{ number_format($tradePrice, 2) }}</div>
-                        </div>
-                        <div class="text-end">
-                            <div style="font-size:.68rem; font-weight:700; color:var(--erp-muted); text-transform:uppercase; margin-bottom:2px;">Stock</div>
-                            <span class="stock-badge {{ $stockClass }}">
-                                <i class="fas fa-cubes"></i> {{ $stockDisplay }} <span class="stock-unit">{{ $stockUnit }}</span>
-                            </span>
                         </div>
                     </div>
                     <div class="prod-mcard-actions">
@@ -1066,7 +1052,6 @@
                                 <th class="text-start ps-4" style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Variant Name</th>
                                 <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Size</th>
                                 <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Color</th>
-                                <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Stock</th>
                                 <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Sale Price</th>
                                 <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Purch Price</th>
                                 <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Alert</th>
@@ -1269,7 +1254,7 @@ $(document).ready(function () {
         order:      [[3, 'asc']],
         dom:        'rt',
         scrollX:    false,
-        columnDefs: [{ targets: [0, 9], orderable: false, searchable: false }]
+        columnDefs: [{ targets: [0, -1], orderable: false, searchable: false }]
     });   // DataTable closes here
 
     // ── View Product Modal ──
@@ -1357,7 +1342,6 @@ $(document).ready(function () {
                             <td class="text-start ps-4 fw-semibold">${vName}</td>
                             <td>${vSize}</td>
                             <td>${colorBadge}</td>
-                            <td>${stockBadgeHtml(vStock, vAlert)}</td>
                             <td class="fw-bold" style="color:#059669;">Rs. ${parseFloat(vSale||0).toFixed(2)} <small class="fw-normal text-muted">${vPriceLabel}</small></td>
                             <td class="text-muted">Rs. ${parseFloat(vPurch||0).toFixed(2)} <small>${vPriceLabel}</small></td>
                             <td><span style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:4px;padding:2px 6px;font-size:.72rem;">${alertQty}</span></td>
@@ -1372,7 +1356,6 @@ $(document).ready(function () {
                             <td class="text-start ps-4 fw-semibold">${product.item_name}</td>
                             <td>${sizeStr}</td>
                             <td>${colorBadge}</td>
-                            <td>${stockBadgeHtml(stock, product.alert_carton_quantity)}</td>
                             <td class="fw-bold" style="color:#059669;">Rs. ${parseFloat(salePrice||0).toFixed(2)} <small class="fw-normal text-muted">${priceLabel}</small></td>
                             <td class="text-muted">Rs. ${parseFloat(purchPrice||0).toFixed(2)} <small>${priceLabel}</small></td>
                             <td><span style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:4px;padding:2px 6px;font-size:.72rem;">${alertDef}</span></td>
