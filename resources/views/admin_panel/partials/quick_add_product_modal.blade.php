@@ -319,14 +319,14 @@ $(document).ready(function() {
     // Auto-sync product name to base variant name
     var isBaseVariantNameManuallyEdited = false;
 
-    $(document).on('input propertychange paste', '#qap_product_name', function() {
+    $(document).on('input paste', '#qap_product_name', function() {
         var val = $(this).val();
         if (!isBaseVariantNameManuallyEdited) {
             $('.qap-base-variant-name').val(val);
         }
     });
 
-    $(document).on('input propertychange paste', '.qap-base-variant-name', function() {
+    $(document).on('input paste', '.qap-base-variant-name', function() {
         if ($(this).val().trim() === '') {
             isBaseVariantNameManuallyEdited = false;
             $(this).val($('#qap_product_name').val());

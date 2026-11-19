@@ -1199,7 +1199,7 @@
                 return Math.floor(100000 + Math.random() * 900000).toString();
             }
 
-            // Sync base variant name with product name in real time
+            // Sync base variant name with product name in real time (smooth, zero-lag in-place update)
             const productNameInput = document.querySelector('input[name="product_name"]');
             let prevProductName = productNameInput ? (productNameInput.value || '') : '';
             if (productNameInput) {
@@ -1213,10 +1213,22 @@
                         baseInput.value = newName;
                     }
 
-                    // 2. If other variants exist and had the product name as prefix, update their prefix too
+                    // 2. If loose pieces variant exists and has default naming, sync it
+                    const looseRow = variantsBody.querySelector('tr[data-is-loose="1"]');
+                    if (looseRow) {
+                        const looseInp = looseRow.querySelector('.var-name-input');
+                        if (looseInp) {
+                            if (!oldName || looseInp.value === 'Loose Pcs' || looseInp.value === (oldName + ' - Loose Pcs')) {
+                                looseInp.value = newName ? (newName + ' - Loose Pcs') : 'Loose Pcs';
+                            }
+                        }
+                    }
+
+                    // 3. If other variants exist and had the product name as prefix, update their prefix too
                     if (oldName && oldName.trim() !== '') {
                         const otherVarInputs = document.querySelectorAll('input.var-name-input');
                         otherVarInputs.forEach(inp => {
+                            if (inp.closest('tr')?.dataset.isLoose === '1') return; // already handled
                             if (inp.value === oldName) {
                                 inp.value = newName;
                             } else if (inp.value.startsWith(oldName + ' - ')) {
@@ -1227,15 +1239,29 @@
                         });
                     }
 
-                    // 3. Sync mobile cards if present
-                    if (typeof rebuildMobileCards === 'function' && typeof isMobile === 'function' && isMobile()) {
-                        rebuildMobileCards();
-                    } else {
-                        const mobBaseInput = document.querySelector('#mobileVariantsBody .mob-variant-card:first-child [data-field="variant_name[]"]');
+                    // 4. In-place sync for mobile cards (NEVER destroy/rebuild DOM on typing to ensure 100% smooth 60fps typing)
+                    const mobBaseCard = document.querySelector('#mobileVariantsBody .mob-variant-card.is-base') 
+                        || document.querySelector('#mobileVariantsBody .mob-variant-card:first-child');
+                    if (mobBaseCard) {
+                        const mobBaseInput = mobBaseCard.querySelector('[data-field="variant_name[]"]');
                         if (mobBaseInput) mobBaseInput.value = newName;
-                        const mobBaseLabel = document.querySelector('#mobileVariantsBody .mob-variant-card:first-child .mob-card-label');
+                        const mobBaseLabel = mobBaseCard.querySelector('.mob-card-label');
                         if (mobBaseLabel) mobBaseLabel.textContent = newName || 'Base Variant';
                     }
+
+                    const mobOtherCards = document.querySelectorAll('#mobileVariantsBody .mob-variant-card:not(.is-base)');
+                    mobOtherCards.forEach((card, idx) => {
+                        const mobInp = card.querySelector('[data-field="variant_name[]"]');
+                        const mobLbl = card.querySelector('.mob-card-label');
+                        const desktopRow = variantsBody.children[idx + 1];
+                        if (desktopRow && mobInp) {
+                            const desktopInp = desktopRow.querySelector('[name="variant_name[]"]');
+                            if (desktopInp) mobInp.value = desktopInp.value;
+                        }
+                        if (mobLbl && mobInp) {
+                            mobLbl.textContent = mobInp.value || ('Variant ' + (idx + 2));
+                        }
+                    });
 
                     prevProductName = newName;
                 });
@@ -2062,9 +2088,13 @@
         });
         desktopObserver.observe(variantsBody, { childList: true });
 
-        // Also rebuild when window resizes to mobile
+        // Also rebuild when window resizes to mobile (debounced)
+        let mobResizeTimer = null;
         window.addEventListener('resize', () => {
-            if (isMobile()) rebuildMobileCards();
+            clearTimeout(mobResizeTimer);
+            mobResizeTimer = setTimeout(() => {
+                if (isMobile()) rebuildMobileCards();
+            }, 150);
         });
 
         // Make mobileAddVariant global
