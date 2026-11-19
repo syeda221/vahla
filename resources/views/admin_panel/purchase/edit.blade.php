@@ -824,14 +824,53 @@
                     recalcAll();
                 updateRowNumbers();
                 } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
+                    let convFactor = 0;
+                    const vdEncoded = $row.find('.hidden-variant-data').val();
+                    if (vdEncoded) {
+                        try {
+                            const vd = JSON.parse(atob(vdEncoded));
+                            if (vd.conv_factor && parseFloat(vd.conv_factor) > 0) {
+                                convFactor = parseFloat(vd.conv_factor);
+                            } else if (vd.weight_per_piece && parseFloat(vd.weight_per_piece) > 0) {
+                                convFactor = parseFloat(vd.weight_per_piece) / 1000.0;
+                            }
+                        } catch(e) {}
+                    }
                     if (currentUnit.toLowerCase() === 'kg') {
                         currentUnit = 'Gm';
+<<<<<<< HEAD
                         $btn.removeClass('btn-outline-primary').addClass('btn-outline-info').attr('data-unit', 'Gm');
                         $btn.find('.unit-text').text('Gm');
                     } else {
                         currentUnit = 'Kg';
                         $btn.removeClass('btn-outline-info').addClass('btn-outline-primary').attr('data-unit', 'Kg');
                         $btn.find('.unit-text').text('Kg');
+=======
+                        $btn.text('Gm').removeClass('btn-outline-primary').addClass('btn-outline-info').attr('data-unit', 'Gm');
+                        if (curPrice > 0) {
+                            $priceInp.val((curPrice / 1000).toFixed(4).replace(/\.?0+$/, ''));
+                        }
+                    } else if (currentUnit.toLowerCase() === 'gm') {
+                        if (convFactor > 0 && convFactor !== 1.0) {
+                            currentUnit = 'Pcs';
+                            $btn.text('Pcs').removeClass('btn-outline-primary').addClass('btn-outline-info').attr('data-unit', 'Pcs');
+                            if (curPrice > 0) {
+                                $priceInp.val(((curPrice * 1000) * convFactor).toFixed(2).replace(/\.?0+$/, ''));
+                            }
+                        } else {
+                            currentUnit = 'Kg';
+                            $btn.text('Kg').removeClass('btn-outline-info').addClass('btn-outline-primary').attr('data-unit', 'Kg');
+                            if (curPrice > 0) {
+                                $priceInp.val((curPrice * 1000).toFixed(2).replace(/\.?0+$/, ''));
+                            }
+                        }
+                    } else {
+                        currentUnit = 'Kg';
+                        $btn.text('Kg').removeClass('btn-outline-info').addClass('btn-outline-primary').attr('data-unit', 'Kg');
+                        if (curPrice > 0 && convFactor > 0) {
+                            $priceInp.val((curPrice / convFactor).toFixed(2).replace(/\.?0+$/, ''));
+                        }
+>>>>>>> 90637cd5e8d4dcf256b13f10f431242d3f0accff
                     }
                     $row.find('.unit-input-val').val(currentUnit);
                     recalcRow($row);
@@ -1127,9 +1166,23 @@
                     const ppb = parseFloat(data.pieces_per_box || data.ppb) || 1;
                     const isCartonMode = (['by_cartons', 'by_bandal'].includes(data.size_mode) || unitName.toLowerCase() === 'carton' || unitName.toLowerCase() === 'ctn' || ppb > 1);
 
+                    let vUnit = data.unit_name || null;
+                    if (data.variant_data) {
+                        try {
+                            const vd = JSON.parse(atob(data.variant_data));
+                            if (vd.unit) vUnit = vd.unit;
+                        } catch(e) {}
+                    }
+                    const vUnitNorm = (vUnit || '').toLowerCase().trim();
+
                     // Dynamic Unit & Style
+<<<<<<< HEAD
                     if (isCartonMode) {
                         unitName = (data.size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
+=======
+                    if (isCartonMode || vUnitNorm === 'carton' || vUnitNorm === 'ctn') {
+                        unitName = 'Carton';
+>>>>>>> 90637cd5e8d4dcf256b13f10f431242d3f0accff
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-primary btn-outline-info')
                             .addClass('btn-outline-success')
@@ -1137,6 +1190,7 @@
                             .find('.unit-text').text(unitName);
                         $row.find('.unit-input-val').val(unitName);
                     } else if (data.size_mode === 'by_kg' || data.size_mode === 'by_gm') {
+<<<<<<< HEAD
                         unitName = 'Kg';
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-info btn-outline-success')
@@ -1144,7 +1198,35 @@
                             .attr('data-unit', 'Kg')
                             .find('.unit-text').text('Kg');
                         $row.find('.unit-input-val').val('Kg');
+=======
+                        if (vUnitNorm === 'pcs' || vUnitNorm === 'pc' || vUnitNorm === 'piece') {
+                            unitName = 'Pcs';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-primary btn-outline-success')
+                                .addClass('btn-outline-info')
+                                .attr('data-unit', 'Pcs')
+                                .text('Pcs');
+                            $row.find('.unit-input-val').val('Pcs');
+                        } else if (data.size_mode === 'by_gm' || vUnitNorm === 'gm' || vUnitNorm === 'g') {
+                            unitName = 'Gm';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-primary btn-outline-success')
+                                .addClass('btn-outline-info')
+                                .attr('data-unit', 'Gm')
+                                .text('Gm');
+                            $row.find('.unit-input-val').val('Gm');
+                        } else {
+                            unitName = 'Kg';
+                            $row.find('.unit-toggle-btn')
+                                .removeClass('btn-outline-info btn-outline-success')
+                                .addClass('btn-outline-primary')
+                                .attr('data-unit', 'Kg')
+                                .text('Kg');
+                            $row.find('.unit-input-val').val('Kg');
+                        }
+>>>>>>> 90637cd5e8d4dcf256b13f10f431242d3f0accff
                     } else {
+                        unitName = vUnit || unitName || 'Pcs';
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-primary btn-outline-success')
                             .addClass('btn-outline-info')
