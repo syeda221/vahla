@@ -162,6 +162,9 @@
                             $rawRef = $origSale->reference;
                         }
                     }
+                    if (empty($rawRef) && !empty($sale->comment)) {
+                        $rawRef = $sale->comment;
+                    }
                 }
 
                 $cleanRef = $rawRef;

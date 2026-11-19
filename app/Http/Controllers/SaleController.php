@@ -1461,8 +1461,15 @@ class SaleController extends Controller
             $isNew = ! $sale->exists;
             $sale->customer_id = $request->customer;
             $sale->walkin_name = $isWalkin ? $request->walkin_name : null;
-            $sale->reference = $request->reference;
-            $sale->comment = $request->input('comment') ?? ($request->input('notes') ?? null);
+            $sale->reference = $request->input('reference') 
+                ?? $request->input('remarks') 
+                ?? $request->input('ref_no') 
+                ?? $request->input('ref')
+                ?? null;
+            $sale->comment = $request->input('comment') 
+                ?? $request->input('notes') 
+                ?? ($request->filled('remarks') && $request->input('remarks') !== $sale->reference ? $request->input('remarks') : null)
+                ?? null;
             $rawWh = $request->input('warehouse_id');
             $headerWhId = $request->input('header_warehouse_id') ?: (is_array($rawWh) ? ($rawWh[0] ?? 1) : ($rawWh ?: 1));
             $sale->warehouse_id = $headerWhId;

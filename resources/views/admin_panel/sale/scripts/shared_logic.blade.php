@@ -1402,6 +1402,18 @@
             $('#btnSave, #btnQuotation, #btnHeaderPosted, #btnPosted, #btnDraft, #btnHeaderDraftSale, #btnSaveDraft, #btnSaveDraft2, #btnSaveAndComplete, #btnSaveAndComplete2, #btnSaveAndPrint2').prop('disabled', true);
 
             let formData = new FormData($('#saleForm')[0]);
+            
+            // Ensure reference / remarks / comment are explicitly set in formData so they are never lost
+            const explicitRef = ($('#remarks').val() || $('input[name="reference"]').val() || '').toString().trim();
+            if (explicitRef) {
+                formData.set('reference', explicitRef);
+                formData.set('remarks', explicitRef);
+            }
+            const explicitComment = ($('#saleComment').val() || $('textarea[name="comment"]').val() || '').toString().trim();
+            if (explicitComment) {
+                formData.set('comment', explicitComment);
+            }
+
             if (method === 'PUT') {
                 formData.append('_method', 'PUT');
                 method = 'POST'; // Laravel spoofing
@@ -2776,7 +2788,7 @@
         // ... existing bindings ...
 
         // Inputs -> Calc
-        $(document).on('input change keyup blur paste', '.carton-qty, .loose-pcs-input, .pack-qty, .discount-value, .visible-price, .sales-qty',
+        $(document).on('input change paste', '.carton-qty, .loose-pcs-input, .pack-qty, .discount-value, .visible-price, .sales-qty',
             function() {
                 // If user manually changes the visible price, also update the hidden price-per-piece and normalized base rate
                 if ($(this).hasClass('visible-price')) {
@@ -3740,6 +3752,8 @@
                 booking_id: $('#booking_id').val(),
                 sale_type: $('#sale_type').val(),
                 invoice_prefix: $('#activePrefixLabel').text(),
+                reference: $('#remarks').val() || $('input[name="reference"]').val() || '',
+                comment: $('#saleComment').val() || $('textarea[name="comment"]').val() || '',
                 rows: []
             };
 
@@ -3812,6 +3826,12 @@
                 }
                 if (draft.warehouse_id && $('#warehouseSelect').length) {
                     $('#warehouseSelect').val(draft.warehouse_id).trigger('change');
+                }
+                if (draft.reference) {
+                    $('#remarks, input[name="reference"]').val(draft.reference);
+                }
+                if (draft.comment) {
+                    $('#saleComment, textarea[name="comment"]').val(draft.comment);
                 }
 
                 if (draft.rows && draft.rows.length > 0) {

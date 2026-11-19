@@ -792,7 +792,7 @@
                         <!-- Remarks -->
                         <div class="col-sm-6 col-md-2 col-lg-2">
                             <label class="meta-label"><i class="far fa-comment-dots text-muted"></i> Remarks / M.Bill</label>
-                            <input type="text" class="form-control" name="reference" id="remarks" value="{{ $sale->reference ?? '' }}" placeholder="Notes / Ref...">
+                            <input type="text" class="form-control" name="reference" id="remarks" value="{{ $sale->reference ?: ($sale->comment ?? '') }}" placeholder="Notes / Ref...">
                         </div>
 
                         <!-- Attachment -->

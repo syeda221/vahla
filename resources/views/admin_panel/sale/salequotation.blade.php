@@ -325,10 +325,13 @@
                     <div class="meta-label">M/s.</div>
                     <div class="meta-value" style="color: #1e40af;">{{ $sale->walkin_name ?? ($sale->customer_relation->customer_name ?? 'Walk-in Customer') }}</div>
                 </div>
-                @if(!empty($sale->reference))
+                @php
+                    $displayRemarks = !empty($sale->reference) ? $sale->reference : (!empty($sale->comment) ? $sale->comment : '');
+                @endphp
+                @if(!empty($displayRemarks))
                 <div class="meta-row mt-1">
                     <div class="meta-label" style="font-weight: bold; width: 70px;">Remarks:</div>
-                    <div class="meta-value" style="color: #1e40af; font-weight: 600;">{{ $sale->reference }}</div>
+                    <div class="meta-value" style="color: #1e40af; font-weight: 600;">{{ $displayRemarks }}</div>
                 </div>
                 @endif
                 
