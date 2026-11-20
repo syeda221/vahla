@@ -577,7 +577,11 @@
                                     </div>
                                     <div class="col-6 col-md-4 col-lg-2">
                                         <label class="form-label mb-1 fw-semibold text-primary"><i class="fas fa-hashtag me-1"></i>Reference#</label>
-                                        <input type="text" class="form-control" name="reference" id="filter_reference" value="{{ request('reference') }}" placeholder="Ref / M.Bill#...">
+                                        <input type="text" class="form-control" name="reference" id="filter_reference" value="{{ request('reference') ?? request('ref_no') }}" placeholder="Ref / M.Bill#...">
+                                    </div>
+                                    <div class="col-6 col-md-4 col-lg-2">
+                                        <label class="form-label mb-1 fw-semibold text-info"><i class="fas fa-box me-1"></i>Product</label>
+                                        <input type="text" class="form-control" name="product_name" id="filter_product_name" value="{{ request('product_name') ?? request('product') }}" placeholder="Product name/code...">
                                     </div>
                                     <div class="col-6 col-md-4 col-lg-2">
                                         <label class="form-label mb-1 fw-semibold"><i class="fas fa-user me-1 text-success"></i>Customer</label>
@@ -990,9 +994,9 @@
                 }
             });
 
-            // Live search on typing in Reference or Bill# inputs (debounced)
+            // Live search on typing in Reference, Bill#, or Product inputs (debounced)
             let searchDebounceTimer = null;
-            $(document).on('input', '#filter_reference, #filter_bill_no', function() {
+            $(document).on('input', '#filter_reference, #filter_bill_no, #filter_product_name', function() {
                 clearTimeout(searchDebounceTimer);
                 searchDebounceTimer = setTimeout(function() {
                     applySalesFilter();
@@ -1008,6 +1012,7 @@
                 $('#filter_to_date').val('');
                 $('#filter_bill_no').val('');
                 $('#filter_reference').val('');
+                $('#filter_product_name').val('');
                 $('#quick_filter').val('custom');
                 $('#per_page').val('50');
                 

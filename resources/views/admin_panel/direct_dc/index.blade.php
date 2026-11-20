@@ -94,6 +94,55 @@
                         </div>
                     @endif
                     
+                    {{-- Filter Panel --}}
+                    <div class="card mb-4" style="background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 16px;">
+                        <div class="card-body p-0">
+                            <form id="dcFilterForm" method="GET" action="{{ route('direct-dc.index') }}" class="row g-2 g-md-3 align-items-end" autocomplete="off">
+                                <div class="col-6 col-md-4 col-lg-2">
+                                    <label class="form-label mb-1 fw-bold text-uppercase text-secondary" style="font-size: 11px; letter-spacing: 0.5px;">From Date</label>
+                                    <input type="date" class="form-control" name="from_date" id="filter_from_date" value="{{ request('from_date') }}" style="border: 1.5px solid #cbd5e1; border-radius: 8px; height: 38px; font-size: 13px;">
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-2">
+                                    <label class="form-label mb-1 fw-bold text-uppercase text-secondary" style="font-size: 11px; letter-spacing: 0.5px;">To Date</label>
+                                    <input type="date" class="form-control" name="to_date" id="filter_to_date" value="{{ request('to_date') }}" style="border: 1.5px solid #cbd5e1; border-radius: 8px; height: 38px; font-size: 13px;">
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-2">
+                                    <label class="form-label mb-1 fw-bold text-uppercase text-primary" style="font-size: 11px; letter-spacing: 0.5px;"><i class="fas fa-hashtag me-1"></i>Ref / Order#</label>
+                                    <input type="text" class="form-control" name="reference" id="filter_reference" value="{{ request('reference') ?? request('ref_no') }}" placeholder="Ref / Order#..." style="border: 1.5px solid #cbd5e1; border-radius: 8px; height: 38px; font-size: 13px;">
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-2">
+                                    <label class="form-label mb-1 fw-bold text-uppercase text-info" style="font-size: 11px; letter-spacing: 0.5px;"><i class="fas fa-box me-1"></i>Product</label>
+                                    <input type="text" class="form-control" name="product_name" id="filter_product_name" value="{{ request('product_name') ?? request('product') }}" placeholder="Product name/code..." style="border: 1.5px solid #cbd5e1; border-radius: 8px; height: 38px; font-size: 13px;">
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-2">
+                                    <label class="form-label mb-1 fw-bold text-uppercase text-dark" style="font-size: 11px; letter-spacing: 0.5px;"><i class="fas fa-truck-loading me-1 text-primary"></i>DC Number</label>
+                                    <input type="text" class="form-control" name="dc_number" id="filter_dc_number" value="{{ request('dc_number') }}" placeholder="DDC-..." style="border: 1.5px solid #cbd5e1; border-radius: 8px; height: 38px; font-size: 13px;">
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-2">
+                                    <label class="form-label mb-1 fw-bold text-uppercase text-success" style="font-size: 11px; letter-spacing: 0.5px;"><i class="fas fa-user me-1"></i>Customer</label>
+                                    <select class="form-select" name="customer_id" id="filter_customer_id" style="border: 1.5px solid #cbd5e1; border-radius: 8px; height: 38px; font-size: 13px;">
+                                        <option value="">All Customers</option>
+                                        @if(isset($customers))
+                                            @foreach($customers as $c)
+                                                <option value="{{ $c->id }}" {{ request('customer_id') == $c->id ? 'selected' : '' }}>
+                                                    {{ $c->customer_name }} {{ $c->mobile ? '('.$c->mobile.')' : '' }}
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                    </select>
+                                </div>
+                                <div class="col-12 d-flex justify-content-end align-items-center gap-2 mt-2">
+                                    <a href="{{ route('direct-dc.index') }}" class="btn btn-outline-secondary px-3" id="btnResetDC" style="height: 38px; border-radius: 8px; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center;">
+                                        <i class="fas fa-undo me-1"></i>Reset
+                                    </a>
+                                    <button type="submit" class="btn btn-primary px-4" id="btnSearchDC" style="height: 38px; border-radius: 8px; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center;">
+                                        <i class="fas fa-search me-1"></i>Search
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
                     <form id="consolidateForm" action="{{ route('direct-dc.consolidate.preview') }}" method="POST">
                         @csrf
                         
@@ -130,8 +179,9 @@
                                         <th class="fw-bold">DC Number</th>
                                         <th class="fw-bold">Date</th>
                                         <th class="fw-bold">Customer</th>
-                                        <th class="fw-bold">Order No</th>
-                                        <th class="fw-bold">Items Count</th>
+                                        <th class="fw-bold">Ref / Order No</th>
+                                        <th class="fw-bold">Products</th>
+                                        <th class="fw-bold text-center">Items</th>
                                         <th class="fw-bold text-center">Status</th>
                                         <th class="fw-bold text-center">Actions</th>
                                     </tr>
@@ -144,6 +194,11 @@
                                         $soNo = $dc->sale ? ($dc->sale->invoice_no ?: 'SO-' . $dc->sale->id) : '';
                                         $isInvoiced = $dc->is_invoiced || !empty($dc->invoice_id) || ($dc->sale && $dc->sale->sale_type === 'direct_sale');
                                         $isHighlighted = (request('highlight_dc') == $dc->id) || (request('sale_id') && $dc->sale_id == request('sale_id') && !$isInvoiced);
+                                        $dcRef = $dc->reference_no ?? ($dc->sale?->reference ?? '');
+                                        $dcProductNames = $dc->items->map(function($item) {
+                                            return $item->product ? $item->product->item_name : ($item->description ?? '');
+                                        })->filter()->unique()->values();
+                                        $dcProductNamesStr = $dcProductNames->implode(', ');
                                     @endphp
                                     <tr class="{{ $isHighlighted ? 'highlight-uninvoiced-dc' : '' }}" id="dc-row-{{ $dc->id }}">
                                         <td class="text-center">
@@ -166,8 +221,20 @@
                                         </td>
                                         <td>{{ \Carbon\Carbon::parse($dc->dc_date)->format('d M, Y') }}</td>
                                         <td>{{ $cName }}</td>
-                                        <td>{{ $dc->reference_no ?? ($dc->sale?->reference ?? '-') }}</td>
-                                        <td>{{ $dc->items->count() }}</td>
+                                        <td class="font-monospace text-dark" data-search="{{ $dcRef }}">
+                                            {{ $dcRef ?: '-' }}
+                                        </td>
+                                        <td class="text-muted small" title="{{ $dcProductNamesStr }}" data-search="{{ $dcProductNamesStr }}" style="max-width: 220px;">
+                                            @if($dcProductNames->isEmpty())
+                                                <span class="text-muted">-</span>
+                                            @elseif($dcProductNames->count() == 1)
+                                                <span>{{ \Illuminate\Support\Str::limit($dcProductNames->first(), 28) }}</span>
+                                            @else
+                                                <span>{{ \Illuminate\Support\Str::limit($dcProductNames->first(), 22) }}</span>
+                                                <span class="badge bg-secondary-subtle text-dark ms-1 px-1 py-0" style="font-size: 10px;">+{{ $dcProductNames->count() - 1 }}</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center font-monospace">{{ $dc->items->count() }}</td>
                                         <td class="text-center">
                                             @if($isInvoiced)
                                                 <span class="badge bg-success rounded-pill px-3 py-2 shadow-sm"><i class="fas fa-check-circle me-1"></i> invoiced</span>
@@ -204,7 +271,7 @@
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="7" class="text-center py-4 text-muted">No Direct Delivery Challans found.</td>
+                                        <td colspan="9" class="text-center py-4 text-muted">No Direct Delivery Challans found.</td>
                                     </tr>
                                     @endforelse
                                 </tbody>
@@ -229,16 +296,43 @@ $(document).ready(function() {
             ],
             "order": [],
             "columnDefs": [
-                { "orderable": false, "targets": [0, 7] }
+                { "orderable": false, "targets": [0, 8] }
             ],
             "language": {
                 "search": "",
-                "searchPlaceholder": "Search challans...",
+                "searchPlaceholder": "Search challans (Ref, Product, Customer)...",
                 "lengthMenu": "_MENU_"
             },
             "dom": "<'row mb-3 align-items-center'<'col-12 col-md-6 mb-2 mb-md-0'l><'col-12 col-md-6'f>>" +
                 "<'row'<'col-12'tr>>" +
                 "<'row mt-3 align-items-center'<'col-12 col-md-5 mb-2 mb-md-0'i><'col-12 col-md-7'p>>",
+        });
+
+        // Instant Live search for Ref No, Product Name, and DC Number on DataTables
+        let dcDebounceTimer = null;
+        $('#filter_reference, #filter_product_name, #filter_dc_number').on('input', function() {
+            clearTimeout(dcDebounceTimer);
+            dcDebounceTimer = setTimeout(function() {
+                let refVal = $('#filter_reference').val().trim();
+                let prodVal = $('#filter_product_name').val().trim();
+                let dcVal = $('#filter_dc_number').val().trim();
+
+                // Column 1: DC Number, Column 4: Ref / Order No, Column 5: Products
+                dcTable.column(1).search(dcVal);
+                dcTable.column(4).search(refVal);
+                dcTable.column(5).search(prodVal);
+                dcTable.draw();
+            }, 300);
+        });
+
+        $('#filter_customer_id').on('change', function() {
+            if (!$(this).val()) {
+                dcTable.column(3).search('').draw();
+            } else {
+                let custText = $(this).find('option:selected').text();
+                let nameOnly = custText.split('(')[0].trim();
+                dcTable.column(3).search(nameOnly).draw();
+            }
         });
 
         $(document).on('change', '#per_page', function() {

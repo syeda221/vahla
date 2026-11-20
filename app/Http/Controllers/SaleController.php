@@ -92,10 +92,12 @@ class SaleController extends Controller
         }
 
         // Apply Ref No / M.Bill # (Reference) Filter
-        if ($request->filled('reference')) {
-            $ref = trim($request->reference);
+        $ref = trim($request->input('reference') ?? $request->input('ref_no') ?? '');
+        if ($ref !== '') {
             $query->where(function($q) use ($ref) {
                 $q->where('reference', 'like', "%{$ref}%")
+                  ->orWhere('comment', 'like', "%{$ref}%")
+                  ->orWhere('invoice_no', 'like', "%{$ref}%")
                   ->orWhereHas('deliveryChallans', function($dq) use ($ref) {
                       $dq->where('reference_no', 'like', "%{$ref}%");
                   })
@@ -109,6 +111,63 @@ class SaleController extends Controller
                           ->where('reference_no', 'like', "%{$ref}%");
                   });
             });
+        }
+
+        // Apply Product Search Filter
+        $prod = trim($request->input('product_name') ?? $request->input('product') ?? '');
+        if ($prod !== '') {
+            $words = array_values(array_filter(explode(' ', $prod)));
+            if (count($words) > 1) {
+                $query->where(function ($q) use ($words, $prod) {
+                    $q->where(function($subQ) use ($words) {
+                        foreach ($words as $w) {
+                            $subQ->whereHas('items', function ($iq) use ($w) {
+                                $iq->where('product_name', 'like', "%{$w}%")
+                                   ->orWhere('description', 'like', "%{$w}%")
+                                   ->orWhere('color', 'like', "%{$w}%")
+                                   ->orWhereHas('product', function ($pq) use ($w) {
+                                       $pq->where('item_name', 'like', "%{$w}%")
+                                          ->orWhere('item_code', 'like', "%{$w}%");
+                                   })
+                                   ->orWhereHas('productSet', function ($psq) use ($w) {
+                                       $psq->where('name', 'like', "%{$w}%")
+                                          ->orWhere('code', 'like', "%{$w}%");
+                                   });
+                            });
+                        }
+                    })
+                    ->orWhereHas('deliveryChallans.items', function ($dciq) use ($prod) {
+                        $dciq->where('description', 'like', "%{$prod}%")
+                             ->orWhereHas('product', function ($dpq) use ($prod) {
+                                 $dpq->where('item_name', 'like', "%{$prod}%")
+                                    ->orWhere('item_code', 'like', "%{$prod}%");
+                             });
+                    });
+                });
+            } else {
+                $query->where(function ($q) use ($prod) {
+                    $q->whereHas('items', function ($iq) use ($prod) {
+                        $iq->where('product_name', 'like', "%{$prod}%")
+                           ->orWhere('description', 'like', "%{$prod}%")
+                           ->orWhere('color', 'like', "%{$prod}%")
+                           ->orWhereHas('product', function ($pq) use ($prod) {
+                               $pq->where('item_name', 'like', "%{$prod}%")
+                                  ->orWhere('item_code', 'like', "%{$prod}%");
+                           })
+                           ->orWhereHas('productSet', function ($psq) use ($prod) {
+                               $psq->where('name', 'like', "%{$prod}%")
+                                  ->orWhere('code', 'like', "%{$prod}%");
+                           });
+                    })
+                    ->orWhereHas('deliveryChallans.items', function ($dciq) use ($prod) {
+                        $dciq->where('description', 'like', "%{$prod}%")
+                             ->orWhereHas('product', function ($dpq) use ($prod) {
+                                 $dpq->where('item_name', 'like', "%{$prod}%")
+                                    ->orWhere('item_code', 'like', "%{$prod}%");
+                             });
+                    });
+                });
+            }
         }
 
         // Apply Customer Filter

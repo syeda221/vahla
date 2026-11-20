@@ -142,7 +142,7 @@
                 </div>
             </div>
         </td>
-        <td class="font-monospace text-dark" style="max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $sale->reference ?? '' }}">
+        <td class="font-monospace text-dark" data-search="{{ $rawRef }} {{ $cleanRef }}" style="max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $sale->reference ?? '' }}">
             @php
                 $rawRef = $sale->reference ?? '';
                 if (empty($rawRef)) {
@@ -211,7 +211,7 @@
                 <span title="{{ $rawRef }}">{{ \Illuminate\Support\Str::limit($rawRef, 15, '..') }}</span>
             @endif
         </td>
-        <td title="{{ $pNames }}" class="text-muted small">
+        <td title="{{ $pNames }}" class="text-muted small" data-search="{{ $pNames }}">
             {{ \Illuminate\Support\Str::limit($pNames, 40) }}
         </td>
         <td class="text-center font-monospace">

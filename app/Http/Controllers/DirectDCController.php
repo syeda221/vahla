@@ -15,12 +15,99 @@ use Illuminate\Support\Facades\DB;
 
 class DirectDCController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $challans = DeliveryChallan::with(['customer', 'items.product', 'sale.customer_relation'])
-            ->orderBy('id', 'desc')
-            ->get();
-        return view('admin_panel.direct_dc.index', compact('challans'));
+        $query = DeliveryChallan::with(['customer', 'items.product', 'sale.customer_relation']);
+
+        // Filter by Reference Number / Order Number
+        $ref = trim($request->input('reference') ?? $request->input('ref_no') ?? '');
+        if ($ref !== '') {
+            $query->where(function($q) use ($ref) {
+                $q->where('reference_no', 'like', "%{$ref}%")
+                  ->orWhere('remarks', 'like', "%{$ref}%")
+                  ->orWhere('comment', 'like', "%{$ref}%")
+                  ->orWhere('dc_number', 'like', "%{$ref}%")
+                  ->orWhereHas('sale', function($sq) use ($ref) {
+                      $sq->where('reference', 'like', "%{$ref}%")
+                        ->orWhere('comment', 'like', "%{$ref}%")
+                        ->orWhere('invoice_no', 'like', "%{$ref}%");
+                  });
+            });
+        }
+
+        // Filter by Product Name / Code
+        $prod = trim($request->input('product_name') ?? $request->input('product') ?? '');
+        if ($prod !== '') {
+            $words = array_values(array_filter(explode(' ', $prod)));
+            if (count($words) > 1) {
+                $query->where(function($q) use ($words) {
+                    foreach ($words as $w) {
+                        $q->whereHas('items', function($iq) use ($w) {
+                            $iq->where('description', 'like', "%{$w}%")
+                               ->orWhere('color', 'like', "%{$w}%")
+                               ->orWhereHas('product', function($pq) use ($w) {
+                                   $pq->where('item_name', 'like', "%{$w}%")
+                                      ->orWhere('item_code', 'like', "%{$w}%");
+                               });
+                        });
+                    }
+                });
+            } else {
+                $query->whereHas('items', function($iq) use ($prod) {
+                    $iq->where('description', 'like', "%{$prod}%")
+                       ->orWhere('color', 'like', "%{$prod}%")
+                       ->orWhereHas('product', function($pq) use ($prod) {
+                           $pq->where('item_name', 'like', "%{$prod}%")
+                              ->orWhere('item_code', 'like', "%{$prod}%");
+                       });
+                });
+            }
+        }
+
+        // Filter by Customer
+        if ($request->filled('customer_id')) {
+            $query->where(function($q) use ($request) {
+                $q->where('customer_id', $request->customer_id)
+                  ->orWhereHas('sale', function($sq) use ($request) {
+                      $sq->where('customer_id', $request->customer_id);
+                  });
+            });
+        }
+
+        // Filter by DC Number
+        if ($request->filled('dc_number')) {
+            $dcNum = trim($request->dc_number);
+            $query->where('dc_number', 'like', "%{$dcNum}%");
+        }
+
+        // Helper for date parsing
+        $parseDate = function ($dateStr) {
+            if (empty($dateStr)) return null;
+            $dateStr = trim($dateStr);
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateStr)) return $dateStr;
+            if (preg_match('/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/', $dateStr, $m)) {
+                return sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]);
+            }
+            try {
+                return \Carbon\Carbon::parse($dateStr)->format('Y-m-d');
+            } catch (\Exception $e) {
+                return $dateStr;
+            }
+        };
+
+        if ($request->filled('from_date')) {
+            $fromDate = $parseDate($request->from_date);
+            if ($fromDate) $query->whereDate('dc_date', '>=', $fromDate);
+        }
+        if ($request->filled('to_date')) {
+            $toDate = $parseDate($request->to_date);
+            if ($toDate) $query->whereDate('dc_date', '<=', $toDate);
+        }
+
+        $challans = $query->orderBy('id', 'desc')->get();
+        $customers = Customer::orderBy('customer_name')->get();
+
+        return view('admin_panel.direct_dc.index', compact('challans', 'customers'));
     }
 
     public function create()
