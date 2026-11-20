@@ -142,53 +142,53 @@
                 </div>
             </div>
         </td>
-        <td class="font-monospace text-dark" data-search="{{ $rawRef }} {{ $cleanRef }}" style="max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $sale->reference ?? '' }}">
-            @php
-                $rawRef = $sale->reference ?? '';
+        @php
+            $rawRef = $sale->reference ?? '';
+            if (empty($rawRef)) {
+                // Check linked delivery challans for reference_no
+                if ($sale->deliveryChallans && $sale->deliveryChallans->isNotEmpty()) {
+                    $rawRef = $sale->deliveryChallans->whereNotNull('reference_no')->pluck('reference_no')->filter()->first() ?? '';
+                }
                 if (empty($rawRef)) {
-                    // Check linked delivery challans for reference_no
-                    if ($sale->deliveryChallans && $sale->deliveryChallans->isNotEmpty()) {
-                        $rawRef = $sale->deliveryChallans->whereNotNull('reference_no')->pluck('reference_no')->filter()->first() ?? '';
-                    }
-                    if (empty($rawRef)) {
-                        $linkedDc = \App\Models\DeliveryChallan::where('invoice_id', $sale->id)->whereNotNull('reference_no')->first();
-                        if ($linkedDc && !empty($linkedDc->reference_no)) {
-                            $rawRef = $linkedDc->reference_no;
-                        }
-                    }
-                    if (empty($rawRef) && $sale->parent_quotation_id) {
-                        $origSale = $sale->quotation ?: \App\Models\Sale::find($sale->parent_quotation_id);
-                        if ($origSale && !empty($origSale->reference)) {
-                            $rawRef = $origSale->reference;
-                        }
-                    }
-                    if (empty($rawRef) && !empty($sale->comment)) {
-                        $rawRef = $sale->comment;
+                    $linkedDc = \App\Models\DeliveryChallan::where('invoice_id', $sale->id)->whereNotNull('reference_no')->first();
+                    if ($linkedDc && !empty($linkedDc->reference_no)) {
+                        $rawRef = $linkedDc->reference_no;
                     }
                 }
-
-                $cleanRef = $rawRef;
-                $isSpecial = false;
-                $badgeIcon = 'fas fa-hashtag';
-                $badgeClass = 'bg-light text-secondary border';
-
-                if (preg_match('/^Consolidated\s+Invoice\s+for\s*(.*)$/i', $rawRef, $m)) {
-                    $cleanRef = trim($m[1]);
-                    $isSpecial = true;
-                    $badgeIcon = 'fas fa-layer-group';
-                    $badgeClass = 'bg-light text-primary border';
-                } elseif (preg_match('/^Invoice\s+for\s+DC:\s*(.*)$/i', $rawRef, $m)) {
-                    $cleanRef = trim($m[1]);
-                    $isSpecial = true;
-                    $badgeIcon = 'fas fa-truck';
-                    $badgeClass = 'bg-light text-info border';
-                } elseif (preg_match('/^Exchange\s+for\s*(.*)$/i', $rawRef, $m)) {
-                    $cleanRef = 'Ex: ' . trim($m[1]);
-                    $isSpecial = true;
-                    $badgeIcon = 'fas fa-exchange-alt';
-                    $badgeClass = 'bg-light text-warning border';
+                if (empty($rawRef) && $sale->parent_quotation_id) {
+                    $origSale = $sale->quotation ?: \App\Models\Sale::find($sale->parent_quotation_id);
+                    if ($origSale && !empty($origSale->reference)) {
+                        $rawRef = $origSale->reference;
+                    }
                 }
-            @endphp
+                if (empty($rawRef) && !empty($sale->comment)) {
+                    $rawRef = $sale->comment;
+                }
+            }
+
+            $cleanRef = $rawRef;
+            $isSpecial = false;
+            $badgeIcon = 'fas fa-hashtag';
+            $badgeClass = 'bg-light text-secondary border';
+
+            if (preg_match('/^Consolidated\s+Invoice\s+for\s*(.*)$/i', $rawRef, $m)) {
+                $cleanRef = trim($m[1]);
+                $isSpecial = true;
+                $badgeIcon = 'fas fa-layer-group';
+                $badgeClass = 'bg-light text-primary border';
+            } elseif (preg_match('/^Invoice\s+for\s+DC:\s*(.*)$/i', $rawRef, $m)) {
+                $cleanRef = trim($m[1]);
+                $isSpecial = true;
+                $badgeIcon = 'fas fa-truck';
+                $badgeClass = 'bg-light text-info border';
+            } elseif (preg_match('/^Exchange\s+for\s*(.*)$/i', $rawRef, $m)) {
+                $cleanRef = 'Ex: ' . trim($m[1]);
+                $isSpecial = true;
+                $badgeIcon = 'fas fa-exchange-alt';
+                $badgeClass = 'bg-light text-warning border';
+            }
+        @endphp
+        <td class="font-monospace text-dark" data-search="{{ $rawRef }} {{ $cleanRef }}" style="max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $sale->reference ?? '' }}">
 
             @if(empty($rawRef))
                 <span class="text-muted">-</span>
