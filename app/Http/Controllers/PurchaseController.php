@@ -424,23 +424,13 @@ class PurchaseController extends Controller
                 $ppb = (float) ($item->pieces_per_box > 0 ? $item->pieces_per_box : ($item->product->pieces_per_box ?? 1));
                 if ($ppb <= 0) $ppb = 1;
 
-<<<<<<< HEAD
-                $isPiece = in_array($unit, ['pcs', 'pc', 'piece']);
-                $isCarton = in_array($unit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (!$isPiece && in_array($item->size_mode, ['by_cartons', 'by_bandal']));
-
-                if ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams') {
-                    $baseQty = ((float) $item->qty) / 1000.0;
-                } elseif ($isPiece) {
-                    // Pieces purchased: qty is directly pieces
-                    $baseQty = (float) $item->qty;
-                } elseif ($isCarton) {
-=======
                 $pSizeMode = $item->size_mode ?? ($item->product->size_mode ?? '');
+                $isPiece = in_array($unit, ['pcs', 'pc', 'piece']);
+                $isCarton = in_array($unit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (!$isPiece && in_array($pSizeMode, ['by_cartons', 'by_bandal']));
 
                 if ($unit === 'gm' || $unit === 'g' || $unit === 'gram' || $unit === 'grams') {
                     $baseQty = ((float) $item->qty) / 1000.0;
-                } elseif ($unit === 'carton' || $unit === 'ctn' || $unit === 'box' || ($pSizeMode === 'by_cartons')) {
->>>>>>> 90637cd5e8d4dcf256b13f10f431242d3f0accff
+                } elseif ($isCarton) {
                     // Full carton / carton.loose purchased: convert cartons to pieces for warehouse_stocks and stock_movements
                     if ($item->boxes_qty > 0 || $item->loose_qty > 0) {
                         $boxes = (int) $item->boxes_qty;
@@ -449,18 +439,15 @@ class PurchaseController extends Controller
                         [$boxes, $loose] = self::parseCartonQty($item->qty);
                     }
                     $baseQty = ($boxes * $ppb) + $loose;
-<<<<<<< HEAD
-=======
                 } elseif ($pSizeMode === 'by_kg' || $pSizeMode === 'by_gm') {
-                    if ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece' || ($convFactor > 0 && $convFactor != 1.0)) {
+                    if ($isPiece || ($convFactor > 0 && $convFactor != 1.0)) {
                         $baseQty = ((float) $item->qty) * $convFactor;
                     } else {
                         $baseQty = (float) $item->qty;
                     }
-                } elseif ($unit === 'pcs' || $unit === 'pc' || $unit === 'piece') {
+                } elseif ($isPiece) {
                     // Pieces purchased: qty is directly pieces
                     $baseQty = (float) $item->qty;
->>>>>>> 90637cd5e8d4dcf256b13f10f431242d3f0accff
                 } else {
                     $baseQty = ((float) $item->qty) * $convFactor;
                 }

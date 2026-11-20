@@ -182,9 +182,6 @@ class PurchasePOSController extends Controller
                     }
 
                     $vStockDisplay = $vBalance;
-<<<<<<< HEAD
-                    if ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') && $ppb > 1) {
-=======
                     if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
                         $factor = (float) $v['conv_factor'];
                         if ($factor == 1) {
@@ -200,8 +197,7 @@ class PurchasePOSController extends Controller
                             $pcsCount = (int) floor($vBalance);
                             $vStockDisplay = "{$pcsCount}";
                         }
-                    } elseif (($p->size_mode === 'by_cartons' || $p->size_mode === 'by_size') && $ppb > 1) {
->>>>>>> 90637cd5e8d4dcf256b13f10f431242d3f0accff
+                    } elseif ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') && $ppb > 1) {
                         $vBoxes = floor($vBalance / $ppb);
                         $vLoose = $vBalance % $ppb;
                         $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes;

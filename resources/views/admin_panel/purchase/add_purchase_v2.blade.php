@@ -1180,10 +1180,6 @@ a.btn-outline-primary:hover {
                     const isCartonMode = (['by_cartons', 'by_bandal'].includes(data.size_mode) || unitName.toLowerCase() === 'carton' || unitName.toLowerCase() === 'ctn' || ppb > 1);
 
                     // Dynamic Unit & Style
-<<<<<<< HEAD
-                    if (isCartonMode) {
-                        unitName = (data.size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
-=======
                     let vUnit = data.unit_name || null;
                     if (data.variant_data) {
                         try {
@@ -1193,9 +1189,8 @@ a.btn-outline-primary:hover {
                     }
                     const vUnitNorm = (vUnit || '').toLowerCase().trim();
 
-                    if (isCartonMode || vUnitNorm === 'carton' || vUnitNorm === 'ctn') {
-                        unitName = 'Carton';
->>>>>>> 90637cd5e8d4dcf256b13f10f431242d3f0accff
+                    if (isCartonMode || vUnitNorm === 'carton' || vUnitNorm === 'ctn' || vUnitNorm === 'bandal' || vUnitNorm === 'bundal' || vUnitNorm === 'bndl') {
+                        unitName = (data.size_mode === 'by_bandal' || vUnitNorm === 'bandal' || vUnitNorm === 'bundal' || vUnitNorm === 'bndl') ? 'Bundal' : 'Carton';
                         $row.find('.unit-toggle-btn')
                             .removeClass('btn-outline-primary btn-outline-info')
                             .addClass('btn-outline-success')
@@ -1315,11 +1310,7 @@ a.btn-outline-primary:hover {
                 const $priceInp = $row.find('.price');
                 let curPrice = parseFloat($priceInp.val()) || 0;
 
-<<<<<<< HEAD
-                const isCartonOrPcs = (['by_cartons', 'by_bandal'].includes(sizeMode) || packQty > 1 || ['carton', 'ctn', 'pcs', 'pc', 'piece'].includes(currentUnit.toLowerCase()));
-=======
-                const isCartonOrPcs = (sizeMode === 'by_cartons' || packQty > 1 || ['carton', 'ctn'].includes(currentUnit.toLowerCase()));
->>>>>>> 90637cd5e8d4dcf256b13f10f431242d3f0accff
+                const isCartonOrPcs = (['by_cartons', 'by_bandal'].includes(sizeMode) || packQty > 1 || ['carton', 'ctn', 'bandal', 'bundal', 'bndl', 'pcs', 'pc', 'piece'].includes(currentUnit.toLowerCase()));
 
                 if (isCartonOrPcs) {
                     if (['carton', 'ctn', 'bandal', 'bundal', 'bndl'].includes(currentUnit.toLowerCase())) {
@@ -1439,8 +1430,6 @@ a.btn-outline-primary:hover {
                     }
                 } else {
                     gross = qty * price;
-<<<<<<< HEAD
-=======
                     if (unitVal === 'pcs' || unitVal === 'pc' || unitVal === 'piece') {
                         if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
                             $row.find('.hidden-boxes-qty').val(0);
@@ -1451,7 +1440,6 @@ a.btn-outline-primary:hover {
                             $row.find('.hidden-loose-qty').val(qty);
                         }
                     }
->>>>>>> 90637cd5e8d4dcf256b13f10f431242d3f0accff
                 }
 
                 const discAmt = gross * (discPct / 100);

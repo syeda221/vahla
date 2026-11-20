@@ -1081,7 +1081,6 @@
             computeRow($row);
         });
 
-<<<<<<< HEAD
     // Pcs/Ctn column is always rendered — just set the value based on size mode
     function updatePcsCtnColumn($row, sizeMode) {
         const packQty = parseFloat($row.find('.pack-qty').val()) || 1;
@@ -1098,46 +1097,19 @@
         $('.col-pcs-ctn-th').show();
     }
 
-    function setupRowQtyToggle($row, sizeMode) {
-        const $toggleBtn = $row.find('.qty-unit-toggle');
-        updatePcsCtnColumn($row, sizeMode);
-        if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
-            let label = (sizeMode === 'by_bandal') ? 'Bndl' : 'Ctn';
-            $toggleBtn.removeClass('d-none')
-                      .attr('data-unit-mode', 'ctn')
-                      .text(label)
-                      .removeClass('btn-outline-primary btn-outline-info btn-outline-warning')
-                      .addClass('btn-outline-success');
-            $row.find('.hidden-sub-unit-mode').val('ctn');
-            $row.find('.carton-qty').attr('placeholder', '0');
-        } else if (sizeMode === 'by_kg') {
-            $toggleBtn.removeClass('d-none')
-                      .attr('data-unit-mode', 'kg')
-                      .text('Kg')
-                      .removeClass('btn-outline-info btn-outline-warning btn-outline-success')
-                      .addClass('btn-outline-primary');
-            $row.find('.hidden-sub-unit-mode').val('kg');
-            $row.find('.carton-qty').attr('placeholder', '0');
-        } else if (sizeMode === 'by_gm') {
-            $toggleBtn.removeClass('d-none')
-                      .attr('data-unit-mode', 'gm')
-                      .text('Gm')
-                      .removeClass('btn-outline-primary btn-outline-warning btn-outline-success')
-                      .addClass('btn-outline-info');
-            $row.find('.hidden-sub-unit-mode').val('gm');
-=======
     function setupRowQtyToggle($row, sizeMode, variantUnit = null) {
         const $toggleBtn = $row.find('.qty-unit-toggle');
+        updatePcsCtnColumn($row, sizeMode);
         const vUnitNorm = (variantUnit || '').toLowerCase().trim();
-        if (sizeMode === 'by_cartons') {
+        if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
             const isPcs = (vUnitNorm === 'pcs' || vUnitNorm === 'pc' || vUnitNorm === 'piece');
+            let label = isPcs ? 'Pcs' : ((sizeMode === 'by_bandal') ? 'Bndl' : 'Ctn');
             $toggleBtn.removeClass('d-none')
                       .attr('data-unit-mode', isPcs ? 'pcs' : 'ctn')
-                      .text(isPcs ? 'Pcs' : 'Ctn')
+                      .text(label)
                       .removeClass('btn-outline-primary btn-outline-info btn-outline-warning btn-outline-success')
                       .addClass(isPcs ? 'btn-outline-info' : 'btn-outline-success');
             $row.find('.hidden-sub-unit-mode').val(isPcs ? 'pcs' : 'ctn');
->>>>>>> 90637cd5e8d4dcf256b13f10f431242d3f0accff
             $row.find('.carton-qty').attr('placeholder', '0');
         } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
             if (vUnitNorm === 'pcs' || vUnitNorm === 'pc' || vUnitNorm === 'piece') {

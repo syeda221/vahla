@@ -160,12 +160,8 @@ class POSController extends Controller
                         }
                     }
 
-<<<<<<< HEAD
                     $vNet = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned);
-
-=======
                     $vWeightPerPiece = (float) ($v['weight_per_piece'] ?? 0);
->>>>>>> 90637cd5e8d4dcf256b13f10f431242d3f0accff
                     if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
                         $factor = (float) $v['conv_factor'];
                         if ($factor <= 0 && $vWeightPerPiece > 0) {
