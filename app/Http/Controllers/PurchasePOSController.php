@@ -172,12 +172,12 @@ class PurchasePOSController extends Controller
                             $vWeightPerPiece = 1000.0;
                         }
                         if ($factor == 1) {
-                            $vBalance = max(0, $totalStockPieces);
+                            $vBalance = $totalStockPieces;
                         } else {
-                            $vBalance = (int) floor(max(0, $totalStockPieces) / $factor);
+                            $vBalance = (int) ($totalStockPieces < 0 ? ceil($totalStockPieces / $factor) : floor($totalStockPieces / $factor));
                         }
                     } else {
-                        $vBalance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned);
+                        $vBalance = $initial + $purchased - $sold + $returnedQty - $pReturned;
                         $totalStockPieces += $vBalance;
                     }
 
@@ -185,7 +185,9 @@ class PurchasePOSController extends Controller
                     if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
                         $factor = (float) $v['conv_factor'];
                         if ($factor == 1) {
-                            if ($vBalance < 0.001) {
+                            if ($vBalance < 0) {
+                                $vStockDisplay = "{$vBalance} Kg";
+                            } elseif ($vBalance < 0.001) {
                                 $vStockDisplay = "0 Kg (0 Gm)";
                             } elseif ($vBalance < 1 && $vBalance > 0) {
                                 $gmVal = (int) round($vBalance * 1000);
@@ -194,13 +196,20 @@ class PurchasePOSController extends Controller
                                 $vStockDisplay = "{$vBalance} Kg";
                             }
                         } else {
-                            $pcsCount = (int) floor($vBalance);
+                            $pcsCount = (int) ($vBalance < 0 ? ceil($vBalance) : floor($vBalance));
                             $vStockDisplay = "{$pcsCount}";
                         }
                     } elseif ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') && $ppb > 1) {
-                        $vBoxes = floor($vBalance / $ppb);
-                        $vLoose = $vBalance % $ppb;
-                        $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes;
+                        if ($vBalance < 0) {
+                            $absBal = abs($vBalance);
+                            $vBoxes = floor($absBal / $ppb);
+                            $vLoose = $absBal % $ppb;
+                            $vStockDisplay = '-' . ($vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes);
+                        } else {
+                            $vBoxes = floor($vBalance / $ppb);
+                            $vLoose = $vBalance % $ppb;
+                            $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes;
+                        }
                     }
 
                     $v['current_stock'] = $vStockDisplay;

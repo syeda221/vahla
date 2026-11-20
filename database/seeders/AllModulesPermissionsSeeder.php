@@ -111,7 +111,9 @@ class AllModulesPermissionsSeeder extends Seeder
             'website-settings.edit',
             'website-settings.delete',
             'website-settings.update',
-            'website-settings.upload_manage'
+            'website-settings.upload_manage',
+            'sales.allow_low_stock',
+            'sales.low_stock',
         ] as $permName) {
             Permission::firstOrCreate(['name' => $permName]);
         }

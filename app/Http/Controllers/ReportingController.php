@@ -320,7 +320,7 @@ class ReportingController extends Controller
                     }
                 }
                 
-                $balance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments);
+                $balance = $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments;
             }
             
             $variantSuffix = [];
@@ -885,7 +885,7 @@ class ReportingController extends Controller
                         }
 
                         // Balance in Total Pieces = Initial + Purchased - Sold + Returned - Purchased Returned + Adjustments
-                        $balance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments);
+                        $balance = $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments;
                     }
 
                     // Weighted Average Purchase Price

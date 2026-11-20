@@ -1892,8 +1892,16 @@ class SaleController extends Controller
             }
 
             if (! $stock) {
-                // Create if missing? Or fail? User said "Validate warehouse stock".
-                throw new \Exception('Stock not found for product: '.$item->product_name);
+                $stock = WarehouseStock::firstOrCreate(
+                    [
+                        'product_id' => $item->product_id,
+                        'warehouse_id' => $targetWhId,
+                    ],
+                    [
+                        'total_pieces' => 0,
+                        'quantity' => 0,
+                    ]
+                );
             }
 
             // Calculate stock deduction quantity (for Kg products, total_pieces in WarehouseStock = total Kg)
@@ -1950,15 +1958,34 @@ class SaleController extends Controller
             }
 
             if ($type === 'out') {
-                // Deduct
+                // Check available stock
                 $available = $this->calculateAvailableForItem($item, $stock);
-                if ($available < $qtyPieces) {
+
+                // Permission check for low/negative stock sale
+                $canSellLowStock = false;
+                $user = auth()->user();
+                if ($user) {
+                    if ($user->email === 'superadmin@example.com' || $user->hasRole('Super Admin')) {
+                        $canSellLowStock = true;
+                    } else {
+                        try {
+                            if ($user->hasPermissionTo('sales.allow_low_stock') || $user->hasPermissionTo('sales.low_stock') || $user->can('sales.allow_low_stock') || $user->can('sales.low_stock')) {
+                                $canSellLowStock = true;
+                            }
+                        } catch (\Throwable $e) {
+                            $canSellLowStock = false;
+                        }
+                    }
+                }
+
+                if (! $canSellLowStock && $available < $qtyPieces) {
                     $availFormatted = number_format($available, 3);
                     $unitLabel = ($productMode === 'by_kg' || $productMode === 'by_gm') ? 'Kg' : 'Pcs';
-                    throw new \Exception('Insufficient stock for '.$item->product_name.'. Available: '.$availFormatted.' '.$unitLabel);
+                    throw new \Exception('Insufficient stock for '.$item->product_name.'. Available: '.$availFormatted.' '.$unitLabel.'. Low stock sale permission required.');
                 }
-                // Reconcile physical stock with the variant ledger shown in the UI
-                if ($available > $stock->total_pieces) {
+
+                // Reconcile physical stock with the variant ledger shown in the UI if physical stock was uninitialized
+                if ($stock->total_pieces > 0 && $available > $stock->total_pieces) {
                     $stock->total_pieces = $available;
                 }
                 $stock->total_pieces -= $qtyPieces;
@@ -2151,7 +2178,7 @@ class SaleController extends Controller
             }
         }
 
-        return max(0, $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments);
+        return $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments;
     }
 
     /**

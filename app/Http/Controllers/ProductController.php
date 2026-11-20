@@ -131,9 +131,16 @@ class ProductController extends Controller
 
             $stockDisplay = $stockPieces;
             if ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') && $ppb > 1) {
-                $boxes = floor($stockPieces / $ppb);
-                $loose = $stockPieces % $ppb;
-                $stockDisplay = $loose > 0 ? "$boxes.$loose" : $boxes;
+                if ($stockPieces < 0) {
+                    $absPieces = abs($stockPieces);
+                    $boxes = floor($absPieces / $ppb);
+                    $loose = $absPieces % $ppb;
+                    $stockDisplay = '-' . ($loose > 0 ? "$boxes.$loose" : $boxes);
+                } else {
+                    $boxes = floor($stockPieces / $ppb);
+                    $loose = $stockPieces % $ppb;
+                    $stockDisplay = $loose > 0 ? "$boxes.$loose" : $boxes;
+                }
             }
 
             $variants = [];
@@ -230,9 +237,9 @@ class ProductController extends Controller
                         $factor = (float) $v['conv_factor'];
                         $factor = $factor > 0 ? $factor : 1;
                         if ($factor == 1) {
-                            $vBalance = max(0, $stockPieces);
+                            $vBalance = $stockPieces;
                         } else {
-                            $vBalance = (int) floor(max(0, $stockPieces) / $factor);
+                            $vBalance = (int) ($stockPieces < 0 ? ceil($stockPieces / $factor) : floor($stockPieces / $factor));
                         }
                     } else {
                         // Initial Stock in Pieces
@@ -308,7 +315,7 @@ class ProductController extends Controller
                             }
                         }
 
-                        $vBalance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned);
+                        $vBalance = $initial + $purchased - $sold + $returnedQty - $pReturned;
                     }
 
                     $vStockDisplay = $vBalance;
@@ -320,7 +327,9 @@ class ProductController extends Controller
                         }
                         
                         if ($factor == 1) {
-                            if ($vBalance < 0.001) {
+                            if ($vBalance < 0) {
+                                $vStockDisplay = "{$vBalance} {$vUnitName}";
+                            } elseif ($vBalance < 0.001) {
                                 $vStockDisplay = "0 {$vUnitName} (0 Gm)";
                             } elseif ($vBalance < 1 && $vBalance > 0) {
                                 $gmVal = (int) round($vBalance * 1000);
@@ -329,13 +338,20 @@ class ProductController extends Controller
                                 $vStockDisplay = "{$vBalance} {$vUnitName}";
                             }
                         } else {
-                            $pcsCount = (int) floor($vBalance);
+                            $pcsCount = (int) ($vBalance < 0 ? ceil($vBalance) : floor($vBalance));
                             $vStockDisplay = "{$pcsCount}";
                         }
                     } elseif ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') && $vPpb > 1) {
-                        $vBoxes = (int) floor($vBalance / $vPpb);
-                        $vLoose = (int) round($vBalance - ($vBoxes * $vPpb));
-                        $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes;
+                        if ($vBalance < 0) {
+                            $absBal = abs($vBalance);
+                            $vBoxes = (int) floor($absBal / $vPpb);
+                            $vLoose = (int) round($absBal - ($vBoxes * $vPpb));
+                            $vStockDisplay = '-' . ($vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes);
+                        } else {
+                            $vBoxes = (int) floor($vBalance / $vPpb);
+                            $vLoose = (int) round($vBalance - ($vBoxes * $vPpb));
+                            $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes;
+                        }
                     }
 
                     $v['current_stock'] = $vStockDisplay;

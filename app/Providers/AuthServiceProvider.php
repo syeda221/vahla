@@ -26,20 +26,22 @@ class AuthServiceProvider extends ServiceProvider
         // Implicitly grant "Super Admin" role all permissions EXCEPT website control permissions
         // Handles both 'Super Admin' (space) and 'superAdmin' (camelCase) role names
         \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
-            $websitePrefixes = [
+            $exceptions = [
                 'website-settings',
                 'web_products',
                 'coupons',
                 'web_orders',
                 'web_users',
+                'sales.allow_low_stock',
+                'sales.low_stock',
             ];
-            foreach ($websitePrefixes as $prefix) {
+            foreach ($exceptions as $prefix) {
                 if (str_starts_with($ability, $prefix)) {
                     return null; // Check explicit permissions instead of auto-granting
                 }
             }
 
-            if ($user->hasRole('Super Admin') || $user->hasRole('superAdmin') || $user->hasRole('admin')) {
+            if ($user->hasRole('Super Admin') || $user->hasRole('superAdmin')) {
                 return true;
             }
             return null;

@@ -160,7 +160,7 @@ class POSController extends Controller
                         }
                     }
 
-                    $vNet = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned);
+                    $vNet = $initial + $purchased - $sold + $returnedQty - $pReturned;
                     $vWeightPerPiece = (float) ($v['weight_per_piece'] ?? 0);
                     if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
                         $factor = (float) $v['conv_factor'];
@@ -188,7 +188,9 @@ class POSController extends Controller
                     if (isset($v['conv_factor']) && $p->size_mode === 'by_kg') {
                         $factor = (float) $v['conv_factor'];
                         if ($factor == 1) {
-                            if ($vBalance < 0.001) {
+                            if ($vBalance < 0) {
+                                $vStockDisplay = "{$vBalance} Kg";
+                            } elseif ($vBalance < 0.001) {
                                 $vStockDisplay = "0 Kg (0 Gm)";
                             } elseif ($vBalance < 1 && $vBalance > 0) {
                                 $gmVal = (int) round($vBalance * 1000);
@@ -197,13 +199,20 @@ class POSController extends Controller
                                 $vStockDisplay = "{$vBalance} Kg";
                             }
                         } else {
-                            $pcsCount = (int) floor($vBalance);
+                            $pcsCount = (int) ($vBalance < 0 ? ceil($vBalance) : floor($vBalance));
                             $vStockDisplay = "{$pcsCount}";
                         }
                     } elseif ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') && $ppb > 1) {
-                        $vBoxes = floor($vBalance / $ppb);
-                        $vLoose = $vBalance % $ppb;
-                        $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes;
+                        if ($vBalance < 0) {
+                            $absBal = abs($vBalance);
+                            $vBoxes = floor($absBal / $ppb);
+                            $vLoose = $absBal % $ppb;
+                            $vStockDisplay = '-' . ($vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes);
+                        } else {
+                            $vBoxes = floor($vBalance / $ppb);
+                            $vLoose = $vBalance % $ppb;
+                            $vStockDisplay = $vLoose > 0 ? "$vBoxes.$vLoose" : $vBoxes;
+                        }
                     }
 
                     $v['current_stock'] = $vStockDisplay;

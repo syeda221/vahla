@@ -57,6 +57,41 @@
             width: 100%;
         }
 
+        /* Segmented Toggle (Customer vs Walk-in) */
+        .seg-toggle {
+            display: inline-flex;
+            align-items: center;
+            background: #F1F5F9;
+            border: 1px solid #CBD5E1;
+            border-radius: 10px;
+            padding: 3px;
+            height: 42px;
+            width: 100%;
+        }
+        .seg-toggle .btn {
+            flex: 1;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+            font-size: 12.5px !important;
+            border: none !important;
+            padding: 6px 14px !important;
+            transition: all 0.15s ease-in-out !important;
+            cursor: pointer !important;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .seg-toggle .btn.active {
+            background: #2563EB !important;
+            color: #FFFFFF !important;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3) !important;
+        }
+        .seg-toggle .btn:not(.active) {
+            background: transparent !important;
+            color: #475569 !important;
+            box-shadow: none !important;
+        }
+
         /* ---------- CARDS ---------- */
         .sale-card {
             background: var(--pos-card);
@@ -655,9 +690,17 @@
             font-size: 13.5px !important;
             text-align: right !important;
         }
+        .sales-table tbody input.total-pieces {
+            background: #F8FAFC !important;
+            border-color: #E2E8F0 !important;
+            color: #0A2540 !important;
+            font-weight: 700 !important;
+            font-size: 13.5px !important;
+            text-align: center !important;
+        }
         .sales-table .c-pcs-th,
-        .sales-table .col-pieces,
-        .sales-table col.c-pcs {
+        .sales-table col.c-pcs,
+        .sales-table .col-size {
             display: none !important;
         }
 
@@ -724,10 +767,13 @@
             display: flex;
             align-items: center;
             gap: 4px;
+            width: 100%;
         }
         .qty-cell-flex .carton-qty {
             flex: 1;
-            min-width: 0;
+            min-width: 60px;
+            padding-left: 6px !important;
+            padding-right: 4px !important;
         }
         .qty-unit-toggle {
             height: 38px !important;
@@ -1068,33 +1114,10 @@
                 text-align: center !important;
             }
 
-            /* 4. Size (Left) & Pcs / Ctn (Right) on Row 4 */
-            .sales-table tbody td.col-size {
-                grid-row: 4 !important;
-                grid-column: 1 / 2 !important;
-            }
-            .sales-table tbody td.col-size::before {
-                content: "SIZE";
-                display: block;
-                font-size: 11px;
-                font-weight: 700;
-                color: #64748B;
-                text-transform: uppercase;
-                letter-spacing: .5px;
-                margin-bottom: 5px;
-            }
-            .sales-table tbody td.col-size .size-display {
-                height: 40px !important;
-                border: 1px solid #CBD5E1 !important;
-                border-radius: 8px !important;
-                font-size: 13.5px !important;
-                font-weight: 600 !important;
-                text-align: center !important;
-            }
-
+            /* 4. Pcs / Ctn (Left) & Total Qty (Right) on Row 4 */
             .sales-table tbody td.col-pcs-ctn {
                 grid-row: 4 !important;
-                grid-column: 2 / 3 !important;
+                grid-column: 1 / 2 !important;
             }
             .sales-table tbody td.col-pcs-ctn::before {
                 content: "PCS / CTN";
@@ -1106,6 +1129,31 @@
                 letter-spacing: .5px;
                 margin-bottom: 5px;
                 text-align: left;
+            }
+
+            .sales-table tbody td.col-pieces {
+                grid-row: 4 !important;
+                grid-column: 2 / 3 !important;
+            }
+            .sales-table tbody td.col-pieces::before {
+                content: "TOTAL QTY";
+                display: block;
+                font-size: 11px;
+                font-weight: 700;
+                color: #64748B;
+                text-transform: uppercase;
+                letter-spacing: .5px;
+                margin-bottom: 5px;
+                text-align: left;
+            }
+            .sales-table tbody td.col-pieces .total-pieces {
+                height: 40px !important;
+                border: 1px solid #CBD5E1 !important;
+                border-radius: 8px !important;
+                font-size: 13.5px !important;
+                font-weight: 700 !important;
+                text-align: center !important;
+                background: #F8FAFC !important;
             }
             .sales-table tbody td.col-pcs-ctn .pcs-per-ctn {
                 height: 40px !important;
@@ -1244,7 +1292,7 @@
             }
 
             /* Hidden helper columns */
-            .sales-table tbody td.col-pieces,
+            .sales-table tbody td.col-size,
             .sales-table tbody td.loose-pcs-input,
             .sales-table tbody td.d-none {
                 display: none !important;
@@ -1928,11 +1976,11 @@
                             {{-- Sale Type --}}
                             <div class="col-12 col-md-3">
                                 <label class="field-label">Sale Type</label>
-                                <div class="seg-toggle" role="group" aria-label="Sale Type" style="background: #F1F5F9; border: 1px solid #CBD5E1; border-radius: 10px; padding: 3px; height: 42px;">
-                                    <button type="button" class="btn btn-primary active text-white" id="btnTypeCustomer" style="background: #2563EB; border-radius: 8px; font-weight: 600; font-size: 12.5px; border: none;">
+                                <div class="seg-toggle" role="group" aria-label="Sale Type">
+                                    <button type="button" class="btn btn-primary active text-white" id="btnTypeCustomer">
                                         <i class="fas fa-users me-1"></i> Customer
                                     </button>
-                                    <button type="button" class="btn btn-outline-primary" id="btnTypeWalkin" style="background: transparent; color: #475569; border-radius: 8px; font-weight: 600; font-size: 12.5px; border: none;">
+                                    <button type="button" class="btn btn-outline-primary" id="btnTypeWalkin">
                                         <i class="fas fa-walking me-1"></i> Walk-in
                                     </button>
                                 </div>
@@ -1965,7 +2013,7 @@
                                 <label class="field-label" for="customerSelect">Customer</label>
                                 <div class="d-flex gap-2">
                                     <div id="customerInputWrapper" class="flex-grow-1" style="min-width: 0;">
-                                        <input type="text" class="form-control d-none" name="walkin_name" id="walkinNameInput" value="Walk-in Customer" placeholder="Enter Walk-in Name...">
+                                        <input type="text" class="form-control d-none" name="walkin_name" id="walkinNameInput" value="Walk-in Customer" placeholder="Enter Walk-in Name..." style="height: 42px; border-radius: 10px; font-size: 13.5px;">
                                         <select class="form-select" id="customerSelect" name="customer" style="width:100%">
                                             <option value=""></option>
                                         </select>
@@ -2070,13 +2118,12 @@
                     <table class="table sales-table mb-0">
                         <colgroup>
                             <col style="width:4%;">
-                            <col style="width:28%;">
+                            <col style="width:25%;">
                             <col class="c-stock" style="width:6%;">
-                            <col style="width:8%;">
-                            <col style="width:8%;">
-                            <col class="c-pcs" style="display:none;">
+                            <col style="width:11%;">
                             <col class="col-pcs-ctn" style="width:7%;">
-                            <col style="width:12%;">
+                            <col class="col-pieces" style="width:9%;">
+                            <col style="width:11%;">
                             <col style="width:10%;">
                             <col style="width:11%;">
                             <col style="width:6%;">
@@ -2087,9 +2134,8 @@
                                 <th class="col-product text-start ps-3">PRODUCT</th>
                                 <th class="c-stock-th text-center">STOCK</th>
                                 <th class="text-center">QTY</th>
-                                <th class="text-center">SIZE</th>
-                                <th class="c-pcs-th" style="display:none;">PCS</th>
                                 <th class="col-pcs-ctn-th text-center">PCS/CTN</th>
+                                <th class="col-pieces-th text-center">TOTAL QTY</th>
                                 <th class="text-center">PRICE</th>
                                 <th class="text-center">DISCOUNT</th>
                                 <th class="text-center">AMOUNT</th>
@@ -2131,23 +2177,19 @@
                                         </button>
                                     </div>
                                     <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
-                                </td>
-
-                                <!-- SIZE -->
-                                <td class="col-size">
-                                    <input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-" value="-">
+                                    <input type="hidden" class="size-display" name="size_display[]" value="-">
                                     <input type="hidden" class="pack-qty" name="pack_qty[]" value="1">
-                                </td>
-
-                                <!-- PCS -->
-                                <td class="col-pieces" style="display:none;">
-                                    <input type="text" class="form-control total-pieces text-end input-readonly fw-semibold" name="total_pieces[]" readonly placeholder="0" tabindex="-1">
-                                    <input type="hidden" class="sales-qty" name="qty[]" value="0">
                                 </td>
 
                                 <!-- PCS/CTN -->
                                 <td class="col-pcs-ctn text-center">
                                     <input type="text" class="form-control pcs-per-ctn text-center input-readonly fw-semibold" readonly tabindex="-1" placeholder="0" value="0">
+                                </td>
+
+                                <!-- TOTAL QTY -->
+                                <td class="col-pieces text-center">
+                                    <input type="text" class="form-control total-pieces text-center input-readonly fw-bold" name="total_pieces[]" readonly placeholder="0" tabindex="-1">
+                                    <input type="hidden" class="sales-qty" name="qty[]" value="0">
                                 </td>
 
                                 <!-- PRICE -->

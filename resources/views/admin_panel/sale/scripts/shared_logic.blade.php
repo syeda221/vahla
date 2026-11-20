@@ -163,6 +163,8 @@
         </button>
       </div>
       <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
+      <input type="hidden" class="size-display" name="size_display[]" value="-">
+      <input type="hidden" class="pack-qty" name="pack_qty[]" value="1">
     </td>
 
     <!-- Loose Pieces -->
@@ -170,21 +172,15 @@
       <input type="number" class="form-control loose-pcs-input text-end" name="loose_qty[]" placeholder="" min="0" value="">
     </td>
 
-    <!-- SIZE -->
-    <td class="col-size">
-       <input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-" value="-">
-       <input type="hidden" class="pack-qty" name="pack_qty[]" value="1">
-    </td>
-
-    <!-- Total Pieces (Calculated) -->
-    <td class="col-pieces" style="display:none;">
-      <input type="text" class="form-control total-pieces text-end input-readonly fw-semibold" name="total_pieces[]" readonly placeholder="0" tabindex="-1">
-      <input type="hidden" class="sales-qty" name="qty[]" value="0">
-    </td>
-
     <!-- PCS/CTN -->
     <td class="col-pcs-ctn text-center">
       <input type="text" class="form-control pcs-per-ctn text-center input-readonly fw-semibold" readonly tabindex="-1" placeholder="0" value="0">
+    </td>
+
+    <!-- TOTAL QTY (Calculated) -->
+    <td class="col-pieces text-center">
+      <input type="text" class="form-control total-pieces text-center input-readonly fw-bold" name="total_pieces[]" readonly placeholder="0" tabindex="-1">
+      <input type="hidden" class="sales-qty" name="qty[]" value="0">
     </td>
  
     <!-- Price/Piece -->
@@ -906,36 +902,71 @@
     // Customer Type change logic -> controls Walk-in behavior
     function handleCustomerTypeChange() {
         const type = $('#partyTypeSelect').val();
-        const isWalkin = (type === 'Walking Customer');
+        const isWalkin = (type === 'Walking Customer' || $('#is_walkin').val() === '1');
         
         // Update hidden field value
         $('#is_walkin').val(isWalkin ? '1' : '0');
         
         if (isWalkin) {
-            $('#btnTypeWalkin').addClass('btn-primary active text-white').removeClass('btn-outline-primary');
-            $('#btnTypeCustomer').removeClass('btn-primary active text-white').addClass('btn-outline-primary');
+            $('#btnTypeWalkin')
+                .addClass('btn-primary active text-white')
+                .removeClass('btn-outline-primary')
+                .css({ 'background': '#2563EB', 'color': '#ffffff' });
+            $('#btnTypeCustomer')
+                .removeClass('btn-primary active text-white')
+                .addClass('btn-outline-primary')
+                .css({ 'background': 'transparent', 'color': '#475569' });
             
-            $('#customerSelect').addClass('d-none').next('.select2-container').addClass('d-none');
-            $('#walkinNameInput').removeClass('d-none');
+            $('#customerSelect').addClass('d-none').hide();
+            $('#customerInputWrapper').find('.select2-container').addClass('d-none').hide();
+            $('#customerSelect').next('.select2-container').addClass('d-none').hide();
+            $('#walkinNameInput').removeClass('d-none').show();
+            $('#btnOpenAddCustomerModal').addClass('d-none').hide();
+            $('#clearCustomerData').addClass('d-none').hide();
+            $('#customerInfoCard').addClass('d-none').hide();
+
+            const wName = $('#walkinNameInput').val() || 'Walk-in Customer';
+            $('#cc_customer_name').text(wName);
+            $('#ci_code').text('WALK-IN');
+            $('#cc_prev_bal_val').text('Rs 0');
+            $('#cc_closing_bal_val').text('Rs 0');
+            $('#previousBalance').val('0');
+            $('#rangeBalance').val('0');
             
-            $('#receiptVouchersSection').hide();
-            $('#totalsSection').removeClass('col-lg-5').addClass('col-lg-12');
-            $('#totalsCustomerView').addClass('d-none').removeClass('d-flex');
-            $('#totalsWalkinView').removeClass('d-none').addClass('d-flex');
+            if ($('#receiptVouchersSection').length) $('#receiptVouchersSection').hide();
+            if ($('#totalsSection').length) $('#totalsSection').removeClass('col-lg-5').addClass('col-lg-12');
+            if ($('#totalsCustomerView').length) $('#totalsCustomerView').addClass('d-none').removeClass('d-flex');
+            if ($('#totalsWalkinView').length) $('#totalsWalkinView').removeClass('d-none').addClass('d-flex');
             if ($('#walkinReceiptsContainer').length) {
                 $('#rvWrapper').appendTo('#walkinReceiptsContainer');
             }
         } else {
-            $('#btnTypeCustomer').addClass('btn-primary active text-white').removeClass('btn-outline-primary');
-            $('#btnTypeWalkin').removeClass('btn-primary active text-white').addClass('btn-outline-primary');
+            $('#btnTypeCustomer')
+                .addClass('btn-primary active text-white')
+                .removeClass('btn-outline-primary')
+                .css({ 'background': '#2563EB', 'color': '#ffffff' });
+            $('#btnTypeWalkin')
+                .removeClass('btn-primary active text-white')
+                .addClass('btn-outline-primary')
+                .css({ 'background': 'transparent', 'color': '#475569' });
             
-            $('#walkinNameInput').addClass('d-none');
-            $('#customerSelect').removeClass('d-none').next('.select2-container').removeClass('d-none');
+            $('#walkinNameInput').addClass('d-none').hide();
+            $('#customerSelect').removeClass('d-none').show();
+            $('#customerInputWrapper').find('.select2-container').removeClass('d-none').show();
+            $('#customerSelect').next('.select2-container').removeClass('d-none').show();
+            $('#btnOpenAddCustomerModal').removeClass('d-none').show();
+            $('#clearCustomerData').removeClass('d-none').show();
             
-            $('#receiptVouchersSection').show();
-            $('#totalsSection').removeClass('col-lg-12').addClass('col-lg-5');
-            $('#totalsWalkinView').addClass('d-none').removeClass('d-flex');
-            $('#totalsCustomerView').removeClass('d-none').addClass('d-flex');
+            const custVal = $('#customerSelect').val();
+            if (!custVal) {
+                $('#cc_customer_name').text('Select Customer');
+                $('#ci_code').text('—');
+            }
+
+            if ($('#receiptVouchersSection').length) $('#receiptVouchersSection').show();
+            if ($('#totalsSection').length) $('#totalsSection').removeClass('col-lg-12').addClass('col-lg-5');
+            if ($('#totalsWalkinView').length) $('#totalsWalkinView').addClass('d-none').removeClass('d-flex');
+            if ($('#totalsCustomerView').length) $('#totalsCustomerView').removeClass('d-none').addClass('d-flex');
             if ($('#receiptVouchersSection .card-body').length) {
                 $('#rvWrapper').appendTo('#receiptVouchersSection .card-body');
             }
@@ -947,12 +978,24 @@
         handleCustomerTypeChange();
     });
 
-    $(document).on('click', '#btnTypeCustomer', function() {
+    $(document).on('click', '#btnTypeCustomer', function(e) {
+        e.preventDefault();
+        if (!$('#partyTypeSelect option[value="Main Customer"]').length) {
+            $('#partyTypeSelect').append('<option value="Main Customer">Main Customer</option>');
+        }
+        $('#is_walkin').val('0');
         $('#partyTypeSelect').val('Main Customer').trigger('change');
+        handleCustomerTypeChange();
     });
 
-    $(document).on('click', '#btnTypeWalkin', function() {
+    $(document).on('click', '#btnTypeWalkin', function(e) {
+        e.preventDefault();
+        if (!$('#partyTypeSelect option[value="Walking Customer"]').length) {
+            $('#partyTypeSelect').append('<option value="Walking Customer">Walking Customer</option>');
+        }
+        $('#is_walkin').val('1');
         $('#partyTypeSelect').val('Walking Customer').trigger('change');
+        handleCustomerTypeChange();
     });
 
     $(document).on('input', '#walkinNameInput', function() {
