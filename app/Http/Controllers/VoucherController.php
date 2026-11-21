@@ -3583,13 +3583,22 @@ class VoucherController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Calculate latest closing balance for each vendor
+        // Calculate latest closing balance for each vendor using live BalanceService (matches Statement of Account)
+        $balanceService = app(\App\Services\BalanceService::class);
         foreach ($vendors as $v) {
-            $latestLedger = DB::table('vendor_ledgers')
-                ->where('vendor_id', $v->id)
-                ->orderByDesc('id')
-                ->first();
-            $v->current_balance = $latestLedger ? (float)$latestLedger->closing_balance : (float)($v->opening_balance ?? 0);
+            $ledgerData = $balanceService->getVendorLedger((int)$v->id, '2000-01-01', now()->format('Y-m-d'));
+            $bal = (float)($ledgerData['closing_balance'] ?? 0);
+            if ($bal <= 0) {
+                $bal = $balanceService->getVendorBalance((int)$v->id);
+            }
+            if ($bal <= 0) {
+                $latestLedger = DB::table('vendor_ledgers')
+                    ->where('vendor_id', $v->id)
+                    ->orderByDesc('id')
+                    ->first();
+                $bal = $latestLedger ? (float)$latestLedger->closing_balance : (float)($v->opening_balance ?? 0);
+            }
+            $v->current_balance = $bal;
         }
 
         $lastPay = DB::table('payment_vouchers')->latest('id')->first();
@@ -3848,11 +3857,18 @@ class VoucherController extends Controller
             }
 
             // 3. Vendor Ledger
-            $latestLedger = DB::table('vendor_ledgers')
-                ->where('vendor_id', $vendorId)
-                ->orderByDesc('id')
-                ->first();
-            $prevBal = $latestLedger ? (float)$latestLedger->closing_balance : (float)($vendor->opening_balance ?? 0);
+            $liveLedger = $balanceService->getVendorLedger((int)$vendorId, '2000-01-01', now()->format('Y-m-d'));
+            $prevBal = (float)($liveLedger['closing_balance'] ?? 0);
+            if ($prevBal <= 0) {
+                $prevBal = $balanceService->getVendorBalance((int)$vendorId);
+            }
+            if ($prevBal <= 0) {
+                $latestLedger = DB::table('vendor_ledgers')
+                    ->where('vendor_id', $vendorId)
+                    ->orderByDesc('id')
+                    ->first();
+                $prevBal = $latestLedger ? (float)$latestLedger->closing_balance : (float)($vendor->opening_balance ?? 0);
+            }
 
             \App\Models\VendorLedger::create([
                 'vendor_id'        => $vendorId,
@@ -3960,12 +3976,20 @@ class VoucherController extends Controller
                 }
             }
 
-            // Vendor total ledger balance
-            $latestLedger = DB::table('vendor_ledgers')
-                ->where('vendor_id', $vendorId)
-                ->orderByDesc('id')
-                ->first();
-            $totalLedgerBalance = $latestLedger ? (float)$latestLedger->closing_balance : (float)($vendor->opening_balance ?? 0);
+            // Vendor total ledger balance using live BalanceService (matches Statement of Account)
+            $balanceService = app(\App\Services\BalanceService::class);
+            $ledgerData = $balanceService->getVendorLedger((int)$vendorId, '2000-01-01', now()->format('Y-m-d'));
+            $totalLedgerBalance = (float)($ledgerData['closing_balance'] ?? 0);
+            if ($totalLedgerBalance <= 0) {
+                $totalLedgerBalance = $balanceService->getVendorBalance((int)$vendorId);
+            }
+            if ($totalLedgerBalance <= 0) {
+                $latestLedger = DB::table('vendor_ledgers')
+                    ->where('vendor_id', $vendorId)
+                    ->orderByDesc('id')
+                    ->first();
+                $totalLedgerBalance = $latestLedger ? (float)$latestLedger->closing_balance : (float)($vendor->opening_balance ?? 0);
+            }
 
             // If there are prior balance / opening balance dues beyond purchases
             $obDue = max(0, $totalLedgerBalance - $totalPurchasesDue);
