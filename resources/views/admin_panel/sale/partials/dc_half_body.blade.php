@@ -134,7 +134,7 @@
                         }
                         $productTitle .= $vExtraStr;
                         if (!empty($variant['unit'])) $dispUnit = ucfirst($variant['unit']);
-                        $itemDesc = $item->description ?? '';
+                        $itemDesc = !empty($item->description) ? $item->description : (optional($saleItem)->description ?? '');
                     } else {
                         // Array format from _getSaleItems
                         $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);

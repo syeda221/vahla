@@ -979,6 +979,7 @@
                                         } elseif (!empty($variant['variant_unit'])) {
                                             $wUnit = ucfirst($variant['variant_unit']);
                                         }
+                                        $wItemDesc = !empty($wItem->description) ? $wItem->description : (optional($saleItem)->description ?? '');
                                     } else {
                                         // Array format from _getSaleItems
                                         $piecesPerBox = (int)($wItem['pieces_per_box'] ?? 1);
@@ -1057,12 +1058,37 @@
                                         $wProdName .= $vExtraStr;
                                         $wRate = (float)($wItem['price'] ?? ($wItem['sale_price'] ?? 0));
                                         $wLineTotal = (float)($wItem['total'] ?? ($wQty * $wRate));
+                                        $wItemDesc = $wItem['description'] ?? '';
                                     }
                                     $wRowBg = ($loop->index % 2 === 1) ? 'background-color: rgba(224, 242, 254, 0.4);' : '';
                                 @endphp
                                 <tr style="{{ $wRowBg }}">
                                     <td style="border: 1px solid var(--pad-border); padding: 7px 6px; text-align: center; font-size: 10px; line-height: 1.3;">{{ $wSNo }}</td>
-                                    <td class="desc-col" style="border: 1px solid var(--pad-border); padding: 7px 6px; font-weight: 500; font-size: 10px; line-height: 1.3;">{{ $wProdName }}</td>
+                                    <td class="desc-col" style="border: 1px solid var(--pad-border); padding: 7px 6px; font-weight: 500; font-size: 10px; line-height: 1.3;">
+                                        {{ $wProdName }}
+                                        @if(!empty($wItemDesc) && trim(strtolower($wItemDesc)) !== trim(strtolower($wProdName)))
+                                            <div style="font-size: 8.5px; color: #475569; font-weight: normal; margin-top: 1px;">
+                                                {{ $wItemDesc }}
+                                            </div>
+                                        @endif
+                                        @php
+                                            $rawWb = $isModel ? ($wItem->warehouse_breakdown ?? optional($saleItem)->warehouse_breakdown) : ($wItem['warehouse_breakdown'] ?? null);
+                                            $wWbStrList = [];
+                                            if (!empty($rawWb)) {
+                                                $wbArr = is_string($rawWb) ? json_decode($rawWb, true) : $rawWb;
+                                                if (is_array($wbArr) && count($wbArr) > 1) {
+                                                    foreach ($wbArr as $w) {
+                                                        $wWbStrList[] = ($w['wh_name'] ?? $w['warehouse_name'] ?? 'WH') . ': ' . ($w['qty'] ?? 0);
+                                                    }
+                                                }
+                                            }
+                                        @endphp
+                                        @if(count($wWbStrList) > 0)
+                                            <div style="font-size: 8px; color: #0284c7; font-weight: 600; margin-top: 1px;">
+                                                <i class="fa-solid fa-warehouse me-1"></i>{{ implode(' | ', $wWbStrList) }}
+                                            </div>
+                                        @endif
+                                    </td>
                                     <td style="border: 1px solid var(--pad-border); padding: 7px 6px; text-align: center; font-weight: bold; font-size: 10px; line-height: 1.3;">{{ ($wQty == (int)$wQty) ? (int)$wQty : number_format($wQty, 2) }}</td>
                                     <td class="rate-col" style="border: 1px solid var(--pad-border); padding: 7px 6px; text-align: right; font-size: 10px; line-height: 1.3;">{{ number_format($wRate, 2) }}</td>
                                     <td style="border: 1px solid var(--pad-border); padding: 7px 6px; text-align: center; font-size: 10px; line-height: 1.3;">{{ $wUnit }}</td>
