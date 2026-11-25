@@ -2125,10 +2125,11 @@ class ProductController extends Controller
             $imagePath = $imageName;
         }
 
-        DB::transaction(function () use ($request, $id, $userId, $imagePath, $mode, $height, $width, $piecesPerBox,
-            $boxesQuantity, $loosePieces, $pieceQuantity,
-            $totalM2, $pricePerM2, $purchasePricePerM2, $salePricePerBox, $purchasePricePerPiece, $piecesPerM2,
-            $salePricePerPiece, $purchasePricePerBox) {
+        try {
+            DB::transaction(function () use ($request, $id, $userId, $imagePath, $mode, $height, $width, $piecesPerBox,
+                $boxesQuantity, $loosePieces, $pieceQuantity, $totalStockQty,
+                $totalM2, $pricePerM2, $purchasePricePerM2, $salePricePerBox, $purchasePricePerPiece, $piecesPerM2,
+                $salePricePerPiece, $purchasePricePerBox) {
 
             $hasTransactions = \App\Models\SaleItem::where('product_id', $id)->exists()
                 || \App\Models\DeliveryChallanItem::where('product_id', $id)->exists()
@@ -2464,6 +2465,12 @@ class ProductController extends Controller
                 $this->upsertStocks($id, $adjQty, 1, 1);
             }
         });
+        } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['status' => 'error', 'message' => $e->getMessage()], 422);
+            }
+            return redirect()->back()->withErrors(['error' => $e->getMessage()])->withInput();
+        }
 
         if ($request->wantsJson()) {
             return response()->json(['status' => 'success', 'message' => 'Product updated successfully']);
@@ -2608,7 +2615,7 @@ class ProductController extends Controller
                 }
             }
         } else {
-            $product->piece_quantity  = (int) $totalPieces;
+            $product->piece_quantity  = $totalPieces;
             $product->boxes_quantity  = 0;
             $product->loose_pieces    = 0;
             $calculatedStockDisplay   = $totalPieces;

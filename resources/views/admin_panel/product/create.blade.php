@@ -1835,16 +1835,30 @@
             // Prevent duplicate Conv Factors on form submit
             form.addEventListener('submit', function(e) {
                 if (variantMode === 'weight' && !variantsContainer.classList.contains('d-none')) {
-                    const factors = Array.from(document.querySelectorAll('input[name="variant_conv_factor[]"]')).map(el => parseFloat(el.value));
-                    const uniqueFactors = new Set(factors);
-                    if (factors.length !== uniqueFactors.size) {
-                        e.preventDefault();
-                        Swal.fire({icon: 'error', title: 'Validation Error', text: 'A variant with the same Conv Factor already exists.'});
-                        return;
-                    }
-                    if (factors.some(f => f <= 0 || isNaN(f))) {
+                    const rows = variantsBody ? Array.from(variantsBody.querySelectorAll('tr')) : [];
+                    const nonBaseFactors = [];
+                    let hasInvalidFactor = false;
+                    rows.forEach(row => {
+                        const fInp = row.querySelector('input[name="variant_conv_factor[]"]');
+                        const isBaseInp = row.querySelector('input[name="variant_is_base[]"]');
+                        const f = parseFloat(fInp ? fInp.value : 0);
+                        const isBase = parseInt(isBaseInp ? isBaseInp.value : 0, 10) === 1;
+                        if (isNaN(f) || f <= 0) {
+                            hasInvalidFactor = true;
+                        }
+                        if (!isBase) {
+                            nonBaseFactors.push(f);
+                        }
+                    });
+                    if (hasInvalidFactor) {
                         e.preventDefault();
                         Swal.fire({icon: 'error', title: 'Validation Error', text: 'Conv Factor must be greater than 0.'});
+                        return;
+                    }
+                    const uniqueFactors = new Set(nonBaseFactors);
+                    if (nonBaseFactors.length !== uniqueFactors.size) {
+                        e.preventDefault();
+                        Swal.fire({icon: 'error', title: 'Validation Error', text: 'A variant with the same Conv Factor already exists.'});
                         return;
                     }
                 }
