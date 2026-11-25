@@ -2130,6 +2130,17 @@ class ProductController extends Controller
             $totalM2, $pricePerM2, $purchasePricePerM2, $salePricePerBox, $purchasePricePerPiece, $piecesPerM2,
             $salePricePerPiece, $purchasePricePerBox) {
 
+            $hasTransactions = \App\Models\SaleItem::where('product_id', $id)->exists()
+                || \App\Models\DeliveryChallanItem::where('product_id', $id)->exists()
+                || \App\Models\SaleReturnItem::where('product_id', $id)->exists()
+                || \App\Models\PurchaseItem::where('product_id', $id)->exists()
+                || \App\Models\PurchaseReturnItem::where('product_id', $id)->exists()
+                || \App\Models\InwardGatepassItem::where('product_id', $id)->exists()
+                || \App\Models\GoodsReceivingNoteItem::where('product_id', $id)->exists()
+                || \App\Models\StockTransfer::where('product_id', $id)->exists()
+                || \App\Models\StockAdjustment::where('product_id', $id)->exists()
+                || \App\Models\StockMovement::where('product_id', $id)->whereNotIn('ref_type', ['INIT', 'EDIT_INIT'])->exists();
+
             $variants = [];
             if ($request->has('variant_name')) {
                 $names = $request->variant_name;
@@ -2250,6 +2261,20 @@ class ProductController extends Controller
             // color update logic
             $final_color = null;
             if (count($variants) > 0) {
+                if ($hasTransactions) {
+                    $currLiveTotalPieces = (float) \App\Models\WarehouseStock::where('product_id', $id)->sum('total_pieces');
+                    foreach ($variants as &$vRef) {
+                        if (!empty($vRef['is_base_variant'])) {
+                            if ($mode === 'by_cartons' || $mode === 'by_box') {
+                                $bQ = $piecesPerBox > 0 ? (int)floor(abs($currLiveTotalPieces) / $piecesPerBox) : 0;
+                                $lQ = $piecesPerBox > 0 ? (int)(abs($currLiveTotalPieces) % $piecesPerBox) : 0;
+                                $vRef['stock'] = ($currLiveTotalPieces < 0 ? '-' : '') . $bQ . ($lQ ? '.' . $lQ : '');
+                            } else {
+                                $vRef['stock'] = (float)$currLiveTotalPieces;
+                            }
+                        }
+                    }
+                }
                 $final_color = json_encode($variants);
             } else if ($request->has('color')) {
                 $final_color = json_encode($request->color);
@@ -2367,52 +2392,61 @@ class ProductController extends Controller
             }
 
             // ✅ Update WarehouseStock based on initial stock changes (or new pieces_per_box)
-            $warehouseStock = \App\Models\WarehouseStock::where('product_id', $id)->first();
-            
             $ppb = $piecesPerBox > 0 ? $piecesPerBox : 1;
 
-            if ($warehouseStock) {
-                $currentTotalPieces = (float) $warehouseStock->total_pieces;
-                $newTotalPieces = (float) $totalStockQty;
-                
-                $qtyDelta = $newTotalPieces - $currentTotalPieces;
-                
-                if (abs($qtyDelta) > 0.0001) {
-                    $warehouseStock->total_pieces = $newTotalPieces;
-                    $warehouseStock->quantity = round($newTotalPieces / $ppb, 2);
-                    $warehouseStock->save();
-                    
+            if ($hasTransactions) {
+                // Real transactions exist (sales, purchases, etc.).
+                // Do NOT overwrite warehouse stock or reset inventory balance!
+                // Update box quantity display across all warehouses for this product based on new pieces_per_box.
+                $whStocks = \App\Models\WarehouseStock::where('product_id', $id)->get();
+                foreach ($whStocks as $ws) {
+                    $ws->quantity = round($ws->total_pieces / $ppb, 2);
+                    $ws->save();
+                }
+            } else {
+                // Fresh product with NO transactions: Initial stock can be updated.
+                $warehouseStock = \App\Models\WarehouseStock::where('product_id', $id)->first();
+                if ($warehouseStock) {
+                    $currentTotalPieces = (float) $warehouseStock->total_pieces;
+                    $newTotalPieces = (float) $totalStockQty;
+                    $qtyDelta = $newTotalPieces - $currentTotalPieces;
+
+                    if (abs($qtyDelta) > 0.0001) {
+                        $warehouseStock->total_pieces = $newTotalPieces;
+                        $warehouseStock->quantity = round($newTotalPieces / $ppb, 2);
+                        $warehouseStock->save();
+
+                        StockMovement::create([
+                            'product_id' => $id,
+                            'type'       => 'adjustment',
+                            'qty'        => $qtyDelta,
+                            'ref_type'   => 'EDIT_INIT',
+                            'note'       => 'Initial stock changed via product edit',
+                        ]);
+                    } else {
+                        $warehouseStock->quantity = round($warehouseStock->total_pieces / $ppb, 2);
+                        $warehouseStock->save();
+                    }
+                } elseif ($totalStockQty > 0) {
+                    $targetWh = \App\Models\Warehouse::first() ?? \App\Models\Warehouse::create([
+                        'warehouse_name' => 'Main Warehouse',
+                        'location' => 'Main',
+                    ]);
+                    WarehouseStock::create([
+                        'warehouse_id' => $targetWh->id,
+                        'product_id' => $id,
+                        'quantity' => round($totalStockQty / $ppb, 2),
+                        'total_pieces' => $totalStockQty,
+                        'remarks' => 'Initial Stock',
+                    ]);
                     StockMovement::create([
                         'product_id' => $id,
-                        'type'       => 'adjustment',
-                        'qty'        => $qtyDelta,
-                        'ref_type'   => 'EDIT_INIT',
-                        'note'       => 'Initial stock changed via product edit',
+                        'type' => 'adjustment',
+                        'qty' => $totalStockQty,
+                        'ref_type' => 'INIT',
+                        'note' => 'Initial Stock',
                     ]);
-                } else {
-                    // Keep the actual pieces we have, just update the box display approximation
-                    $warehouseStock->quantity = round($warehouseStock->total_pieces / $ppb, 2);
-                    $warehouseStock->save();
                 }
-            } else if ($totalStockQty > 0) {
-                $targetWh = \App\Models\Warehouse::first() ?? \App\Models\Warehouse::create([
-                    'warehouse_name' => 'Main Warehouse',
-                    'location' => 'Main',
-                ]);
-                WarehouseStock::create([
-                    'warehouse_id' => $targetWh->id,
-                    'product_id' => $id,
-                    'quantity' => round($totalStockQty / $ppb, 2),
-                    'total_pieces' => $totalStockQty,
-                    'remarks' => 'Initial Stock',
-                ]);
-                StockMovement::create([
-                    'product_id' => $id,
-                    'type' => 'adjustment',
-                    'qty' => $totalStockQty,
-                    'ref_type' => 'INIT',
-                    'note' => 'Initial Stock',
-                ]);
             }
 
             // Manual stock adjustment (extra on top)
@@ -2551,17 +2585,46 @@ class ProductController extends Controller
         $brands = Brand::all();
 
         // Calculate current stock from WarehouseStock (the real source of truth)
-        $totalPieces = $product->warehouseStocks->sum('total_pieces');
+        $totalPieces = (float) $product->warehouseStocks->sum('total_pieces');
         $ppb = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
 
         if ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box' || $product->size_mode === 'by_size') {
-            $product->boxes_quantity = (int) floor($totalPieces / $ppb);
-            $product->loose_pieces   = (int) ($totalPieces % $ppb);
-        } elseif ($product->size_mode === 'by_pieces') {
+            if ($totalPieces >= 0) {
+                $product->boxes_quantity = (int) floor($totalPieces / $ppb);
+                $product->loose_pieces   = (int) ($totalPieces % $ppb);
+                $calculatedStockDisplay  = ($product->boxes_quantity ?: 0) . ($product->loose_pieces ? '.' . abs($product->loose_pieces) : '');
+            } else {
+                $absP = abs($totalPieces);
+                $bQty = (int) floor($absP / $ppb);
+                $lQty = (int) ($absP % $ppb);
+                $product->boxes_quantity = -1 * $bQty;
+                $product->loose_pieces   = -1 * $lQty;
+                if ($bQty > 0 && $lQty > 0) {
+                    $calculatedStockDisplay = '-' . $bQty . '.' . $lQty;
+                } elseif ($bQty > 0) {
+                    $calculatedStockDisplay = '-' . $bQty;
+                } else {
+                    $calculatedStockDisplay = '-' . '0.' . $lQty;
+                }
+            }
+        } else {
             $product->piece_quantity  = (int) $totalPieces;
             $product->boxes_quantity  = 0;
             $product->loose_pieces    = 0;
+            $calculatedStockDisplay   = $totalPieces;
         }
+
+        // Check if product has real transactions (sales, purchases, returns, challans, etc.)
+        $hasTransactions = \App\Models\SaleItem::where('product_id', $id)->exists()
+            || \App\Models\DeliveryChallanItem::where('product_id', $id)->exists()
+            || \App\Models\SaleReturnItem::where('product_id', $id)->exists()
+            || \App\Models\PurchaseItem::where('product_id', $id)->exists()
+            || \App\Models\PurchaseReturnItem::where('product_id', $id)->exists()
+            || \App\Models\InwardGatepassItem::where('product_id', $id)->exists()
+            || \App\Models\GoodsReceivingNoteItem::where('product_id', $id)->exists()
+            || \App\Models\StockTransfer::where('product_id', $id)->exists()
+            || \App\Models\StockAdjustment::where('product_id', $id)->exists()
+            || \App\Models\StockMovement::where('product_id', $id)->whereNotIn('ref_type', ['INIT', 'EDIT_INIT'])->exists();
 
         // Robustly parse variants from $product->color
         $variants = [];
@@ -2637,7 +2700,7 @@ class ProductController extends Controller
                     'size' => '-',
                     'color' => '-',
                     'unit' => optional($product->unit)->name ?? ($product->size_mode === 'by_box' ? 'Box' : ($product->size_mode === 'by_cartons' ? 'Carton' : 'Pcs')),
-                    'stock' => ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box') ? (($product->boxes_quantity ?: 0) . ($product->loose_pieces ? '.' . $product->loose_pieces : '')) : ($totalPieces ?: 0),
+                    'stock' => $calculatedStockDisplay,
                     'sale_price' => $product->sale_price_per_piece ?: $product->sale_price_per_box ?: 0,
                     'wholesale_price' => $product->wholesale_price ?: 0,
                     'purch_price' => $product->purchase_price_per_piece ?: 0,
@@ -2647,25 +2710,33 @@ class ProductController extends Controller
                     'is_base_variant' => 1,
                 ]
             ];
-        }
-
-        if (!empty($variants)) {
-            $hasBase = false;
-            foreach ($variants as $v) {
+        } else {
+            // Ensure the base variant displays the actual current inventory stock
+            $baseFound = false;
+            foreach ($variants as &$v) {
                 if (!empty($v['is_base_variant'])) {
-                    $hasBase = true;
+                    $v['stock'] = $calculatedStockDisplay;
+                    $baseFound = true;
                     break;
                 }
             }
-            if (!$hasBase && isset($variants[0])) {
+            if (!$baseFound && isset($variants[0])) {
                 $variants[0]['is_base_variant'] = 1;
+                $variants[0]['stock'] = $calculatedStockDisplay;
+            }
+
+            // If carton mode, sync loose pieces row stock
+            if ($product->size_mode === 'by_cartons' || $product->size_mode === 'by_box') {
+                foreach ($variants as &$v) {
+                    if (isset($v['name']) && str_contains($v['name'], '(Loose Pcs)')) {
+                        $v['stock'] = $product->loose_pieces;
+                    }
+                }
             }
         }
 
-
-
         $itemCodeSeries = \App\Models\ItemCodeSeries::all();
-        return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'variants', 'itemCodeSeries'));
+        return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'variants', 'itemCodeSeries', 'hasTransactions'));
     }
 
     // ===== Barcode view =====

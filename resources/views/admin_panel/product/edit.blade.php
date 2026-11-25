@@ -393,7 +393,14 @@
 
                                 <div class="col-12 mt-3 pt-3 border-top">
                                     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
-                                        <h6 class="form-label-pro text-primary mb-0"><i class="fas fa-cubes me-1"></i>Product Variants & Units</h6>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <h6 class="form-label-pro text-primary mb-0"><i class="fas fa-cubes me-1"></i>Product Variants & Units</h6>
+                                            @if(!empty($hasTransactions))
+                                                <span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 11px;" title="This product has transactions (Sales/Purchases). Stock cannot be edited directly here to prevent inventory corruption. To adjust stock, please use Stock Adjustment.">
+                                                    <i class="fas fa-lock text-warning me-1"></i>Stock Locked (Transactions Exist)
+                                                </span>
+                                            @endif
+                                        </div>
                                         <button type="button" class="btn btn-sm btn-primary" id="enableVariantsBtn"><i class="fas fa-plus me-1"></i>Add Variant Row</button>
                                     </div>
                                     <div id="variantsContainer">
@@ -405,7 +412,7 @@
                                                         <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Size</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Color</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Unit</th>
-                                                        <th class="text-uppercase text-muted p-1 text-center" style="width: 90px; font-size: 10px;">Initial Stock</th>
+                                                        <th class="text-uppercase text-muted p-1 text-center" style="width: 90px; font-size: 10px;">{{ !empty($hasTransactions) ? 'Current Stock' : 'Initial Stock' }}</th>
                                                         <th class="text-uppercase text-muted p-1 text-center conv-col" id="convFactorHeader" style="width: 95px; font-size: 10px;">Pcs / Carton</th>
                                                         <th class="text-uppercase text-muted p-1 text-center piece-wt-only-col" id="pieceMeasureHeader" style="width: 90px; font-size: 10px;">Piece Wt (g)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;">Sale Price</th>
@@ -661,6 +668,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // --- UI Elements ---
+            const hasTransactions = {{ !empty($hasTransactions) ? 'true' : 'false' }};
             const unitDropdown = document.getElementById('unit-dropdown');
             const form = document.getElementById('productForm');
             const enableVariantsBtn = document.getElementById('enableVariantsBtn');
@@ -855,7 +863,7 @@
                         </select>
                     </td>
                     <td class="p-1">
-                        <input type="number" class="form-control-pro form-control-sm text-center fw-bold text-primary" name="variant_stock[]" step="any" value="${escapeHtml(stockVal)}" placeholder="0" title="${isCartonMode ? (isBoxMode ? 'Initial Stock (Boxes)' : 'Initial Stock (Cartons)') : 'Initial Stock'}">
+                        <input type="number" class="form-control-pro form-control-sm text-center fw-bold text-primary" name="variant_stock[]" step="any" value="${escapeHtml(stockVal)}" placeholder="0" title="${hasTransactions ? 'Current Stock (Locked: Transactions Exist)' : (isCartonMode ? (isBoxMode ? 'Initial Stock (Boxes)' : 'Initial Stock (Cartons)') : 'Initial Stock')}" ${hasTransactions ? 'readonly style="background:#f8f9fa;cursor:not-allowed;"' : ''}>
                     </td>
                     <td class="p-0 conv-col">
                         <input type="number" class="form-control-pro form-control-sm conv-factor-input text-center fw-bold ${isCartonMode ? 'text-primary' : ''}" name="variant_conv_factor[]" step="any" value="${escapeHtml(convVal)}" ${isCartonMode ? '' : 'readonly'} placeholder="${isCartonMode ? (isBoxMode ? 'e.g. 10' : 'e.g. 12') : '1'}" title="${isCartonMode ? (isBoxMode ? 'Pieces per Box' : 'Pieces per Carton') : 'Base Conv Factor = 1'}" style="border-radius:0; border:1px solid #dee2e6; height:30px; ${isCartonMode ? 'background:#fff;' : 'background:#f8f8f8;'}">
@@ -951,7 +959,7 @@
                         </select>
                     </td>
                     <td class="p-1">
-                        <input type="number" class="form-control-pro form-control-sm text-center fw-bold text-primary stock-input" name="variant_stock[]" step="any" value="${escapeHtml(pieceStock)}" placeholder="0" title="Total Pieces in Inventory">
+                        <input type="number" class="form-control-pro form-control-sm text-center fw-bold text-primary stock-input" name="variant_stock[]" step="any" value="${escapeHtml(pieceStock)}" placeholder="0" title="Total Pieces in Inventory" ${hasTransactions ? 'readonly style="background:#f8f9fa;cursor:not-allowed;"' : ''}>
                     </td>
                     <td class="p-0 conv-col">
                         <input type="text" inputmode="decimal" class="form-control-pro form-control-sm conv-factor-input text-center fw-bold text-success" name="variant_conv_factor[]" value="${escapeHtml(pieceFactor)}" placeholder="0" title="Conv Factor: 1 / Pieces per Container" style="border-radius:0; border:1px solid #198754; height:30px; border-width:1.5px;">
@@ -1180,7 +1188,7 @@
                         </select>
                     </td>
                     <td class="p-1">
-                        <input type="number" class="form-control-pro form-control-sm text-center fw-bold text-primary stock-input" name="variant_stock[]" step="any" value="${escapeHtml(stockVal)}" placeholder="0" title="${isCartonMode ? 'Initial Stock (Cartons)' : 'Initial Stock'}" ${variantMode === 'weight' ? 'readonly style="background:#f8f9ff;color:#0d6efd;font-weight:bold;"' : ''}>
+                        <input type="number" class="form-control-pro form-control-sm text-center fw-bold text-primary stock-input" name="variant_stock[]" step="any" value="${escapeHtml(stockVal)}" placeholder="0" title="${hasTransactions ? 'Current Stock (Locked: Transactions Exist)' : (isCartonMode ? 'Initial Stock (Cartons)' : 'Initial Stock')}" ${hasTransactions || variantMode === 'weight' ? 'readonly style="background:#f8f9fa;cursor:not-allowed;"' : ''}>
                     </td>
                     <td class="p-0 conv-col">
                         <input type="text" inputmode="decimal" class="form-control-pro form-control-sm conv-factor-input text-center fw-bold text-success" name="variant_conv_factor[]" value="${escapeHtml(convVal)}" placeholder="0" title="${isCartonMode ? 'Pieces per Carton' : (isMeterMode ? 'Conv Factor: length per Pcs in meters' : 'Conv Factor: weight per Pcs in base unit')}" style="border-radius:0; border:1px solid #198754; height:30px; border-width:1.5px;">
@@ -1830,8 +1838,8 @@
                     <div class="mob-section-label"><i class="fas fa-boxes me-1"></i>Stock & Pricing</div>
 
                     <div class="mob-field-group">
-                        <div class="mob-label">Initial Stock ${isBase ? '' : (isWeightMode ? '🔵 Auto' : '')}</div>
-                        <input type="number" class="mob-input mob-sync ${!isBase && isWeightMode ? 'auto-field mob-stock-auto' : ''}" data-field="variant_stock[]" value="${escapeHtml(stockVal)}" placeholder="${!isBase && isWeightMode ? 'Auto' : '0'}" ${!isBase && isWeightMode ? 'readonly' : ''} step="any">
+                        <div class="mob-label">${hasTransactions ? 'Current Stock' : 'Initial Stock'} ${isBase ? '' : (isWeightMode ? '🔵 Auto' : '')}</div>
+                        <input type="number" class="mob-input mob-sync ${!isBase && isWeightMode ? 'auto-field mob-stock-auto' : ''}" data-field="variant_stock[]" value="${escapeHtml(stockVal)}" placeholder="${!isBase && isWeightMode ? 'Auto' : '0'}" ${hasTransactions || (!isBase && isWeightMode) ? 'readonly style="background:#f8f9fa;"' : ''} step="any">
                     </div>
 
                     ${unitDropdown && (unitDropdown.value === 'by_cartons' || unitDropdown.value === 'by_box') ? `
