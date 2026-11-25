@@ -1975,13 +1975,16 @@ class ProductController extends Controller
         $userId = auth()->id();
 
         if ($request->wantsJson()) {
-            $validation = $this->validateProductRequest($request);
+            $validation = $this->validateProductRequest($request, true);
             if ($validation->fails()) {
                 return response()->json(['status' => 'error', 'errors' => $validation->errors()], 422);
             }
             $validated = $validation->validated();
         } else {
-            $validation = $this->validateProductRequest($request);
+            $validation = $this->validateProductRequest($request, true);
+            if ($validation->fails()) {
+                return redirect()->back()->withErrors($validation)->withInput();
+            }
         }
 
         // Validate Item Code Uniqueness upfront
@@ -2045,12 +2048,12 @@ class ProductController extends Controller
             $piecesPerM2 = $m2PerPiece > 0 ? (1 / $m2PerPiece) : 0;
 
             // Logic validation
-            if ($totalM2 <= 0) {
+            if ($m2PerBox <= 0) {
                 if ($request->wantsJson()) {
-                    return response()->json(['status' => 'error', 'errors' => ['total_m2' => ['Total m² cannot be zero.']]], 422);
+                    return response()->json(['status' => 'error', 'errors' => ['total_m2' => ['Dimensions and pieces per box must be greater than zero.']]], 422);
                 }
 
-                return redirect()->back()->withErrors(['total_m2' => 'Total m² cannot be zero.']);
+                return redirect()->back()->withErrors(['total_m2' => 'Dimensions and pieces per box must be greater than zero.']);
             }
 
             $totalPrice = $totalM2 * $pricePerM2;
@@ -2755,8 +2758,9 @@ class ProductController extends Controller
     }
 
     // Shared validation rules
-    private function validateProductRequest(Request $request)
+    private function validateProductRequest(Request $request, bool $isUpdate = false)
     {
+        $isEdit = $isUpdate || $request->isMethod('PUT') || $request->isMethod('PATCH');
         $rules = [
             'product_name' => 'required|string|max:255',
             'category_id' => 'nullable',
@@ -2780,21 +2784,21 @@ class ProductController extends Controller
                 'height' => 'required|numeric|gt:0',
                 'width' => 'required|numeric|gt:0',
                 'pieces_per_box' => 'required|integer|gt:0',
-                'boxes_quantity' => 'required|integer|min:0', // Allowed 0 stock
+                'boxes_quantity' => $isEdit ? 'required|integer' : 'required|integer|min:0', // Allowed negative live stock on edit
                 'price_per_m2' => 'required|numeric|min:0', // Allowed 0 price
                 'purchase_price_per_m2' => 'required|numeric|min:0',
             ]);
         } elseif ($mode === 'by_cartons' || $mode === 'by_box') {
             $rules = array_merge($rules, [
                 'pieces_per_box' => 'nullable|integer|min:1',
-                'boxes_quantity' => 'nullable|numeric|min:0',
-                'loose_pieces' => 'nullable|integer|min:0',
+                'boxes_quantity' => $isEdit ? 'nullable|numeric' : 'nullable|numeric|min:0',
+                'loose_pieces' => $isEdit ? 'nullable|integer' : 'nullable|integer|min:0',
                 'sale_price_per_box' => 'nullable|numeric|min:0',
                 'purchase_price_per_piece' => 'nullable|numeric|min:0',
             ]);
         } else {
             $rules = array_merge($rules, [
-                'piece_quantity' => 'nullable|numeric|min:0', // Allowed 0 stock
+                'piece_quantity' => $isEdit ? 'nullable|numeric' : 'nullable|numeric|min:0', // Allowed negative live stock on edit
                 'sale_price_per_box' => 'nullable|numeric|min:0',
                 'purchase_price_per_piece' => 'nullable|numeric|min:0',
             ]);

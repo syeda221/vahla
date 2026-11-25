@@ -1702,7 +1702,7 @@
                         const elPurch = document.getElementById('purchase_price_per_piece');
                         const elAlert = document.getElementById('alert_carton_quantity');
 
-                        if (mode === 'by_cartons') {
+                        if (mode === 'by_cartons' || mode === 'by_box') {
                             let ppb = firstConv > 0 ? firstConv : 1;
                             if (elBoxQty) elBoxQty.value = totalStock;
                             if (elPpb) elPpb.value = ppb;
