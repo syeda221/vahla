@@ -1199,77 +1199,92 @@
                 return Math.floor(100000 + Math.random() * 900000).toString();
             }
 
+            function escapeHtml(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            }
+
             // Sync base variant name with product name in real time (smooth, zero-lag in-place update)
             const productNameInput = document.querySelector('input[name="product_name"]');
             let prevProductName = productNameInput ? (productNameInput.value || '') : '';
-            if (productNameInput) {
-                productNameInput.addEventListener('input', function() {
-                    const newName = this.value;
-                    const oldName = prevProductName;
 
-                    // 1. Always update the base variant name in real time
-                    const baseInput = document.querySelector('input.base-name-input');
-                    if (baseInput) {
-                        baseInput.value = newName;
-                    }
+            function syncProductNameToVariants(newName, oldName) {
+                // 1. Always update the base variant name in real time
+                const baseInput = document.querySelector('input.base-name-input');
+                if (baseInput) {
+                    baseInput.value = newName;
+                }
 
-                    // 2. If loose pieces variant exists and has default naming, sync it
-                    const looseRow = variantsBody.querySelector('tr[data-is-loose="1"]');
-                    if (looseRow) {
-                        const looseInp = looseRow.querySelector('.var-name-input');
-                        if (looseInp) {
-                            if (!oldName || looseInp.value === 'Loose Pcs' || looseInp.value === (oldName + ' - Loose Pcs')) {
-                                looseInp.value = newName ? (newName + ' - Loose Pcs') : 'Loose Pcs';
-                            }
+                // 2. If loose pieces variant exists and has default naming, sync it
+                const looseRow = variantsBody.querySelector('tr[data-is-loose="1"]');
+                if (looseRow) {
+                    const looseInp = looseRow.querySelector('.var-name-input');
+                    if (looseInp) {
+                        if (!oldName || looseInp.value === 'Loose Pcs' || looseInp.value === (oldName + ' - Loose Pcs')) {
+                            looseInp.value = newName ? (newName + ' - Loose Pcs') : 'Loose Pcs';
                         }
                     }
+                }
 
-                    // 3. If other variants exist and had the product name as prefix, update their prefix too
-                    if (oldName && oldName.trim() !== '') {
-                        const otherVarInputs = document.querySelectorAll('input.var-name-input');
-                        otherVarInputs.forEach(inp => {
-                            if (inp.closest('tr')?.dataset.isLoose === '1') return; // already handled
-                            if (inp.value === oldName) {
-                                inp.value = newName;
-                            } else if (inp.value.startsWith(oldName + ' - ')) {
-                                inp.value = newName + inp.value.substring(oldName.length);
-                            } else if (inp.value.startsWith(oldName + ' (')) {
-                                inp.value = newName + inp.value.substring(oldName.length);
-                            }
-                        });
-                    }
-
-                    // 4. In-place sync for mobile cards (NEVER destroy/rebuild DOM on typing to ensure 100% smooth 60fps typing)
-                    const mobBaseCard = document.querySelector('#mobileVariantsBody .mob-variant-card.is-base') 
-                        || document.querySelector('#mobileVariantsBody .mob-variant-card:first-child');
-                    if (mobBaseCard) {
-                        const mobBaseInput = mobBaseCard.querySelector('[data-field="variant_name[]"]');
-                        if (mobBaseInput) mobBaseInput.value = newName;
-                        const mobBaseLabel = mobBaseCard.querySelector('.mob-card-label');
-                        if (mobBaseLabel) mobBaseLabel.textContent = newName || 'Base Variant';
-                    }
-
-                    const mobOtherCards = document.querySelectorAll('#mobileVariantsBody .mob-variant-card:not(.is-base)');
-                    mobOtherCards.forEach((card, idx) => {
-                        const mobInp = card.querySelector('[data-field="variant_name[]"]');
-                        const mobLbl = card.querySelector('.mob-card-label');
-                        const desktopRow = variantsBody.children[idx + 1];
-                        if (desktopRow && mobInp) {
-                            const desktopInp = desktopRow.querySelector('[name="variant_name[]"]');
-                            if (desktopInp) mobInp.value = desktopInp.value;
-                        }
-                        if (mobLbl && mobInp) {
-                            mobLbl.textContent = mobInp.value || ('Variant ' + (idx + 2));
+                // 3. If other variants exist and had the product name as prefix, update their prefix too
+                if (oldName && oldName.trim() !== '') {
+                    const otherVarInputs = document.querySelectorAll('input.var-name-input');
+                    otherVarInputs.forEach(inp => {
+                        if (inp.closest('tr')?.dataset.isLoose === '1') return; // already handled
+                        if (inp.value === oldName) {
+                            inp.value = newName;
+                        } else if (inp.value.startsWith(oldName + ' - ')) {
+                            inp.value = newName + inp.value.substring(oldName.length);
+                        } else if (inp.value.startsWith(oldName + ' (')) {
+                            inp.value = newName + inp.value.substring(oldName.length);
                         }
                     });
+                }
 
-                    prevProductName = newName;
+                // 4. In-place sync for mobile cards (NEVER destroy/rebuild DOM on typing to ensure 100% smooth 60fps typing)
+                const mobBaseCard = document.querySelector('#mobileVariantsBody .mob-variant-card.is-base') 
+                    || document.querySelector('#mobileVariantsBody .mob-variant-card:first-child');
+                if (mobBaseCard) {
+                    const mobBaseInput = mobBaseCard.querySelector('[data-field="variant_name[]"]');
+                    if (mobBaseInput) mobBaseInput.value = newName;
+                    const mobBaseLabel = mobBaseCard.querySelector('.mob-card-label');
+                    if (mobBaseLabel) mobBaseLabel.textContent = newName || 'Base Variant';
+                }
+
+                const mobOtherCards = document.querySelectorAll('#mobileVariantsBody .mob-variant-card:not(.is-base)');
+                mobOtherCards.forEach((card, idx) => {
+                    const mobInp = card.querySelector('[data-field="variant_name[]"]');
+                    const mobLbl = card.querySelector('.mob-card-label');
+                    const desktopRow = variantsBody.children[idx + 1];
+                    if (desktopRow && mobInp) {
+                        const desktopInp = desktopRow.querySelector('[name="variant_name[]"]');
+                        if (desktopInp) mobInp.value = desktopInp.value;
+                    }
+                    if (mobLbl && mobInp) {
+                        mobLbl.textContent = mobInp.value || ('Variant ' + (idx + 2));
+                    }
+                });
+            }
+
+            if (productNameInput) {
+                ['input', 'keyup', 'change', 'paste'].forEach(evt => {
+                    productNameInput.addEventListener(evt, function() {
+                        const newName = this.value;
+                        const oldName = prevProductName;
+                        syncProductNameToVariants(newName, oldName);
+                        prevProductName = newName;
+                    });
                 });
             }
 
             function addBaseVariantRow() {
                 const tr = document.createElement('tr');
-                const productName = productNameInput.value || '';
+                const productName = productNameInput ? (productNameInput.value || '') : '';
                 const baseUnitName = unitDropdown ? unitDropdown.options[unitDropdown.selectedIndex].text : 'Kg';
                 const isCartonMode = unitDropdown && (unitDropdown.value === 'by_cartons' || unitDropdown.value === 'by_box');
                 const isBoxMode = unitDropdown && unitDropdown.value === 'by_box';
@@ -1280,7 +1295,7 @@
                 const vid = 'base_' + Date.now();
                 tr.innerHTML = `
                     <td class="p-1">
-                        <input type="text" class="form-control-pro form-control-sm base-name-input fw-bold" name="variant_name[]" value="${productName}" placeholder="Name" data-vid="${vid}">
+                        <input type="text" class="form-control-pro form-control-sm base-name-input fw-bold" name="variant_name[]" value="${escapeHtml(productName)}" placeholder="Name" data-vid="${vid}">
                         <input type="hidden" name="variant_is_base[]" value="1">
                     </td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" placeholder="Size"></td>
@@ -1320,6 +1335,11 @@
                     </td>
                 `;
                 variantsBody.appendChild(tr);
+
+                const baseNameInp = tr.querySelector('.base-name-input');
+                if (baseNameInp) {
+                    baseNameInp.value = productName;
+                }
 
                 const baseSaleInp = tr.querySelector('.base-sale-input');
                 const basePurchInp = tr.querySelector('.base-purch-input');
@@ -1377,9 +1397,10 @@
                 tr.dataset.vid = vid;
                 tr.dataset.isLoose = "1";
 
+                const looseName = productName ? (productName + ' - Loose Pcs') : 'Loose Pcs';
                 tr.innerHTML = `
                     <td class="p-1">
-                        <input type="text" class="form-control-pro form-control-sm var-name-input fw-semibold" name="variant_name[]" value="${productName ? productName + ' - Loose Pcs' : 'Loose Pcs'}" placeholder="Name">
+                        <input type="text" class="form-control-pro form-control-sm var-name-input fw-semibold" name="variant_name[]" value="${escapeHtml(looseName)}" placeholder="Name">
                         <input type="hidden" name="variant_is_base[]" value="0">
                     </td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" placeholder="Size" value="-"></td>
@@ -1409,6 +1430,11 @@
                     </td>
                 `;
                 variantsBody.appendChild(tr);
+
+                const looseInp = tr.querySelector('.var-name-input');
+                if (looseInp) {
+                    looseInp.value = looseName;
+                }
 
                 const saleInput = tr.querySelector('.sale-price-input');
                 const purchInput = tr.querySelector('.purch-price-input');
@@ -1556,7 +1582,7 @@
 
                 tr.innerHTML = `
                     <td class="p-1">
-                        <input type="text" class="form-control-pro form-control-sm var-name-input" name="variant_name[]" value="${suggestedName}" placeholder="Name">
+                        <input type="text" class="form-control-pro form-control-sm var-name-input" name="variant_name[]" value="${escapeHtml(suggestedName)}" placeholder="Name">
                         <input type="hidden" name="variant_is_base[]" value="0">
                     </td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" placeholder="Size (e.g. Small, 30cm)"></td>
@@ -1595,6 +1621,11 @@
                     </td>
                 `;
                 variantsBody.appendChild(tr);
+
+                const varInp = tr.querySelector('.var-name-input');
+                if (varInp) {
+                    varInp.value = suggestedName;
+                }
 
                 const saleInput = tr.querySelector('.sale-price-input');
                 const purchInput = tr.querySelector('.purch-price-input');
@@ -1742,6 +1773,16 @@
             // Ensure an initial base variant row exists on page load
             if (variantsBody.children.length === 0) {
                 addBaseVariantRow();
+            } else {
+                const initBaseInp = document.querySelector('input.base-name-input');
+                if (initBaseInp && productNameInput && productNameInput.value) {
+                    initBaseInp.value = productNameInput.value;
+                }
+            }
+
+            // Sync on initial page load (for URL parameter ?name=... or pre-filled values)
+            if (productNameInput && productNameInput.value) {
+                syncProductNameToVariants(productNameInput.value, '');
             }
 
             enableVariantsBtn.addEventListener('click', function() {
@@ -1849,7 +1890,7 @@
                 <div class="mob-card-header" onclick="mobToggleCard(this)">
                     <div class="mob-card-title">
                         <i class="fas fa-layer-group" style="color:${isBase ? '#5B4CF7' : '#94a3b8'};font-size:14px;flex-shrink:0;"></i>
-                        <span class="mob-card-label">${label}</span>
+                        <span class="mob-card-label">${escapeHtml(label)}</span>
                         ${isBase ? '<span class="mob-base-badge">Base</span>' : ''}
                     </div>
                     <svg class="mob-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1858,16 +1899,16 @@
                     <div class="mob-section-label"><i class="fas fa-info-circle me-1"></i>Basic Info</div>
                     <div class="mob-field-group">
                         <div class="mob-label">Variant Name ${isBase ? '<span class="req">*</span>' : ''}</div>
-                        <input type="text" class="mob-input mob-sync" data-field="variant_name[]" value="${nameVal}" placeholder="e.g. Red - XL" autocomplete="off">
+                        <input type="text" class="mob-input mob-sync" data-field="variant_name[]" value="${escapeHtml(nameVal)}" placeholder="e.g. Red - XL" autocomplete="off">
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                         <div class="mob-field-group">
                             <div class="mob-label">Size</div>
-                            <input type="text" class="mob-input mob-sync" data-field="variant_size[]" value="${sizeVal}" placeholder="XL, M...">
+                            <input type="text" class="mob-input mob-sync" data-field="variant_size[]" value="${escapeHtml(sizeVal)}" placeholder="XL, M...">
                         </div>
                         <div class="mob-field-group">
                             <div class="mob-label">Color</div>
-                            <input type="text" class="mob-input mob-sync" data-field="variant_color[]" value="${colorVal}" placeholder="Red, Blue...">
+                            <input type="text" class="mob-input mob-sync" data-field="variant_color[]" value="${escapeHtml(colorVal)}" placeholder="Red, Blue...">
                         </div>
                     </div>
                     <div class="mob-field-group">
@@ -1950,7 +1991,7 @@
                         </div>
                         <div class="mob-field-group">
                             <div class="mob-label">Barcode</div>
-                            <input type="text" class="mob-input mob-sync" data-field="variant_barcode[]" value="${barcodeVal}" placeholder="Scan or type...">
+                            <input type="text" class="mob-input mob-sync" data-field="variant_barcode[]" value="${escapeHtml(barcodeVal)}" placeholder="Scan or type...">
                         </div>
                     </div>
 
@@ -1959,6 +2000,9 @@
                     </button>` : ''}
                 </div>
             `;
+
+            const mobNameInp = card.querySelector('[data-field="variant_name[]"]');
+            if (mobNameInp) mobNameInp.value = nameVal;
 
             // Event: sync mob input → desktop table
             card.querySelectorAll('.mob-sync').forEach(inp => {
